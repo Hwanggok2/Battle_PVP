@@ -1,0 +1,72 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+public class PlayerCombat : MonoBehaviour
+{
+    [Header("Combo Settings")]
+    [SerializeField] private AttackData[] comboList; // 3개의 SO 할당
+    private int currentComboIndex = 0;
+    private bool isAttacking = false;       // 현재 공격 동작 중인가?
+    private bool hasComboReserved = false;  // 다음 공격이 예약되었는가?
+
+    private Animator animator;
+
+    private void Awake()
+    {
+        animator = GetComponent<Animator>();
+    }
+
+    // New Input System: 좌클릭 이벤트
+    public void OnAttack(InputValue value)
+    {
+        if (!value.isPressed) return;
+
+        if (isAttacking)
+        {
+            // [핵심] 이미 공격 중이라면 다음 타수를 '예약'만 합니다.
+            // 애니메이션을 끊지 않고 flag만 true로 바꿉니다.
+            hasComboReserved = true;
+            Debug.Log($"{currentComboIndex + 2}타 예약 완료!");
+        }
+        else
+        {
+            // 공격 중이 아니라면 1타(Index 0)부터 즉시 시작합니다.
+            StartAttack(0);
+        }
+    }
+
+    private void StartAttack(int index)
+    {
+        isAttacking = true;
+        hasComboReserved = false;
+        currentComboIndex = index;
+
+        // ScriptableObject에 적힌 애니메이션 이름을 재생합니다.
+        // 화살표(Transition) 없이도 즉시 실행되지만, 현재 동작을 끊지 않도록 설계되었습니다.
+        animator.Play(comboList[index].animationName);
+    }
+
+    // [중요] StateMachineBehaviour에서 애니메이션이 끝날 때 호출할 함수
+    public void OnAttackAnimationEnd()
+    {
+        // 마지막 타수가 아니고, 유저가 클릭을 해서 예약이 되어 있다면
+        if (hasComboReserved && currentComboIndex < comboList.Length - 1)
+        {
+            // 다음 타수로 넘어갑니다.
+            StartAttack(currentComboIndex + 1);
+        }
+        else
+        {
+            // 예약이 없거나 마지막 3타였다면 콤보를 완전히 종료합니다.
+            StopCombo();
+        }
+    }
+
+    private void StopCombo()
+    {
+        isAttacking = false;
+        currentComboIndex = 0;
+        hasComboReserved = false;
+        Debug.Log("콤보 종료 및 초기화");
+    }
+}
