@@ -1,0 +1,113 @@
+﻿using System;
+using BattlePvp.Stats;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace BattlePvp.UI
+{
+    /// <summary>
+    /// "50pt 遺꾨같湲? ?꾩슜 ?щ씪?대뜑.
+    /// - ?낅젰(?ъ옄)? 0..30
+    /// - ?쒓컖?붾뒗 ???Fill: Pure(?ъ옄) / Item(蹂대꼫??
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class StatSlider : MonoBehaviour
+    {
+        private const float MaxInvested = 30f;
+        private const float MaxItem = 10f;
+        private const float MaxVisualTotal = MaxInvested + MaxItem; // 40
+
+        [Header("Identity")]
+        [SerializeField] private StatKind _kind;
+
+        [Header("UI")]
+        [SerializeField] private Slider _slider;
+        [Tooltip("諛붾떏 Fill(?쒖닔 ?ъ옄) ?대?吏. Image Type=Filled 沅뚯옣")]
+        [SerializeField] private Image _pureFill;
+        [Tooltip("?곷떒 Fill(?꾩씠??蹂대꼫???ы븿) ?대?吏. Image Type=Filled 沅뚯옣")]
+        [SerializeField] private Image _itemFill;
+        [SerializeField] private TMP_Text _valueText;
+
+        public StatKind Kind => _kind;
+        public float Invested => _slider != null ? _slider.value : 0f;
+
+        public event Action<StatSlider, float> InvestedChanged;
+
+        private float _item;
+
+        private void Awake()
+        {
+            if (_slider != null)
+            {
+                _slider.minValue = 0f;
+                _slider.maxValue = MaxInvested;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (_slider != null)
+                _slider.onValueChanged.AddListener(OnSliderChanged);
+
+            RefreshVisual();
+        }
+
+        private void OnDisable()
+        {
+            if (_slider != null)
+                _slider.onValueChanged.RemoveListener(OnSliderChanged);
+        }
+
+        public void SetItem(float item)
+        {
+            _item = Clamp(item, 0f, MaxItem);
+            RefreshVisual();
+        }
+
+        public void SetInvestedWithoutNotify(float invested)
+        {
+            if (_slider == null)
+                return;
+
+            _slider.SetValueWithoutNotify(Clamp(invested, 0f, MaxInvested));
+            RefreshVisual();
+        }
+
+        public void SetMaxInvestedInteractable(float max)
+        {
+            if (_slider == null)
+                return;
+
+            float m = Clamp(max, 0f, MaxInvested);
+            _slider.maxValue = m;
+            if (_slider.value > m)
+                _slider.SetValueWithoutNotify(m);
+
+            RefreshVisual();
+        }
+
+        private void OnSliderChanged(float value)
+        {
+            RefreshVisual();
+            InvestedChanged?.Invoke(this, value);
+        }
+
+        private void RefreshVisual()
+        {
+            float invested = _slider != null ? _slider.value : 0f;
+            float pure01 = Clamp01(invested / MaxVisualTotal);
+            float total01 = Clamp01((invested + _item) / MaxVisualTotal);
+
+            if (_pureFill != null) _pureFill.fillAmount = pure01;
+            if (_itemFill != null) _itemFill.fillAmount = total01;
+
+            if (_valueText != null)
+                _valueText.text = $"{(int)invested} / {(int)MaxInvested}";
+        }
+
+        private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);
+        private static float Clamp(float v, float min, float max) => v < min ? min : (v > max ? max : v);
+    }
+}
+

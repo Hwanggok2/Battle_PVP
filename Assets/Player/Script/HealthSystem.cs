@@ -22,24 +22,29 @@ namespace BattlePvp.Combat
         [Header("HP Model")]
         [SerializeField] private float _baseMaxHp = 100f;
         [Tooltip("FinalTotal(CON) 1당 증가하는 최대 HP")]
-        [SerializeField] private float _maxHpPerCon = 5f;
+        [SerializeField] private float _maxHpPerCon = 15f;
+        [Tooltip("FinalTotal(CON) 1당 초당 재생되는 HP")]
+        [SerializeField] private float _regenPerCon = 0.15f;
 
         [Header("Runtime")]
         [SerializeField] private float _currentHp = 100f;
 
         public float CurrentHp => _currentHp;
         public float MaxHp => _maxHp;
+        public float CurrentRegen => _currentRegen;
 
         public event Action<float, float> HpChanged;
         public event Action<bool, float> OverflowChanged;
 
         private float _maxHp;
+        private float _currentRegen;
         private float _lastOverlapPercent;
         private bool _isOverflowActive;
 
         private DamageCalculator _damageCalculator;
         private StrategistRules _strategistRules;
         private Coroutine _overflowRoutine;
+        private Coroutine _regenRoutine;
 
         private void Awake()
         {
@@ -56,12 +61,16 @@ namespace BattlePvp.Combat
 
             if (_statManager != null)
                 _statManager.StatsChanged += OnStatsChanged;
+
+            EnsureRegenRoutine();
         }
 
         private void OnDisable()
         {
             if (_statManager != null)
                 _statManager.StatsChanged -= OnStatsChanged;
+
+            StopRegenRoutine();
         }
 
         private void OnStatsChanged(StatContainer _)
@@ -79,6 +88,7 @@ namespace BattlePvp.Combat
             if (newMax <= 1f) newMax = 1f;
 
             _maxHp = newMax;
+            _currentRegen = PredictRegen();
 
             if (!keepCurrentHpFlat)
                 _currentHp = Mathf.Min(_currentHp, _maxHp);
@@ -146,6 +156,15 @@ namespace BattlePvp.Combat
                 max *= 1.6f;
 
             return max;
+        }
+
+        private float PredictRegen()
+        {
+            if (_statManager == null)
+                return 0f;
+
+            float conFinal = _statManager.GetFinalTotal(StatKind.CON);
+            return conFinal * _regenPerCon;
         }
 
         private bool IsMonostatDef()
@@ -218,6 +237,34 @@ namespace BattlePvp.Combat
                     UpdateOverflowState();
                 }
 
+                yield return null;
+            }
+        }
+
+        private void EnsureRegenRoutine()
+        {
+            if (_regenRoutine != null) return;
+            _regenRoutine = StartCoroutine(CoRegenTick());
+        }
+
+        private void StopRegenRoutine()
+        {
+            if (_regenRoutine == null) return;
+            StopCoroutine(_regenRoutine);
+            _regenRoutine = null;
+        }
+
+        private IEnumerator CoRegenTick()
+        {
+            while (true)
+            {
+                if (_currentRegen > 0f && _currentHp < _maxHp)
+                {
+                    float next = _currentHp + (_currentRegen * Time.deltaTime);
+                    _currentHp = Mathf.Min(next, _maxHp);
+                    RaiseHpChanged();
+                    // Regen으로는 Overflow가 발생하지 않으므로 UpdateOverflowState는 호출하지 않음
+                }
                 yield return null;
             }
         }

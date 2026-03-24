@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c5cadcc93c1022469351170d94b1db5, type: 3}
+  m_Name: IdentitySpriteSet
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.IdentitySpriteSet
+  _polymath: {fileID: 21300000, guid: d38c0d93deb1b1c4da9d02468fb4ac13, type: 3}
+  _strategist: {fileID: 21300000, guid: 76a0d777bfe60b340af9312b93851416, type: 3}
+  _monoStr: {fileID: 21300000, guid: 52b9599b84709104fa7e5bea317d3c54, type: 3}
+  _monoAgi: {fileID: 21300000, guid: a680ee4fbcfb6b54180f4ea5b895b37c, type: 3}
+  _monoCon: {fileID: 21300000, guid: 639dfdf38ecf82343a5d2e62e58aa599, type: 3}
+  _monoDef: {fileID: 21300000, guid: 6437751588602084b978b69025266717, type: 3}

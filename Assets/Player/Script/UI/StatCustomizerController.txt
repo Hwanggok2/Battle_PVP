@@ -1,0 +1,185 @@
+﻿using System.Text;
+using BattlePvp.Stats;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace BattlePvp.UI
+{
+    /// <summary>
+    /// Canvas_Customizer??"50pt 遺꾨같湲? + "Identity 誘몃━蹂닿린"瑜??대깽??湲곕컲?쇰줈 援щ룞?⑸땲??
+    /// - ?щ씪?대뜑 蹂寃?-> 媛???ъ옄 ?ㅽ꺈 媛깆떊 -> IdentityCalculator濡?誘몃━蹂닿린 利됱떆 媛깆떊
+    /// - Apply 踰꾪듉 -> StatManager.ApplyInvestedOnly ?몄텧 (?꾩씠??蹂대꼫?ㅻ뒗 ?좎?)
+    /// </summary>
+    [DisallowMultipleComponent]
+    public sealed class StatCustomizerController : MonoBehaviour
+    {
+        private const int TotalInvestedBudget = 30;
+
+        [Header("Target")]
+        [SerializeField] private StatManager _statManager;
+
+        [Header("Rows")]
+        [SerializeField] private StatSlider _str;
+        [SerializeField] private StatSlider _agi;
+        [SerializeField] private StatSlider _con;
+        [SerializeField] private StatSlider _def;
+
+        [Header("Budget UI")]
+        [SerializeField] private TMP_Text _pointsText;
+
+        [Header("Identity Preview")]
+        [SerializeField] private Image _identityIcon;
+        [SerializeField] private TMP_Text _identityName;
+        [SerializeField] private IdentitySpriteSet _spriteSet;
+
+        [Header("Apply")]
+        [SerializeField] private Button _applyButton;
+
+        private IdentityCalculator _identityCalculator;
+        private StatContainer _baseStats;     // item ?ы븿???먮낯 ?ㅽ꺈(?꾩씠???좎???
+        private StatContainer _virtualStats;  // ?ъ옄媛믩쭔 ?ㅼ떆媛?蹂寃쎈릺??媛???ㅽ꺈
+
+        private readonly StringBuilder _sb = new StringBuilder(64);
+
+        private void Awake()
+        {
+            _identityCalculator = new IdentityCalculator();
+
+            if (_statManager == null)
+                _statManager = GetComponentInParent<StatManager>();
+        }
+
+        private void OnEnable()
+        {
+            LoadFromTarget();
+
+            Hook(_str);
+            Hook(_agi);
+            Hook(_con);
+            Hook(_def);
+
+            if (_applyButton != null)
+                _applyButton.onClick.AddListener(Apply);
+
+            RebuildBudgetAndPreview();
+        }
+
+        private void OnDisable()
+        {
+            Unhook(_str);
+            Unhook(_agi);
+            Unhook(_con);
+            Unhook(_def);
+
+            if (_applyButton != null)
+                _applyButton.onClick.RemoveListener(Apply);
+        }
+
+        private void LoadFromTarget()
+        {
+            if (_statManager == null)
+                return;
+
+            _baseStats = _statManager.GetStatsCopy();
+            _virtualStats = _baseStats;
+
+            // ?꾩씠??Fill ?명똿 + ?ъ옄媛?珥덇린??            if (_str != null) { _str.SetItem(_baseStats.STR.Item); _str.SetInvestedWithoutNotify(_baseStats.STR.Invested); }
+            if (_agi != null) { _agi.SetItem(_baseStats.AGI.Item); _agi.SetInvestedWithoutNotify(_baseStats.AGI.Invested); }
+            if (_con != null) { _con.SetItem(_baseStats.CON.Item); _con.SetInvestedWithoutNotify(_baseStats.CON.Invested); }
+            if (_def != null) { _def.SetItem(_baseStats.DEF.Item); _def.SetInvestedWithoutNotify(_baseStats.DEF.Invested); }
+        }
+
+        private void Hook(StatSlider s)
+        {
+            if (s == null) return;
+            s.InvestedChanged += OnInvestedChanged;
+        }
+
+        private void Unhook(StatSlider s)
+        {
+            if (s == null) return;
+            s.InvestedChanged -= OnInvestedChanged;
+        }
+
+        private void OnInvestedChanged(StatSlider changed, float _)
+        {
+            // 珥앺빀 30??珥덇낵?섎㈃, 蹂寃쏀븳 ?щ씪?대뜑?먯꽌 珥덇낵遺꾩쓣 利됱떆 源롫뒗??媛???⑥닚?섎㈃??寃곗젙?곸씤 UX).
+            int total = GetTotalInvested();
+            if (total > TotalInvestedBudget && changed != null)
+            {
+                int overflow = total - TotalInvestedBudget;
+                float next = Mathf.Max(0f, changed.Invested - overflow);
+                changed.SetInvestedWithoutNotify(next);
+            }
+
+            SyncVirtualFromSliders();
+            RebuildBudgetAndPreview();
+        }
+
+        private int GetTotalInvested()
+        {
+            int s = _str != null ? (int)_str.Invested : 0;
+            int a = _agi != null ? (int)_agi.Invested : 0;
+            int c = _con != null ? (int)_con.Invested : 0;
+            int d = _def != null ? (int)_def.Invested : 0;
+            return s + a + c + d;
+        }
+
+        private void SyncVirtualFromSliders()
+        {
+            _virtualStats = _baseStats;
+
+            if (_str != null) _virtualStats.STR.Invested = _str.Invested;
+            if (_agi != null) _virtualStats.AGI.Invested = _agi.Invested;
+            if (_con != null) _virtualStats.CON.Invested = _con.Invested;
+            if (_def != null) _virtualStats.DEF.Invested = _def.Invested;
+        }
+
+        private void RebuildBudgetAndPreview()
+        {
+            int used = GetTotalInvested();
+            int remain = TotalInvestedBudget - used;
+            if (_pointsText != null)
+                _pointsText.text = $"{used} / {TotalInvestedBudget}";
+
+            // Identity Preview
+            Identity id = _identityCalculator.ResolveIdentity(_virtualStats, out _);
+
+            if (_identityName != null)
+            {
+                _sb.Clear();
+                _sb.Append(id.PrimaryStat);
+                _sb.Append(' ');
+                _sb.Append(id.Type.ToString().ToUpperInvariant());
+                _identityName.text = _sb.ToString();
+            }
+
+            if (_identityIcon != null && _spriteSet != null)
+                _identityIcon.sprite = _spriteSet.Resolve(id);
+
+            // Apply 踰꾪듉 ?쒖꽦/鍮꾪솢??            if (_applyButton != null)
+                _applyButton.interactable = remain >= 0;
+        }
+
+        private void Apply()
+        {
+            if (_statManager == null)
+                return;
+
+            // ?꾩씠?쒖? ?좎??섍퀬 ?ъ옄留??곸슜
+            var investedOnly = default(StatContainer);
+            investedOnly.STR.Invested = _virtualStats.STR.Invested;
+            investedOnly.AGI.Invested = _virtualStats.AGI.Invested;
+            investedOnly.CON.Invested = _virtualStats.CON.Invested;
+            investedOnly.DEF.Invested = _virtualStats.DEF.Invested;
+
+            _statManager.ApplyInvestedOnly(investedOnly, recalculateIdentity: true);
+
+            // ?곸슜 ??踰좎씠???ㅻ깄??媛깆떊(?꾩씠???ъ옄 紐⑤몢 ?ы븿??理쒖떊 ?곹깭)
+            LoadFromTarget();
+            RebuildBudgetAndPreview();
+        }
+    }
+}
+
