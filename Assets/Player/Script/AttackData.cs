@@ -3,8 +3,8 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "NewAttack", menuName = "Combat/AttackData")]
 public class AttackData : ScriptableObject
 {
-    public string animationName;      // Àç»ýÇÒ ¾Ö´Ï¸ÞÀÌ¼Ç ÀÌ¸§
-    public float comboWindowStart;    // ÄÞº¸ ÀÔ·ÂÀ» ¹Þ±â ½ÃÀÛÇÏ´Â ½ÃÁ¡ (0~1)
-    public float comboWindowEnd;      // ÄÞº¸ ÀÔ·ÂÀÌ ¸¶°¨µÇ´Â ½ÃÁ¡ (0~1)
-    public float damage;              // °ø°Ý·Â °¡ÁßÄ¡
+    public string animationName;      // ì•„ì•„ì•„ì•„ì•„
+    public float comboWindowStart;    // ï¿½Þºï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½Þ±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ (0~1)
+    public float comboWindowEnd;      // ï¿½Þºï¿½ ï¿½Ô·ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½ï¿½ï¿½ï¿½ (0~1)
+    public float damage;              // ï¿½ï¿½ï¿½Ý·ï¿½ ï¿½ï¿½ï¿½ï¿½Ä¡
 }

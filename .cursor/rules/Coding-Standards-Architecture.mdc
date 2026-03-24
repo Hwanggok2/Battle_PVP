@@ -1,0 +1,12 @@
+---
+alwaysApply: true
+---
+
+- **Unity Best Practices**: `Update()` 사용을 지양하고, 대신 C# Events나 `UniTask`를 활용한 이벤트 기반 설계를 우선할 것.
+- **Naming Convention**: 
+  - Private fields는 `_` 접두사(e.g., `_currentHp`)를 사용.
+  - Public properties는 PascalCase(e.g., `CurrentHp`) 사용.
+- **Separation of Concerns**: 데이터(StatContainer)와 로직(StatCalculator), 상태 관리(StatManager)를 철저히 분리할 것.
+- **Project Specific**:
+  - 'PureTotal'과 'itemValue'는 절대 섞여서 판정되지 않도록 캡슐화를 철저히 할 것.
+  - 모든 수치 연산은 `float` 대신 정밀도 제어가 용이한 방식을 제안하거나, `Mathf`를 활용한 Clamping을 명시적으로 처리할 것.
