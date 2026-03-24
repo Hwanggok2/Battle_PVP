@@ -1533,6 +1533,10 @@ MonoBehaviour:
   _maxHpPerCon: 5
   _regenPerCon: 0.15
   _currentHp: 100
+  _maxHp: 0
+  _currentRegen: 0
+  _defenseRate: 0
+  _bonusDefenseEff: 0
 --- !u!114 &455574383
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1593,6 +1597,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackProcessor
   _attackerStats: {fileID: 455574383}
   _attackerHealth: {fileID: 0}
+  _currentAtk: 0
+  _currentPene: 0
+  _lastHitPower: 0
+  _lastHitPene: 0
 --- !u!1 &464404115
 GameObject:
   m_ObjectHideFlags: 0
@@ -2566,7 +2574,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
   m_Navigation:
-    m_Mode: 3
+    m_Mode: 0
     m_WrapAround: 0
     m_SelectOnUp: {fileID: 0}
     m_SelectOnDown: {fileID: 0}
@@ -3289,7 +3297,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Slider
   m_Navigation:
-    m_Mode: 3
+    m_Mode: 0
     m_WrapAround: 0
     m_SelectOnUp: {fileID: 0}
     m_SelectOnDown: {fileID: 0}
@@ -8202,11 +8210,11 @@ PrefabInstance:
       insertIndex: 2
       addedObject: {fileID: 455574382}
     - targetCorrespondingSourceObject: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 455574383}
+      insertIndex: 6
+      addedObject: {fileID: 455574385}
     - targetCorrespondingSourceObject: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 455574385}
+      addedObject: {fileID: 455574383}
     - targetCorrespondingSourceObject: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       insertIndex: -1
       addedObject: {fileID: 455574384}

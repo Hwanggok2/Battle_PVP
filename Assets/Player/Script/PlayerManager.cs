@@ -14,9 +14,11 @@ public class PlayerManager : MonoBehaviour
 
     private CharacterController controller;
     private Animator animator;
-    private Vector2 inputVector; // 신형 시스템에서 받을 Vector2 값
-    private float velocityY;
-    private bool canMove = true; // 이동 가능 여부 플래그
+
+    [Header("Runtime Status (Read Only)")]
+    [SerializeField] private Vector2 inputVector; // 신형 시스템에서 받을 Vector2 값
+    [SerializeField] private float velocityY;
+    [SerializeField] private bool isAttacking = false; // 현재 공격 중인지 여부
 
     private readonly int speedHash = Animator.StringToHash("Speed");
 
@@ -49,6 +51,15 @@ public class PlayerManager : MonoBehaviour
         if (_statManager == null) return;
         float agi = _statManager.GetFinalTotal(StatKind.AGI);
         moveSpeed = 3.0f + (agi * 0.04f);
+
+        // Monostat 보너스/페널티 (기획안 반영)
+        Identity id = _statManager.CurrentIdentity;
+        if (id.Type == IdentityType.Monostat)
+        {
+            if (id.PrimaryStat == StatKind.AGI) moveSpeed *= 1.2f; // 민첩 몰빵: 이속 +20%
+            else if (id.PrimaryStat == StatKind.STR) moveSpeed *= 0.75f; // 힘 몰빵: 이속 -25%
+            else if (id.PrimaryStat == StatKind.DEF) moveSpeed *= 0.7f; // 방어 몰빵: 이속 -30%
+        }
     }
 
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
@@ -60,20 +71,17 @@ public class PlayerManager : MonoBehaviour
 
     private void Update()
     {
-        if (!canMove) return; // 이동 잠금 상태면 아래 로직 실행 안 함
+        // 더 이상 canMove로 리턴하지 않고 항상 이동 로직을 태웁니다.
         ApplyMovement();
     }
 
-    // Animator의 SendMessage("SetMovementLock", true/false)를 받는 함수
+    // Animator의 Animation Event 등에서 호출하여 공격 상태를 알립니다.
     public void SetMovementLock(bool isLocked)
     {
-        canMove = !isLocked;
+        isAttacking = isLocked;
 
-        // 공격 시작 시(isLocked == true) 기존 입력을 초기화해서 미끄러짐 방지
-        if (isLocked)
-        {
-            inputVector = Vector2.zero;
-        }
+        // 공격 시작 시 미끄러짐 방지를 위해 입력을 초기화하고 싶다면 여기서 조절 가능합니다.
+        // 유저 요청에 따라 공격 중에도 이동이 가능하므로, 굳이 zero로 만들지 않습니다.
     }
 
     private void ApplyMovement()
@@ -88,7 +96,9 @@ public class PlayerManager : MonoBehaviour
             velocityY -= gravity * Time.deltaTime;
 
         // 3. 최종 이동
-        Vector3 finalMove = (moveDirection * moveSpeed) + (Vector3.up * velocityY);
+        // 공격 중이라면 이동 속도를 40% 감소 (-40% => * 0.6)
+        float currentMoveSpeed = moveSpeed * (isAttacking ? 0.6f : 1.0f);
+        Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
         controller.Move(finalMove * Time.deltaTime);
 
         // 4. 회전 처리

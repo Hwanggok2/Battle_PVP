@@ -86,10 +86,13 @@ namespace BattlePvp.Stats
         public void ApplyStats(StatContainer stats, bool recalculateIdentity = true)
         {
             _stats = stats;
-            StatsChanged?.Invoke(_stats);
 
             if (recalculateIdentity)
                 RecalculateIdentity();
+
+            // Identity가 먼저 결정된 후 다른 시스템들이 스탯 변화를 인지해야 
+            // 새로운 Identity 보너스가 정확히 반영됩니다.
+            StatsChanged?.Invoke(_stats);
         }
 
         /// <summary>

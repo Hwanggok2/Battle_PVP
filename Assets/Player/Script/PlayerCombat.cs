@@ -13,6 +13,9 @@ public class PlayerCombat : MonoBehaviour
     [SerializeField] private StatManager _statManager;
     private Animator animator;
 
+    [Header("Runtime Status (Read Only)")]
+    [SerializeField] private float _currentAttackSpeed = 1.0f;
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -48,7 +51,18 @@ public class PlayerCombat : MonoBehaviour
         if (_statManager != null)
         {
             float agi = _statManager.GetFinalTotal(StatKind.AGI);
-            animator.speed = 0.6f + (agi * 0.02f);
+            float baseAs = 0.6f + (agi * 0.02f);
+            
+            // Monostat 보너스/페널티
+            Identity id = _statManager.CurrentIdentity;
+            if (id.Type == IdentityType.Monostat)
+            {
+                if (id.PrimaryStat == StatKind.AGI) baseAs *= 1.6f; // 민첩 몰빵: 공속 +60%
+                else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f; // 힘 몰빵: 공속 -25%
+            }
+
+            _currentAttackSpeed = baseAs;
+            animator.speed = _currentAttackSpeed;
         }
 
         // ScriptableObject에 적힌 애니메이션 이름을 재생합니다.

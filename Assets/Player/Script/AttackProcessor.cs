@@ -21,6 +21,12 @@ public sealed class AttackProcessor : MonoBehaviour
 
     private IDamageReceiver _attackerDamageReceiver;
 
+    [Header("Runtime Status (Read Only)")]
+    [SerializeField] private float _currentAtk;
+    [SerializeField] private float _currentPene;
+    [SerializeField] private float _lastHitPower;
+    [SerializeField] private float _lastHitPene;
+
     private void Awake()
     {
         _damageCalculator = _damageCalculator ?? new DamageCalculator();
@@ -34,7 +40,41 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_attackerDamageReceiver == null)
         {
             // TODO: 런타임에만 필요한 경우가 많으므로, 여기서는 조용히 no-op에 가깝게 동작하도록 둡니다.
-            // 추후 Health 구현이 추가되면 이 검증을 강화하면 됩니다.
+        }
+
+        RefreshFromStats();
+    }
+
+    private void OnEnable()
+    {
+        if (_attackerStats != null)
+        {
+            _attackerStats.StatsChanged += OnStatsChanged;
+            RefreshFromStats();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_attackerStats != null)
+            _attackerStats.StatsChanged -= OnStatsChanged;
+    }
+
+    private void OnStatsChanged(StatContainer _) => RefreshFromStats();
+
+    public void RefreshFromStats()
+    {
+        if (_attackerStats == null) return;
+
+        float str = _attackerStats.GetFinalTotal(StatKind.STR);
+        _currentAtk = str * 4f;
+        _currentPene = str * 0.3f;
+
+        Identity id = _attackerStats.CurrentIdentity;
+        if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.STR)
+        {
+            _currentAtk *= 1.4f;
+            _currentPene += 18f;
         }
     }
 
@@ -57,16 +97,14 @@ public sealed class AttackProcessor : MonoBehaviour
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
         Identity defenderIdentity = defenderStats.CurrentIdentity;
 
-        // 1) ATK / Piercing 구성 (reference-formulae.md의 "ATK"와 "Piercing"에 매핑)
-        // - ATK: STR 기반 + (Monostat STR이면) 공격력 +40%
-        // - Piercing: STR 기반 + (Monostat STR이면) 물관 18% 추가
+        // 1) ATK / Piercing 구성 (기획안: 1 STR당 ATK 4, 물관 0.3%)
         float attackerStrFinal = _attackerStats.GetFinalTotal(StatKind.STR);
+        float baseAtk = attackerStrFinal * 4f;
+        float basePene = attackerStrFinal * 0.3f;
 
-        // AttackData.damage는 실제 공격의 세기를 곱해주는 계수로 취급합니다.
-        // (예: damage=4면 ATK가 4배 스케일)
-        float attackPower = attackerStrFinal * attackData.damage;
-
-        float penetrationPercent = Clamp(attackerStrFinal, 0f, 100f);
+        // AttackData.damage는 실제 공격의 세기를 곱해주는 계수
+        float attackPower = baseAtk * attackData.damage;
+        float penetrationPercent = basePene;
 
         if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
         {
@@ -105,6 +143,9 @@ public sealed class AttackProcessor : MonoBehaviour
 
         if (finalDamage <= 0f)
             return;
+
+        _lastHitPower = attackPower;
+        _lastHitPene = penetrationPercent;
 
         // 5) 물리 피해 적용 (+ 컨텍스트 전달 가능하면 전달)
         // Thorns 반사는 HealthSystem이 "Physical 피해 수신 시" 처리한다.

@@ -36,8 +36,11 @@ namespace BattlePvp.Combat
         public event Action<float, float> HpChanged;
         public event Action<bool, float> OverflowChanged;
 
-        private float _maxHp;
-        private float _currentRegen;
+        [Header("Runtime Status (Read Only)")]
+        [SerializeField] private float _maxHp;
+        [SerializeField] private float _currentRegen;
+        [SerializeField] private float _defenseRate;
+        [SerializeField] private float _bonusDefenseEff;
         private float _lastOverlapPercent;
         private bool _isOverflowActive;
 
@@ -89,6 +92,17 @@ namespace BattlePvp.Combat
 
             _maxHp = newMax;
             _currentRegen = PredictRegen();
+
+            if (_statManager != null)
+            {
+                _defenseRate = _statManager.GetFinalTotal(StatKind.DEF);
+                
+                Identity id = _statManager.CurrentIdentity;
+                if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.DEF)
+                    _bonusDefenseEff = 0.5f;
+                else
+                    _bonusDefenseEff = 0f;
+            }
 
             if (!keepCurrentHpFlat)
                 _currentHp = Mathf.Min(_currentHp, _maxHp);
@@ -152,8 +166,12 @@ namespace BattlePvp.Combat
 
             // Monostat CON: 최대 체력 +60% (스펙 반영)
             Identity id = _statManager.CurrentIdentity;
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON)
-                max *= 1.6f;
+            if (id.Type == IdentityType.Monostat)
+            {
+                if (id.PrimaryStat == StatKind.CON) max *= 1.6f;
+                // Monostat AGI: 최대 체력 -30% (스펙 반영)
+                else if (id.PrimaryStat == StatKind.AGI) max *= 0.7f;
+            }
 
             return max;
         }
@@ -164,7 +182,14 @@ namespace BattlePvp.Combat
                 return 0f;
 
             float conFinal = _statManager.GetFinalTotal(StatKind.CON);
-            return conFinal * _regenPerCon;
+            float regen = conFinal * _regenPerCon;
+
+            // Monostat CON: 초당 재생력 +5
+            Identity id = _statManager.CurrentIdentity;
+            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON)
+                regen += 5f;
+
+            return regen;
         }
 
         private bool IsMonostatDef()
