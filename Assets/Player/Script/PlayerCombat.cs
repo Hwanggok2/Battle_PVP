@@ -11,6 +11,7 @@ public class PlayerCombat : MonoBehaviour
     private bool hasComboReserved = false;  // 다음 공격이 예약되었는가?
 
     [SerializeField] private StatManager _statManager;
+    [SerializeField] private BattlePvp.Combat.MeleeHitBox[] _hitboxes; // 무기 여러 개일 수 있음
     private Animator animator;
 
     [Header("Runtime Status (Read Only)")]
@@ -68,6 +69,23 @@ public class PlayerCombat : MonoBehaviour
         // ScriptableObject에 적힌 애니메이션 이름을 재생합니다.
         // 화살표(Transition) 없이도 즉시 실행되지만, 현재 동작을 끊지 않도록 설계되었습니다.
         animator.Play(comboList[index].animationName);
+
+        // 현재 공격 데이터 세팅
+        foreach (var hb in _hitboxes)
+        {
+            if (hb != null) hb.SetAttackData(comboList[index]);
+        }
+    }
+
+    // Animation Event에서 호출할 함수들
+    public void EnableHitBox()
+    {
+        foreach (var hb in _hitboxes) if (hb != null) hb.EnableHitBox();
+    }
+
+    public void DisableHitBox()
+    {
+        foreach (var hb in _hitboxes) if (hb != null) hb.DisableHitBox();
     }
 
     // [중요] StateMachineBehaviour에서 애니메이션이 끝날 때 호출할 함수

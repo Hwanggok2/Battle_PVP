@@ -78,6 +78,7 @@ namespace BattlePvp.Combat
 
         private void OnStatsChanged(StatContainer _)
         {
+            if (this == null) return;
             RefreshFromStats(keepCurrentHpFlat: true);
         }
 
@@ -145,11 +146,15 @@ namespace BattlePvp.Combat
                 float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, MaxHp);
                 if (thorns > 0f)
                 {
-                    // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
-                    if (attacker is IDamageReceiverWithContext ctx)
-                        ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null);
-                    else
-                        attacker.ApplyDamage(thorns, DamageSource.Thorns);
+                    // attacker가 여전히 유효한지 확인
+                    if (attacker != null && (attacker is MonoBehaviour attackerMb && attackerMb != null))
+                    {
+                        // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
+                        if (attacker is IDamageReceiverWithContext ctx)
+                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null);
+                        else
+                            attacker.ApplyDamage(thorns, DamageSource.Thorns);
+                    }
                 }
             }
 

@@ -44,7 +44,11 @@ public class PlayerManager : MonoBehaviour
             _statManager.StatsChanged -= OnStatsChanged;
     }
 
-    private void OnStatsChanged(StatContainer _) => UpdateMoveSpeed();
+    private void OnStatsChanged(StatContainer _)
+    {
+        if (this == null) return;
+        UpdateMoveSpeed();
+    }
 
     private void UpdateMoveSpeed()
     {

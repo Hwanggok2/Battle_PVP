@@ -60,7 +60,11 @@ public sealed class AttackProcessor : MonoBehaviour
             _attackerStats.StatsChanged -= OnStatsChanged;
     }
 
-    private void OnStatsChanged(StatContainer _) => RefreshFromStats();
+    private void OnStatsChanged(StatContainer _)
+    {
+        if (this == null) return;
+        RefreshFromStats();
+    }
 
     public void RefreshFromStats()
     {
@@ -91,7 +95,7 @@ public sealed class AttackProcessor : MonoBehaviour
             return;
         if (_attackerStats == null || defenderStats == null)
             return;
-        if (defender == null)
+        if (defender == null || (defender is MonoBehaviour mb && mb == null))
             return;
 
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
@@ -150,9 +154,15 @@ public sealed class AttackProcessor : MonoBehaviour
         // 5) 물리 피해 적용 (+ 컨텍스트 전달 가능하면 전달)
         // Thorns 반사는 HealthSystem이 "Physical 피해 수신 시" 처리한다.
         if (defender is IDamageReceiverWithContext ctx)
+        {
+            // defender가 여전히 유효한지 확인
+            if (ctx is MonoBehaviour defenderMb && defenderMb == null) return;
             ctx.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver);
+        }
         else
+        {
             defender.ApplyDamage(finalDamage, DamageSource.Physical);
+        }
     }
 
     private static float Clamp(float v, float min, float max)

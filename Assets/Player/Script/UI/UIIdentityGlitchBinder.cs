@@ -19,6 +19,8 @@ namespace BattlePvp.UI
         private static readonly int OverlapPercentId = Shader.PropertyToID("_OverlapPercent");
         private static readonly int ReassembleProgressId = Shader.PropertyToID("_ReassembleProgress");
         private static readonly int MirrorActiveId = Shader.PropertyToID("_MirrorActive");
+        private static readonly int VignetteRadiusId = Shader.PropertyToID("_VignetteRadius");
+        private static readonly int VignetteSoftnessId = Shader.PropertyToID("_VignetteSoftness");
 
         [Header("Target")]
         [SerializeField] private Graphic _targetGraphic;
@@ -37,6 +39,10 @@ namespace BattlePvp.UI
         [SerializeField] [Range(0f, 1f)] private float _defaultReassembleProgress = 1f;
         [SerializeField] private bool _mirrorWhenPolymath = true;
 
+        [Header("Vignette (Noise Masking)")]
+        [SerializeField] [Range(0f, 1f)] private float _vignetteMainRadius = 1.0f;
+        [SerializeField] [Range(0f, 1f)] private float _vignetteMainSoftness = 1.0f;
+
         [Header("Primary Stat Color")]
         [SerializeField] private Color _strColor = Color.red;
         [SerializeField] private Color _agiColor = Color.green;
@@ -50,6 +56,7 @@ namespace BattlePvp.UI
         private Identity _currentIdentity;
         private float _overlapPercent;
         private float _reassembleProgress;
+        private float _hpPercent = 1f;
 
         private void Awake()
         {
@@ -74,7 +81,10 @@ namespace BattlePvp.UI
             }
 
             if (_statusSource != null)
+            {
                 _statusSource.OverflowChanged += OnOverflowChanged;
+                _statusSource.HpChanged += OnHpChanged;
+            }
 
             // 시작 시점 즉시 반영(이벤트 대기 없이 초기 상태를 보장)
             PullInitialOverlapFromHpReader();
@@ -83,11 +93,20 @@ namespace BattlePvp.UI
 
         private void OnDisable()
         {
-            if (_identitySource != null)
-                _identitySource.IdentityChanged -= OnIdentityChanged;
+            if (_identitySourceBehaviour != null)
+            {
+                if (_identitySource != null)
+                    _identitySource.IdentityChanged -= OnIdentityChanged;
+            }
 
-            if (_statusSource != null)
-                _statusSource.OverflowChanged -= OnOverflowChanged;
+            if (_statusSourceBehaviour != null)
+            {
+                if (_statusSource != null)
+                {
+                    _statusSource.OverflowChanged -= OnOverflowChanged;
+                    _statusSource.HpChanged -= OnHpChanged;
+                }
+            }
         }
 
         private void OnDestroy()
@@ -107,13 +126,22 @@ namespace BattlePvp.UI
 
         private void OnIdentityChanged(Identity identity)
         {
+            if (this == null) return;
             _currentIdentity = identity;
             ApplyAll();
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
         {
+            if (this == null) return;
             _overlapPercent = isOverflow ? Mathf.Clamp01(overlapPercent) : 0f;
+            ApplyAll();
+        }
+
+        private void OnHpChanged(float current, float max)
+        {
+            if (this == null) return;
+            _hpPercent = max > 0f ? Mathf.Clamp01(current / max) : 1f;
             ApplyAll();
         }
 
@@ -150,12 +178,16 @@ namespace BattlePvp.UI
             if (_runtimeMaterial == null)
                 return;
 
+            float dynamicPulse = Mathf.Lerp(10f, _emissionPulse, _hpPercent); // HP 낮을수록 10에 가까워짐
+
             _runtimeMaterial.SetFloat(GlitchAmountId, ResolveGlitchAmount(_currentIdentity.Type));
             _runtimeMaterial.SetColor(StatColorId, ResolveStatColor(_currentIdentity.PrimaryStat));
-            _runtimeMaterial.SetFloat(EmissionPulseId, _emissionPulse);
+            _runtimeMaterial.SetFloat(EmissionPulseId, dynamicPulse);
             _runtimeMaterial.SetFloat(OverlapPercentId, _overlapPercent);
             _runtimeMaterial.SetFloat(ReassembleProgressId, _reassembleProgress);
             _runtimeMaterial.SetFloat(MirrorActiveId, ResolveMirrorActive(_currentIdentity.Type));
+            _runtimeMaterial.SetFloat(VignetteRadiusId, _vignetteMainRadius);
+            _runtimeMaterial.SetFloat(VignetteSoftnessId, _vignetteMainSoftness);
             _targetGraphic.SetMaterialDirty();
         }
 

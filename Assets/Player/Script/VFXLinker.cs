@@ -64,6 +64,7 @@ namespace BattlePvp.VFX
 
         private void OnIdentityChanged(Identity identity)
         {
+            if (this == null) return;
             Apply(identity);
         }
 

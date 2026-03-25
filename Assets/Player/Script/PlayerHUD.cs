@@ -79,25 +79,31 @@ namespace BattlePvp.UI
             if (_statManager != null)
                 _statManager.IdentityChanged -= OnIdentityChanged;
 
-            if (_status != null)
+            if (_healthSource != null)
             {
-                _status.HpChanged -= OnHpChanged;
-                _status.OverflowChanged -= OnOverflowChanged;
+                if (_status != null)
+                {
+                    _status.HpChanged -= OnHpChanged;
+                    _status.OverflowChanged -= OnOverflowChanged;
+                }
             }
         }
 
         private void OnHpChanged(float current, float max)
         {
+            if (this == null) return;
             _hudView?.SetHp(current, max);
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
         {
+            if (this == null) return;
             _hudView?.SetOverflow(isOverflow, overlapPercent);
         }
 
         private void OnIdentityChanged(Identity identity)
         {
+            if (this == null) return;
             _hudView?.SetIdentity(identity);
         }
     }
