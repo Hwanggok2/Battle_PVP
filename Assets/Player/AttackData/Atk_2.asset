@@ -15,4 +15,4 @@ MonoBehaviour:
   animationName: Attack2
   comboWindowStart: 1
   comboWindowEnd: 1
-  damage: 6
+  damage: 1

@@ -33,9 +33,15 @@ namespace BattlePvp.Stats
         private IdentityCalculator _identityCalculator;
         private IdentityCalculator.IdentityDebug _lastDebug;
 
+        /// <summary>
+        /// Lazy-initialized calculator to prevent NullReferenceException if called before Awake.
+        /// </summary>
+        private IdentityCalculator Calculator => _identityCalculator ??= new IdentityCalculator();
+
         private void Awake()
         {
-            _identityCalculator = new IdentityCalculator();
+            // Optional: Ensure it's initialized on Awake if not already.
+            _identityCalculator = Calculator;
         }
 
         private void OnEnable()
@@ -49,7 +55,7 @@ namespace BattlePvp.Stats
         /// </summary>
         public void RecalculateIdentity()
         {
-            var next = _identityCalculator.ResolveIdentity(_stats, out var debug);
+            var next = Calculator.ResolveIdentity(_stats, out var debug);
 
             // 불필요한 이벤트 방출 방지
             if (next.Type == CurrentIdentity.Type && next.PrimaryStat == CurrentIdentity.PrimaryStat)

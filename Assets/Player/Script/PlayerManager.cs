@@ -14,6 +14,7 @@ public class PlayerManager : MonoBehaviour
 
     private CharacterController controller;
     private Animator animator;
+    private BattlePvp.CameraLogic.FollowCamera followCamera; // 카메라 참조 추가
 
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private Vector2 inputVector; // 신형 시스템에서 받을 Vector2 값
@@ -27,6 +28,9 @@ public class PlayerManager : MonoBehaviour
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+
+        // 카메라 컴포넌트 찾기
+        followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
     }
 
     private void OnEnable()
@@ -67,7 +71,6 @@ public class PlayerManager : MonoBehaviour
     }
 
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
-    // 에디터에서 설정한 액션 이름이 "Move"라면 함수 이름은 "OnMove"가 됩니다.
     public void OnMove(InputValue value)
     {
         inputVector = value.Get<Vector2>();
@@ -75,7 +78,6 @@ public class PlayerManager : MonoBehaviour
 
     private void Update()
     {
-        // 더 이상 canMove로 리턴하지 않고 항상 이동 로직을 태웁니다.
         ApplyMovement();
     }
 
@@ -83,36 +85,47 @@ public class PlayerManager : MonoBehaviour
     public void SetMovementLock(bool isLocked)
     {
         isAttacking = isLocked;
-
-        // 공격 시작 시 미끄러짐 방지를 위해 입력을 초기화하고 싶다면 여기서 조절 가능합니다.
-        // 유저 요청에 따라 공격 중에도 이동이 가능하므로, 굳이 zero로 만들지 않습니다.
     }
 
     private void ApplyMovement()
     {
-        // 1. 이동 방향 계산 (Vector2를 Vector3 수평면으로 변환)
-        Vector3 moveDirection = new Vector3(inputVector.x, 0, inputVector.y).normalized;
+        // 1. 카메라 방향 기준 이동 벡터 계산
+        Vector3 moveDirection = Vector3.zero;
+        if (followCamera != null)
+        {
+            // 카메라의 수평 정면 및 우측 방향 가져오기
+            float cameraYaw = followCamera.GetYaw();
+            Vector3 cameraForward = Quaternion.Euler(0, cameraYaw, 0) * Vector3.forward;
+            Vector3 cameraRight = Quaternion.Euler(0, cameraYaw, 0) * Vector3.right;
 
-        // 2. 중력 처리
+            moveDirection = (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
+
+            // 2. 캐릭터 회전: 항상 카메라가 바라보는 수평 방향을 유지 (Strafing)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
+        }
+        else
+        {
+            // 카메라가 없을 경우 기존 월드 기준 이동 (폴백)
+            moveDirection = new Vector3(inputVector.x, 0, inputVector.y).normalized;
+            if (inputVector.sqrMagnitude > 0.001f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
+        }
+
+        // 3. 중력 처리
         if (controller.isGrounded)
             velocityY = -0.5f;
         else
             velocityY -= gravity * Time.deltaTime;
 
-        // 3. 최종 이동
-        // 공격 중이라면 이동 속도를 40% 감소 (-40% => * 0.6)
+        // 4. 최종 이동
         float currentMoveSpeed = moveSpeed * (isAttacking ? 0.6f : 1.0f);
         Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
         controller.Move(finalMove * Time.deltaTime);
 
-        // 4. 회전 처리
-        if (inputVector.sqrMagnitude > 0.001f)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        }
-
-        // 5. 애니메이션 (입력의 크기를 그대로 전달)
+        // 5. 애니메이션 (속도 전달)
         animator.SetFloat(speedHash, inputVector.magnitude);
     }
 }

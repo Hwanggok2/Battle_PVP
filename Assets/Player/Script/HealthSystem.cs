@@ -122,12 +122,12 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
         }
 
-        public void ApplyDamage(float amount, DamageSource source)
+        public void ApplyDamage(float amount, DamageSource source, Vector3 hitPosition)
         {
-            ApplyDamage(amount, source, attackerAttackPower: 0f, attacker: null);
+            ApplyDamage(amount, source, attackerAttackPower: 0f, attacker: null, hitPosition);
         }
 
-        public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker)
+        public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition)
         {
             if (amount <= 0f)
                 return;
@@ -151,9 +151,9 @@ namespace BattlePvp.Combat
                     {
                         // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
                         if (attacker is IDamageReceiverWithContext ctx)
-                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null);
+                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null, hitPosition);
                         else
-                            attacker.ApplyDamage(thorns, DamageSource.Thorns);
+                            attacker.ApplyDamage(thorns, DamageSource.Thorns, hitPosition);
                     }
                 }
             }

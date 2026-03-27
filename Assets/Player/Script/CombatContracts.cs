@@ -22,7 +22,7 @@ namespace BattlePvp.Combat
         /// <summary>
         /// 이미 계산된 피해를 적용합니다.
         /// </summary>
-        void ApplyDamage(float amount, DamageSource source);
+        void ApplyDamage(float amount, DamageSource source, UnityEngine.Vector3 hitPosition);
     }
 
     /// <summary>
@@ -33,7 +33,7 @@ namespace BattlePvp.Combat
         /// <summary>
         /// 공격자의 ATK(가시 계산용)를 포함해 피해를 적용합니다.
         /// </summary>
-        void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker);
+        void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, UnityEngine.Vector3 hitPosition);
     }
 
     /// <summary>
