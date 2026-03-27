@@ -44,7 +44,7 @@ namespace BattlePvp.CameraLogic
         private void LateUpdate()
         {
             if (_target == null) return;
-            if (BattlePvp.Logic.BattleInputController.IsPaused) return;
+            if (BattlePvp.Logic.GameInputController.IsPaused) return;
 
             // 1. 마우스 입력 직접 가져오기 (Input System 사용)
             if (!IsLocked)

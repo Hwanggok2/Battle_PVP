@@ -6,12 +6,12 @@ using UnityEngine.UI;
 namespace BattlePvp.Logic
 {
     /// <summary>
-    /// Core Task 5: Battle 씬 전용 ESC 토글 기능
-    /// - ESC 1회: 커서 활성, 카메라 회전 중지
-    /// - ESC 2회: 커서 잠금, 카메라 회전 재개
+    /// [Core Fix] 전역 입력 및 마우스 커서/카메라 토글 관리 매니저.
+    /// Lobby와 Battle 씬 모두에서 사용 가능하며, ESC를 통해 상태를 전환합니다.
     /// </summary>
-    public sealed class BattleInputController : MonoBehaviour
+    public sealed class GameInputController : MonoBehaviour
     {
+        // 전역에서 접근 가능한 일시정지(메뉴) 상태
         public static bool IsPaused { get; private set; } = false;
 
         private FollowCamera _followCamera;
@@ -20,22 +20,32 @@ namespace BattlePvp.Logic
         private void Awake()
         {
             _followCamera = FindFirstObjectByType<FollowCamera>();
+            // 씬 진입 시마다 초기화 (Lobby에서 공격이 안 되는 현상 방지)
+            IsPaused = false;
+            _isCursorUnlocked = false;
+        }
+
+        private void OnDisable()
+        {
+            // 오브젝트가 사라지거나 씬이 바뀔 때 상태 초기화
             IsPaused = false;
         }
 
         private void Start()
         {
             CheckSceneDependencies();
+            ApplyCursorState(); // 시작 시 커서 상태 적용
         }
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             {
                 ToggleCursor();
             }
 
-            // ESC로 풀린 상태에서 화면을 클릭해도 다시 잠기지 않도록 강제 유지
+            // ESC로 풀린 상태(메뉴 모드)에서는 커서 잠금이 되지 않도록 강제 유지 (Task 1)
             if (_isCursorUnlocked)
             {
                 if (Cursor.lockState != CursorLockMode.None)
@@ -48,7 +58,7 @@ namespace BattlePvp.Logic
 
         private void OnApplicationFocus(bool hasFocus)
         {
-            // 포커스를 다시 얻었을 때 현재 상태 유지
+            // 포커스를 다시 얻었을 때 현재 설정된 상태 다시 적용 (Task 1)
             if (hasFocus)
             {
                 ApplyCursorState();
@@ -63,21 +73,23 @@ namespace BattlePvp.Logic
             ApplyCursorState();
 
             if (_isCursorUnlocked)
-                Debug.Log("[BattleInput] Cursor Unlocked, UI Interaction Enabled");
+                Debug.Log("[GameInput] Pause Mode: Cursor Free, Camera Fixed, Attack Disabled");
             else
-                Debug.Log("[BattleInput] Cursor Locked, Gameplay Resumed");
+                Debug.Log("[GameInput] Play Mode: Cursor Locked, Camera Active, Attack Enabled");
         }
 
         private void ApplyCursorState()
         {
             if (_isCursorUnlocked)
             {
+                // ESC 1회: 커서 활성화, 카메라 고정 (Task 1)
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
                 if (_followCamera != null) _followCamera.IsLocked = true;
             }
             else
             {
+                // ESC 2회: 커서 잠금, 카메라 회전 (기본 상태)
                 Cursor.lockState = CursorLockMode.Locked;
                 Cursor.visible = false;
                 if (_followCamera != null) _followCamera.IsLocked = false;
@@ -85,16 +97,14 @@ namespace BattlePvp.Logic
         }
 
         /// <summary>
-        /// Task 4: UI 상호작용 불가 원인 체크
+        /// Task 4: UI 상호작용 및 씬 필수 요소 체크
         /// </summary>
         private void CheckSceneDependencies()
         {
-            if (EventSystem.current == null)
+            if (UnityEngine.EventSystems.EventSystem.current == null)
             {
-                Debug.LogError("[BattleInput] 씬에 EventSystem 이 없습니다! UI 클릭이 작동하지 않습니다.");
-                // 필요하다면 동적으로 생성할 수도 있지만 일단 경고.
-                GameObject es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-                Debug.LogWarning("[BattleInput] EventSystem을 동적으로 생성했습니다.");
+                GameObject es = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.EventSystems.StandaloneInputModule));
+                Debug.LogWarning("[GameInput] EventSystem을 동적으로 생성했습니다.");
             }
 
             var canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
@@ -102,9 +112,8 @@ namespace BattlePvp.Logic
             {
                 if (canvas.GetComponent<GraphicRaycaster>() == null)
                 {
-                    Debug.LogWarning($"[BattleInput] Canvas '{canvas.name}' 에 GraphicRaycaster가 없습니다. UI 클릭이 안 될 수 있습니다.");
                     canvas.gameObject.AddComponent<GraphicRaycaster>();
-                    Debug.Log($"[BattleInput] '{canvas.name}' 에 GraphicRaycaster 를 추가했습니다.");
+                    Debug.Log($"[GameInput] '{canvas.name}' 에 GraphicRaycaster 를 추가했습니다.");
                 }
             }
         }

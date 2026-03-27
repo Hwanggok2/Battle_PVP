@@ -31,7 +31,7 @@ public class PlayerCombat : MonoBehaviour
     public void OnAttack(InputValue value)
     {
         if (!value.isPressed) return;
-        if (BattlePvp.Logic.BattleInputController.IsPaused) return;
+        if (BattlePvp.Logic.GameInputController.IsPaused) return;
 
         // UI 위에 있을 때는 공격 무시 (Task 2)
         if (UnityEngine.EventSystems.EventSystem.current != null && 
