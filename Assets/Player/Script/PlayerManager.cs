@@ -14,6 +14,7 @@ public class PlayerManager : MonoBehaviour
 
     private CharacterController controller;
     private Animator animator;
+    private Rigidbody rb; // Rigidbody 참조 추가 (요청사항 반영)
     private BattlePvp.CameraLogic.FollowCamera followCamera; // 카메라 참조 추가
 
     [Header("Runtime Status (Read Only)")]
@@ -27,6 +28,7 @@ public class PlayerManager : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        rb = GetComponent<Rigidbody>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
 
         // 카메라 컴포넌트 찾기
@@ -100,14 +102,17 @@ public class PlayerManager : MonoBehaviour
 
             moveDirection = (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
 
-            // 2. 캐릭터 회전: 항상 카메라가 바라보는 수평 방향을 유지 (Strafing)
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
+            // 2. 캐릭터 회전 (Core Task 4: 공격 중에는 회전 비활성화)
+            if (!isAttacking)
+            {
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
+            }
         }
         else
         {
             // 카메라가 없을 경우 기존 월드 기준 이동 (폴백)
             moveDirection = new Vector3(inputVector.x, 0, inputVector.y).normalized;
-            if (inputVector.sqrMagnitude > 0.001f)
+            if (inputVector.sqrMagnitude > 0.001f && !isAttacking)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
@@ -122,6 +127,14 @@ public class PlayerManager : MonoBehaviour
 
         // 4. 최종 이동
         float currentMoveSpeed = moveSpeed * (isAttacking ? 0.6f : 1.0f);
+        
+        // Anti-Gliding: 입력이 없을 때는 0으로 고정
+        if (isAttacking && inputVector.sqrMagnitude < 0.001f)
+        {
+            currentMoveSpeed = 0f;
+            if (rb != null) rb.linearVelocity = Vector3.zero; // Rigidbody가 있다면 명시적으로 0
+        }
+
         Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
         controller.Move(finalMove * Time.deltaTime);
 

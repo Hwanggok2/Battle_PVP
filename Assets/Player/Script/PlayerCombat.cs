@@ -13,6 +13,8 @@ public class PlayerCombat : MonoBehaviour
     [SerializeField] private StatManager _statManager;
     [SerializeField] private BattlePvp.Combat.MeleeHitBox[] _hitboxes; // 무기 여러 개일 수 있음
     private Animator animator;
+    private CharacterController controller; // CharacterController 참조 추가
+    private Rigidbody rb; // Rigidbody 참조 추가 (요청사항 반영)
 
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAttackSpeed = 1.0f;
@@ -20,6 +22,8 @@ public class PlayerCombat : MonoBehaviour
     private void Awake()
     {
         animator = GetComponent<Animator>();
+        controller = GetComponent<CharacterController>();
+        rb = GetComponent<Rigidbody>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
     }
 
@@ -27,6 +31,14 @@ public class PlayerCombat : MonoBehaviour
     public void OnAttack(InputValue value)
     {
         if (!value.isPressed) return;
+        if (BattlePvp.Logic.BattleInputController.IsPaused) return;
+
+        // UI 위에 있을 때는 공격 무시 (Task 2)
+        if (UnityEngine.EventSystems.EventSystem.current != null && 
+            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
 
         if (isAttacking)
         {
@@ -47,6 +59,13 @@ public class PlayerCombat : MonoBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
+
+        // Core Task 4: 공격 시 Root Motion 비활성 및 회전 고정 알림
+        if (animator != null) animator.applyRootMotion = false;
+        
+        // PlayerManager의 회전/이동 로직에 상태 전달
+        var pm = GetComponent<PlayerManager>();
+        if (pm != null) pm.SetMovementLock(true);
 
         // 공격 속도 계산 (기본 0.6 + AGI * 0.02)
         if (_statManager != null)
@@ -110,6 +129,11 @@ public class PlayerCombat : MonoBehaviour
         isAttacking = false;
         currentComboIndex = 0;
         hasComboReserved = false;
+
+        // 상태 원복
+        var pm = GetComponent<PlayerManager>();
+        if (pm != null) pm.SetMovementLock(false);
+
         Debug.Log("콤보 종료 및 초기화");
     }
 }

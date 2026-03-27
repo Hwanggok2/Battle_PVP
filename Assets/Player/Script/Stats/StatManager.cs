@@ -86,6 +86,50 @@ namespace BattlePvp.Stats
         /// </summary>
         public StatContainer GetStatsCopy() => _stats;
 
+        private BattlePvp.CameraLogic.FollowCamera _followCamera;
+        private Vector3 _originalCameraOffset;
+        private bool _cameraInitialized = false;
+
+        private void Start()
+        {
+            InitializeCameraReference();
+            // 씬 진입 시 초기 스케일/카메라 적용
+            ApplyVisualScaling();
+        }
+
+        private void InitializeCameraReference()
+        {
+            if (_followCamera == null)
+            {
+                _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+                if (_followCamera != null && !_cameraInitialized)
+                {
+                    _originalCameraOffset = _followCamera.Offset;
+                    _cameraInitialized = true;
+                }
+            }
+        }
+
+        private void ApplyVisualScaling()
+        {
+            InitializeCameraReference();
+
+            // 조건: STR 또는 CON 몰빵(Monostat) 상태일 때만 1.2배 (Task 3 수정)
+            // 전에는 AGI/DEF가 0이기만 하면 커졌으나, 이제는 확실히 한 스탯에 몰빵된 경우만 체크.
+            bool isGiant = (CurrentIdentity.Type == IdentityType.Monostat) && 
+                           (CurrentIdentity.PrimaryStat == StatKind.STR || CurrentIdentity.PrimaryStat == StatKind.CON);
+            
+            float targetScale = isGiant ? 1.2f : 1.0f;
+            transform.localScale = new Vector3(targetScale, targetScale, targetScale);
+
+            // 카메라 오프셋 비례 조정 (Task 5)
+            if (_cameraInitialized && _followCamera != null)
+            {
+                _followCamera.Offset = _originalCameraOffset * targetScale;
+                Debug.Log($"[StatManager] Scale applied: {targetScale}, Camera Offset: {_followCamera.Offset}");
+            }
+        }
+
         /// <summary>
         /// 현재 스탯을 교체 적용한다.
         /// </summary>
@@ -95,6 +139,9 @@ namespace BattlePvp.Stats
 
             if (recalculateIdentity)
                 RecalculateIdentity();
+
+            // 스케일 및 카메라 즉시 반영 (Task 3, 5)
+            ApplyVisualScaling();
 
             // Identity가 먼저 결정된 후 다른 시스템들이 스탯 변화를 인지해야 
             // 새로운 Identity 보너스가 정확히 반영됩니다.

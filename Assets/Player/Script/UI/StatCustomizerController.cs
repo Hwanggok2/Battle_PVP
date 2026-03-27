@@ -3,6 +3,7 @@ using BattlePvp.Stats;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using BattlePvp.Managers;
 
 namespace BattlePvp.UI
 {
@@ -177,6 +178,13 @@ namespace BattlePvp.UI
             investedOnly.DEF.Invested = _virtualStats.DEF.Invested;
 
             _statManager.ApplyInvestedOnly(investedOnly, recalculateIdentity: true);
+
+            // [추가] 글로벌 매니저가 있을 경우 영구 데이터에 병합 저장
+            if (GlobalDataManager.Instance != null)
+            {
+                GlobalDataManager.Instance.SavedStats = _statManager.GetStatsCopy();
+                Debug.Log("[StatCustomizer] Saved stats to GlobalDataManager.");
+            }
 
             // 적용 후 베이스 스냅샷 갱신(아이템/투자 모두 포함된 최신 상태)
             LoadFromTarget();

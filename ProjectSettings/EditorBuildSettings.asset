@@ -12,10 +12,10 @@ EditorBuildSettings:
     path: Assets/Scenes/Login.unity
     guid: cf6806bbaa3359d4fa90a9ffe0211edd
   - enabled: 1
-    path: Assets/Scenes/Main.unity
+    path: Assets/Scenes/Lobby.unity
     guid: af92f9ae3ea8ccd4bb4d898b16dddbda
   - enabled: 1
-    path: Assets/Scenes/Test.unity
+    path: Assets/Scenes/Battle.unity
     guid: 8fda6a1cf7818224a9ec13ca84f54efa
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
