@@ -70,6 +70,9 @@ namespace BattlePvp.VFX
 
         private void Apply(Identity identity)
         {
+            // Lazy initialization of MaterialPropertyBlock if called before Awake
+            if (_block == null) _block = new MaterialPropertyBlock();
+
             float glitchAmount = identity.Type == IdentityType.Monostat
                 ? _glitchAmountMonostat
                 : _glitchAmountDefault;

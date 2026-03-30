@@ -100,7 +100,7 @@ namespace BattlePvp.UI
         private void LoadMainScene()
         {
             // 실제 로비 씬 이름이 만약 다르면 여기서 이름을 수정해 주세요.
-            SceneManager.LoadScene("Main");
+            SceneManager.LoadScene("Lobby");
         }
 
         private void HandleRegisterSuccess()

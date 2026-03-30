@@ -1,10 +1,11 @@
 using UnityEngine;
 using UnityEngine.InputSystem; // 신형 시스템 네임스페이스
 using BattlePvp.Stats;
+using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(Animator))]
-public class PlayerManager : MonoBehaviour
+public class PlayerManager : NetworkBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private StatManager _statManager;
@@ -30,9 +31,16 @@ public class PlayerManager : MonoBehaviour
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+    }
 
-        // 카메라 컴포넌트 찾기
+    public override void OnStartLocalPlayer()
+    {
+        // 1. 카메라 컴포넌트 찾기
         followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        if (followCamera != null)
+        {
+            followCamera.SetTarget(this.transform);
+        }
     }
 
     private void OnEnable()
@@ -80,6 +88,7 @@ public class PlayerManager : MonoBehaviour
 
     private void Update()
     {
+        if (!isLocalPlayer) return;
         ApplyMovement();
     }
 

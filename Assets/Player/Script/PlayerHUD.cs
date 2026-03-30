@@ -17,12 +17,16 @@ namespace BattlePvp.UI
         /// <summary>아이덴티티 표시(타입/주력 스탯)</summary>
         void SetIdentity(Identity identity);
 
-        /// <summary>
-        /// Glitch Overflow 표시:
-        /// - isOverflow: overflow 여부
-        /// - overlapPercent: (CurrentHp - MaxHp)/MaxHp 를 0..1로 정규화
-        /// </summary>
         void SetOverflow(bool isOverflow, float overlapPercent);
+
+        /// <summary>매치 타이머 업데이트</summary>
+        void SetMatchTimer(float seconds);
+
+        /// <summary>카운트다운 텍스트 표시</summary>
+        void SetCountdown(string text, bool active);
+
+        /// <summary>킬 점수 업데이트</summary>
+        void SetScore(int points);
     }
 
     /// <summary>
@@ -91,21 +95,40 @@ namespace BattlePvp.UI
 
         private void OnHpChanged(float current, float max)
         {
-            if (this == null) return;
-            _hudView?.SetHp(current, max);
+            if (this == null || _hudView == null) return;
+            _hudView.SetHp(current, max);
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
         {
-            if (this == null) return;
-            _hudView?.SetOverflow(isOverflow, overlapPercent);
+            if (this == null || _hudView == null) return;
+            _hudView.SetOverflow(isOverflow, overlapPercent);
         }
 
         private void OnIdentityChanged(Identity identity)
         {
-            if (this == null) return;
-            _hudView?.SetIdentity(identity);
+            if (this == null || _hudView == null) return;
+            _hudView.SetIdentity(identity);
         }
+
+        #region [Match UI Bridge]
+
+        /// <summary>
+        /// 외부(BattleStateMachine 등)에서 타이머 정보를 주입합니다.
+        /// </summary>
+        public void UpdateTimer(float seconds) => _hudView?.SetMatchTimer(seconds);
+
+        /// <summary>
+        /// 카운트다운 상태를 업데이트합니다.
+        /// </summary>
+        public void UpdateCountdown(string text, bool active) => _hudView?.SetCountdown(text, active);
+
+        /// <summary>
+        /// 자신의 점수를 업데이트합니다.
+        /// </summary>
+        public void UpdateScore(int points) => _hudView?.SetScore(points);
+
+        #endregion
     }
 }
 

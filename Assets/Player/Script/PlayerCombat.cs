@@ -27,6 +27,15 @@ public class PlayerCombat : MonoBehaviour
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
     }
 
+    private bool _isPointerOverUI = false;
+
+    private void Update()
+    {
+        // UI 위에 있는지 여부를 갱신 (Update에서 수행하여 타이밍 경고 방지)
+        _isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null && 
+                           UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+    }
+
     // New Input System: 좌클릭 이벤트
     public void OnAttack(InputValue value)
     {
@@ -34,8 +43,9 @@ public class PlayerCombat : MonoBehaviour
         if (BattlePvp.Logic.GameInputController.IsPaused) return;
 
         // UI 위에 있을 때는 공격 무시 (Task 2)
-        if (UnityEngine.EventSystems.EventSystem.current != null && 
-            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+        // [Core Fix] 커서가 잠금(Locked) 상태가 아닐 때만 UI 체크를 적용하여
+        // 중앙에 위치한 HUD(조준점 등)가 공격을 방해하지 않도록 합니다.
+        if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
         {
             return;
         }

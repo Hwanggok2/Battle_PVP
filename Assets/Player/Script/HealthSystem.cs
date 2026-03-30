@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
+using BattlePvp.Networking;
+using Mirror;
 using UnityEngine;
 
 namespace BattlePvp.Combat
@@ -14,8 +16,11 @@ namespace BattlePvp.Combat
     /// - Strategist일 때 HP overflow(현재 HP > MaxHP)는 overflow 상태에서만 코루틴으로 틱 감소한다.
     /// </summary>
     [DisallowMultipleComponent]
-    public sealed class HealthSystem : MonoBehaviour, IDamageReceiverWithContext, IPlayerStatusSource
+    [RequireComponent(typeof(Mirror.NetworkIdentity))]
+    public sealed class HealthSystem : Mirror.NetworkBehaviour, IDamageReceiverWithContext, IPlayerStatusSource
     {
+        [Header("Networking")]
+        [SyncVar] public bool isInvincible = false;
         [Header("References")]
         [SerializeField] private StatManager _statManager;
 
@@ -129,7 +134,7 @@ namespace BattlePvp.Combat
 
         public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition)
         {
-            if (amount <= 0f)
+            if (isInvincible || amount <= 0f)
                 return;
 
             float next = _currentHp - amount;
@@ -288,12 +293,17 @@ namespace BattlePvp.Combat
         {
             while (true)
             {
-                if (_currentRegen > 0f && _currentHp < _maxHp)
+                // Pre-Match 상태에서는 초당 100% 회복
+                if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.PreMatch)
+                {
+                    _currentHp = _maxHp;
+                    RaiseHpChanged();
+                }
+                else if (_currentRegen > 0f && _currentHp < _maxHp)
                 {
                     float next = _currentHp + (_currentRegen * Time.deltaTime);
                     _currentHp = Mathf.Min(next, _maxHp);
                     RaiseHpChanged();
-                    // Regen으로는 Overflow가 발생하지 않으므로 UpdateOverflowState는 호출하지 않음
                 }
                 yield return null;
             }

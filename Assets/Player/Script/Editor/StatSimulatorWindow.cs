@@ -16,6 +16,10 @@ namespace BattlePvp.EditorTools
         private const float PenetrationMax = 100f;
 
         private static readonly string Title = "Stat Simulator";
+        
+        // GUIStyle들을 캐싱하여 매 업데이트마다 EditorStyles에 접근하는 것을 줄입니다.
+        private GUIStyle _boldLabelStyle;
+        private GUIStyle _miniBoldLabelStyle;
 
         private StatContainer _attackerStats = new StatContainer
         {
@@ -68,16 +72,32 @@ namespace BattlePvp.EditorTools
 
         private void OnGUI()
         {
-            EditorGUILayout.LabelField("Attacker Stats", EditorStyles.boldLabel);
+            // 스타일 안전 초기화 (OnGUI 내부에서 호출)
+            if (_boldLabelStyle == null)
+            {
+                try { _boldLabelStyle = new GUIStyle(EditorStyles.boldLabel); }
+                catch { _boldLabelStyle = GUI.skin.label; } // Fallback
+            }
+
+            if (_miniBoldLabelStyle == null)
+            {
+                try { _miniBoldLabelStyle = new GUIStyle(EditorStyles.miniBoldLabel); }
+                catch { _miniBoldLabelStyle = GUI.skin.label; } // Fallback
+            }
+
+            // 스타일이 여전히 null이면 (거의 불가능하지만) 렌더링 중단
+            if (_boldLabelStyle == null || _miniBoldLabelStyle == null) return;
+
+            EditorGUILayout.LabelField("Attacker Stats", _boldLabelStyle);
             _attackerStats = DrawStatContainer(_attackerStats);
 
             EditorGUILayout.Space(8);
 
-            EditorGUILayout.LabelField("Defender Stats", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Defender Stats", _boldLabelStyle);
             _defenderStats = DrawStatContainer(_defenderStats);
 
             EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Combat Parameters", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("Combat Parameters", _boldLabelStyle);
 
             _penetrationPercent = EditorGUILayout.Slider("Penetration (%)", _penetrationPercent, PenetrationMin, PenetrationMax);
             _defenseBonusEffNormalized = EditorGUILayout.Slider("Defense BonusEff (0..1)", _defenseBonusEffNormalized, 0f, 1f);
@@ -123,7 +143,7 @@ namespace BattlePvp.EditorTools
 
         private StatSlot DrawSlot(string label, StatSlot slot)
         {
-            EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField(label, _miniBoldLabelStyle);
             slot.Invested = EditorGUILayout.Slider("Invested (0..30)", slot.Invested, 0f, 30f);
             slot.Item = EditorGUILayout.Slider("Item (0..10)", slot.Item, 0f, 10f);
             EditorGUILayout.Space(3);
