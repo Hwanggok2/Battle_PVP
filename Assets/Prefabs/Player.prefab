@@ -701,7 +701,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: HP Text (425/300)
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -728,8 +728,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 36
-  m_fontSizeBase: 36
+  m_fontSize: 12
+  m_fontSizeBase: 12
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1593,6 +1593,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      propertyPath: m_TagString
+      value: Player
+      objectReference: {fileID: 0}
     - target: {fileID: 1190519356016612331, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0.0008805068
@@ -2351,6 +2355,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6b0cb61b9edc67468ad8a06db7392e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMagager
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   _statManager: {fileID: 4931861078861440238}
   moveSpeed: 5
   gravity: 9.81
@@ -2589,7 +2596,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.PlayerHUD
   _statManager: {fileID: 4931861078861440238}
   _healthSource: {fileID: 7634747940501167914}
-  _view: {fileID: 0}
+  _view: {fileID: 351252588774629885}
 --- !u!1001 &3896440397469894369
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2711,10 +2718,26 @@ PrefabInstance:
       propertyPath: _statManager
       value: 
       objectReference: {fileID: 4931861078861440238}
+    - target: {fileID: 6322081830949451544, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _statManager
+      value: 
+      objectReference: {fileID: 4931861078861440238}
+    - target: {fileID: 6322081830949451544, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _healthSource
+      value: 
+      objectReference: {fileID: 7634747940501167914}
     - target: {fileID: 6511319498831705252, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_IsActive
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6973300936554815612, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _statusSourceBehaviour
+      value: 
+      objectReference: {fileID: 7634747940501167914}
+    - target: {fileID: 6973300936554815612, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _identitySourceBehaviour
+      value: 
+      objectReference: {fileID: 4931861078861440238}
     - target: {fileID: 7836847264717192825, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -2799,7 +2822,8 @@ PrefabInstance:
       propertyPath: m_Maskable
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 5163276669149715742, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects:
     - targetCorrespondingSourceObject: {fileID: 7836847264717192825, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}

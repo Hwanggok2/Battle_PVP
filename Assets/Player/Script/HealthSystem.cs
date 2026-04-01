@@ -37,9 +37,11 @@ namespace BattlePvp.Combat
         public float CurrentHp => _currentHp;
         public float MaxHp => _maxHp;
         public float CurrentRegen => _currentRegen;
+        public bool IsDead { get; private set; }
 
         public event Action<float, float> HpChanged;
         public event Action<bool, float> OverflowChanged;
+        public event Action OnDied;
 
         [Header("Runtime Status (Read Only)")]
         [SerializeField] private float _maxHp;
@@ -84,7 +86,29 @@ namespace BattlePvp.Combat
         private void OnStatsChanged(StatContainer _)
         {
             if (this == null) return;
+            
+            bool isStrategist = _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Strategist;
+            float oldHp = _currentHp;
+            float oldMax = _maxHp;
+
             RefreshFromStats(keepCurrentHpFlat: true);
+
+            if (isStrategist)
+            {
+                if (oldMax > 0f)
+                {
+                    float ratio = oldHp / oldMax;
+                    _currentHp = _maxHp * ratio;
+                }
+            }
+            else
+            {
+                // 전략가가 아니면 100% 회복
+                _currentHp = _maxHp;
+            }
+
+            RaiseHpChanged();
+            UpdateOverflowState();
         }
 
         /// <summary>
@@ -140,6 +164,12 @@ namespace BattlePvp.Combat
             float next = _currentHp - amount;
             _currentHp = next < 0f ? 0f : next;
 
+            if (_currentHp <= 0f && !IsDead)
+            {
+                IsDead = true;
+                OnDied?.Invoke();
+            }
+
             RaiseHpChanged();
 
             // Thorns 처리(재반사 금지)
@@ -172,7 +202,8 @@ namespace BattlePvp.Combat
                 return _baseMaxHp;
 
             float conFinal = _statManager.GetFinalTotal(StatKind.CON);
-            float max = _baseMaxHp + (conFinal * _maxHpPerCon);
+            float strFinal = _statManager.GetFinalTotal(StatKind.STR);
+            float max = _baseMaxHp + (conFinal * _maxHpPerCon) + (strFinal * 5f);
 
             // Monostat CON: 최대 체력 +60% (스펙 반영)
             Identity id = _statManager.CurrentIdentity;
@@ -312,6 +343,14 @@ namespace BattlePvp.Combat
         private void RaiseHpChanged()
         {
             HpChanged?.Invoke(_currentHp, _maxHp);
+        }
+
+        public void Revive(float ratio = 1f)
+        {
+            IsDead = false;
+            _currentHp = _maxHp * Mathf.Clamp01(ratio);
+            RaiseHpChanged();
+            UpdateOverflowState();
         }
     }
 }

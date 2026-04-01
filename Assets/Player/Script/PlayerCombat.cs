@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using BattlePvp.Stats;
+using BattlePvp.Combat;
 
 public class PlayerCombat : MonoBehaviour
 {
@@ -36,10 +37,14 @@ public class PlayerCombat : MonoBehaviour
                            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
     }
 
-    // New Input System: 좌클릭 이벤트
     public void OnAttack(InputValue value)
     {
         if (!value.isPressed) return;
+        var pm = GetComponent<PlayerManager>();
+        // Wait, isDead is private in PlayerManager, so I'll check HealthSystem IsDead instead.
+        var health = GetComponent<HealthSystem>();
+        if (health != null && health.IsDead) return;
+
         if (BattlePvp.Logic.GameInputController.IsPaused) return;
 
         // UI 위에 있을 때는 공격 무시 (Task 2)

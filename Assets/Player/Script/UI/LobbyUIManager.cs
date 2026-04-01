@@ -40,6 +40,15 @@ namespace BattlePvp.UI
 
             // 초기 상태에서는 방 설정 패널 비활성화
             if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
+
+            if (_canvas_Customizer == null)
+            {
+                var customizer = FindFirstObjectByType<StatCustomizerController>(FindObjectsInactive.Include);
+                if (customizer != null)
+                {
+                    _canvas_Customizer = customizer.gameObject;
+                }
+            }
         }
 
         private void OnEnable()
@@ -166,6 +175,15 @@ namespace BattlePvp.UI
                 _canvas_Customizer.SetActive(!isActive);
                 Debug.Log($"[LobbyUI] Canvas_Customizer toggled: {!isActive}");
             }
+        }
+
+        /// <summary>
+        /// StatCustomizerController에 의해 호출되어 버튼 활성화를 제어합니다.
+        /// </summary>
+        public void UpdateRoomButtonsInteractable(bool interactable)
+        {
+            if (_createRoomButton != null) _createRoomButton.interactable = interactable;
+            if (_joinRoomButton != null) _joinRoomButton.interactable = interactable;
         }
     }
 }

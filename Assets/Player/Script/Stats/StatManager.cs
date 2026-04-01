@@ -86,6 +86,81 @@ namespace BattlePvp.Stats
         /// </summary>
         public StatContainer GetStatsCopy() => _stats;
 
+        /// <summary>
+        /// 슬라이더 시뮬레이션용 데이터로 파생 스탯(ATK, DEF, MaxHP, Pene, Regen, MoveSpeed, AttackSpeed)을 즉시 계산합니다.
+        /// </summary>
+        public void CalculatePreviewStats(StatContainer virtualStats, out float previewAtk, out float previewDef, out float previewMaxHp, out float previewPene, out float previewRegen, out float previewMoveSpd, out float previewAtkSpd)
+        {
+            float vStr = StatMath.FinalTotal(virtualStats.STR);
+            float vCon = StatMath.FinalTotal(virtualStats.CON);
+            float vAgi = StatMath.FinalTotal(virtualStats.AGI);
+            float vDef = StatMath.FinalTotal(virtualStats.DEF);
+
+            // 미리보기용 Identity
+            Identity vId = Calculator.ResolveIdentity(virtualStats, out _);
+
+            // 1) ATK & Pene
+            float baseAtk = vStr * 4f;
+            float basePene = vStr * 0.3f;
+            if (vId.Type == IdentityType.Monostat && vId.PrimaryStat == StatKind.STR)
+            {
+                baseAtk *= 1.4f;
+                basePene += 18f;
+            }
+            previewAtk = baseAtk;
+            previewPene = Mathf.Clamp(basePene, 0f, 100f);
+
+            // 2) MaxHP & Regen (BaseMaxHp 100, MaxHpPerCon 15, RegenPerCon 0.15)
+            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 5f);
+            float baseRegen = vCon * 0.15f;
+            if (vId.Type == IdentityType.Monostat)
+            {
+                if (vId.PrimaryStat == StatKind.CON)
+                {
+                    baseMaxHp *= 1.6f;
+                    baseRegen += 5f;
+                }
+                else if (vId.PrimaryStat == StatKind.AGI)
+                {
+                    baseMaxHp *= 0.7f;
+                }
+            }
+            previewMaxHp = baseMaxHp;
+            previewRegen = baseRegen;
+
+            // 3) DEF 효율
+            float currentDefNormalized = vDef / 100f;
+            float bonusEff = (vId.Type == IdentityType.Monostat && vId.PrimaryStat == StatKind.DEF) ? 0.5f : 0f;
+            float cur = Mathf.Clamp01(currentDefNormalized);
+            float bonus = Mathf.Clamp01(bonusEff);
+            float finalEff = 1f - (1f - cur) * (1f - bonus);
+            finalEff = Mathf.Min(finalEff, 0.75f);
+            previewDef = Mathf.Max(0f, finalEff) * 100f; // 백분율 표기
+
+            // 4) MoveSpeed & AttackSpeed
+            float baseMs = 3.0f + (vAgi * 0.04f);
+            float baseAs = 0.6f + (vAgi * 0.02f);
+            if (vId.Type == IdentityType.Monostat)
+            {
+                if (vId.PrimaryStat == StatKind.AGI)
+                {
+                    baseMs *= 1.2f;
+                    baseAs *= 1.6f;
+                }
+                else if (vId.PrimaryStat == StatKind.STR)
+                {
+                    baseMs *= 0.75f;
+                    baseAs *= 0.75f;
+                }
+                else if (vId.PrimaryStat == StatKind.DEF)
+                {
+                    baseMs *= 0.7f;
+                }
+            }
+            previewMoveSpd = baseMs;
+            previewAtkSpd = baseAs;
+        }
+
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
         private Vector3 _originalCameraOffset;
         private bool _cameraInitialized = false;

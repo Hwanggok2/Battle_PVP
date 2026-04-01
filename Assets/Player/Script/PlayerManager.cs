@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem; // 신형 시스템 네임스페이스
 using BattlePvp.Stats;
+using BattlePvp.Stats;
+using BattlePvp.Combat;
+using System.Collections;
 using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
@@ -22,6 +25,9 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private Vector2 inputVector; // 신형 시스템에서 받을 Vector2 값
     [SerializeField] private float velocityY;
     [SerializeField] private bool isAttacking = false; // 현재 공격 중인지 여부
+    [SerializeField] private bool isDead = false; // 사망 여부
+
+    private HealthSystem _healthSystem;
 
     private readonly int speedHash = Animator.StringToHash("Speed");
 
@@ -30,6 +36,7 @@ public class PlayerManager : NetworkBehaviour
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
+        _healthSystem = GetComponent<HealthSystem>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
     }
 
@@ -50,12 +57,21 @@ public class PlayerManager : NetworkBehaviour
             _statManager.StatsChanged += OnStatsChanged;
             UpdateMoveSpeed();
         }
+        if (_healthSystem != null)
+        {
+            _healthSystem.OnDied += HandleDeath;
+        }
     }
 
     private void OnDisable()
     {
         if (_statManager != null)
             _statManager.StatsChanged -= OnStatsChanged;
+        
+        if (_healthSystem != null)
+        {
+            _healthSystem.OnDied -= HandleDeath;
+        }
     }
 
     private void OnStatsChanged(StatContainer _)
@@ -83,12 +99,14 @@ public class PlayerManager : NetworkBehaviour
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
     public void OnMove(InputValue value)
     {
+        if (isDead) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
 
     private void Update()
     {
         if (!isLocalPlayer) return;
+        if (isDead) return;
         ApplyMovement();
     }
 
@@ -149,5 +167,42 @@ public class PlayerManager : NetworkBehaviour
 
         // 5. 애니메이션 (속도 전달)
         animator.SetFloat(speedHash, inputVector.magnitude);
+    }
+
+    private void HandleDeath()
+    {
+        if (!isLocalPlayer) return;
+        isDead = true;
+        inputVector = Vector2.zero;
+        isAttacking = false;
+
+        animator.SetTrigger("Die");
+        
+        if (controller != null) controller.enabled = false;
+
+        StartCoroutine(RespawnRoutine());
+    }
+
+    private IEnumerator RespawnRoutine()
+    {
+        // 1. 5초 대기
+        yield return new WaitForSeconds(5f);
+
+        // 2. AnyKey 입력 대기
+        while (!UnityEngine.Input.anyKeyDown)
+        {
+            yield return null;
+        }
+
+        // 3. 부활 로직
+        isDead = false;
+        if (controller != null) controller.enabled = true;
+        
+        animator.Play("Idle"); // 또는 적절한 초기화
+        
+        if (_healthSystem != null)
+        {
+            _healthSystem.Revive(1f); // 100% 비율로 부활
+        }
     }
 }
