@@ -105,6 +105,12 @@ namespace BattlePvp.UI
         /// </summary>
         private void OnCreateRoomButtonClicked()
         {
+            if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
+            {
+                StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
+                return;
+            }
+
             if (_roomSettingPanel != null)
             {
                 _roomSettingPanel.SetActive(true);
@@ -148,6 +154,12 @@ namespace BattlePvp.UI
         /// </summary>
         private void OnJoinRoomButtonClicked()
         {
+            if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
+            {
+                StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
+                return;
+            }
+
             if (PlayFabBattleManager.Instance != null && !string.IsNullOrEmpty(_selectedRoomId))
             {
                 Debug.Log($"[LobbyUI] Requesting to Join Room: {_selectedRoomId}");
@@ -178,12 +190,12 @@ namespace BattlePvp.UI
         }
 
         /// <summary>
-        /// StatCustomizerController에 의해 호출되어 버튼 활성화를 제어합니다.
+        /// 더 이상 사용되지 않음 (글로벌 Floating 메시지로 대체)
         /// </summary>
         public void UpdateRoomButtonsInteractable(bool interactable)
         {
-            if (_createRoomButton != null) _createRoomButton.interactable = interactable;
-            if (_joinRoomButton != null) _joinRoomButton.interactable = interactable;
+            // if (_createRoomButton != null) _createRoomButton.interactable = interactable;
+            // if (_joinRoomButton != null) _joinRoomButton.interactable = interactable;
         }
     }
 }

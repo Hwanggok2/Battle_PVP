@@ -103,7 +103,7 @@ namespace BattlePvp.UI
             if (_itemFill != null) _itemFill.fillAmount = total01;
 
             if (_valueText != null)
-                _valueText.text = $"{(int)invested} / {(int)MaxInvested}";
+                _valueText.text = $"{_kind} : {(int)invested} / {(int)MaxInvested}";
         }
 
         private static float Clamp01(float v) => v < 0f ? 0f : (v > 1f ? 1f : v);

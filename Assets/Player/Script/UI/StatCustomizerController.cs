@@ -17,6 +17,8 @@ namespace BattlePvp.UI
     [DisallowMultipleComponent]
     public sealed class StatCustomizerController : MonoBehaviour
     {
+        public static StatCustomizerController Instance { get; private set; }
+
         private const int TotalInvestedBudget = 30;
 
         [Header("Target")]
@@ -30,6 +32,7 @@ namespace BattlePvp.UI
 
         [Header("Budget UI")]
         [SerializeField] private TMP_Text _pointsText;
+        [SerializeField] private TMP_Text _remainPointsText;
 
         [Header("Identity Preview")]
         [SerializeField] private Image _identityIcon;
@@ -63,6 +66,8 @@ namespace BattlePvp.UI
 
         private void Awake()
         {
+            if (Instance == null) Instance = this;
+            
             _identityCalculator = new IdentityCalculator();
 
             if (_statManager == null)
@@ -179,6 +184,8 @@ namespace BattlePvp.UI
             int remain = TotalInvestedBudget - used;
             if (_pointsText != null)
                 _pointsText.text = $"{used} / {TotalInvestedBudget}";
+            if (_remainPointsText != null)
+                _remainPointsText.text = $"잔여 스탯: {remain}";
 
             // Identity Preview
             Identity id = _identityCalculator.ResolveIdentity(_virtualStats, out _);
@@ -201,24 +208,21 @@ namespace BattlePvp.UI
                 _statManager.CalculatePreviewStats(_virtualStats, out float atk, out float def, out float maxHp, out float pene, out float regen, out float moveSpd, out float atkSpd);
                 
                 // Juice Effect 적용해 텍스트 업데이트
-                UpdatePreviewText(_previewAtkText, $"{atk:F0}");
-                UpdatePreviewText(_previewDefText, $"{def:F1}%");
-                UpdatePreviewText(_previewMaxHpText, $"{maxHp:F0}");
-                UpdatePreviewText(_previewPeneText, $"{pene:F1}%");
-                UpdatePreviewText(_previewRegenText, $"{regen:F1}/s");
-                UpdatePreviewText(_previewMoveSpdText, $"{moveSpd:F2}");
-                UpdatePreviewText(_previewAtkSpdText, $"{atkSpd:F2}");
+                UpdatePreviewText(_previewAtkText, $"공격력 : {atk:F0}");
+                UpdatePreviewText(_previewDefText, $"방어력 : {def:F1}%");
+                UpdatePreviewText(_previewMaxHpText, $"최대 체력 : {maxHp:F0}");
+                UpdatePreviewText(_previewPeneText, $"물리 관통력 : {pene:F1}%");
+                UpdatePreviewText(_previewRegenText, $"재생력 : {regen:F1}/s");
+                UpdatePreviewText(_previewMoveSpdText, $"이동속도 : {moveSpd:F2}");
+                UpdatePreviewText(_previewAtkSpdText, $"공격속도 : {atkSpd:F2}");
             }
 
             // Apply 버튼 활성/비활성
             if (_applyButton != null)
                 _applyButton.interactable = remain >= 0;
 
-            // 로비 UI 방 진입 버튼 처리 (옵저버 대용: 글로벌 인스턴스 접근)
-            if (LobbyUIManager.Instance != null)
-            {
-                LobbyUIManager.Instance.UpdateRoomButtonsInteractable(remain == 0);
-            }
+            // 로비 UI 방 진입 버튼 처리 (기존의 토글 연동 제거, 버튼 자체에서 검사)
+            // if (LobbyUIManager.Instance != null) { ... }
         }
 
         private void UpdatePreviewText(TMP_Text textRef, string newValue)
@@ -252,9 +256,9 @@ namespace BattlePvp.UI
         {
             return (sc.STR.Invested >= 30f || sc.CON.Invested >= 30f || sc.AGI.Invested >= 30f || sc.DEF.Invested >= 30f);
         }
-
         private Coroutine _floatingMessageRoutine;
-        private void ShowFloatingMessage(string msg)
+
+        public void ShowFloatingMessage(string msg)
         {
             if (_floatingMessageCanvasGroup == null || _floatingMessageText == null) return;
             _floatingMessageText.text = msg;
@@ -281,10 +285,10 @@ namespace BattlePvp.UI
             if (_statManager == null)
                 return;
 
-            // 순수 몰빵형 사망 중 검증
-            if (IsMonostat(_baseStats) && _playerHealth != null && _playerHealth.IsDead)
+            // 순수 몰빵형 사망 중 검증 (기존 스탯이 아닌 이번에 '적용'하려는 가상 스탯 기준)
+            if (IsMonostat(_virtualStats) && _playerHealth != null && _playerHealth.IsDead)
             {
-                ShowFloatingMessage("몰빵형 캐릭터는 스탯 변경이 불가능합니다");
+                ShowFloatingMessage("사망 시 몰빵형 캐릭터로 전환할 수 없습니다.");
                 // 원상복구
                 LoadFromTarget();
                 RebuildBudgetAndPreview();

@@ -58,6 +58,16 @@ namespace BattlePvp.UI
             _countdownText.text = text;
         }
 
+        [Header("Death Overlay")]
+        [SerializeField] private GameObject _deathDimObject;
+        [SerializeField] private TextMeshProUGUI _deathCountdownText;
+
+        public void SetDeathOverlay(bool active, string text = "")
+        {
+            if (_deathDimObject != null) _deathDimObject.SetActive(active);
+            if (_deathCountdownText != null && active) _deathCountdownText.text = text;
+        }
+
         public void SetScore(int points)
         {
             if (_scoreText != null)

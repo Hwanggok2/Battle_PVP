@@ -185,16 +185,37 @@ public class PlayerManager : NetworkBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        // 1. 5초 대기
-        yield return new WaitForSeconds(5f);
-
-        // 2. AnyKey 입력 대기
-        while (!UnityEngine.Input.anyKeyDown)
+        BattlePvp.UI.PlayerHudView hudView = GetComponentInChildren<BattlePvp.UI.PlayerHudView>();
+        
+        // 1. 5초 카운트다운
+        for (int i = 5; i > 0; i--)
         {
+            if (hudView != null) hudView.SetDeathOverlay(true, $"{i}초 뒤 부활 가능합니다...");
+            yield return new WaitForSeconds(1f);
+        }
+        
+        if (hudView != null) hudView.SetDeathOverlay(true, "아무 키나 눌러 부활");
+
+        // 2. AnyKey 입력 대기 및 스탯 검사
+        while (true)
+        {
+            if (UnityEngine.Input.anyKeyDown)
+            {
+                // 잔여 스탯 검증
+                if (BattlePvp.UI.StatCustomizerController.Instance != null &&
+                    BattlePvp.UI.StatCustomizerController.Instance.GetRemainPoints() != 0)
+                {
+                    BattlePvp.UI.StatCustomizerController.Instance.ShowFloatingMessage("스테이터스를 모두 분배해주십시오");
+                    yield return null; // 한 프레임 대기 후 다시 AnyKey 입력을 기다림
+                    continue;
+                }
+                break; // 조건 만족 시 루프 탈출
+            }
             yield return null;
         }
 
         // 3. 부활 로직
+        if (hudView != null) hudView.SetDeathOverlay(false);
         isDead = false;
         if (controller != null) controller.enabled = true;
         
