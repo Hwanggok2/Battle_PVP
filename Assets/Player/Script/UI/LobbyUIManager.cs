@@ -83,40 +83,61 @@ namespace BattlePvp.UI
                 Debug.LogError("[LobbyUI] Critical Failure: Could not find any GameObject named 'Lobby_UI' in the scene even with deep search!");
             }
 
-            if (_canvas_Customizer == null)
-            {
-                // 1. 타입으로 먼저 찾기 (비활성화 포함)
-                var customizer = FindFirstObjectByType<StatCustomizerController>(FindObjectsInactive.Include);
-                if (customizer != null) _canvas_Customizer = customizer.gameObject;
-
-                // 2. 실패 시 이름으로 정밀 탐색 (모든 씬 개체 포함)
-                if (_canvas_Customizer == null)
-                {
-                    var allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-                    foreach (var go in allObjects)
-                    {
-                        if (go.name == "Canvas_Customizer" && go.scene.isLoaded)
-                        {
-                            _canvas_Customizer = go;
-                            break;
-                        }
-                    }
-                }
-            }
+            FindCanvasCustomizer();
 
             if (_canvas_Customizer != null)
                 Debug.Log("[LobbyUI] Success: Found and assigned Canvas_Customizer.");
             else
-                Debug.LogWarning("[LobbyUI] Warning: Canvas_Customizer not found in this scene.");
+                Debug.LogWarning("[LobbyUI] Warning: Canvas_Customizer not found in this scene initialization.");
 
-            // [수정] 씬과 상관없이 로비 매니저가 깨어났을 때 현재 상태를 즉시 반영합니다.
             RefreshVisibility();
         }
 
+        private float _searchTimer = 0f;
+
         private void Update()
         {
-            // 최적화를 위해 Update 루프를 사용하지 않습니다.
-            // 이벤트와 코루틴을 통해서만 가시성을 제어합니다.
+            // [추격 루프] Canvas_Customizer가 비어 있다면 1초마다 탐색을 시도합니다. (렉 유발 방지를 위한 간격 조정)
+            if (_canvas_Customizer == null)
+            {
+                _searchTimer += Time.deltaTime;
+                if (_searchTimer >= 1.0f)
+                {
+                    _searchTimer = 0f;
+                    FindCanvasCustomizer();
+                }
+            }
+        }
+
+        private void FindCanvasCustomizer()
+        {
+            // 만약 이미 할당되어 있지만 그게 Root라면, 자식인 본체를 찾기 위해 무효화합니다.
+            if (_canvas_Customizer != null && _canvas_Customizer.name.Contains("_Root"))
+            {
+                _canvas_Customizer = null;
+            }
+
+            if (_canvas_Customizer != null) return;
+
+            // 1. 이름이 "Canvas_Customizer"와 정확히 일치하는 오브젝트를 우선적으로 찾습니다.
+            var allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            foreach (var go in allObjects)
+            {
+                if (go.name == "Canvas_Customizer" && go.scene.isLoaded)
+                {
+                    _canvas_Customizer = go;
+                    Debug.Log($"[LobbyUI] Correctly assigned Canvas_Customizer child.");
+                    return;
+                }
+            }
+
+            // 2. 이름으로 못 찾을 경우에만 타입(Controller)으로 찾습니다.
+            var controller = FindFirstObjectByType<StatCustomizerController>(FindObjectsInactive.Include);
+            if (controller != null)
+            {
+                _canvas_Customizer = controller.gameObject;
+                Debug.Log($"[LobbyUI] Assigned Canvas_Customizer via Controller type.");
+            }
         }
 
         /// <summary>
@@ -404,11 +425,18 @@ namespace BattlePvp.UI
         /// </summary>
         private void OnStatSettingButtonClicked()
         {
+            // [방어 코드] 혹시라도 아직 연결이 안 되어 있다면 즉시 한 번 더 찾습니다.
+            if (_canvas_Customizer == null) FindCanvasCustomizer();
+
             if (_canvas_Customizer != null) 
             {
                 bool isActive = _canvas_Customizer.activeSelf;
                 _canvas_Customizer.SetActive(!isActive);
                 Debug.Log($"[LobbyUI] Canvas_Customizer toggled: {!isActive}");
+            }
+            else
+            {
+                Debug.LogWarning("[LobbyUI] Cannot toggle: Canvas_Customizer still not found in scene!");
             }
         }
 

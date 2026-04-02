@@ -52,9 +52,6 @@ namespace BattlePvp.UI
         [SerializeField] private Button _applyButton;
         [SerializeField] private CanvasGroup _floatingMessageCanvasGroup;
         [SerializeField] private TMP_Text _floatingMessageText;
-        
-        [Header("Death Dimmed Overlay")]
-        [SerializeField] private Image _dimOverlay;
 
         private HealthSystem _playerHealth;
 
@@ -95,7 +92,7 @@ namespace BattlePvp.UI
                     // UI가 DB 값과 일치하는지 검사합니다.
                     if (!IsUISyncedWithSavedData(saved))
                     {
-                        // 일치하지 않는다면 매 프레임 UI를 강제 주입합니다! (사용자 제안 추격 루프)
+                        // 일치하지 않는다면 매 프레임 UI를 강제 주입합니다!
                         _baseStats = saved;
                         _virtualStats = _baseStats;
                         RefreshSliderVisuals();
@@ -133,7 +130,7 @@ namespace BattlePvp.UI
                 GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
 
             TryFindTarget();
-            _isInitializedFromGlobal = false; // 창을 열 때마다 일치 여부를 다시 확인합니다.
+            _isInitializedFromGlobal = false;
 
             Hook(_str); Hook(_agi); Hook(_con); Hook(_def);
 
@@ -155,9 +152,7 @@ namespace BattlePvp.UI
 
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
         {
-            // 새로운 데이터가 오면 추격 루프가 다시 동작하도록 합니다.
             _isInitializedFromGlobal = false;
-            Debug.Log("[StatCustomizer] Persistent sync restarted due to data update.");
         }
 
         private void RefreshSliderVisuals()
@@ -173,7 +168,6 @@ namespace BattlePvp.UI
             if (_statManager == null)
             {
                 _statManager = FindFirstObjectByType<StatManager>();
-                if (_statManager != null) Debug.Log($"[StatCustomizer] Targeting: {_statManager.gameObject.name}");
             }
             
             if (_playerHealth == null && _statManager != null)
@@ -206,8 +200,6 @@ namespace BattlePvp.UI
             
             SyncVirtualFromSliders();
             RebuildBudgetAndPreview();
-
-            // 사용자가 직접 슬라이더를 조작하기 시작했다면, 더 이상 추격 루프가 방해하지 않도록 합니다.
             _isInitializedFromGlobal = true;
         }
 
@@ -310,12 +302,21 @@ namespace BattlePvp.UI
         private void Apply()
         {
             if (_statManager == null) return;
-            if (StatManager.IsMonostat(_virtualStats) && _playerHealth != null && _playerHealth.IsDead)
+
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            bool isPreMatchScene = sceneName.Contains("wait") || sceneName.Contains("waiting");
+            bool isDead = _playerHealth != null && _playerHealth.IsDead;
+
+            // [강화] 대기 씬(PreMatch) 또는 실제 전투 중 사망 시 몰빵형으로의 전환을 금지합니다.
+            if (isPreMatchScene || isDead)
             {
-                ShowFloatingMessage("사망 시 몰빵형 캐릭터로 전환할 수 없습니다.");
-                LoadFromTarget();
-                RebuildBudgetAndPreview();
-                return;
+                if (StatManager.IsMonostat(_virtualStats))
+                {
+                    ShowFloatingMessage("몰빵형 변환은 불가능합니다.");
+                    LoadFromTarget();
+                    RebuildBudgetAndPreview();
+                    return;
+                }
             }
 
             var investedOnly = default(StatContainer);
