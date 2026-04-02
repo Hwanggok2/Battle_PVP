@@ -190,11 +190,11 @@ public class PlayerManager : NetworkBehaviour
         // 1. 5초 카운트다운
         for (int i = 5; i > 0; i--)
         {
-            if (hudView != null) hudView.SetDeathOverlay(true, $"{i}초 뒤 부활 가능합니다...");
+            if (hudView != null) hudView.SetDeathOverlay(true, $"부활 대기 중... {i}");
             yield return new WaitForSeconds(1f);
         }
         
-        if (hudView != null) hudView.SetDeathOverlay(true, "아무 키나 눌러 부활");
+        if (hudView != null) hudView.SetDeathOverlay(true, "Press AnyKey");
 
         // 2. AnyKey 입력 대기 및 스탯 검사
         while (true)
@@ -206,24 +206,35 @@ public class PlayerManager : NetworkBehaviour
                     BattlePvp.UI.StatCustomizerController.Instance.GetRemainPoints() != 0)
                 {
                     BattlePvp.UI.StatCustomizerController.Instance.ShowFloatingMessage("스테이터스를 모두 분배해주십시오");
-                    yield return null; // 한 프레임 대기 후 다시 AnyKey 입력을 기다림
+                    yield return null; 
                     continue;
                 }
-                break; // 조건 만족 시 루프 탈출
+                break; 
             }
             yield return null;
         }
 
-        // 3. 부활 로직
+        // 3. 부활 로직 및 랜덤 스폰
         if (hudView != null) hudView.SetDeathOverlay(false);
         isDead = false;
+        if (controller != null) controller.enabled = false; // 이동을 위해 컨트롤러 일시 해제
+        
+        if (Mirror.NetworkManager.startPositions != null && Mirror.NetworkManager.startPositions.Count > 0)
+        {
+            var starts = Mirror.NetworkManager.startPositions;
+            Transform spawnPoint = starts[UnityEngine.Random.Range(0, starts.Count)];
+            transform.position = spawnPoint.position;
+            transform.rotation = spawnPoint.rotation;
+        }
+
         if (controller != null) controller.enabled = true;
         
-        animator.Play("Idle"); // 또는 적절한 초기화
+        animator.Play("Idle"); 
         
         if (_healthSystem != null)
         {
-            _healthSystem.Revive(1f); // 100% 비율로 부활
+            _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
+            _healthSystem.Revive(1f); // 바뀐 최대 체력 기준 100% 비율로 부활
         }
     }
 }

@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using BattlePvp.Stats;
+using Mirror;
 
 namespace BattlePvp.UI
 {
@@ -43,7 +44,64 @@ namespace BattlePvp.UI
 
         private void OnEnable()
         {
-            // 부모 캔버스 활성화 혹은 스크립트 켜질 때 갱신 (선택적)
+            // [추가] 글로벌 데이터 업데이트 구독 (데이터가 나중에 도착할 경우 대비)
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+            }
+
+            TryFindLocalPlayer();
+
+            if (_infoPanel != null && _infoPanel.activeSelf)
+            {
+                UpdateStatsDisplay();
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+            }
+
+            if (_statManager != null)
+            {
+                _statManager.StatsChanged -= OnStatsChanged;
+            }
+        }
+
+        private void OnGlobalStatsUpdated(StatContainer stats)
+        {
+            // 전역 데이터가 업데이트되면 UI도 즉시 갱신을 시도합니다.
+            if (_infoPanel != null && _infoPanel.activeSelf)
+            {
+                UpdateStatsDisplay();
+            }
+        }
+
+        private void TryFindLocalPlayer()
+        {
+            // [수정] 단순히 첫 번째 StatManager가 아니라 '로컬 플레이어' 권한을 가진 객체를 찾습니다.
+            if (_statManager == null)
+            {
+                var allManagers = FindObjectsByType<StatManager>(FindObjectsSortMode.None);
+                foreach (var sm in allManagers)
+                {
+                    if (sm.isLocalPlayer)
+                    {
+                        _statManager = sm;
+                        _statManager.StatsChanged += OnStatsChanged;
+                        Debug.Log("[CharacterInfo] Successfully bound to Local Player.");
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void OnStatsChanged(StatContainer _)
+        {
+            // 스탯이 변경되면 UI를 즉시 갱신합니다.
             if (_infoPanel != null && _infoPanel.activeSelf)
             {
                 UpdateStatsDisplay();
@@ -79,31 +137,53 @@ namespace BattlePvp.UI
         /// </summary>
         public void UpdateStatsDisplay()
         {
-            if (_statManager == null) return;
+            TryFindLocalPlayer();
 
-            // Optional: 로그인 ID 업데이트 (추후 PlayFab 데이터 연동 시 주석 해제하여 사용)
-            // if (_loginIdText != null && BattlePvp.Networking.PlayFabBattleManager.Instance != null)
-            // {
-            //     _loginIdText.text = $"ID: {PlayerPrefs.GetString("PlayFabId", "Unknown")}";
-            // }
+            StatContainer displayStats;
+            
+            if (_statManager != null)
+            {
+                displayStats = _statManager.GetStatsCopy();
+            }
+            else if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                // 플레이어가 없으면 글로벌 데이터 매니저의 값을 예비용으로 사용합니다.
+                displayStats = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
+            }
+            else
+            {
+                return;
+            }
 
             // 1) Primary Stats
-            if (_strText != null) _strText.text = $"STR : {_statManager.GetFinalTotal(StatKind.STR)}";
-            if (_agiText != null) _agiText.text = $"AGI : {_statManager.GetFinalTotal(StatKind.AGI)}";
-            if (_conText != null) _conText.text = $"CON : {_statManager.GetFinalTotal(StatKind.CON)}";
-            if (_defText != null) _defText.text = $"DEF : {_statManager.GetFinalTotal(StatKind.DEF)}";
+            if (_strText != null) _strText.text = $"STR : {Mathf.RoundToInt(displayStats.STR.Invested + displayStats.STR.Item)}";
+            if (_agiText != null) _agiText.text = $"AGI : {Mathf.RoundToInt(displayStats.AGI.Invested + displayStats.AGI.Item)}";
+            if (_conText != null) _conText.text = $"CON : {Mathf.RoundToInt(displayStats.CON.Invested + displayStats.CON.Item)}";
+            if (_defText != null) _defText.text = $"DEF : {Mathf.RoundToInt(displayStats.DEF.Invested + displayStats.DEF.Item)}";
 
-            // 2) Derived Stats (현재 적용된 스탯을 가상 스탯 컨테이너처럼 던져서 갱신값을 받아옴)
-            StatContainer currentStats = _statManager.GetStatsCopy();
-            _statManager.CalculatePreviewStats(currentStats, out float atk, out float def, out float maxHp, out float pene, out float regen, out float moveSpd, out float atkSpd);
-
-            if (_atkText != null) _atkText.text = $"공격력 : {atk:F0}";
-            if (_defRateText != null) _defRateText.text = $"방어력 : {def:F1}%";
-            if (_maxHpText != null) _maxHpText.text = $"최대 체력 : {maxHp:F0}";
-            if (_peneText != null) _peneText.text = $"물리 관통력 : {pene:F1}%";
-            if (_regenText != null) _regenText.text = $"재생력 : {regen:F1}/s";
-            if (_moveSpdText != null) _moveSpdText.text = $"이동속도 : {moveSpd:F2}";
-            if (_atkSpdText != null) _atkSpdText.text = $"공격속도 : {atkSpd:F2}";
+            // 2) Derived Stats
+            // StatManager 인스턴스가 있다면 그 정교한 계산 로직을 쓰고, 없다면 임시 계산기(IdentityCalculator)를 활용하거나
+            // 프리뷰 로직이 포함된 유틸리티가 있다면 그것을 사용합니다.
+            // 여기서는 StatManager가 없어도 미리보기 수치를 낼 수 있도록 IdentityCalculator를 활용한 계산을 StatManager 내 정적/공용 메서드로 호출할 수 있다고 가정합니다.
+            // (StatManager.CalculatePreviewStats는 현재 public void이므로 인스턴스가 필요함. 임시로 Dummy 객체나 정적 접근 고민 필요)
+            
+            if (_statManager != null)
+            {
+                _statManager.CalculatePreviewStats(displayStats, out float atk, out float def, out float maxHp, out float pene, out float regen, out float moveSpd, out float atkSpd);
+                _atkText.text = $"공격력 : {atk:F0}";
+                _defRateText.text = $"방어력 : {def:F1}%";
+                _maxHpText.text = $"최대 체력 : {maxHp:F0}";
+                _peneText.text = $"물리 관통력 : {pene:F1}%";
+                _regenText.text = $"재생력 : {regen:F1}/s";
+                _moveSpdText.text = $"이동속도 : {moveSpd:F2}";
+                _atkSpdText.text = $"공격속도 : {atkSpd:F2}";
+            }
+            else
+            {
+                // 플레이어 객체가 아직 스폰되지 않았을 때는 수치만이라도 대략적으로 표시 (혹은 0 처리)
+                // 현재 StatManager에 계산 로직이 몰려 있으므로 최소한의 표시만 진행
+                if (_atkText != null) _atkText.text = "로딩 중...";
+            }
         }
     }
 }

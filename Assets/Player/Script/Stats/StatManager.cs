@@ -1,15 +1,31 @@
 using System;
 using UnityEngine;
+using Mirror;
 
 namespace BattlePvp.Stats
 {
     /// <summary>
     /// 스탯을 기준으로 Identity를 판정하고 상태 변경 이벤트를 방출하는 MonoBehaviour 골격.
     /// </summary>
-    public sealed class StatManager : MonoBehaviour, IIdentitySource
+    public sealed class StatManager : Mirror.NetworkBehaviour, IIdentitySource
     {
         [Header("Stat Data")]
+        [SyncVar(hook = nameof(OnStatsSynced))]
         [SerializeField] private StatContainer _stats;
+
+        /// <summary>
+        /// 캐릭터가 특정 한 스탯에만 투자했는지(몰빵형) 확인하는 유틸리티 메서드입니다.
+        /// </summary>
+        public static bool IsMonostat(StatContainer stats)
+        {
+            int categoriesWithPoints = 0;
+            if (stats.STR.Invested > 0) categoriesWithPoints++;
+            if (stats.AGI.Invested > 0) categoriesWithPoints++;
+            if (stats.CON.Invested > 0) categoriesWithPoints++;
+            if (stats.DEF.Invested > 0) categoriesWithPoints++;
+
+            return categoriesWithPoints == 1;
+        }
 
         [Header("Identity")]
         [SerializeField] private bool _autoRecalculateOnEnable = true;
@@ -38,17 +54,15 @@ namespace BattlePvp.Stats
         /// </summary>
         private IdentityCalculator Calculator => _identityCalculator ??= new IdentityCalculator();
 
+
+
         private void Awake()
         {
             // Optional: Ensure it's initialized on Awake if not already.
             _identityCalculator = Calculator;
         }
 
-        private void OnEnable()
-        {
-            if (_autoRecalculateOnEnable)
-                RecalculateIdentity();
-        }
+
 
         /// <summary>
         /// 스탯(_stats) 기반 Identity를 다시 계산한다.
@@ -165,11 +179,103 @@ namespace BattlePvp.Stats
         private Vector3 _originalCameraOffset;
         private bool _cameraInitialized = false;
 
+        private void OnEnable()
+        {
+            if (_autoRecalculateOnEnable)
+                RecalculateIdentity();
+
+            // [추가] 글로벌 데이터 업데이트 구독 (더미/로컬 플레이어 모두 대응)
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+                
+                // 이미 데이터가 로드되어 있다면 즉시 주입
+                var saved = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
+                float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
+                if (total > 0.1f)
+                {
+                    HandleInitialInjection(saved);
+                }
+            }
+        }
+
+        public override void OnStartLocalPlayer()
+        {
+            base.OnStartLocalPlayer();
+            
+            Debug.Log("[StatManager] OnStartLocalPlayer: Initializing stats for Local Player.");
+            
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                var saved = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
+                HandleInitialInjection(saved);
+            }
+            
+            InitializeCameraReference();
+            ApplyVisualScaling();
+        }
+
+        private void OnGlobalStatsUpdated(StatContainer updatedStats)
+        {
+            Debug.Log($"[StatManager] Global stats updated asynchronously. STR={updatedStats.STR.Invested}");
+            HandleInitialInjection(updatedStats);
+        }
+
+        private void HandleInitialInjection(StatContainer saved)
+        {
+            // 스탯 합계가 0이면(신규 유저 등) 기본값 10/10/10/10 부여
+            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
+            
+            string source = total <= 0.1f ? "Fallback (Default)" : "Saved Data";
+            
+            if (total <= 0.1f)
+            {
+                saved.STR.Invested = 10;
+                saved.AGI.Invested = 10;
+                saved.CON.Invested = 10;
+                saved.DEF.Invested = 10;
+            }
+
+            Debug.Log($"[StatManager:{gameObject.name}] Injecting {source}: STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
+            ApplyStats(saved, recalculateIdentity: true);
+        }
+
         private void Start()
         {
+            // NetworkIdentity가 없는 오브젝트(더미 등)를 위한 비네트워크 초기화
+            if (TryGetComponent<Mirror.NetworkIdentity>(out var ni))
+            {
+                // 네트워크 개체인 경우 필요한 처리
+            }
+            else
+            {
+                Debug.Log($"[StatManager:{gameObject.name}] Non-network object detected. Initializing values locally.");
+            }
+
+            RecalculateIdentity();
             InitializeCameraReference();
-            // 씬 진입 시 초기 스케일/카메라 적용
             ApplyVisualScaling();
+        }
+
+        private void OnDestroy()
+        {
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+            }
+        }
+
+        private void OnStatsSynced(StatContainer oldStats, StatContainer newStats)
+        {
+            // 서버로부터 동기화된 스탯을 로컬에 적용 (UI/Visual 반영)
+            InternalApplyStats(newStats, true);
+        }
+
+        [Command]
+        public void CmdUpdateStats(StatContainer stats)
+        {
+            // 서버에서 SyncVar 값을 변경하면 모든 클라이언트로 전파됩니다.
+            _stats = stats;
         }
 
         private void InitializeCameraReference()
@@ -206,20 +312,29 @@ namespace BattlePvp.Stats
         }
 
         /// <summary>
-        /// 현재 스탯을 교체 적용한다.
+        /// 현재 스탯을 교체 적용한다. (네트워크 동기화 포함)
         /// </summary>
         public void ApplyStats(StatContainer stats, bool recalculateIdentity = true)
+        {
+            // 로컬 플레이어라면 서버에 동기화 요청
+            if (isLocalPlayer)
+            {
+                Debug.Log($"[StatManager:{gameObject.name}] localPlayer requesting CmdUpdateStats to Server.");
+                CmdUpdateStats(stats);
+            }
+            
+            // 즉각적인 피드백을 위해 로컬에서 먼저 적용
+            InternalApplyStats(stats, recalculateIdentity);
+        }
+
+        private void InternalApplyStats(StatContainer stats, bool recalculateIdentity)
         {
             _stats = stats;
 
             if (recalculateIdentity)
                 RecalculateIdentity();
 
-            // 스케일 및 카메라 즉시 반영 (Task 3, 5)
             ApplyVisualScaling();
-
-            // Identity가 먼저 결정된 후 다른 시스템들이 스탯 변화를 인지해야 
-            // 새로운 Identity 보너스가 정확히 반영됩니다.
             StatsChanged?.Invoke(_stats);
         }
 

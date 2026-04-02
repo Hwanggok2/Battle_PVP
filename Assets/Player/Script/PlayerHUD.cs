@@ -35,6 +35,8 @@ namespace BattlePvp.UI
     [DisallowMultipleComponent]
     public sealed class PlayerHUD : MonoBehaviour
     {
+        public static PlayerHUD Instance { get; private set; }
+
         [Header("Sources")]
         [SerializeField] private StatManager _statManager;
         [SerializeField] private MonoBehaviour _healthSource; // IPlayerStatusSource + IDamageReceiver
@@ -48,49 +50,98 @@ namespace BattlePvp.UI
 
         private void Awake()
         {
+            if (Instance == null) Instance = this;
+
+            // Inspector에서 명시적으로 할당되지 않았을 경우 부모나 자신에게서 찾기 시도
             if (_statManager == null)
                 _statManager = GetComponentInParent<StatManager>();
 
-            _status = _healthSource as IPlayerStatusSource;
-            _damageReceiver = _healthSource as IDamageReceiver;
+            InitializeSources();
+
             _hudView = _view as IPlayerHudView;
+            if (_hudView == null)
+            {
+                var viewComp = GetComponentInChildren<PlayerHudView>(true);
+                _hudView = viewComp as IPlayerHudView;
+            }
         }
 
-        private void OnEnable()
+        private void InitializeSources()
         {
-            if (_statManager != null)
-            {
-                _statManager.IdentityChanged += OnIdentityChanged;
-                // 초기 1회 반영
-                OnIdentityChanged(_statManager.CurrentIdentity);
-            }
+            // [수정] 이미 구독 중이라면 해제 후 재연결 (중복 방지)
+            UnsubscribeCurrent();
 
+            _status = _healthSource as IPlayerStatusSource;
+            _damageReceiver = _healthSource as IDamageReceiver;
+
+            if (_status == null || _damageReceiver == null)
+            {
+                var hs = GetComponentInParent<HealthSystem>();
+                _status = hs as IPlayerStatusSource;
+                _damageReceiver = hs as IDamageReceiver;
+            }
+            
+            SubscribeNew();
+        }
+
+        /// <summary>
+        /// 외부(더미 캐릭터 등)에서 이 HUD가 추적할 대상을 강제로 지정합니다.
+        /// </summary>
+        public void SetTarget(StatManager sm, HealthSystem hs)
+        {
+            UnsubscribeCurrent();
+            
+            _statManager = sm;
+            _healthSource = hs;
+            
+            _status = hs as IPlayerStatusSource;
+            _damageReceiver = hs as IDamageReceiver;
+            
+            SubscribeNew();
+            
+            // 즉시 반영
+            if (_statManager != null) OnIdentityChanged(_statManager.CurrentIdentity);
+            if (_damageReceiver != null) _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+            if (_status != null) OnOverflowChanged(_status is IPlayerStatusSource s && s != null ? false : false, 0f); // 리셋
+        }
+
+        private void SubscribeNew()
+        {
+            if (_statManager != null) _statManager.IdentityChanged += OnIdentityChanged;
             if (_status != null)
             {
                 _status.HpChanged += OnHpChanged;
                 _status.OverflowChanged += OnOverflowChanged;
             }
+        }
 
-            if (_damageReceiver != null)
+        private void UnsubscribeCurrent()
+        {
+            if (_statManager != null) _statManager.IdentityChanged -= OnIdentityChanged;
+            if (_status != null)
             {
-                // 초기 HP 반영 (Update 없이)
-                _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+                _status.HpChanged -= OnHpChanged;
+                _status.OverflowChanged -= OnOverflowChanged;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (_hudView != null && _damageReceiver != null)
+            {
+                _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
             }
         }
 
         private void OnDisable()
         {
-            if (_statManager != null)
-                _statManager.IdentityChanged -= OnIdentityChanged;
+            UnsubscribeCurrent();
+        }
 
-            if (_healthSource != null)
-            {
-                if (_status != null)
-                {
-                    _status.HpChanged -= OnHpChanged;
-                    _status.OverflowChanged -= OnOverflowChanged;
-                }
-            }
+        private void Update()
+        {
+            // 최적화를 위해 Update 루프를 제거했습니다.
+            // 대신 HealthSystem의 HpChanged 이벤트를 통해 실시간 갱신을 수행합니다.
         }
 
         private void OnHpChanged(float current, float max)

@@ -23,11 +23,29 @@ namespace BattlePvp.UI
         [SerializeField] private TextMeshProUGUI _timerText;
         [SerializeField] private TextMeshProUGUI _countdownText;
         [SerializeField] private TextMeshProUGUI _scoreText;
-
+        private void Awake()
+        {
+            if (_hpSlider == null) _hpSlider = GetComponentInChildren<Slider>(true);
+            if (_hpText == null)
+            {
+                var texts = GetComponentsInChildren<TextMeshProUGUI>(true);
+                foreach (var t in texts)
+                {
+                    if (t.name.Contains("HP") || t.name.Contains("Text"))
+                    {
+                        _hpText = t;
+                        break;
+                    }
+                }
+                if (_hpText == null && texts.Length > 0) _hpText = texts[0];
+            }
+            if (_overflowEffect == null) _overflowEffect = GetComponentInChildren<Image>(true); // 러프한 백업
+        }
         public void SetHp(float current, float max)
         {
             if (_hpSlider != null) _hpSlider.value = current / max;
-            if (_hpText != null) _hpText.text = $"{Mathf.CeilToInt(current)} / {Mathf.CeilToInt(max)}";
+            // [사용자 요청] 현재 체력이 뒤로 가도록 Max / Current 형식으로 표시
+            if (_hpText != null) _hpText.text = $"{Mathf.CeilToInt(max)} / {Mathf.CeilToInt(current)}";
         }
 
         public void SetIdentity(Identity identity)

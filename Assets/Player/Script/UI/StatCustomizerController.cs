@@ -5,14 +5,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using BattlePvp.Managers;
 using BattlePvp.Combat;
+using BattlePvp.Networking;
 using System.Collections;
 
 namespace BattlePvp.UI
 {
     /// <summary>
-    /// Canvas_Customizer의 "50pt 분배기" + "Identity 미리보기"를 이벤트 기반으로 구동합니다.
-    /// - 슬라이더 변경 -> 가상 투자 스탯 갱신 -> IdentityCalculator로 미리보기 즉시 갱신
-    /// - Apply 버튼 -> StatManager.ApplyInvestedOnly 호출 (아이템 보너스는 유지)
+    /// Canvas_Customizer의 전반적인 관리자. 
+    /// "DB 수치와 UI 수치가 100% 일치할 때까지 끈질기게 업데이트 루프를 돌리는 추격(Catch-up) 시스템"이 핵심입니다.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class StatCustomizerController : MonoBehaviour
@@ -59,119 +59,172 @@ namespace BattlePvp.UI
         private HealthSystem _playerHealth;
 
         private IdentityCalculator _identityCalculator;
-        private StatContainer _baseStats;     // item 포함된 원본 스탯(아이템 유지용)
-        private StatContainer _virtualStats;  // 투자값만 실시간 변경되는 가상 스탯
+        private StatContainer _baseStats;     
+        private StatContainer _virtualStats;  
 
         private readonly StringBuilder _sb = new StringBuilder(64);
+
+        private bool _isInitializedFromGlobal = false;
 
         private void Awake()
         {
             if (Instance == null) Instance = this;
+            else if (Instance != this) { Destroy(gameObject); return; }
             
             _identityCalculator = new IdentityCalculator();
+            if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+            if (_playerHealth == null) _playerHealth = GetComponentInParent<HealthSystem>();
+            if (_floatingMessageCanvasGroup != null) _floatingMessageCanvasGroup.alpha = 0f;
+        }
 
-            if (_statManager == null)
-                _statManager = GetComponentInParent<StatManager>();
-                
-            if (_playerHealth == null)
-                _playerHealth = GetComponentInParent<HealthSystem>();
-                
-            if (_floatingMessageCanvasGroup != null)
-                _floatingMessageCanvasGroup.alpha = 0f;
+        private void Update()
+        {
+            // [추격 루프] 초기화가 완료되지 않았다면 지속적으로 DB 수치에 UI를 맞춥니다.
+            if (!_isInitializedFromGlobal)
+            {
+                if (_statManager == null) TryFindTarget();
+
+                if (GlobalDataManager.Instance != null)
+                {
+                    var saved = GlobalDataManager.Instance.SavedStats;
+                    float totalDB = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
+
+                    // DB 데이터가 아직 채워지지 않았다면(0인 상태) 대기합니다.
+                    if (totalDB < 0.1f) return;
+
+                    // UI가 DB 값과 일치하는지 검사합니다.
+                    if (!IsUISyncedWithSavedData(saved))
+                    {
+                        // 일치하지 않는다면 매 프레임 UI를 강제 주입합니다! (사용자 제안 추격 루프)
+                        _baseStats = saved;
+                        _virtualStats = _baseStats;
+                        RefreshSliderVisuals();
+                        RebuildBudgetAndPreview();
+                        
+                        // 타겟 플레이어에게도 일단 1회 주입
+                        if (_statManager != null)
+                        {
+                            _statManager.ApplyStats(_baseStats, recalculateIdentity: true);
+                        }
+                    }
+                    else
+                    {
+                        // 모든 수치가 완벽히 일치하면 루프를 종료합니다.
+                        _isInitializedFromGlobal = true;
+                        Debug.Log($"[StatCustomizer] SYNC SUCCESS! All sliders matches DB. (STR:{(int)saved.STR.Invested}, AGI:{(int)saved.AGI.Invested}, CON:{(int)saved.CON.Invested})");
+                    }
+                }
+            }
+        }
+
+        private bool IsUISyncedWithSavedData(StatContainer saved)
+        {
+            // 슬라이더의 현재 값이 DB의 투자값과 정수 단위로 일치하는지 확인합니다.
+            bool s = _str != null && Mathf.RoundToInt(_str.Invested) == Mathf.RoundToInt(saved.STR.Invested);
+            bool a = _agi != null && Mathf.RoundToInt(_agi.Invested) == Mathf.RoundToInt(saved.AGI.Invested);
+            bool c = _con != null && Mathf.RoundToInt(_con.Invested) == Mathf.RoundToInt(saved.CON.Invested);
+            bool d = _def != null && Mathf.RoundToInt(_def.Invested) == Mathf.RoundToInt(saved.DEF.Invested);
+            return s && a && c && d;
         }
 
         private void OnEnable()
         {
-            LoadFromTarget();
+            if (GlobalDataManager.Instance != null)
+                GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
 
-            Hook(_str);
-            Hook(_agi);
-            Hook(_con);
-            Hook(_def);
+            TryFindTarget();
+            _isInitializedFromGlobal = false; // 창을 열 때마다 일치 여부를 다시 확인합니다.
+
+            Hook(_str); Hook(_agi); Hook(_con); Hook(_def);
 
             if (_applyButton != null)
                 _applyButton.onClick.AddListener(Apply);
 
+            RefreshSliderVisuals();
             RebuildBudgetAndPreview();
-            
-            // 딤 오버레이 체크
-            if (_dimOverlay != null && _playerHealth != null)
-            {
-                _dimOverlay.gameObject.SetActive(_playerHealth.IsDead);
-            }
         }
 
         private void OnDisable()
         {
-            Unhook(_str);
-            Unhook(_agi);
-            Unhook(_con);
-            Unhook(_def);
+            if (GlobalDataManager.Instance != null)
+                GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
 
-            if (_applyButton != null)
-                _applyButton.onClick.RemoveListener(Apply);
+            Unhook(_str); Unhook(_agi); Unhook(_con); Unhook(_def);
+            if (_applyButton != null) _applyButton.onClick.RemoveListener(Apply);
         }
 
-        private void LoadFromTarget()
+        private void OnGlobalStatsUpdated(StatContainer updatedStats)
         {
-            if (_statManager == null)
-                return;
+            // 새로운 데이터가 오면 추격 루프가 다시 동작하도록 합니다.
+            _isInitializedFromGlobal = false;
+            Debug.Log("[StatCustomizer] Persistent sync restarted due to data update.");
+        }
 
-            _baseStats = _statManager.GetStatsCopy();
-            _virtualStats = _baseStats;
-
-            // 아이템 Fill 세팅 + 투자값 초기화
+        private void RefreshSliderVisuals()
+        {
             if (_str != null) { _str.SetItem(_baseStats.STR.Item); _str.SetInvestedWithoutNotify(_baseStats.STR.Invested); }
             if (_agi != null) { _agi.SetItem(_baseStats.AGI.Item); _agi.SetInvestedWithoutNotify(_baseStats.AGI.Invested); }
             if (_con != null) { _con.SetItem(_baseStats.CON.Item); _con.SetInvestedWithoutNotify(_baseStats.CON.Invested); }
             if (_def != null) { _def.SetItem(_baseStats.DEF.Item); _def.SetInvestedWithoutNotify(_baseStats.DEF.Invested); }
         }
 
-        private void Hook(StatSlider s)
+        private void TryFindTarget()
         {
-            if (s == null) return;
-            s.InvestedChanged += OnInvestedChanged;
+            if (_statManager == null)
+            {
+                _statManager = FindFirstObjectByType<StatManager>();
+                if (_statManager != null) Debug.Log($"[StatCustomizer] Targeting: {_statManager.gameObject.name}");
+            }
+            
+            if (_playerHealth == null && _statManager != null)
+                _playerHealth = _statManager.GetComponent<HealthSystem>();
+
+            if (PlayerHUD.Instance != null && _statManager != null && _playerHealth != null)
+                PlayerHUD.Instance.SetTarget(_statManager, _playerHealth);
         }
 
-        private void Unhook(StatSlider s)
+        private void LoadFromTarget()
         {
-            if (s == null) return;
-            s.InvestedChanged -= OnInvestedChanged;
+            if (_statManager == null) return;
+            _baseStats = _statManager.GetStatsCopy();
+            _virtualStats = _baseStats;
+            RefreshSliderVisuals();
         }
+
+        private void Hook(StatSlider s) { if (s != null) s.InvestedChanged += OnInvestedChanged; }
+        private void Unhook(StatSlider s) { if (s != null) s.InvestedChanged -= OnInvestedChanged; }
 
         private void OnInvestedChanged(StatSlider changed, float _)
         {
-            // 총합 30을 초과하면, 변경한 슬라이더에서 초과분을 즉시 깎는다(가장 단순하면서 결정적인 UX).
             int total = GetTotalInvested();
             if (total > TotalInvestedBudget && changed != null)
             {
                 int overflow = total - TotalInvestedBudget;
-                float next = Mathf.Max(0f, changed.Invested - overflow);
+                float next = Mathf.Max(0f, (int)changed.Invested - overflow);
                 changed.SetInvestedWithoutNotify(next);
             }
-
+            
             SyncVirtualFromSliders();
             RebuildBudgetAndPreview();
+
+            // 사용자가 직접 슬라이더를 조작하기 시작했다면, 더 이상 추격 루프가 방해하지 않도록 합니다.
+            _isInitializedFromGlobal = true;
         }
 
         private int GetTotalInvested()
         {
-            int s = _str != null ? (int)_str.Invested : 0;
-            int a = _agi != null ? (int)_agi.Invested : 0;
-            int c = _con != null ? (int)_con.Invested : 0;
-            int d = _def != null ? (int)_def.Invested : 0;
+            int s = _str != null ? Mathf.RoundToInt(_str.Invested) : 0;
+            int a = _agi != null ? Mathf.RoundToInt(_agi.Invested) : 0;
+            int c = _con != null ? Mathf.RoundToInt(_con.Invested) : 0;
+            int d = _def != null ? Mathf.RoundToInt(_def.Invested) : 0;
             return s + a + c + d;
         }
 
-        public int GetRemainPoints()
-        {
-            return TotalInvestedBudget - GetTotalInvested();
-        }
+        public int GetRemainPoints() => TotalInvestedBudget - GetTotalInvested();
 
         private void SyncVirtualFromSliders()
         {
             _virtualStats = _baseStats;
-
             if (_str != null) _virtualStats.STR.Invested = _str.Invested;
             if (_agi != null) _virtualStats.AGI.Invested = _agi.Invested;
             if (_con != null) _virtualStats.CON.Invested = _con.Invested;
@@ -182,32 +235,20 @@ namespace BattlePvp.UI
         {
             int used = GetTotalInvested();
             int remain = TotalInvestedBudget - used;
-            if (_pointsText != null)
-                _pointsText.text = $"{used} / {TotalInvestedBudget}";
-            if (_remainPointsText != null)
-                _remainPointsText.text = $"잔여 스탯: {remain}";
+            if (_pointsText != null) _pointsText.text = $"{used} / {TotalInvestedBudget}";
+            if (_remainPointsText != null) _remainPointsText.text = $"잔여 스탯: {remain}";
 
-            // Identity Preview
             Identity id = _identityCalculator.ResolveIdentity(_virtualStats, out _);
-
-            if (_identityName != null)
-            {
+            if (_identityName != null) {
                 _sb.Clear();
-                _sb.Append(id.PrimaryStat);
-                _sb.Append(' ');
-                _sb.Append(id.Type.ToString().ToUpperInvariant());
+                _sb.Append(id.PrimaryStat); _sb.Append(' '); _sb.Append(id.Type.ToString().ToUpperInvariant());
                 _identityName.text = _sb.ToString();
             }
+            if (_identityIcon != null && _spriteSet != null) _identityIcon.sprite = _spriteSet.Resolve(id);
 
-            if (_identityIcon != null && _spriteSet != null)
-                _identityIcon.sprite = _spriteSet.Resolve(id);
-
-            // Derived Stats (ATK, DEF, MaxHP, Pene, Regen, MoveSpeed, AttackSpeed) 실시간 계산
             if (_statManager != null)
             {
                 _statManager.CalculatePreviewStats(_virtualStats, out float atk, out float def, out float maxHp, out float pene, out float regen, out float moveSpd, out float atkSpd);
-                
-                // Juice Effect 적용해 텍스트 업데이트
                 UpdatePreviewText(_previewAtkText, $"공격력 : {atk:F0}");
                 UpdatePreviewText(_previewDefText, $"방어력 : {def:F1}%");
                 UpdatePreviewText(_previewMaxHpText, $"최대 체력 : {maxHp:F0}");
@@ -216,13 +257,7 @@ namespace BattlePvp.UI
                 UpdatePreviewText(_previewMoveSpdText, $"이동속도 : {moveSpd:F2}");
                 UpdatePreviewText(_previewAtkSpdText, $"공격속도 : {atkSpd:F2}");
             }
-
-            // Apply 버튼 활성/비활성
-            if (_applyButton != null)
-                _applyButton.interactable = remain >= 0;
-
-            // 로비 UI 방 진입 버튼 처리 (기존의 토글 연동 제거, 버튼 자체에서 검사)
-            // if (LobbyUIManager.Instance != null) { ... }
+            if (_applyButton != null) _applyButton.interactable = remain >= 0;
         }
 
         private void UpdatePreviewText(TMP_Text textRef, string newValue)
@@ -231,7 +266,6 @@ namespace BattlePvp.UI
             if (textRef.text != newValue)
             {
                 textRef.text = newValue;
-                // 간단한 Juice 효과
                 StartCoroutine(JuiceTextEffect(textRef.transform));
             }
         }
@@ -240,7 +274,6 @@ namespace BattlePvp.UI
         {
             Vector3 originalScale = Vector3.one;
             t.localScale = originalScale * 1.2f;
-            
             float elapsed = 0f;
             float duration = 0.2f;
             while(elapsed < duration)
@@ -252,17 +285,11 @@ namespace BattlePvp.UI
             t.localScale = originalScale;
         }
 
-        private bool IsMonostat(StatContainer sc)
-        {
-            return (sc.STR.Invested >= 30f || sc.CON.Invested >= 30f || sc.AGI.Invested >= 30f || sc.DEF.Invested >= 30f);
-        }
         private Coroutine _floatingMessageRoutine;
-
         public void ShowFloatingMessage(string msg)
         {
             if (_floatingMessageCanvasGroup == null || _floatingMessageText == null) return;
             _floatingMessageText.text = msg;
-            
             if (_floatingMessageRoutine != null) StopCoroutine(_floatingMessageRoutine);
             _floatingMessageRoutine = StartCoroutine(CoShowFloatingMessage());
         }
@@ -282,20 +309,15 @@ namespace BattlePvp.UI
 
         private void Apply()
         {
-            if (_statManager == null)
-                return;
-
-            // 순수 몰빵형 사망 중 검증 (기존 스탯이 아닌 이번에 '적용'하려는 가상 스탯 기준)
-            if (IsMonostat(_virtualStats) && _playerHealth != null && _playerHealth.IsDead)
+            if (_statManager == null) return;
+            if (StatManager.IsMonostat(_virtualStats) && _playerHealth != null && _playerHealth.IsDead)
             {
                 ShowFloatingMessage("사망 시 몰빵형 캐릭터로 전환할 수 없습니다.");
-                // 원상복구
                 LoadFromTarget();
                 RebuildBudgetAndPreview();
                 return;
             }
 
-            // 아이템은 유지하고 투자만 적용
             var investedOnly = default(StatContainer);
             investedOnly.STR.Invested = _virtualStats.STR.Invested;
             investedOnly.AGI.Invested = _virtualStats.AGI.Invested;
@@ -303,18 +325,17 @@ namespace BattlePvp.UI
             investedOnly.DEF.Invested = _virtualStats.DEF.Invested;
 
             _statManager.ApplyInvestedOnly(investedOnly, recalculateIdentity: true);
+            if (_playerHealth != null) _playerHealth.RefillHealth();
 
-            // [추가] 글로벌 매니저가 있을 경우 영구 데이터에 병합 저장
-            if (GlobalDataManager.Instance != null)
+            var currentStats = _statManager.GetStatsCopy();
+            GlobalDataManager.Instance.SavedStats = currentStats;
+            if (PlayFabBattleManager.Instance != null)
             {
-                GlobalDataManager.Instance.SavedStats = _statManager.GetStatsCopy();
-                Debug.Log("[StatCustomizer] Saved stats to GlobalDataManager.");
+                _statManager.CalculatePreviewStats(currentStats, out float atk, out float defP, out float hp, out float pene, out float regen, out float move, out float atkSpd);
+                PlayFabBattleManager.Instance.SavePlayerStats(currentStats, atk, hp, defP, pene, regen, move, atkSpd);
             }
-
-            // 적용 후 베이스 스냅샷 갱신(아이템/투자 모두 포함된 최신 상태)
             LoadFromTarget();
             RebuildBudgetAndPreview();
         }
     }
 }
-

@@ -48,7 +48,11 @@ namespace BattlePvp.UI
         private void OnEnable()
         {
             if (_slider != null)
+            {
+                _slider.minValue = 0f;
+                _slider.maxValue = MaxInvested;
                 _slider.onValueChanged.AddListener(OnSliderChanged);
+            }
 
             RefreshVisual();
         }

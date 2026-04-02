@@ -32,7 +32,14 @@ namespace BattlePvp.Combat
         [SerializeField] private float _regenPerCon = 0.15f;
 
         [Header("Runtime")]
+        [SyncVar(hook = nameof(OnHpChangedInternal))]
         [SerializeField] private float _currentHp = 100f;
+
+        private void OnHpChangedInternal(float oldHp, float newHp)
+        {
+            RaiseHpChanged();
+            UpdateOverflowState();
+        }
 
         public float CurrentHp => _currentHp;
         public float MaxHp => _maxHp;
@@ -61,13 +68,37 @@ namespace BattlePvp.Combat
             if (_statManager == null)
                 _statManager = GetComponent<StatManager>();
 
+            // 스탯 비율 동기화를 위해 유니티 인스펙터 변수 덮어쓰기 보정
+            _baseMaxHp = 100f;
+            _maxHpPerCon = 15f;
+            _regenPerCon = 0.15f;
+
             _damageCalculator = new DamageCalculator();
             _strategistRules = new StrategistRules();
         }
 
+        private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            if (scene.name == "Battle")
+            {
+                _currentHp = _maxHp;
+                RaiseHpChanged();
+            }
+        }
+
         private void OnEnable()
         {
-            RefreshFromStats(keepCurrentHpFlat: true);
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
+
+            // 로비 혹은 비네트워크 개체라면 초기 HP를 실시간 최대치로 강제 동기화 (100 고정 방지)
+            bool isNetworkActive = Mirror.NetworkServer.active || Mirror.NetworkClient.active;
+            
+            // [수정] 로비의 경우 무조건 초기화 시 최대 체력으로 가득 채웁니다.
+            bool isLobbyScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
+            bool shouldForceRefill = !isNetworkActive || isLobbyScene || _currentHp <= 1000f;
+            
+            RefreshFromStats(keepCurrentHpFlat: !shouldForceRefill);
+            if (shouldForceRefill) SetCurrentHp(_maxHp);
 
             if (_statManager != null)
                 _statManager.StatsChanged += OnStatsChanged;
@@ -77,13 +108,15 @@ namespace BattlePvp.Combat
 
         private void OnDisable()
         {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+
             if (_statManager != null)
                 _statManager.StatsChanged -= OnStatsChanged;
 
             StopRegenRoutine();
         }
 
-        private void OnStatsChanged(StatContainer _)
+        private void OnStatsChanged(StatContainer newStats)
         {
             if (this == null) return;
             
@@ -93,18 +126,24 @@ namespace BattlePvp.Combat
 
             RefreshFromStats(keepCurrentHpFlat: true);
 
-            if (isStrategist)
+            // 스탯 변경 시 체력 수치 보정 (로비 더미 플레이어 포함)
+            bool isNetworkActive = Mirror.NetworkServer.active || Mirror.NetworkClient.active;
+            if (isServer || isLocalPlayer || !isNetworkActive)
             {
-                if (oldMax > 0f)
+                if (isStrategist)
                 {
-                    float ratio = oldHp / oldMax;
-                    _currentHp = _maxHp * ratio;
+                    if (oldMax > 0f)
+                    {
+                        float ratio = oldHp / oldMax;
+                        _currentHp = _maxHp * ratio;
+                    }
                 }
-            }
-            else
-            {
-                // 전략가가 아니면 100% 회복
-                _currentHp = _maxHp;
+                else
+                {
+                    // [수정] 스탯 변경 시 최대 체력으로 회복
+                    _currentHp = _maxHp;
+                    Debug.Log($"[HealthSystem:{gameObject.name}] Health refilled to {_maxHp} due to stat change.");
+                }
             }
 
             RaiseHpChanged();
@@ -162,6 +201,12 @@ namespace BattlePvp.Combat
                 return;
 
             float next = _currentHp - amount;
+            
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle_waiting")
+            {
+                if (next < 1f) next = 1f;
+            }
+
             _currentHp = next < 0f ? 0f : next;
 
             if (_currentHp <= 0f && !IsDead)
@@ -322,19 +367,37 @@ namespace BattlePvp.Combat
 
         private IEnumerator CoRegenTick()
         {
+            float lastFullHealTime = 0f;
+
             while (true)
             {
-                // Pre-Match 상태에서는 초당 100% 회복
-                if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.PreMatch)
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                // "Battle_wait" 또는 "Battle_waiting" 모두 대응하도록 수정
+                bool isWaitingScene = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
+                bool isPreMatch = (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.PreMatch);
+                
+                float effectiveRegen = _currentRegen;
+                bool isLobby = sceneName.Contains("Lobby");
+                // [수정] 초강력 재생은 오직 Battle_waiting 또는 Battle_wait 씬에서만 작동합니다.
+                bool isWaitingSceneOnly = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
+
+                if (isWaitingSceneOnly || isPreMatch)
                 {
-                    _currentHp = _maxHp;
-                    RaiseHpChanged();
+                    // 대기실에서는 초당 최대 체력의 50%씩 고속 회복 (사용자 요청)
+                    effectiveRegen = Mathf.Max(effectiveRegen, _maxHp * 0.5f);
                 }
-                else if (_currentRegen > 0f && _currentHp < _maxHp)
+
+                if (effectiveRegen > 0f && _currentHp < _maxHp)
                 {
-                    float next = _currentHp + (_currentRegen * Time.deltaTime);
-                    _currentHp = Mathf.Min(next, _maxHp);
-                    RaiseHpChanged();
+                    // 일반 재생 로직 (로비도 로컬 환경이므로 허용)
+                    if (isServer || isLobby || isWaitingSceneOnly)
+                    {
+                        float next = _currentHp + (effectiveRegen * Time.deltaTime);
+                        _currentHp = Mathf.Min(next, _maxHp);
+                        
+                        // UI 즉시 반영을 위한 강제 호출 (로비/대기실)
+                        if (isLobby || isWaitingSceneOnly) RaiseHpChanged();
+                    }
                 }
                 yield return null;
             }
@@ -352,6 +415,35 @@ namespace BattlePvp.Combat
             RaiseHpChanged();
             UpdateOverflowState();
         }
+
+        /// <summary>
+        /// 체력을 즉시 최대치로 회복시킵니다. (주로 로비/대기씬 스탯 적용 시 호출)
+        /// </summary>
+        public void RefillHealth()
+        {
+            if (isServer)
+            {
+                _currentHp = _maxHp;
+            }
+            else if (isLocalPlayer)
+            {
+                _currentHp = _maxHp;
+                RaiseHpChanged();
+            }
+            Debug.Log($"[HealthSystem] Health refilled to {_maxHp} (Server={isServer}, Local={isLocalPlayer})");
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            // 인스펙터에서 수동으로 체력을 깎았을 때 UI에 즉시 반영되도록 합니다.
+            if (Application.isPlaying)
+            {
+                RaiseHpChanged();
+                UpdateOverflowState();
+            }
+        }
+#endif
     }
 }
 

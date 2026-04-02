@@ -823,6 +823,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c0696cdce467224d837a88832a65599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Stats.StatManager
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   _stats:
     STR:
       Invested: 0
@@ -867,6 +870,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8c0696cdce467224d837a88832a65599, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Stats.StatManager
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   _stats:
     STR:
       Invested: 10

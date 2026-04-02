@@ -44,11 +44,14 @@ namespace BattlePvp.UI
             // 실제 서버(글로벌 레지스트리)로부터 데이터를 가져옵니다.
             PlayFabBattleManager.Instance.GetActiveRooms(rooms => 
             {
-                foreach (var roomName in rooms)
+                foreach (var kvp in rooms)
                 {
+                    string roomId = kvp.Key;
+                    string roomTitle = kvp.Value;
+
                     var item = Instantiate(_itemPrefab, _contentParent);
                     // 현재는 인원수 데이터를 따로 관리하지 않으므로 1명으로 임시 표시 (추후 확장 가능)
-                    item.SetInfo(roomName, 1, OnRoomSelected);
+                    item.SetInfo(roomTitle, 1, _ => OnRoomSelected(roomId));
                     _instantiatedItems.Add(item);
                 }
                 Debug.Log($"[RoomList] Refresh completed. {rooms.Count} rooms found.");

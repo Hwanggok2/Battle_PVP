@@ -79,9 +79,32 @@ namespace BattlePvp.Networking
             PlayFabClientAPI.LoginWithPlayFab(request, 
                 result => {
                     Debug.Log("로그인 성공!");
-                    OnLoginSuccess?.Invoke();
                     
-                    // 로그인 성공 시 추가 유저 데이터 로드 로직을 여기서 실행할 수 있습니다.
+                    // [추가] 로그인 성공 시 서버에서 플레이어 스텟 정보를 불러오도록 연동합니다.
+                    var battleManager = PlayFabBattleManager.Instance;
+                    if (battleManager == null)
+                    {
+                        battleManager = FindFirstObjectByType<PlayFabBattleManager>();
+                    }
+
+                    if (battleManager != null)
+                    {
+                        battleManager.LoadPlayerStats(stats => {
+                            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+                            {
+                                BattlePvp.Managers.GlobalDataManager.Instance.SavedStats = stats;
+                                // 현재 씬에 캐싱된 플레이어가 있다면 즉시 데이터 주입
+                                BattlePvp.Managers.GlobalDataManager.Instance.TryInjectToPlayer();
+                                Debug.Log("[AuthManager] Stats loaded and synced via BattleManager.");
+                            }
+                        });
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[AuthManager] PlayFabBattleManager not found in scene. Stats will not be loaded automatically.");
+                    }
+
+                    OnLoginSuccess?.Invoke();
                 }, 
                 error => {
                     Debug.LogError($"로그인 실패: {error.GenerateErrorReport()}");
