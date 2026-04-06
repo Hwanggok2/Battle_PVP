@@ -648,7 +648,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1708903102548012598, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: sceneId
-      value: 1482723547
+      value: 1347897487
       objectReference: {fileID: 0}
     - target: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_Name
@@ -1449,7 +1449,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3611292104285783595, guid: 9d8a9517e2621574f949054211ea26ff, type: 3}
       propertyPath: onlineScene
-      value: Assets/Scenes/Battle_waiting.unity
+      value: Assets/Scenes/Battle.unity
       objectReference: {fileID: 0}
     - target: {fileID: 3611292104285783595, guid: 9d8a9517e2621574f949054211ea26ff, type: 3}
       propertyPath: offlineScene

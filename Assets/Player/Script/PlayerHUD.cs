@@ -27,6 +27,9 @@ namespace BattlePvp.UI
 
         /// <summary>킬 점수 업데이트</summary>
         void SetScore(int points);
+
+        /// <summary>플레이어 사망 패널 제어</summary>
+        void SetDeathOverlay(bool active, string text = "");
     }
 
     /// <summary>
@@ -178,6 +181,11 @@ namespace BattlePvp.UI
         /// 자신의 점수를 업데이트합니다.
         /// </summary>
         public void UpdateScore(int points) => _hudView?.SetScore(points);
+
+        /// <summary>
+        /// 사망 패널을 띄우거나 닫습니다.
+        /// </summary>
+        public void UpdateDeathOverlay(bool active, string text = "") => _hudView?.SetDeathOverlay(active, text);
 
         #endregion
     }

@@ -9,6 +9,8 @@ namespace BattlePvp.Stats
     /// </summary>
     public sealed class StatManager : Mirror.NetworkBehaviour, IIdentitySource
     {
+        public static StatManager Local { get; private set; }
+
         [Header("Stat Data")]
         [SyncVar(hook = nameof(OnStatsSynced))]
         [SerializeField] private StatContainer _stats;
@@ -199,9 +201,20 @@ namespace BattlePvp.Stats
             }
         }
 
+        private void OnDisable()
+        {
+            if (Local == this) Local = null;
+
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+            }
+        }
+
         public override void OnStartLocalPlayer()
         {
             base.OnStartLocalPlayer();
+            Local = this;
             
             Debug.Log("[StatManager] OnStartLocalPlayer: Initializing stats for Local Player.");
             
@@ -297,6 +310,8 @@ namespace BattlePvp.Stats
 
             // 조건: STR 또는 CON 몰빵(Monostat) 상태일 때만 1.2배 (Task 3 수정)
             // 전에는 AGI/DEF가 0이기만 하면 커졌으나, 이제는 확실히 한 스탯에 몰빵된 경우만 체크.
+            // 0. 네트워크 컴포넌트 안전망 (netIdentity가 없으면 로컬 전력이 아님)
+            bool giantLocal = (netIdentity != null && isLocalPlayer);
             bool isGiant = (CurrentIdentity.Type == IdentityType.Monostat) && 
                            (CurrentIdentity.PrimaryStat == StatKind.STR || CurrentIdentity.PrimaryStat == StatKind.CON);
             
@@ -317,7 +332,8 @@ namespace BattlePvp.Stats
         public void ApplyStats(StatContainer stats, bool recalculateIdentity = true)
         {
             // 로컬 플레이어라면 서버에 동기화 요청
-            if (isLocalPlayer)
+            // 로컬 플레이어라면 서버에 동기화 요청 (netIdentity 존재 시에만)
+            if (netIdentity != null && isLocalPlayer)
             {
                 Debug.Log($"[StatManager:{gameObject.name}] localPlayer requesting CmdUpdateStats to Server.");
                 CmdUpdateStats(stats);

@@ -23,6 +23,7 @@ namespace BattlePvp.Combat
         [SyncVar] public bool isInvincible = false;
         [Header("References")]
         [SerializeField] private StatManager _statManager;
+        [SerializeField] private Animator _animator; // [추가] 캐릭터 애니메이터
 
         [Header("HP Model")]
         [SerializeField] private float _baseMaxHp = 100f;
@@ -39,6 +40,7 @@ namespace BattlePvp.Combat
         {
             RaiseHpChanged();
             UpdateOverflowState();
+            EvaluateDeath(); // [추가] 네트워크 동기화 시에도 사망 판정
         }
 
         public float CurrentHp => _currentHp;
@@ -67,6 +69,9 @@ namespace BattlePvp.Combat
         {
             if (_statManager == null)
                 _statManager = GetComponent<StatManager>();
+
+            if (_animator == null)
+                _animator = GetComponentInChildren<Animator>();
 
             // 스탯 비율 동기화를 위해 유니티 인스펙터 변수 덮어쓰기 보정
             _baseMaxHp = 100f;
@@ -114,6 +119,7 @@ namespace BattlePvp.Combat
                 _statManager.StatsChanged -= OnStatsChanged;
 
             StopRegenRoutine();
+            StopOverflowRoutine();
         }
 
         private void OnStatsChanged(StatContainer newStats)
@@ -188,6 +194,7 @@ namespace BattlePvp.Combat
             _currentHp = hp < 0f ? 0f : hp;
             RaiseHpChanged();
             UpdateOverflowState();
+            EvaluateDeath(); // [추가] 강제 체력 설정 시에도 사망 판정
         }
 
         public void ApplyDamage(float amount, DamageSource source, Vector3 hitPosition)
@@ -209,11 +216,7 @@ namespace BattlePvp.Combat
 
             _currentHp = next < 0f ? 0f : next;
 
-            if (_currentHp <= 0f && !IsDead)
-            {
-                IsDead = true;
-                OnDied?.Invoke();
-            }
+            EvaluateDeath(); // [공통 로직으로 교체]
 
             RaiseHpChanged();
 
@@ -408,6 +411,31 @@ namespace BattlePvp.Combat
             HpChanged?.Invoke(_currentHp, _maxHp);
         }
 
+        /// <summary>
+        /// 체력이 0 이하인 경우 사망 처리를 진행합니다. 
+        /// 인스펙터 수정, 네트워크 동기화, 데미지 적용 등 모든 상황에서 호출됩니다.
+        /// </summary>
+        private void EvaluateDeath()
+        {
+            if (_currentHp <= 0f && !IsDead)
+            {
+                IsDead = true;
+                if (_animator != null)
+                {
+                    _animator.SetTrigger("Die");
+                    Debug.Log($"[HealthSystem:{gameObject.name}] Die trigger set on Animator.");
+                }
+                OnDied?.Invoke();
+                Debug.Log($"[HealthSystem:{gameObject.name}] IsDead set to true.");
+            }
+            else if (_currentHp > 0f && IsDead)
+            {
+                // [선택 사항] 체력이 다시 생겼을 때 자동으로 IsDead를 해제할 수도 있으나, 
+                // 보통 Revive()를 호출하므로 여기서는 명시적으로 로그만 남깁니다.
+                // IsDead = false; 
+            }
+        }
+
         public void Revive(float ratio = 1f)
         {
             IsDead = false;
@@ -436,9 +464,10 @@ namespace BattlePvp.Combat
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            // 인스펙터에서 수동으로 체력을 깎았을 때 UI에 즉시 반영되도록 합니다.
+            // 인스펙터에서 수동으로 체력을 깎았을 때 UI 및 사망 애니메이션이 즉시 반영되도록 합니다.
             if (Application.isPlaying)
             {
+                EvaluateDeath();
                 RaiseHpChanged();
                 UpdateOverflowState();
             }

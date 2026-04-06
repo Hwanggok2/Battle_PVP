@@ -17,12 +17,25 @@ namespace BattlePvp.Logic
         private FollowCamera _followCamera;
         private bool _isCursorUnlocked = false;
 
+        public static GameInputController Instance { get; private set; }
+
         private void Awake()
         {
+            Instance = this;
             _followCamera = FindFirstObjectByType<FollowCamera>();
             // 씬 진입 시마다 초기화 (Lobby에서 공격이 안 되는 현상 방지)
             IsPaused = false;
             _isCursorUnlocked = false;
+        }
+
+        /// <summary>
+        /// 강제로 게임 플레이 모드(커서 잠금, 카메라 활성)로 상태를 복구합니다.
+        /// </summary>
+        public void ResetToPlayMode()
+        {
+            _isCursorUnlocked = false;
+            IsPaused = false;
+            ApplyCursorState();
         }
 
         private void OnDisable()

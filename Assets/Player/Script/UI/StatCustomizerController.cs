@@ -3,6 +3,7 @@ using BattlePvp.Stats;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Mirror;
 using BattlePvp.Managers;
 using BattlePvp.Combat;
 using BattlePvp.Networking;
@@ -62,6 +63,7 @@ namespace BattlePvp.UI
         private readonly StringBuilder _sb = new StringBuilder(64);
 
         private bool _isInitializedFromGlobal = false;
+        private Coroutine _syncCoroutine;
 
         private void Awake()
         {
@@ -74,43 +76,36 @@ namespace BattlePvp.UI
             if (_floatingMessageCanvasGroup != null) _floatingMessageCanvasGroup.alpha = 0f;
         }
 
-        private void Update()
+        private IEnumerator CoInitialSyncWithDB()
         {
-            // [추격 루프] 초기화가 완료되지 않았다면 지속적으로 DB 수치에 UI를 맞춥니다.
-            if (!_isInitializedFromGlobal)
+            // [최적화] Update 대신 일회성 코루틴으로 슬라이더-DB 동기화를 수행합니다.
+            // 성공 시 즉시 종료(yield break)하여 CPU 사용량을 절감합니다.
+            while (true)
             {
                 if (_statManager == null) TryFindTarget();
-
-                if (GlobalDataManager.Instance != null)
+                if (_statManager != null && GlobalDataManager.Instance != null)
                 {
                     var saved = GlobalDataManager.Instance.SavedStats;
                     float totalDB = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
 
-                    // DB 데이터가 아직 채워지지 않았다면(0인 상태) 대기합니다.
-                    if (totalDB < 0.1f) return;
-
-                    // UI가 DB 값과 일치하는지 검사합니다.
-                    if (!IsUISyncedWithSavedData(saved))
+                    // DB 데이터가 아직 채워지지 않았다면 대기
+                    if (totalDB > 0.1f)
                     {
-                        // 일치하지 않는다면 매 프레임 UI를 강제 주입합니다!
+                        if (IsUISyncedWithSavedData(saved))
+                        {
+                            _isInitializedFromGlobal = true;
+                            Debug.Log($"[StatCustomizer] SYNC SUCCESS! Sliders matched DB. Stopping routine.");
+                            yield break; // 동기화 성공 시 루틴 완전히 종료
+                        }
+                        
+                        // 아직 일치하지 않는다면 초기화 루프 수행 (로직 흐름 유지)
                         _baseStats = saved;
                         _virtualStats = _baseStats;
                         RefreshSliderVisuals();
                         RebuildBudgetAndPreview();
-                        
-                        // 타겟 플레이어에게도 일단 1회 주입
-                        if (_statManager != null)
-                        {
-                            _statManager.ApplyStats(_baseStats, recalculateIdentity: true);
-                        }
-                    }
-                    else
-                    {
-                        // 모든 수치가 완벽히 일치하면 루프를 종료합니다.
-                        _isInitializedFromGlobal = true;
-                        Debug.Log($"[StatCustomizer] SYNC SUCCESS! All sliders matches DB. (STR:{(int)saved.STR.Invested}, AGI:{(int)saved.AGI.Invested}, CON:{(int)saved.CON.Invested})");
                     }
                 }
+                yield return new WaitForSecondsRealtime(0.5f); // 0.5초마다 1회 체크하여 부하 최소화
             }
         }
 
@@ -139,6 +134,10 @@ namespace BattlePvp.UI
 
             RefreshSliderVisuals();
             RebuildBudgetAndPreview();
+
+            // [추가] 초기 DB 스멀스멀 동기화 루틴 시작
+            if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
+            _syncCoroutine = StartCoroutine(CoInitialSyncWithDB());
         }
 
         private void OnDisable()
@@ -148,11 +147,25 @@ namespace BattlePvp.UI
 
             Unhook(_str); Unhook(_agi); Unhook(_con); Unhook(_def);
             if (_applyButton != null) _applyButton.onClick.RemoveListener(Apply);
+
+            // [추가] 참조 명시적 초기화 및 코루틴 중단으로 안정성 확보
+            if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
+            StopAllCoroutines();
+            _statManager = null;
+            _playerHealth = null;
         }
 
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
         {
+            if (this == null) return;
             _isInitializedFromGlobal = false;
+
+            // [핵심 해결] 전역 데이터가 로드되면 동기화용 루틴을 다시 구동하여 UI를 강제 갱신합니다.
+            if (gameObject.activeInHierarchy)
+            {
+                if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
+                _syncCoroutine = StartCoroutine(CoInitialSyncWithDB());
+            }
         }
 
         private void RefreshSliderVisuals()
@@ -165,12 +178,23 @@ namespace BattlePvp.UI
 
         private void TryFindTarget()
         {
-            if (_statManager == null)
+            // [개선] 스태틱 주소(StatManager.Local)가 있다면 즉시 참조
+            if (StatManager.Local != null)
             {
-                _statManager = FindFirstObjectByType<StatManager>();
+                _statManager = StatManager.Local;
+            }
+            else if (NetworkClient.localPlayer != null)
+            {
+                _statManager = NetworkClient.localPlayer.GetComponent<StatManager>();
             }
             
-            if (_playerHealth == null && _statManager != null)
+            // [폴백] 로비 등 네트워크 비활성 상태에서 부모 객체로부터 찾기
+            if (_statManager == null)
+            {
+                _statManager = GetComponentInParent<StatManager>();
+            }
+
+            if (_statManager != null && _playerHealth == null)
                 _playerHealth = _statManager.GetComponent<HealthSystem>();
 
             if (PlayerHUD.Instance != null && _statManager != null && _playerHealth != null)
@@ -194,7 +218,8 @@ namespace BattlePvp.UI
             if (total > TotalInvestedBudget && changed != null)
             {
                 int overflow = total - TotalInvestedBudget;
-                float next = Mathf.Max(0f, (int)changed.Invested - overflow);
+                // 정수 연산을 보장하기 위해 (int)로 캐스팅 후 계산
+                int next = Mathf.Max(0, Mathf.RoundToInt(changed.Invested) - overflow);
                 changed.SetInvestedWithoutNotify(next);
             }
             
@@ -217,10 +242,10 @@ namespace BattlePvp.UI
         private void SyncVirtualFromSliders()
         {
             _virtualStats = _baseStats;
-            if (_str != null) _virtualStats.STR.Invested = _str.Invested;
-            if (_agi != null) _virtualStats.AGI.Invested = _agi.Invested;
-            if (_con != null) _virtualStats.CON.Invested = _con.Invested;
-            if (_def != null) _virtualStats.DEF.Invested = _def.Invested;
+            if (_str != null) _virtualStats.STR.Invested = (int)_str.Invested;
+            if (_agi != null) _virtualStats.AGI.Invested = (int)_agi.Invested;
+            if (_con != null) _virtualStats.CON.Invested = (int)_con.Invested;
+            if (_def != null) _virtualStats.DEF.Invested = (int)_def.Invested;
         }
 
         private void RebuildBudgetAndPreview()
@@ -301,7 +326,13 @@ namespace BattlePvp.UI
 
         private void Apply()
         {
-            if (_statManager == null) return;
+            // [추가] 적용 순간에 한 번 더 타겟 유효성을 검사하고 시도합니다.
+            if (_statManager == null) TryFindTarget();
+            if (_statManager == null) 
+            {
+                ShowFloatingMessage("대상을 동기화할 수 없습니다. 잠시 후 시도하세요.");
+                return;
+            }
 
             string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             bool isPreMatchScene = sceneName.Contains("wait") || sceneName.Contains("waiting");
@@ -335,8 +366,22 @@ namespace BattlePvp.UI
                 _statManager.CalculatePreviewStats(currentStats, out float atk, out float defP, out float hp, out float pene, out float regen, out float move, out float atkSpd);
                 PlayFabBattleManager.Instance.SavePlayerStats(currentStats, atk, hp, defP, pene, regen, move, atkSpd);
             }
+
+            // [수정] _statManager = null; 처리를 제거하여 Apply 직후 참조 유실로 인한 예외를 방지합니다.
+            // 대신 데이터 갱신만 수행합니다.
             LoadFromTarget();
+            RefreshSliderVisuals();
             RebuildBudgetAndPreview();
+            
+            // 적용 완료 후 패널을 닫아 부활 대기 상태(AnyKey)로 진입할 수 있게 합니다.
+            if (LobbyUIManager.Instance != null)
+            {
+                LobbyUIManager.Instance.SetCustomizerActive(false);
+            }
+            else
+            {
+                gameObject.SetActive(false);
+            }
         }
     }
 }

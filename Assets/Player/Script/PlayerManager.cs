@@ -1,10 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem; // 신형 시스템 네임스페이스
 using BattlePvp.Stats;
-using BattlePvp.Stats;
 using BattlePvp.Combat;
 using System.Collections;
 using Mirror;
+using BattlePvp.Logic; // 추가
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(Animator))]
@@ -106,7 +106,8 @@ public class PlayerManager : NetworkBehaviour
     private void Update()
     {
         if (!isLocalPlayer) return;
-        if (isDead) return;
+        // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
+        if (isDead || GameInputController.IsPaused) return;
         ApplyMovement();
     }
 
@@ -165,18 +166,25 @@ public class PlayerManager : NetworkBehaviour
         Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
         controller.Move(finalMove * Time.deltaTime);
 
-        // 5. 애니메이션 (속도 전달)
-        animator.SetFloat(speedHash, inputVector.magnitude);
+        // 5. 애니메이션 (사망 시 업데이트 중지)
+        if (!isDead)
+        {
+            animator.SetFloat(speedHash, inputVector.magnitude);
+        }
     }
 
     private void HandleDeath()
     {
         if (!isLocalPlayer) return;
+        if (isDead) return; // 중복 실행 방지
+        
         isDead = true;
         inputVector = Vector2.zero;
         isAttacking = false;
 
-        animator.SetTrigger("Die");
+        // 즉시 애니메이션 파라미터 초기화 및 사망 상태 설정
+        animator.SetFloat(speedHash, 0f);
+        animator.SetBool("IsDead", true); // Trigger 대신 Bool 사용 권장
         
         if (controller != null) controller.enabled = false;
 
@@ -185,56 +193,95 @@ public class PlayerManager : NetworkBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        BattlePvp.UI.PlayerHudView hudView = GetComponentInChildren<BattlePvp.UI.PlayerHudView>();
-        
-        // 1. 5초 카운트다운
+        // 1. Die 애니메이션 진행 기간 (3초 대기)
+        if (BattlePvp.UI.PlayerHUD.Instance != null)
+            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, "유다희...");
+            
+        yield return new WaitForSeconds(3f);
+
+        // 2. 캐릭터 시각적/물리적 제거 (3초 후)
+        ToggleCharacterVisibility(false);
+
+        // 3. 부활 카운트다운 (5초)
         for (int i = 5; i > 0; i--)
         {
-            if (hudView != null) hudView.SetDeathOverlay(true, $"부활 대기 중... {i}");
+            if (BattlePvp.UI.PlayerHUD.Instance != null)
+                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"부활 대기 중... {i}");
             yield return new WaitForSeconds(1f);
         }
-        
-        if (hudView != null) hudView.SetDeathOverlay(true, "Press AnyKey");
 
-        // 2. AnyKey 입력 대기 및 스탯 검사
-        while (true)
+        if (BattlePvp.UI.PlayerHUD.Instance != null)
+            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, "스페이스바를 눌러 부활 (Space)");
+
+        // 4. Space 키 입력 대기
+        bool keyPressed = false;
+        while (!keyPressed)
         {
-            if (UnityEngine.Input.anyKeyDown)
-            {
-                // 잔여 스탯 검증
-                if (BattlePvp.UI.StatCustomizerController.Instance != null &&
-                    BattlePvp.UI.StatCustomizerController.Instance.GetRemainPoints() != 0)
-                {
-                    BattlePvp.UI.StatCustomizerController.Instance.ShowFloatingMessage("스테이터스를 모두 분배해주십시오");
-                    yield return null; 
-                    continue;
-                }
-                break; 
-            }
+            // 신형 Input System 방식 (스페이스바 감지)
+            if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) keyPressed = true;
+
+            // AnyKey를 누르면 스탯 분배 여부와 상관없이 즉시 부활 프로세스 진행
             yield return null;
         }
 
-        // 3. 부활 로직 및 랜덤 스폰
-        if (hudView != null) hudView.SetDeathOverlay(false);
-        isDead = false;
-        if (controller != null) controller.enabled = false; // 이동을 위해 컨트롤러 일시 해제
-        
-        if (Mirror.NetworkManager.startPositions != null && Mirror.NetworkManager.startPositions.Count > 0)
+        // 5. 부활 및 랜덤 스폰 로직
+        if (BattlePvp.UI.PlayerHUD.Instance != null)
+            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(false);
+
+        // 위치 이동 (NetworkManager의 시작지점 활용)
+        Vector3 spawnPos = Vector3.zero;
+        Quaternion spawnRot = Quaternion.identity;
+
+        var startPositions = Mirror.NetworkManager.startPositions;
+        if (startPositions != null && startPositions.Count > 0)
         {
-            var starts = Mirror.NetworkManager.startPositions;
-            Transform spawnPoint = starts[UnityEngine.Random.Range(0, starts.Count)];
-            transform.position = spawnPoint.position;
-            transform.rotation = spawnPoint.rotation;
+            Transform start = startPositions[UnityEngine.Random.Range(0, startPositions.Count)];
+            spawnPos = start.position;
+            spawnRot = start.rotation;
         }
 
+        transform.SetPositionAndRotation(spawnPos, spawnRot);
+        
+        // 상태 복구
+        isDead = false;
+        ToggleCharacterVisibility(true);
         if (controller != null) controller.enabled = true;
         
-        animator.Play("Idle"); 
+        // 애니메이션 상태 강제 초기화
+        animator.SetBool("IsDead", false);
+        animator.SetFloat(speedHash, 0f);
+        animator.Play("Idle", 0, 0f); 
+
+        // 카메라 및 입력을 게임 모드로 리셋
+        if (followCamera != null)
+        {
+            followCamera.SetTarget(this.transform);
+        }
+        
+        // [추가] 부활 시 강제로 게임 플레이 모드(커서 잠금 등)로 전환
+        if (GameInputController.Instance != null)
+        {
+            GameInputController.Instance.ResetToPlayMode();
+        }
         
         if (_healthSystem != null)
         {
             _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
-            _healthSystem.Revive(1f); // 바뀐 최대 체력 기준 100% 비율로 부활
+            _healthSystem.Revive(1f);
         }
+    }
+
+    private void ToggleCharacterVisibility(bool visible)
+    {
+        // 렌더러 비활성화 (자식 객체 포함)
+        var renderers = GetComponentsInChildren<Renderer>();
+        foreach (var r in renderers) r.enabled = visible;
+
+        // 충돌체 비활성화 (트리거 제외)
+        var colliders = GetComponentsInChildren<Collider>();
+        foreach (var c in colliders) c.enabled = visible;
+        
+        // CharacterController는 별도로 관리
+        if (controller != null) controller.enabled = visible && !isDead;
     }
 }

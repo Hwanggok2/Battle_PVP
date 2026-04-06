@@ -40,6 +40,7 @@ namespace BattlePvp.UI
         {
             if (_slider != null)
             {
+                _slider.wholeNumbers = true; // 정수 단위 스냅 활성화
                 _slider.minValue = 0f;
                 _slider.maxValue = MaxInvested;
             }
@@ -49,6 +50,7 @@ namespace BattlePvp.UI
         {
             if (_slider != null)
             {
+                _slider.wholeNumbers = true;
                 _slider.minValue = 0f;
                 _slider.maxValue = MaxInvested;
                 _slider.onValueChanged.AddListener(OnSliderChanged);
