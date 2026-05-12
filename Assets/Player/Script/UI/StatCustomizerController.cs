@@ -214,6 +214,23 @@ namespace BattlePvp.UI
 
         private void OnInvestedChanged(StatSlider changed, float _)
         {
+            if (changed != null)
+            {
+                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                bool isBattleScene = sceneName.Contains("Battle") || sceneName.Contains("wait");
+                
+                if (isBattleScene)
+                {
+                    int maxAllowed = TotalInvestedBudget - 1;
+                    if (Mathf.RoundToInt(changed.Invested) > maxAllowed)
+                    {
+                        changed.SetInvestedWithoutNotify(maxAllowed);
+                        ShowFloatingMessage($"배틀 중 몰빵형 변환 불가 (최대 {maxAllowed} 제한)");
+                    }
+                }
+            }
+
+
             int total = GetTotalInvested();
             if (total > TotalInvestedBudget && changed != null)
             {

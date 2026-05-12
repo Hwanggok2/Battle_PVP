@@ -174,7 +174,13 @@ namespace BattlePvp.UI
 
             bool isMonostat = IsCurrentlyMonostat();
 
-            if (isLobby || isBattleWaiting)
+            if (isLobby)
+            {
+                if (_battleButton != null) { _battleButton.gameObject.SetActive(true); _battleButton.interactable = true; }
+                if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(true); _statSettingButton.interactable = true; }
+                return;
+            }
+            else if (isBattleWaiting)
             {
                 if (_battleButton != null) { _battleButton.gameObject.SetActive(true); _battleButton.interactable = true; }
                 if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(!isMonostat); _statSettingButton.interactable = true; }
