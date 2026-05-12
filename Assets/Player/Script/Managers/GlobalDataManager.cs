@@ -11,11 +11,17 @@ namespace BattlePvp.Managers
     public sealed class GlobalDataManager : MonoBehaviour
     {
         private static GlobalDataManager _instance;
+        private static bool _applicationIsQuitting = false;
 
         public static GlobalDataManager Instance
         {
             get
             {
+                if (_applicationIsQuitting) 
+                {
+                    return null;
+                }
+
                 if (_instance == null)
                 {
                     // 씬에서 먼저 찾아봅니다.
@@ -32,6 +38,11 @@ namespace BattlePvp.Managers
                 }
                 return _instance;
             }
+        }
+
+        private void OnApplicationQuit()
+        {
+            _applicationIsQuitting = true;
         }
 
         [Header("Persistent Data")]

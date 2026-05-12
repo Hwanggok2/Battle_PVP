@@ -101,8 +101,12 @@ public class PlayerCombat : MonoBehaviour
         }
 
         // ScriptableObject에 적힌 애니메이션 이름을 재생합니다.
-        // 화살표(Transition) 없이도 즉시 실행되지만, 현재 동작을 끊지 않도록 설계되었습니다.
-        animator.Play(comboList[index].animationName);
+        // 아바타 마스크가 적용된 1번 레이어(New Layer)에서 실행
+        animator.Play(comboList[index].animationName, 1, 0f);
+
+        // 애니메이션 상태 추적 코루틴 시작
+        if (_comboRoutine != null) StopCoroutine(_comboRoutine);
+        _comboRoutine = StartCoroutine(CoComboMonitor(index));
 
         // 현재 공격 데이터 세팅
         foreach (var hb in _hitboxes)
@@ -122,21 +126,62 @@ public class PlayerCombat : MonoBehaviour
         foreach (var hb in _hitboxes) if (hb != null) hb.DisableHitBox();
     }
 
-    // [중요] StateMachineBehaviour에서 애니메이션이 끝날 때 호출할 함수
-    public void OnAttackAnimationEnd()
+    // [중요] 애니메이션 진행도를 Coroutine으로 추적하여 콤보를 진행합니다.
+    private Coroutine _comboRoutine;
+
+    private System.Collections.IEnumerator CoComboMonitor(int index)
     {
-        // 마지막 타수가 아니고, 유저가 클릭을 해서 예약이 되어 있다면
+        // Animator에 Play 명령이 반영될 때까지 2프레임 대기
+        yield return null;
+        yield return null;
+
+        while (true)
+        {
+            if (animator == null) yield break;
+
+            var stateInfo = animator.GetCurrentAnimatorStateInfo(1);
+
+            // 현재 상태가 우리가 실행한 공격 애니메이션인 경우
+            if (stateInfo.IsName(comboList[index].animationName))
+            {
+                // 애니메이션이 거의 끝났을 때 (95% 이상)
+                if (stateInfo.normalizedTime >= 0.95f)
+                {
+                    break;
+                }
+            }
+            else
+            {
+                // 재생 중이 아닌데 트랜지션(전환) 중도 아니라면, 피격 등 다른 상태로 강제 전환된 것
+                if (!animator.IsInTransition(1))
+                {
+                    StopCombo();
+                    yield break;
+                }
+            }
+
+            yield return null;
+        }
+
+        // 애니메이션이 무사히 끝났을 때의 처리
         if (hasComboReserved && currentComboIndex < comboList.Length - 1)
         {
-            // 다음 타수로 넘어갑니다.
+            // 예약이 되어 있으면 다음 타수 진행
             StartAttack(currentComboIndex + 1);
         }
         else
         {
-            // 예약이 없거나 마지막 3타였다면 콤보를 완전히 종료합니다.
+            // 예약이 없거나 마지막 3타였다면 콤보 완전히 종료
             StopCombo();
             animator.speed = 1.0f; // 속도 원복
         }
+    }
+
+    // StateMachineBehaviour에서 기존에 호출하던 함수 (이제 내부 처리를 안 함)
+    // 에러 방지를 위해 빈 함수로 남겨둡니다.
+    public void OnAttackAnimationEnd()
+    {
+        // 콤보 로직은 이제 CoComboMonitor에서 안전하게 자체 처리됩니다.
     }
 
     private void StopCombo()
