@@ -130,17 +130,14 @@ public class PlayerManager : NetworkBehaviour
 
             moveDirection = (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
 
-            // 2. 캐릭터 회전 (Core Task 4: 공격 중에는 회전 비활성화)
-            if (!isAttacking)
-            {
-                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
-            }
+            // 2. 캐릭터 회전 (공격 중에도 카메라 방향에 맞춰 회전 허용)
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
         }
         else
         {
             // 카메라가 없을 경우 기존 월드 기준 이동 (폴백)
             moveDirection = new Vector3(inputVector.x, 0, inputVector.y).normalized;
-            if (inputVector.sqrMagnitude > 0.001f && !isAttacking)
+            if (inputVector.sqrMagnitude > 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
