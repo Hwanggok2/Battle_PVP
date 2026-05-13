@@ -20,7 +20,7 @@ namespace BattlePvp.Networking
         [SyncVar(hook = nameof(OnStateChanged))]
         public BattleState CurrentState = BattleState.Waiting;
 
-        [SyncVar]
+        [SyncVar(hook = nameof(OnRemainingTimeChanged))]
         public float RemainingTime = 0f;
 
         [Header("Settings")]
@@ -29,46 +29,57 @@ namespace BattlePvp.Networking
         public float MatchDuration = 180f;
         public float RespawnDuration = 5f;
 
+        private Coroutine _activeMatchRoutine;
+
         private void Awake()
         {
-            if (Instance == null) Instance = this;
+            if (Instance == null)
+            {
+                Instance = this;
+            }
+            else
+            {
+                Debug.LogWarning("[BattleStateMachine] 중복 인스턴스 감지됨. 파괴합니다.");
+                Destroy(gameObject);
+            }
         }
 
         public override void OnStartServer()
         {
             base.OnStartServer();
             CurrentState = BattleState.Waiting;
+
+            // Battle 씬 진입 시 자동으로 매치 흐름 시작
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (sceneName.Equals("Battle") || (sceneName.Contains("Battle") && !sceneName.Contains("wait")))
+            {
+                Debug.Log("[BattleStateMachine] Battle scene detected. Auto-starting match flow.");
+                StartMatch();
+            }
         }
 
         [Server]
         public void StartMatch()
         {
             if (CurrentState != BattleState.Waiting) return;
-            StartCoroutine(MatchFlowRoutine());
+            
+            // 이미 매치 흐름이 진행 중이라면 중복 실행 방지
+            if (_activeMatchRoutine != null)
+            {
+                Debug.LogWarning("[BattleStateMachine] 매치 루틴이 이미 실행 중입니다. 중복 실행을 방지합니다.");
+                return;
+            }
+
+            _activeMatchRoutine = StartCoroutine(MatchFlowRoutine());
         }
 
         private IEnumerator MatchFlowRoutine()
         {
-            // 1. Pre-Match
-            CurrentState = BattleState.PreMatch;
-            RemainingTime = PreMatchDuration;
-            while (RemainingTime > 0)
-            {
-                yield return new WaitForSeconds(1f);
-                RemainingTime--;
-            }
+            Debug.Log("[BattleStateMachine] Match 흐름 시작 (1초 네트워크 안정화 대기)");
+            yield return new WaitForSeconds(1f); // 씬 로드 및 네트워크 초기화를 위한 짧은 대기
 
-            // 2. Countdown
-            CurrentState = BattleState.Countdown;
-            RemainingTime = CountdownDuration;
-            // 여기서 스폰 포인트 계산 및 유저 텔레포트 명령(Rpc)을 보낼 수 있습니다.
+            // 스폰 포인트 계산 및 유저 텔레포트 명령(Rpc) 전송
             RpcTeleportToSpawnPoints();
-
-            while (RemainingTime > 0)
-            {
-                yield return new WaitForSeconds(1f);
-                RemainingTime--;
-            }
 
             // 3. In-Battle
             CurrentState = BattleState.InBattle;
@@ -81,6 +92,7 @@ namespace BattlePvp.Networking
 
             // 4. Match End (추후 구현)
             Debug.Log("Match Ended!");
+            _activeMatchRoutine = null; // 루틴 종료 처리
         }
 
         [ClientRpc]
@@ -105,6 +117,21 @@ namespace BattlePvp.Networking
         {
             Debug.Log($"Battle State Changed: {oldState} -> {newState}");
             // UI 업데이트 알림 등을 여기서 수행할 수 있습니다.
+            if (BattleTimerUI.Instance != null)
+            {
+                if (newState == BattleState.Countdown)
+                    BattleTimerUI.Instance.UpdateStateMessage("Get Ready!", true);
+                else if (newState == BattleState.InBattle)
+                    BattleTimerUI.Instance.UpdateStateMessage("", false);
+            }
+        }
+
+        private void OnRemainingTimeChanged(float oldTime, float newTime)
+        {
+            if (BattleTimerUI.Instance != null)
+            {
+                BattleTimerUI.Instance.UpdateTime(newTime);
+            }
         }
 
         #region [Internal Player Logic]

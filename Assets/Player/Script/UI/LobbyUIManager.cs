@@ -171,6 +171,11 @@ namespace BattlePvp.UI
                 if (_lobby_UI != null) _lobby_UI.SetActive(true);
                 if (_battlePanelCached != null) _battlePanelCached.SetActive(true);
             }
+            else if (isBattle)
+            {
+                // 전투 씬 진입 시 로비 메인 UI 숨기기
+                if (_lobby_UI != null) _lobby_UI.SetActive(false);
+            }
 
             bool isMonostat = IsCurrentlyMonostat();
 
@@ -198,6 +203,7 @@ namespace BattlePvp.UI
 
                 if (isDead)
                 {
+                    if (_lobby_UI != null) _lobby_UI.SetActive(true);
                     if (_battleButton != null) _battleButton.gameObject.SetActive(true);
                     if (_statSettingButton != null) _statSettingButton.gameObject.SetActive(!isMonostat);
                 }
