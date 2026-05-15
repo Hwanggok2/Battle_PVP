@@ -80,6 +80,12 @@ namespace BattlePvp.Networking
                 result => {
                     Debug.Log("로그인 성공!");
                     
+                    // 로그인 시 사용한 아이디를 임시 닉네임으로 저장
+                    if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+                    {
+                        BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname = username;
+                    }
+                    
                     // [추가] 로그인 성공 시 서버에서 플레이어 스텟 정보를 불러오도록 연동합니다.
                     var battleManager = PlayFabBattleManager.Instance;
                     if (battleManager == null)

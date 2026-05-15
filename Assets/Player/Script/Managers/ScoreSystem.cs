@@ -33,7 +33,12 @@ namespace BattlePvp.Combat
         [SyncVar(hook = nameof(OnPointsChanged))]
         public int CurrentPoints = 0;
 
+        [SyncVar(hook = nameof(OnNameChanged))]
+        public string PlayerName = "Unknown";
+
         public static event System.Action<ScoreSystem> OnScoreUpdated;
+
+        public static readonly List<ScoreSystem> ActiveScores = new List<ScoreSystem>();
 
         private IXpDistributor _xpDistributor = new SimpleXpDistributor();
 
@@ -43,7 +48,63 @@ namespace BattlePvp.Combat
             CurrentPoints += amount;
         }
 
+        /// <summary>
+        /// 클라이언트에서 서버로 점수 추가를 요청합니다.
+        /// </summary>
+        [Command]
+        public void CmdAddPoint(int amount)
+        {
+            AddPoint(amount);
+        }
+
+        [Server]
+        public void SetPlayerName(string newName)
+        {
+            PlayerName = newName;
+        }
+
+        /// <summary>
+        /// 클라이언트에서 서버로 닉네임 설정을 요청합니다.
+        /// </summary>
+        [Command]
+        public void CmdSetPlayerName(string newName)
+        {
+            SetPlayerName(newName);
+        }
+
+        public override void OnStartLocalPlayer()
+        {
+            base.OnStartLocalPlayer();
+            // GlobalDataManager에 저장된 닉네임을 서버로 전송
+            var gdm = BattlePvp.Managers.GlobalDataManager.Instance;
+            if (gdm != null && !string.IsNullOrEmpty(gdm.PlayerNickname))
+            {
+                CmdSetPlayerName(gdm.PlayerNickname);
+            }
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            if (!ActiveScores.Contains(this))
+                ActiveScores.Add(this);
+            OnScoreUpdated?.Invoke(this);
+        }
+
+        public override void OnStopClient()
+        {
+            base.OnStopClient();
+            if (ActiveScores.Contains(this))
+                ActiveScores.Remove(this);
+            OnScoreUpdated?.Invoke(this);
+        }
+
         private void OnPointsChanged(int oldVal, int newVal)
+        {
+            OnScoreUpdated?.Invoke(this);
+        }
+
+        private void OnNameChanged(string oldVal, string newVal)
         {
             OnScoreUpdated?.Invoke(this);
         }

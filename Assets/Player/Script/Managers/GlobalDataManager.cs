@@ -47,6 +47,20 @@ namespace BattlePvp.Managers
 
         [Header("Persistent Data")]
         [SerializeField] private StatContainer _savedStats;
+        [SerializeField] private string _playerNickname = "Unknown";
+
+        /// <summary>
+        /// 로그인 시 설정된 플레이어 닉네임. 씬 전환 후에도 유지됩니다.
+        /// </summary>
+        public string PlayerNickname
+        {
+            get => _playerNickname;
+            set
+            {
+                _playerNickname = value;
+                Debug.Log($"[GlobalDataManager] PlayerNickname set to: {_playerNickname}");
+            }
+        }
         
         public event System.Action<StatContainer> OnSavedStatsUpdated;
 

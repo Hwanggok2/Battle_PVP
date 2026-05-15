@@ -139,6 +139,12 @@ namespace BattlePvp.UI
         {
             TryFindLocalPlayer();
 
+            // 로그인 ID 표시
+            if (_loginIdText != null && BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                _loginIdText.text = BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname;
+            }
+
             StatContainer displayStats;
             
             if (_statManager != null)

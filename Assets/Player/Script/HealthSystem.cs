@@ -65,6 +65,8 @@ namespace BattlePvp.Combat
         private Coroutine _overflowRoutine;
         private Coroutine _regenRoutine;
 
+        private IDamageReceiver _lastAttacker;
+
         private void Awake()
         {
             if (_statManager == null)
@@ -206,6 +208,11 @@ namespace BattlePvp.Combat
         {
             if (isInvincible || amount <= 0f)
                 return;
+
+            if (attacker != null)
+            {
+                _lastAttacker = attacker;
+            }
 
             float next = _currentHp - amount;
             
@@ -425,6 +432,21 @@ namespace BattlePvp.Combat
                     _animator.SetTrigger("Die");
                     Debug.Log($"[HealthSystem:{gameObject.name}] Die trigger set on Animator.");
                 }
+                
+                // 막타 점수 부여 로직
+                if (isServer && _lastAttacker != null)
+                {
+                    if (_lastAttacker is MonoBehaviour attackerMb && attackerMb != null)
+                    {
+                        var attackerScore = attackerMb.GetComponent<ScoreSystem>();
+                        if (attackerScore != null)
+                        {
+                            attackerScore.AddPoint(1);
+                            Debug.Log($"[HealthSystem] {_lastAttacker} killed {gameObject.name}. Awarded 1 point.");
+                        }
+                    }
+                }
+
                 OnDied?.Invoke();
                 Debug.Log($"[HealthSystem:{gameObject.name}] IsDead set to true.");
             }
