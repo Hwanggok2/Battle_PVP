@@ -91,5 +91,22 @@ namespace BattlePvp.UI
             if (_scoreText != null)
                 _scoreText.text = $"{points}";
         }
+
+        [Header("Loading Overlay")]
+        [SerializeField] private GameObject _loadingDimObject;
+
+        public void SetLoadingOverlay(bool active)
+        {
+            if (_loadingDimObject != null)
+            {
+                _loadingDimObject.SetActive(active);
+            }
+            else if (_deathDimObject != null)
+            {
+                // 로딩 딤이 별도로 없다면 사망 딤을 재사용 (단, 텍스트는 숨김)
+                _deathDimObject.SetActive(active);
+                if (_deathCountdownText != null && active) _deathCountdownText.text = "Loading...";
+            }
+        }
     }
 }

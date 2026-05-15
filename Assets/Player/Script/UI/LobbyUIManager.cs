@@ -39,6 +39,7 @@ namespace BattlePvp.UI
         private GameObject _battlePanelCached;
         private Coroutine _discoveryRoutine;
         private Coroutine _statUpdateRoutine;
+        private BattlePvp.Combat.HealthSystem _localHealthSystem;
 
         private void Awake()
         {
@@ -114,19 +115,20 @@ namespace BattlePvp.UI
                 if (statMgr != null) statMgr.StatsChanged -= OnLocalStatsChanged;
             }
 
-            // [최적화] 모든 루틴 정지 및 참조 초기화
+            if (_localHealthSystem != null)
+            {
+                _localHealthSystem.OnDied -= OnLocalPlayerDied;
+                _localHealthSystem.OnRevived -= OnLocalPlayerRevived;
+                _localHealthSystem = null;
+            }
+
+            // [최적화] 모든 루틴 정지
             StopAllCoroutines();
             _discoveryRoutine = null;
             _statUpdateRoutine = null;
-            _canvas_Customizer = null;
         }
 
-        private void Update()
-        {
-            // [최적화] 매 프레임 탐색을 방지하고 가시성 갱신만 수행
-            if (this == null) return;
-            RefreshVisibility();
-        }
+        // Update() 제거 (이벤트 기반으로 전환)
 
         private IEnumerator CoAutoDiscovery()
         {
@@ -141,8 +143,13 @@ namespace BattlePvp.UI
         private void FindCanvasCustomizer()
         {
             if (this == null) return;
-            if (_canvas_Customizer != null && _canvas_Customizer.name.Contains("_Root")) _canvas_Customizer = null;
-            if (_canvas_Customizer != null) return;
+
+            // Unity bool 캐스팅: Missing(파괴된) 오브젝트도 false로 올바르게 감지
+            if (_canvas_Customizer && _canvas_Customizer.name.Contains("_Root"))
+                _canvas_Customizer = null;
+            if (_canvas_Customizer) return;
+
+            _canvas_Customizer = null; // Missing 참조 완전 제거
 
             var allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
             foreach (var go in allObjects)
@@ -171,11 +178,7 @@ namespace BattlePvp.UI
                 if (_lobby_UI != null) _lobby_UI.SetActive(true);
                 if (_battlePanelCached != null) _battlePanelCached.SetActive(true);
             }
-            else if (isBattle)
-            {
-                // 전투 씬 진입 시 로비 메인 UI 숨기기
-                if (_lobby_UI != null) _lobby_UI.SetActive(false);
-            }
+            // Battle 씬에서는 Lobby_UI를 비활성화하지 않음 — 버튼 단위로만 가시성 조절
 
             bool isMonostat = IsCurrentlyMonostat();
 
@@ -204,7 +207,8 @@ namespace BattlePvp.UI
                 if (isDead)
                 {
                     if (_lobby_UI != null) _lobby_UI.SetActive(true);
-                    if (_battleButton != null) _battleButton.gameObject.SetActive(true);
+                    // 사망 시 Stat 버튼만 활성화 — 플레이어가 직접 눌러서 창을 열도록 합니다.
+                    if (_battleButton != null) _battleButton.gameObject.SetActive(false);
                     if (_statSettingButton != null) _statSettingButton.gameObject.SetActive(!isMonostat);
                 }
                 else
@@ -222,11 +226,22 @@ namespace BattlePvp.UI
 
             var statMgr = Mirror.NetworkClient.localPlayer.GetComponent<StatManager>();
             if (statMgr != null)
-            {
                 statMgr.StatsChanged += OnLocalStatsChanged;
-                RefreshVisibility();
+
+            // HealthSystem 이벤트 구독 (사망/부활 시 가시성 갱신)
+            var hs = Mirror.NetworkClient.localPlayer.GetComponent<BattlePvp.Combat.HealthSystem>();
+            if (hs != null)
+            {
+                _localHealthSystem = hs;
+                hs.OnDied += OnLocalPlayerDied;
+                hs.OnRevived += OnLocalPlayerRevived;
             }
+
+            RefreshVisibility();
         }
+
+        private void OnLocalPlayerDied() => RefreshVisibility();
+        private void OnLocalPlayerRevived() => RefreshVisibility();
 
         private void OnLocalStatsChanged(StatContainer _) => RefreshVisibility();
 

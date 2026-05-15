@@ -21,6 +21,7 @@ namespace BattlePvp.UI
 
         private Button _button;
         private bool _isCountingDown = false;
+        private bool _isSceneTransitioning = false;
         private string _originalText = "Start";
 
         private void Awake()
@@ -96,15 +97,22 @@ namespace BattlePvp.UI
                 _countdownText.text = "Starting...";
             }
 
+            // 이미 목표 씬이거나 전환 중이라면 중복 실행 방지
+            if (_isSceneTransitioning || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == _battleSceneName)
+            {
+                _isCountingDown = false;
+                yield break;
+            }
+
+            _isSceneTransitioning = true;
+
             // 씬 전환 처리
             if (NetworkManager.singleton != null && NetworkServer.active)
             {
-                // Mirror 환경에서의 씬 전환 (서버가 클라이언트들의 씬을 함께 변경)
                 NetworkManager.singleton.ServerChangeScene(_battleSceneName);
             }
             else
             {
-                // 싱글플레이 또는 오프라인 테스트 환경에서의 씬 전환
                 SceneManager.LoadScene(_battleSceneName);
             }
 

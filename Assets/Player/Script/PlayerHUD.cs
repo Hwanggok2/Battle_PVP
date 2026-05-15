@@ -30,6 +30,9 @@ namespace BattlePvp.UI
 
         /// <summary>플레이어 사망 패널 제어</summary>
         void SetDeathOverlay(bool active, string text = "");
+
+        /// <summary>전장 진입 시 로딩 패널 제어</summary>
+        void SetLoadingOverlay(bool active);
     }
 
     /// <summary>
@@ -128,6 +131,20 @@ namespace BattlePvp.UI
             }
         }
 
+        private void Start()
+        {
+            // 프리팹에서 기본 켜짐(Active) 상태인 로딩창을 안전하게 제어
+            // 전장 진입 전(예: 로비)이거나 배틀 매니저가 없을 때는 로딩창을 즉시 끕니다.
+            if (BattlePvp.Networking.BattleStateMachine.Instance != null)
+            {
+                UpdateLoadingOverlay(BattlePvp.Networking.BattleStateMachine.Instance.IsLoading);
+            }
+            else
+            {
+                UpdateLoadingOverlay(false);
+            }
+        }
+
         private void OnEnable()
         {
             if (_hudView != null && _damageReceiver != null)
@@ -186,6 +203,11 @@ namespace BattlePvp.UI
         /// 사망 패널을 띄우거나 닫습니다.
         /// </summary>
         public void UpdateDeathOverlay(bool active, string text = "") => _hudView?.SetDeathOverlay(active, text);
+
+        /// <summary>
+        /// 로딩 오버레이를 띄우거나 닫습니다.
+        /// </summary>
+        public void UpdateLoadingOverlay(bool active) => _hudView?.SetLoadingOverlay(active);
 
         #endregion
     }

@@ -23,6 +23,9 @@ namespace BattlePvp.Networking
         [SyncVar(hook = nameof(OnRemainingTimeChanged))]
         public float RemainingTime = 0f;
 
+        [SyncVar(hook = nameof(OnIsLoadingChanged))]
+        public bool IsLoading = false;
+
         [Header("Settings")]
         public float PreMatchDuration = 10f;
         public float CountdownDuration = 5f;
@@ -44,16 +47,23 @@ namespace BattlePvp.Networking
             }
         }
 
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            // 클라이언트 접속 시 현재 로딩 상태를 즉시 적용합니다.
+            OnIsLoadingChanged(false, IsLoading);
+        }
+
         public override void OnStartServer()
         {
             base.OnStartServer();
             CurrentState = BattleState.Waiting;
 
-            // Battle 씬 진입 시 자동으로 매치 흐름 시작
+            // 정확히 "Battle" 씬일 때만 매치를 시작합니다. (Battle_waiting 등 오발 방지)
             string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (sceneName.Equals("Battle") || (sceneName.Contains("Battle") && !sceneName.Contains("wait")))
+            if (sceneName == "Battle")
             {
-                Debug.Log("[BattleStateMachine] Battle scene detected. Auto-starting match flow.");
+                Debug.Log("[BattleStateMachine] Battle scene detected. StartMatch 호출.");
                 StartMatch();
             }
         }
@@ -75,11 +85,30 @@ namespace BattlePvp.Networking
 
         private IEnumerator MatchFlowRoutine()
         {
-            Debug.Log("[BattleStateMachine] Match 흐름 시작 (1초 네트워크 안정화 대기)");
-            yield return new WaitForSeconds(1f); // 씬 로드 및 네트워크 초기화를 위한 짧은 대기
+            Debug.Log("[BattleStateMachine] Match 흐름 시작 (로딩 연출)");
+            
+            // 1. 모든 클라이언트에게 로딩 화면 켜기 지시 (SyncVar를 통해 늦게 접속한 유저도 처리)
+            IsLoading = true;
 
-            // 스폰 포인트 계산 및 유저 텔레포트 명령(Rpc) 전송
+            // 클라이언트들의 스탯 동기화 대기를 위한 딜레이 (1.5초로 최적화)
+            yield return new WaitForSeconds(1.5f);
+
+            // 2. 스폰 포인트 배치
             RpcTeleportToSpawnPoints();
+
+            // 3. 모든 플레이어 체력 최대치로 강제 설정 (서버 권한)
+            // 약간의 프레임 대기 후 갱신
+            yield return null;
+            var allHealthSystems = FindObjectsByType<HealthSystem>(FindObjectsSortMode.None);
+            foreach (var hs in allHealthSystems)
+            {
+                hs.RefreshFromStats(keepCurrentHpFlat: false);
+                hs.RefillHealth();
+            }
+            Debug.Log($"[BattleStateMachine] {allHealthSystems.Length}명의 체력을 최대치로 초기화했습니다.");
+
+            // 4. 로딩 화면 끄기
+            IsLoading = false;
 
             // 3. In-Battle
             CurrentState = BattleState.InBattle;
@@ -92,7 +121,34 @@ namespace BattlePvp.Networking
 
             // 4. Match End (추후 구현)
             Debug.Log("Match Ended!");
-            _activeMatchRoutine = null; // 루틴 종료 처리
+            _activeMatchRoutine = null;
+        }
+
+        private void OnIsLoadingChanged(bool oldVal, bool newVal)
+        {
+            if (PlayerHUD.Instance != null)
+            {
+                PlayerHUD.Instance.UpdateLoadingOverlay(newVal);
+            }
+            else if (newVal == true) // 켜야 하는데 아직 HUD가 없다면 대기 후 실행
+            {
+                StartCoroutine(CoWaitAndShowLoading());
+            }
+        }
+
+        private IEnumerator CoWaitAndShowLoading()
+        {
+            float timeout = 5f; // 최대 5초 대기
+            while (PlayerHUD.Instance == null && timeout > 0)
+            {
+                timeout -= Time.deltaTime;
+                yield return null;
+            }
+            
+            if (PlayerHUD.Instance != null)
+            {
+                PlayerHUD.Instance.UpdateLoadingOverlay(IsLoading);
+            }
         }
 
         [ClientRpc]

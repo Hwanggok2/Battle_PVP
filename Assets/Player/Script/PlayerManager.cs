@@ -173,16 +173,15 @@ public class PlayerManager : NetworkBehaviour
     private void HandleDeath()
     {
         if (!isLocalPlayer) return;
-        if (isDead) return; // 중복 실행 방지
-        
+        if (isDead) return;
+
         isDead = true;
         inputVector = Vector2.zero;
         isAttacking = false;
 
-        // 즉시 애니메이션 파라미터 초기화 및 사망 상태 설정
         animator.SetFloat(speedHash, 0f);
-        animator.SetBool("IsDead", true); // Trigger 대신 Bool 사용 권장
-        
+        animator.SetBool("IsDead", true);
+
         if (controller != null) controller.enabled = false;
 
         StartCoroutine(RespawnRoutine());
@@ -190,34 +189,25 @@ public class PlayerManager : NetworkBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        // 1. Die 애니메이션 진행 기간 (3초 대기)
-        if (BattlePvp.UI.PlayerHUD.Instance != null)
-            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, "유다희...");
-            
-        yield return new WaitForSeconds(3f);
-
-        // 2. 캐릭터 시각적/물리적 제거 (3초 후)
-        ToggleCharacterVisibility(false);
-
-        // 3. 부활 카운트다운 (5초)
+        // 1. 사망 즉시 5초 카운트다운 시작
         for (int i = 5; i > 0; i--)
         {
             if (BattlePvp.UI.PlayerHUD.Instance != null)
-                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"부활 대기 중... {i}");
+                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"{i}");
             yield return new WaitForSeconds(1f);
         }
+
+        // 2. 캐릭터 시각적/물리적 제거
+        ToggleCharacterVisibility(false);
 
         if (BattlePvp.UI.PlayerHUD.Instance != null)
             BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, "스페이스바를 눌러 부활 (Space)");
 
-        // 4. Space 키 입력 대기
+        // 3. Space 키 입력 대기
         bool keyPressed = false;
         while (!keyPressed)
         {
-            // 신형 Input System 방식 (스페이스바 감지)
             if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) keyPressed = true;
-
-            // AnyKey를 누르면 스탯 분배 여부와 상관없이 즉시 부활 프로세스 진행
             yield return null;
         }
 

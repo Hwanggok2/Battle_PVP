@@ -287,8 +287,11 @@ namespace BattlePvp.Stats
         [Command]
         public void CmdUpdateStats(StatContainer stats)
         {
-            // 서버에서 SyncVar 값을 변경하면 모든 클라이언트로 전파됩니다.
             _stats = stats;
+            // 서버에서도 Identity 재계산 및 StatsChanged 이벤트 발생
+            // → HealthSystem.OnStatsChanged가 서버에서 실행되어 HP SyncVar가 정확한 값으로 동기화됩니다.
+            RecalculateIdentity();
+            StatsChanged?.Invoke(_stats);
         }
 
         private void InitializeCameraReference()

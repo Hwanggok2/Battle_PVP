@@ -51,6 +51,7 @@ namespace BattlePvp.Combat
         public event Action<float, float> HpChanged;
         public event Action<bool, float> OverflowChanged;
         public event Action OnDied;
+        public event Action OnRevived;
 
         [Header("Runtime Status (Read Only)")]
         [SerializeField] private float _maxHp;
@@ -86,11 +87,8 @@ namespace BattlePvp.Combat
 
         private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
-            if (scene.name == "Battle")
-            {
-                _currentHp = _maxHp;
-                RaiseHpChanged();
-            }
+            // HP 갱신은 StatManager.CmdUpdateStats → StatsChanged 이벤트 체인으로 처리됩니다.
+            // 씬 로드 직후 별도 처리 불필요.
         }
 
         private void OnEnable()
@@ -464,6 +462,7 @@ namespace BattlePvp.Combat
             _currentHp = _maxHp * Mathf.Clamp01(ratio);
             RaiseHpChanged();
             UpdateOverflowState();
+            OnRevived?.Invoke();
         }
 
         /// <summary>
