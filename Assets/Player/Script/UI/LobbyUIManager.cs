@@ -88,7 +88,7 @@ namespace BattlePvp.UI
             if (_createRoomButton != null) _createRoomButton.onClick.AddListener(OnCreateRoomButtonClicked);
             if (_joinRoomButton != null) _joinRoomButton.onClick.AddListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.AddListener(OnSaveRoomButtonClicked);
-            if (_saveRoomButtonComp != null) _saveRoomButtonComp.onClick.AddListener(OnSaveRoomButtonClicked);
+            if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.AddListener(OnSaveRoomButtonClicked);
 
             // [최적화] 코루틴 기반 지속적 탐색 루틴 시작
             if (_discoveryRoutine != null) StopCoroutine(_discoveryRoutine);
@@ -107,7 +107,7 @@ namespace BattlePvp.UI
             if (_createRoomButton != null) _createRoomButton.onClick.RemoveListener(OnCreateRoomButtonClicked);
             if (_joinRoomButton != null) _joinRoomButton.onClick.RemoveListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.RemoveListener(OnSaveRoomButtonClicked);
-            if (_saveRoomButtonComp != null) _saveRoomButtonComp.onClick.RemoveListener(OnSaveRoomButtonClicked);
+            if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.RemoveListener(OnSaveRoomButtonClicked);
 
             if (Mirror.NetworkClient.localPlayer != null)
             {
@@ -316,7 +316,8 @@ namespace BattlePvp.UI
             {
                 PlayFabBattleManager.Instance.CreateRoom(roomName);
                 if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
-                if (_lobby_UI != null) _lobby_UI.SetActive(false);
+                if (_lobby_UI != null) _lobby_UI.SetActive(true);
+                if (_room_UI != null) _room_UI.SetActive(true);
             }
         }
 

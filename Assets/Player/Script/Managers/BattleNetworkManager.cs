@@ -75,6 +75,7 @@ namespace BattlePvp.Networking
 
         public override void OnClientDisconnect()
         {
+            PlayFabBattleManager.Instance?.LeaveCurrentRoom();
             base.OnClientDisconnect();
             Debug.Log("[BattleNetworkManager] Client disconnected from server.");
         }

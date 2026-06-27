@@ -3,6 +3,7 @@ using PlayFab.ClientModels;
 using UnityEngine;
 using System.Collections.Generic;
 using BattlePvp.Stats;
+using BattlePvp.Managers;
 using System;
 using Mirror;
 
@@ -16,14 +17,44 @@ namespace BattlePvp.Networking
         public static PlayFabBattleManager Instance { get; private set; }
 
         private const string ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY"; // 방 목록을 저장할 공용 그룹 ID
+        private const string ROOM_STARTED_KEY = "IsStarted";
+        private const string ROOM_PLAYER_COUNT_KEY = "PlayerCount";
+        private const string ROOM_MASTER_NAME_KEY = "MasterName";
+
+        public struct RoomInfo
+        {
+            public RoomInfo(string roomName, string masterName, int playerCount)
+            {
+                RoomName = roomName;
+                MasterName = masterName;
+                PlayerCount = playerCount;
+            }
+
+            public string RoomName { get; private set; }
+            public string MasterName { get; private set; }
+            public int PlayerCount { get; private set; }
+        }
 
         [Header("Scene Settings")]
         [SerializeField] private string _waitSceneName = "Battle_wait"; // 인스펙터에서 설정 가능
 
         public event Action<Dictionary<string, string>> OnRoomListLoaded;
+        public event Action<Dictionary<string, RoomInfo>> OnRoomInfoListLoaded;
+        public event Action OnRoomRegistryChanged;
         public event Action OnRoomJoined;
 
         private bool _isHost = false; // 방장 여부 확인 플래그
+
+        private string _ownedRoomId;
+        private string _joinedRoomId;
+        private bool _hasJoinedRoomCount;
+        private RoomInfo _currentRoomInfo;
+        private readonly Dictionary<string, string> _knownRooms = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _knownRoomMasters = new Dictionary<string, string>();
+        private readonly Dictionary<string, int> _knownRoomCounts = new Dictionary<string, int>();
+
+        public string CurrentRoomId => _joinedRoomId;
+        public RoomInfo CurrentRoomInfo => _currentRoomInfo;
 
         private void Awake()
         {
@@ -71,6 +102,15 @@ namespace BattlePvp.Networking
         {
             _isHost = true; // 만드는 사람이 호스트가 됩니다.
             string roomId = Guid.NewGuid().ToString("N"); // 영문자+숫자로만 구성된 안전한 식별자
+            _ownedRoomId = roomId;
+            _joinedRoomId = roomId;
+            _hasJoinedRoomCount = true;
+            string masterName = GetCurrentPlayerNickname();
+            _knownRooms[roomId] = roomName;
+            _knownRoomMasters[roomId] = masterName;
+            _knownRoomCounts[roomId] = 1;
+            _currentRoomInfo = new RoomInfo(roomName, masterName, 1);
+            OnRoomRegistryChanged?.Invoke();
             var request = new CreateSharedGroupRequest
             {
                 SharedGroupId = roomId 
@@ -79,7 +119,9 @@ namespace BattlePvp.Networking
             PlayFabClientAPI.CreateSharedGroup(request, 
                 result => {
                     Debug.Log($"방 생성 성공: {roomName} (ID: {roomId})");
-                    UpdateRoomData(roomId, "IsStarted", "false");
+                    UpdateRoomData(roomId, ROOM_STARTED_KEY, "false");
+                    UpdateRoomData(roomId, ROOM_PLAYER_COUNT_KEY, "1");
+                    UpdateRoomData(roomId, ROOM_MASTER_NAME_KEY, masterName);
                     
                     // 글로벌 레지스트리에 이 방의 고유 ID와 실제 제목을 쌍으로 등록합니다.
                     RegisterRoomToRegistry(roomId, roomName);
@@ -102,6 +144,7 @@ namespace BattlePvp.Networking
             PlayFabClientAPI.UpdateSharedGroupData(request,
                 result => {
                     Debug.Log($"글로벌 레지스트리에 방 '{roomName}' 등록 완료");
+                    OnRoomRegistryChanged?.Invoke();
                     OnRoomJoined?.Invoke();
                 },
                 error => {
@@ -114,6 +157,7 @@ namespace BattlePvp.Networking
                     {
                         Debug.LogWarning($"레지스트리 등록 실패(권한 등): {error.GenerateErrorReport()}. 일단 호스트를 시작합니다.");
                         // 권한이 없더라도(NotAuthorized) 방 생성은 성공했으므로 게임은 진행할 수 있게 함
+                        OnRoomRegistryChanged?.Invoke();
                         OnRoomJoined?.Invoke();
                     }
                 }
@@ -124,7 +168,10 @@ namespace BattlePvp.Networking
         {
             PlayFabClientAPI.CreateSharedGroup(new CreateSharedGroupRequest { SharedGroupId = ROOM_REGISTRY_ID },
                 result => RegisterRoomToRegistry(roomId, roomName),
-                error => OnRoomJoined?.Invoke()
+                error => {
+                    OnRoomRegistryChanged?.Invoke();
+                    OnRoomJoined?.Invoke();
+                }
             );
         }
 
@@ -146,13 +193,86 @@ namespace BattlePvp.Networking
                             if (kv.Value != null) rooms[kv.Key] = kv.Value.Value;
                         }
                     }
+                    foreach (var kv in _knownRooms)
+                    {
+                        rooms[kv.Key] = kv.Value;
+                    }
+                    OnRoomListLoaded?.Invoke(rooms);
                     callback?.Invoke(rooms);
                 },
                 error => {
                     Debug.LogWarning("방 목록을 가져올 수 없거나 목록이 비어 있습니다.");
-                    callback?.Invoke(new Dictionary<string, string>());
+                    var rooms = new Dictionary<string, string>(_knownRooms);
+                    OnRoomListLoaded?.Invoke(rooms);
+                    callback?.Invoke(rooms);
                 }
             );
+        }
+
+        public void GetActiveRoomInfos(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            GetActiveRooms(rooms =>
+            {
+                var roomInfos = new Dictionary<string, RoomInfo>();
+                if (rooms.Count == 0)
+                {
+                    OnRoomInfoListLoaded?.Invoke(roomInfos);
+                    callback?.Invoke(roomInfos);
+                    return;
+                }
+
+                int remaining = rooms.Count;
+                foreach (var kvp in rooms)
+                {
+                    string roomId = kvp.Key;
+                    string roomName = string.IsNullOrWhiteSpace(kvp.Value) ? "Unnamed Room" : kvp.Value;
+                    string fallbackMasterName = GetKnownRoomMasterName(roomId);
+                    int fallbackCount = GetKnownRoomCount(roomId);
+
+                    PlayFabClientAPI.GetSharedGroupData(
+                        new GetSharedGroupDataRequest { SharedGroupId = roomId },
+                        result =>
+                        {
+                            int playerCount = fallbackCount;
+                            if (result.Data != null &&
+                                result.Data.TryGetValue(ROOM_PLAYER_COUNT_KEY, out SharedGroupDataRecord countRecord))
+                            {
+                                playerCount = ParseRoomPlayerCount(countRecord.Value, fallbackCount);
+                            }
+
+                            string masterName = fallbackMasterName;
+                            if (result.Data != null &&
+                                result.Data.TryGetValue(ROOM_MASTER_NAME_KEY, out SharedGroupDataRecord masterRecord))
+                            {
+                                masterName = string.IsNullOrWhiteSpace(masterRecord.Value) ? fallbackMasterName : masterRecord.Value;
+                            }
+
+                            _knownRoomCounts[roomId] = playerCount;
+                            _knownRoomMasters[roomId] = masterName;
+                            roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount);
+                            if (roomId == _joinedRoomId)
+                                _currentRoomInfo = roomInfos[roomId];
+                            FinishRoomInfoLoad();
+                        },
+                        error =>
+                        {
+                            roomInfos[roomId] = new RoomInfo(roomName, fallbackMasterName, fallbackCount);
+                            if (roomId == _joinedRoomId)
+                                _currentRoomInfo = roomInfos[roomId];
+                            FinishRoomInfoLoad();
+                        }
+                    );
+                }
+
+                void FinishRoomInfoLoad()
+                {
+                    remaining--;
+                    if (remaining > 0) return;
+
+                    OnRoomInfoListLoaded?.Invoke(roomInfos);
+                    callback?.Invoke(roomInfos);
+                }
+            });
         }
 
         /// <summary>
@@ -163,6 +283,8 @@ namespace BattlePvp.Networking
             // 실제 구현에서는 먼저 GetSharedGroupData 등을 통해 방 존재 여부를 확인할 수도 있습니다.
             // 여기서는 곧바로 멤버 추가를 시도합니다.
             // 주의: PlayFabId는 현재 로그인된 유저의 ID여야 합니다.
+            _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
+
             PlayFabClientAPI.GetAccountInfo(new GetAccountInfoRequest(), 
                 result => {
                     var addRequest = new AddSharedGroupMembersRequest
@@ -174,7 +296,12 @@ namespace BattlePvp.Networking
                     PlayFabClientAPI.AddSharedGroupMembers(addRequest,
                         addResult => {
                             Debug.Log($"방 참여 성공: {roomId}");
-                            OnRoomJoined?.Invoke();
+                            UpdateRoomPlayerCount(roomId, 1, () =>
+                            {
+                                _joinedRoomId = roomId;
+                                _hasJoinedRoomCount = true;
+                                OnRoomJoined?.Invoke();
+                            });
                         },
                         addError => Debug.LogError($"방 참여 실패: {addError.GenerateErrorReport()}")
                     );
@@ -198,6 +325,105 @@ namespace BattlePvp.Networking
                 result => Debug.Log($"방 데이터 업데이트 완료: {key}={value}"),
                 error => Debug.LogError($"방 데이터 업데이트 실패: {error.GenerateErrorReport()}")
             );
+        }
+
+        public void LeaveCurrentRoom()
+        {
+            if (!_hasJoinedRoomCount || string.IsNullOrEmpty(_joinedRoomId)) return;
+
+            string roomId = _joinedRoomId;
+            _joinedRoomId = null;
+            _hasJoinedRoomCount = false;
+            UpdateRoomPlayerCount(roomId, -1);
+        }
+
+        public void RefreshCurrentRoomInfo(Action<RoomInfo> callback = null)
+        {
+            if (string.IsNullOrEmpty(_joinedRoomId))
+            {
+                callback?.Invoke(_currentRoomInfo);
+                return;
+            }
+
+            string roomId = _joinedRoomId;
+            GetActiveRoomInfos(rooms =>
+            {
+                if (rooms.TryGetValue(roomId, out RoomInfo info))
+                    _currentRoomInfo = info;
+
+                callback?.Invoke(_currentRoomInfo);
+            });
+        }
+
+        private void OnApplicationQuit()
+        {
+            LeaveCurrentRoom();
+        }
+
+        private void UpdateRoomPlayerCount(string roomId, int delta, Action onComplete = null)
+        {
+            int fallbackCount = GetKnownRoomCount(roomId);
+            PlayFabClientAPI.GetSharedGroupData(
+                new GetSharedGroupDataRequest { SharedGroupId = roomId },
+                result =>
+                {
+                    int currentCount = fallbackCount;
+                    if (result.Data != null &&
+                        result.Data.TryGetValue(ROOM_PLAYER_COUNT_KEY, out SharedGroupDataRecord countRecord))
+                    {
+                        currentCount = ParseRoomPlayerCount(countRecord.Value, fallbackCount);
+                    }
+
+                    int nextCount = Mathf.Max(0, currentCount + delta);
+                    _knownRoomCounts[roomId] = nextCount;
+                    UpdateRoomData(roomId, ROOM_PLAYER_COUNT_KEY, nextCount.ToString());
+                    OnRoomRegistryChanged?.Invoke();
+                    onComplete?.Invoke();
+                },
+                error =>
+                {
+                    int nextCount = Mathf.Max(0, fallbackCount + delta);
+                    _knownRoomCounts[roomId] = nextCount;
+                    OnRoomRegistryChanged?.Invoke();
+                    onComplete?.Invoke();
+                }
+            );
+        }
+
+        private int GetKnownRoomCount(string roomId)
+        {
+            if (_knownRoomCounts.TryGetValue(roomId, out int knownCount))
+                return Mathf.Max(0, knownCount);
+
+            return string.IsNullOrEmpty(roomId) ? 0 : 1;
+        }
+
+        private string GetKnownRoomMasterName(string roomId)
+        {
+            if (_knownRoomMasters.TryGetValue(roomId, out string masterName) &&
+                !string.IsNullOrWhiteSpace(masterName))
+            {
+                return masterName;
+            }
+
+            return "Unknown";
+        }
+
+        private string GetCurrentPlayerNickname()
+        {
+            string nickname = GlobalDataManager.Instance != null
+                ? GlobalDataManager.Instance.PlayerNickname
+                : null;
+
+            return string.IsNullOrWhiteSpace(nickname) ? "Unknown" : nickname.Trim();
+        }
+
+        private int ParseRoomPlayerCount(string value, int fallbackCount)
+        {
+            if (int.TryParse(value, out int count))
+                return Mathf.Max(0, count);
+
+            return Mathf.Max(0, fallbackCount);
         }
 
         #endregion

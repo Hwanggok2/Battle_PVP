@@ -13,7 +13,9 @@ namespace BattlePvp.Lobby
         [Header("Target settings")]
         [Tooltip("로비에서 활성화 상태를 유지할 플레이어 오브젝트입니다. 비어 있으면 이름으로 찾습니다.")]
         [SerializeField] private GameObject _targetPlayer;
+        [SerializeField] private GameObject _fallbackPlayerPrefab;
         [SerializeField] private string _playerNameInScene = "Player";
+        [SerializeField] private Vector3 _fallbackSpawnPosition = Vector3.zero;
 
         private void Start()
         {
@@ -70,6 +72,12 @@ namespace BattlePvp.Lobby
             {
                 Debug.Log($"[LobbyPlayerActivator] Force Activating {_targetPlayer.name} in Lobby.");
                 _targetPlayer.SetActive(true);
+            }
+            else if (_targetPlayer == null && _fallbackPlayerPrefab != null)
+            {
+                _targetPlayer = Instantiate(_fallbackPlayerPrefab, _fallbackSpawnPosition, Quaternion.identity);
+                _targetPlayer.name = _playerNameInScene;
+                Debug.LogWarning($"[LobbyPlayerActivator] Player was missing in Lobby. Spawned fallback prefab '{_fallbackPlayerPrefab.name}'.");
             }
         }
     }
