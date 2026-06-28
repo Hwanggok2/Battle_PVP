@@ -324,6 +324,7 @@ var ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY";
 var ROOM_STARTED_KEY = "IsStarted";
 var ROOM_PLAYER_COUNT_KEY = "PlayerCount";
 var ROOM_MASTER_NAME_KEY = "MasterName";
+var REMOVE_KEYS_BATCH_SIZE = 10;
 
 handlers.RegisterRoomToRegistry = function(args, context) {
     var roomId = requireString(args, "roomId");
@@ -366,6 +367,72 @@ handlers.GetActiveRooms = function(args, context) {
 handlers.GetActiveRoomInfos = function(args, context) {
     return {
         roomInfos: loadActiveRoomInfos()
+    };
+};
+
+handlers.AdminValidateRoomKey = function(args, context) {
+    requireAdminKey(args);
+
+    return {
+        ok: true
+    };
+};
+
+handlers.AdminClearRoomRegistry = function(args, context) {
+    requireAdminKey(args);
+    ensureSharedGroup(ROOM_REGISTRY_ID);
+
+    var registryData = getSharedGroupData(ROOM_REGISTRY_ID);
+    var roomIds = [];
+    for (var roomId in registryData) {
+        if (registryData.hasOwnProperty(roomId))
+            roomIds.push(roomId);
+    }
+
+    removeRegistryRooms(roomIds);
+
+    return {
+        ok: true,
+        removedCount: roomIds.length,
+        removedRoomIds: roomIds
+    };
+};
+
+handlers.AdminDeleteRoom = function(args, context) {
+    requireAdminKey(args);
+    ensureSharedGroup(ROOM_REGISTRY_ID);
+
+    var requestedRoomId = getString(args, "roomId", "");
+    var requestedRoomName = getString(args, "roomName", "");
+    if (requestedRoomId.length === 0 && requestedRoomName.length === 0)
+        throw "roomId or roomName is required.";
+
+    var roomInfos = loadActiveRoomInfos();
+    var matchedRoomIds = [];
+
+    for (var roomId in roomInfos) {
+        if (!roomInfos.hasOwnProperty(roomId))
+            continue;
+
+        var roomInfo = roomInfos[roomId];
+        if (requestedRoomId.length > 0 && roomId === requestedRoomId) {
+            matchedRoomIds.push(roomId);
+            continue;
+        }
+
+        if (requestedRoomName.length > 0 && roomInfo.roomName === requestedRoomName)
+            matchedRoomIds.push(roomId);
+    }
+
+    if (matchedRoomIds.length === 0)
+        throw "No matching room found.";
+
+    removeRegistryRooms(matchedRoomIds);
+
+    return {
+        ok: true,
+        removedCount: matchedRoomIds.length,
+        removedRoomIds: matchedRoomIds
     };
 };
 
@@ -541,10 +608,14 @@ function removeRegistryRooms(roomIds) {
         return;
 
     ensureSharedGroup(ROOM_REGISTRY_ID);
-    server.UpdateSharedGroupData({
-        SharedGroupId: ROOM_REGISTRY_ID,
-        KeysToRemove: roomIds
-    });
+
+    for (var i = 0; i < roomIds.length; i += REMOVE_KEYS_BATCH_SIZE) {
+        var batch = roomIds.slice(i, i + REMOVE_KEYS_BATCH_SIZE);
+        server.UpdateSharedGroupData({
+            SharedGroupId: ROOM_REGISTRY_ID,
+            KeysToRemove: batch
+        });
+    }
 }
 
 function buildRoomData(roomInfo) {
@@ -573,9 +644,10 @@ function ensureSharedGroup(groupId) {
             SharedGroupId: groupId
         });
     } catch (e) {
-        var message = String(e);
+        var message = getErrorText(e);
         if (message.indexOf("already") === -1 &&
             message.indexOf("exists") === -1 &&
+            message.indexOf("SharedGroupAlreadyExists") === -1 &&
             message.indexOf("NameNotAvailable") === -1) {
             log.info("CreateSharedGroup skipped or failed for " + groupId + ": " + message);
         }
@@ -647,3 +719,55 @@ function requireString(args, key) {
     return value;
 }
 
+function requireAdminKey(args) {
+    var providedKey = getString(args, "adminKey", "");
+    var expectedKey = getConfiguredAdminKey();
+
+    if (!expectedKey)
+        throw "RoomAdminKey is not configured in Title Data or Title Internal Data.";
+
+    if (providedKey !== expectedKey)
+        throw "Invalid adminKey.";
+}
+
+function getConfiguredAdminKey() {
+    var internalKey = getTitleDataValue("RoomAdminKey", true);
+    if (internalKey)
+        return internalKey;
+
+    return getTitleDataValue("RoomAdminKey", false);
+}
+
+function getTitleDataValue(key, internal) {
+    try {
+        var response = internal
+            ? server.GetTitleInternalData({ Keys: [key] })
+            : server.GetTitleData({ Keys: [key] });
+
+        var rawValue = response && response.Data ? response.Data[key] : null;
+        if (!rawValue)
+            return "";
+
+        if (rawValue.Value !== undefined && rawValue.Value !== null)
+            return String(rawValue.Value);
+
+        return String(rawValue);
+    } catch (e) {
+        log.info((internal ? "GetTitleInternalData" : "GetTitleData") + " failed: " + getErrorText(e));
+        return "";
+    }
+}
+
+function getErrorText(error) {
+    if (!error)
+        return "";
+
+    if (typeof error === "string")
+        return error;
+
+    try {
+        return JSON.stringify(error);
+    } catch (e) {
+        return String(error);
+    }
+}

@@ -145,9 +145,10 @@ namespace BattlePvp.Combat
             _currentHp = Mathf.Clamp(_currentHp - amount, 0f, _maxHp);
             
             // 데미지 팝업을 피격 지점에 띄웁니다.
+            Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
             if (DamagePopupManager.Instance != null)
             {
-                DamagePopupManager.Instance.CreatePopup(hitPosition, amount);
+                DamagePopupManager.Instance.CreatePopup(popupPosition, amount);
             }
 
             Debug.Log($"[Dummy] Received {amount} damage from {source} at {hitPosition}. Current HP: {_currentHp}/{_maxHp}");

@@ -205,6 +205,9 @@ namespace BattlePvp.Combat
 
         public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition)
         {
+            if (NetworkClient.active && !NetworkServer.active)
+                return;
+
             if (isInvincible || amount <= 0f)
                 return;
 
@@ -474,6 +477,15 @@ namespace BattlePvp.Combat
                 }
 
                 OnDied?.Invoke();
+                if (isServer)
+                {
+                    var playerManager = GetComponent<PlayerManager>();
+                    if (playerManager != null)
+                        playerManager.NotifyDeathFromServer();
+
+                    if (connectionToClient != null)
+                        TargetForceDeath(connectionToClient);
+                }
                 Debug.Log($"[HealthSystem:{gameObject.name}] IsDead set to true.");
             }
             else if (_currentHp > 0f && IsDead)
@@ -484,10 +496,62 @@ namespace BattlePvp.Combat
             }
         }
 
+        [TargetRpc]
+        private void TargetForceDeath(NetworkConnection target)
+        {
+            if (_currentHp > 0f)
+                _currentHp = 0f;
+
+            if (!IsDead)
+            {
+                EvaluateDeath();
+            }
+            else
+            {
+                OnDied?.Invoke();
+            }
+
+            RaiseHpChanged();
+        }
+
         public void Revive(float ratio = 1f)
         {
             IsDead = false;
             _currentHp = _maxHp * Mathf.Clamp01(ratio);
+            RaiseHpChanged();
+            UpdateOverflowState();
+            OnRevived?.Invoke();
+
+            if (isServer && connectionToClient != null)
+                TargetForceRevive(connectionToClient, _currentHp);
+        }
+
+        public void RequestRevive(float ratio = 1f)
+        {
+            if (isServer)
+            {
+                Revive(ratio);
+                return;
+            }
+
+            if (!isLocalPlayer)
+                return;
+
+            Revive(ratio);
+            CmdRequestRevive(ratio);
+        }
+
+        [Command]
+        private void CmdRequestRevive(float ratio)
+        {
+            Revive(ratio);
+        }
+
+        [TargetRpc]
+        private void TargetForceRevive(NetworkConnection target, float hp)
+        {
+            IsDead = false;
+            _currentHp = hp;
             RaiseHpChanged();
             UpdateOverflowState();
             OnRevived?.Invoke();

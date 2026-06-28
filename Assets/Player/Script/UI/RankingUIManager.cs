@@ -30,6 +30,9 @@ namespace BattlePvp.UI
 
             // 정렬: 점수 내림차순, 점수가 같다면 이름 오름차순 (안정적 정렬)
             var sortedScores = ScoreSystem.ActiveScores
+                .Where(s => s != null && s.netId != 0 && s.GetComponent("PlayerManager") != null)
+                .GroupBy(s => s.netId)
+                .Select(g => g.First())
                 .OrderByDescending(s => s.CurrentPoints)
                 .ThenBy(s => s.PlayerName)
                 .ToList();

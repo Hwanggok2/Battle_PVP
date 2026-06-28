@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using BattlePvp.Stats;
 using BattlePvp.Managers;
 using System;
+using System.Text;
 using Mirror;
 
 namespace BattlePvp.Networking
@@ -25,6 +26,9 @@ namespace BattlePvp.Networking
         private const string GET_ACTIVE_ROOM_INFOS_FUNCTION = "GetActiveRoomInfos";
         private const string JOIN_ROOM_FUNCTION = "JoinRoom";
         private const string LEAVE_ROOM_FUNCTION = "LeaveRoom";
+        private const string ADMIN_VALIDATE_ROOM_KEY_FUNCTION = "AdminValidateRoomKey";
+        private const string ADMIN_DELETE_ROOM_FUNCTION = "AdminDeleteRoom";
+        private const string ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION = "AdminClearRoomRegistry";
 
         public struct RoomInfo
         {
@@ -676,6 +680,143 @@ namespace BattlePvp.Networking
 
                 callback?.Invoke(_currentRoomInfo);
             });
+        }
+
+        public void AdminDeleteRoom(string adminKey, string roomId, Action<bool, string> callback = null)
+        {
+            if (string.IsNullOrWhiteSpace(adminKey))
+            {
+                callback?.Invoke(false, "Admin key is empty.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(roomId))
+            {
+                callback?.Invoke(false, "Room id is empty.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "adminKey", adminKey.Trim() },
+                { "roomId", roomId.Trim() }
+            };
+
+            ExecuteRoomAdminCloudScript(ADMIN_DELETE_ROOM_FUNCTION, parameters, (ok, message) =>
+            {
+                if (ok)
+                {
+                    _knownRooms.Remove(roomId);
+                    _knownRoomMasters.Remove(roomId);
+                    _knownRoomCounts.Remove(roomId);
+                    OnRoomRegistryChanged?.Invoke();
+                }
+
+                callback?.Invoke(ok, message);
+            });
+        }
+
+        public void AdminValidateRoomKey(string adminKey, Action<bool, string> callback = null)
+        {
+            if (string.IsNullOrWhiteSpace(adminKey))
+            {
+                callback?.Invoke(false, "Admin key is empty.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "adminKey", adminKey.Trim() }
+            };
+
+            ExecuteRoomAdminCloudScript(ADMIN_VALIDATE_ROOM_KEY_FUNCTION, parameters, callback);
+        }
+
+        public void AdminClearRoomRegistry(string adminKey, Action<bool, string> callback = null)
+        {
+            if (string.IsNullOrWhiteSpace(adminKey))
+            {
+                callback?.Invoke(false, "Admin key is empty.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "adminKey", adminKey.Trim() }
+            };
+
+            ExecuteRoomAdminCloudScript(ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION, parameters, (ok, message) =>
+            {
+                if (ok)
+                {
+                    _knownRooms.Clear();
+                    _knownRoomMasters.Clear();
+                    _knownRoomCounts.Clear();
+                    OnRoomRegistryChanged?.Invoke();
+                }
+
+                callback?.Invoke(ok, message);
+            });
+        }
+
+        private void ExecuteRoomAdminCloudScript(string functionName, Dictionary<string, object> parameters, Action<bool, string> callback)
+        {
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = functionName,
+                    FunctionParameter = parameters,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    if (result.Error != null)
+                    {
+                        string message = FormatCloudScriptError(result);
+                        Debug.LogError($"[PlayFab] {functionName} failed: {message}");
+                        callback?.Invoke(false, message);
+                        return;
+                    }
+
+                    Debug.Log($"[PlayFab] {functionName} completed.");
+                    callback?.Invoke(true, "Completed.");
+                },
+                error =>
+                {
+                    string message = error.GenerateErrorReport();
+                    Debug.LogError($"[PlayFab] {functionName} request failed: {message}");
+                    callback?.Invoke(false, message);
+                });
+        }
+
+        private static string FormatCloudScriptError(ExecuteCloudScriptResult result)
+        {
+            var builder = new StringBuilder();
+
+            if (result.Error != null)
+            {
+                if (!string.IsNullOrWhiteSpace(result.Error.Error))
+                    builder.Append(result.Error.Error).Append(": ");
+
+                builder.Append(result.Error.Message);
+
+                if (!string.IsNullOrWhiteSpace(result.Error.StackTrace))
+                    builder.Append("\n").Append(result.Error.StackTrace);
+            }
+
+            if (result.Logs != null && result.Logs.Count > 0)
+            {
+                builder.Append("\nLogs:");
+                foreach (var logLine in result.Logs)
+                {
+                    builder.Append("\n[")
+                        .Append(logLine.Level)
+                        .Append("] ")
+                        .Append(logLine.Message);
+                }
+            }
+
+            return builder.Length > 0 ? builder.ToString() : "CloudScript failed.";
         }
 
         private void OnApplicationQuit()

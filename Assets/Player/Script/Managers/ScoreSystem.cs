@@ -163,6 +163,10 @@ namespace BattlePvp.Combat
         public override void OnStartClient()
         {
             base.OnStartClient();
+            if (GetComponent("PlayerManager") == null)
+                return;
+
+            ActiveScores.RemoveAll(score => score == null || (score != this && score.netId == netId));
             if (!ActiveScores.Contains(this))
                 ActiveScores.Add(this);
             OnScoreUpdated?.Invoke(this);
@@ -171,8 +175,7 @@ namespace BattlePvp.Combat
         public override void OnStopClient()
         {
             base.OnStopClient();
-            if (ActiveScores.Contains(this))
-                ActiveScores.Remove(this);
+            ActiveScores.RemoveAll(score => score == null || score == this);
             OnScoreUpdated?.Invoke(this);
         }
 

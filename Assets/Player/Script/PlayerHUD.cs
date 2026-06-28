@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
 using Mirror;
@@ -7,76 +8,148 @@ using UnityEngine.SceneManagement;
 
 namespace BattlePvp.UI
 {
-    /// <summary>
-    /// HUD 렌더링을 위한 "뷰" 인터페이스.
-    /// 실제 UI 구현(UGUI/TMP/UITK)은 이 인터페이스를 구현해 교체 가능하도록 설계합니다.
-    /// </summary>
     public interface IPlayerHudView
     {
-        /// <summary>HP 바/텍스트 등 갱신</summary>
         void SetHp(float current, float max);
-
-        /// <summary>아이덴티티 표시(타입/주력 스탯)</summary>
         void SetIdentity(Identity identity);
-
         void SetOverflow(bool isOverflow, float overlapPercent);
-
-        /// <summary>매치 타이머 업데이트</summary>
         void SetMatchTimer(float seconds);
-
-        /// <summary>카운트다운 텍스트 표시</summary>
         void SetCountdown(string text, bool active);
-
-        /// <summary>킬 점수 업데이트</summary>
         void SetScore(int points);
-
-        /// <summary>플레이어 사망 패널 제어</summary>
         void SetDeathOverlay(bool active, string text = "", Color? textColor = null);
-
-        /// <summary>전장 진입 시 로딩 패널 제어</summary>
         void SetLoadingOverlay(bool active);
     }
 
-    /// <summary>
-    /// StatManager/HealthSystem 이벤트를 구독해 UI를 이벤트 기반으로 갱신하는 HUD 컨트롤러.
-    /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerHUD : MonoBehaviour
     {
         public static PlayerHUD Instance { get; private set; }
+        private static PlayerHUD _globalHud;
 
         [Header("Sources")]
         [SerializeField] private StatManager _statManager;
-        [SerializeField] private MonoBehaviour _healthSource; // IPlayerStatusSource + IDamageReceiver
+        [SerializeField] private MonoBehaviour _healthSource;
 
         [Header("View")]
-        [SerializeField] private MonoBehaviour _view; // IPlayerHudView
+        [SerializeField] private MonoBehaviour _view;
 
         private IPlayerStatusSource _status;
         private IDamageReceiver _damageReceiver;
         private IPlayerHudView _hudView;
+        private NetworkIdentity _ownerIdentity;
+        private bool _isSubscribed;
+
+        public static void UpdateLocalDeathOverlay(bool active, string text = "", Color? textColor = null)
+        {
+            bool applied = false;
+            var huds = Resources.FindObjectsOfTypeAll<PlayerHUD>();
+            foreach (var hud in huds)
+            {
+                if (hud == null || !hud.gameObject.scene.isLoaded)
+                    continue;
+
+                if (!hud.CanApplyLocalDeathOverlay())
+                    continue;
+
+                hud.ApplyDeathOverlay(active, text, textColor);
+                applied = true;
+            }
+
+            if (!applied && Instance != null)
+                Instance.UpdateDeathOverlay(active, text, textColor);
+        }
 
         private void Awake()
         {
-            if (Instance == null) Instance = this;
+            _ownerIdentity = GetComponentInParent<NetworkIdentity>();
+            if (_ownerIdentity == null)
+                _globalHud = this;
 
-            // Inspector에서 명시적으로 할당되지 않았을 경우 부모나 자신에게서 찾기 시도
+            ResolveView();
+
             if (_statManager == null)
                 _statManager = GetComponentInParent<StatManager>();
 
-            InitializeSources();
+            if (!NetworkClient.active && _ownerIdentity == null)
+                InitializeSources();
 
+            if (_ownerIdentity == null)
+                Instance = this;
+            else if (Instance == null && CanBindThisHud() && !HasGlobalHud())
+                Instance = this;
+        }
+
+        private void Start()
+        {
+            StartCoroutine(CoBindLocalHud());
+            SetViewActive(ShouldDisplayThisHud());
+            SyncLoadingOverlayFromBattleState();
+        }
+
+        private void OnEnable()
+        {
+            TryBindLocalPlayerImmediate();
+            if (IsBoundToLocalPlayer() && _hudView != null && _damageReceiver != null)
+                _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+        }
+
+        private void OnDisable()
+        {
+            UnsubscribeCurrent();
+        }
+
+        private void Update()
+        {
+            if (IsBoundToLocalPlayer() && ShouldDisplayThisHud())
+                Instance = this;
+
+            SyncLoadingOverlayFromBattleState();
+        }
+
+        private void ResolveView()
+        {
             _hudView = _view as IPlayerHudView;
-            if (_hudView == null)
+            if (_hudView != null)
+                return;
+
+            var viewComp = GetComponentInChildren<PlayerHudView>(true);
+            _hudView = viewComp as IPlayerHudView;
+            if (_view == null && viewComp != null)
+                _view = viewComp;
+        }
+
+        private IEnumerator CoBindLocalHud()
+        {
+            float timeout = 5f;
+            while (NetworkClient.active && NetworkClient.localPlayer == null && timeout > 0f)
             {
-                var viewComp = GetComponentInChildren<PlayerHudView>(true);
-                _hudView = viewComp as IPlayerHudView;
+                timeout -= Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            if (_ownerIdentity != null && !_ownerIdentity.isLocalPlayer)
+            {
+                UnsubscribeCurrent();
+                SetViewActive(false);
+                yield break;
+            }
+
+            if (NetworkClient.localPlayer != null)
+            {
+                TryBindLocalPlayerImmediate();
+
+                if (_ownerIdentity != null && HasGlobalHud())
+                    yield break;
+            }
+            else if (!NetworkClient.active)
+            {
+                InitializeSources();
+                SetViewActive(true);
             }
         }
 
         private void InitializeSources()
         {
-            // [수정] 이미 구독 중이라면 해제 후 재연결 (중복 방지)
             UnsubscribeCurrent();
 
             _status = _healthSource as IPlayerStatusSource;
@@ -88,111 +161,172 @@ namespace BattlePvp.UI
                 _status = hs as IPlayerStatusSource;
                 _damageReceiver = hs as IDamageReceiver;
             }
-            
+
             SubscribeNew();
         }
 
-        /// <summary>
-        /// 외부(더미 캐릭터 등)에서 이 HUD가 추적할 대상을 강제로 지정합니다.
-        /// </summary>
+        private bool TryBindLocalPlayerImmediate()
+        {
+            if (!NetworkClient.active || NetworkClient.localPlayer == null)
+                return IsBoundToLocalPlayer();
+
+            var localStats = NetworkClient.localPlayer.GetComponent<StatManager>();
+            var localHealth = NetworkClient.localPlayer.GetComponent<HealthSystem>();
+            if (localStats == null || localHealth == null)
+                return false;
+
+            if (_ownerIdentity != null && HasGlobalHud())
+            {
+                _globalHud.SetTarget(localStats, localHealth);
+                UnsubscribeCurrent();
+                SetViewActive(false);
+                return false;
+            }
+
+            if (!IsBoundToLocalPlayer())
+                SetTarget(localStats, localHealth);
+
+            return IsBoundToLocalPlayer();
+        }
+
         public void SetTarget(StatManager sm, HealthSystem hs)
         {
+            if (NetworkClient.active && NetworkClient.localPlayer != null)
+            {
+                if (hs == null || hs.transform.root != NetworkClient.localPlayer.transform)
+                    return;
+            }
+
             UnsubscribeCurrent();
-            
+
             _statManager = sm;
             _healthSource = hs;
-            
             _status = hs as IPlayerStatusSource;
             _damageReceiver = hs as IDamageReceiver;
-            
+
             SubscribeNew();
-            
-            // 즉시 반영
-            if (_statManager != null) OnIdentityChanged(_statManager.CurrentIdentity);
-            if (_damageReceiver != null) _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
-            if (_status != null) OnOverflowChanged(_status is IPlayerStatusSource s && s != null ? false : false, 0f); // 리셋
+            SetViewActive(ShouldDisplayThisHud());
+            if (ShouldDisplayThisHud())
+                Instance = this;
+
+            if (_statManager != null)
+                OnIdentityChanged(_statManager.CurrentIdentity);
+
+            if (_damageReceiver != null)
+                _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+
+            _hudView?.SetOverflow(false, 0f);
         }
 
         private void SubscribeNew()
         {
-            if (_statManager != null) _statManager.IdentityChanged += OnIdentityChanged;
+            if (_isSubscribed || !CanBindThisHud())
+                return;
+
+            if (_statManager != null)
+                _statManager.IdentityChanged += OnIdentityChanged;
+
             if (_status != null)
             {
                 _status.HpChanged += OnHpChanged;
                 _status.OverflowChanged += OnOverflowChanged;
             }
+
+            _isSubscribed = true;
         }
 
         private void UnsubscribeCurrent()
         {
-            if (_statManager != null) _statManager.IdentityChanged -= OnIdentityChanged;
+            if (!_isSubscribed)
+                return;
+
+            if (_statManager != null)
+                _statManager.IdentityChanged -= OnIdentityChanged;
+
             if (_status != null)
             {
                 _status.HpChanged -= OnHpChanged;
                 _status.OverflowChanged -= OnOverflowChanged;
             }
+
+            _isSubscribed = false;
         }
 
-        private void Start()
+        private bool CanBindThisHud()
         {
-            RefreshLocalInstance();
-            if (!IsLocalPlayerHud())
-            {
-                UpdateLoadingOverlay(false);
-                return;
-            }
-            // 프리팹에서 기본 켜짐(Active) 상태인 로딩창을 안전하게 제어
-            // 전장 진입 전(예: 로비)이거나 배틀 매니저가 없을 때는 로딩창을 즉시 끕니다.
-            if (BattlePvp.Networking.BattleStateMachine.Instance != null)
-            {
-                UpdateLoadingOverlay(BattlePvp.Networking.BattleStateMachine.Instance.IsLoading);
-            }
-            else
-            {
-                UpdateLoadingOverlay(false);
-            }
+            if (_ownerIdentity == null)
+                return true;
+
+            return !NetworkClient.active || _ownerIdentity.isLocalPlayer;
         }
 
-        private void OnEnable()
+        private bool HasGlobalHud()
         {
-            if (_hudView != null && _damageReceiver != null)
-            {
-                _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
-            }
+            return _globalHud != null && _globalHud != this;
         }
 
-        private void OnDisable()
+        private bool ShouldDisplayThisHud()
         {
-            UnsubscribeCurrent();
+            if (!CanBindThisHud())
+                return false;
+
+            if (_ownerIdentity != null && HasGlobalHud())
+                return false;
+
+            return true;
         }
 
-        private void Update()
+        private bool IsBoundToLocalPlayer()
         {
-            RefreshLocalInstance();
-            SyncLoadingOverlayFromBattleState();
+            if (!NetworkClient.active)
+                return true;
 
-            // 최적화를 위해 Update 루프를 제거했습니다.
-            // 대신 HealthSystem의 HpChanged 이벤트를 통해 실시간 갱신을 수행합니다.
+            if (NetworkClient.localPlayer == null || _damageReceiver == null)
+                return false;
+
+            if (_damageReceiver is Component component)
+                return component.transform.root == NetworkClient.localPlayer.transform;
+
+            return false;
         }
 
-        private void RefreshLocalInstance()
+        private bool CanApplyLocalDeathOverlay()
         {
-            if (IsLocalPlayerHud())
-                Instance = this;
-        }
+            if (!NetworkClient.active)
+                return true;
 
-        private bool IsLocalPlayerHud()
-        {
             if (NetworkClient.localPlayer == null)
                 return false;
 
-            return transform == NetworkClient.localPlayer.transform ||
-                   transform.IsChildOf(NetworkClient.localPlayer.transform);
+            var localStats = NetworkClient.localPlayer.GetComponent<StatManager>();
+            var localHealth = NetworkClient.localPlayer.GetComponent<HealthSystem>();
+            if (localStats == null || localHealth == null)
+                return false;
+
+            if (_ownerIdentity != null && !_ownerIdentity.isLocalPlayer)
+                return false;
+
+            if (!IsBoundToLocalPlayer())
+                SetTarget(localStats, localHealth);
+
+            return IsBoundToLocalPlayer();
+        }
+
+        private void SetViewActive(bool active)
+        {
+            if (_view != null)
+            {
+                _view.gameObject.SetActive(active);
+                return;
+            }
+
+            if (_hudView is Component component)
+                component.gameObject.SetActive(active);
         }
 
         private void SyncLoadingOverlayFromBattleState()
         {
-            if (!IsLocalPlayerHud())
+            if (!IsBoundToLocalPlayer())
             {
                 _hudView?.SetLoadingOverlay(false);
                 return;
@@ -209,55 +343,70 @@ namespace BattlePvp.UI
 
         private void OnHpChanged(float current, float max)
         {
-            if (this == null || _hudView == null) return;
+            if (this == null || _hudView == null || !IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
             _hudView.SetHp(current, max);
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
         {
-            if (this == null || _hudView == null) return;
+            if (this == null || _hudView == null || !IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
             _hudView.SetOverflow(isOverflow, overlapPercent);
         }
 
         private void OnIdentityChanged(Identity identity)
         {
-            if (this == null || _hudView == null) return;
+            if (this == null || _hudView == null || !IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
             _hudView.SetIdentity(identity);
         }
 
-        #region [Match UI Bridge]
-
-        /// <summary>
-        /// 외부(BattleStateMachine 등)에서 타이머 정보를 주입합니다.
-        /// </summary>
         public void UpdateTimer(float seconds) => _hudView?.SetMatchTimer(seconds);
-
-        /// <summary>
-        /// 카운트다운 상태를 업데이트합니다.
-        /// </summary>
         public void UpdateCountdown(string text, bool active) => _hudView?.SetCountdown(text, active);
-
-        /// <summary>
-        /// 자신의 점수를 업데이트합니다.
-        /// </summary>
         public void UpdateScore(int points) => _hudView?.SetScore(points);
 
-        /// <summary>
-        /// 사망 패널을 띄우거나 닫습니다.
-        /// </summary>
-        public void UpdateDeathOverlay(bool active, string text = "", Color? textColor = null) => _hudView?.SetDeathOverlay(active, text, textColor);
+        public void UpdateDeathOverlay(bool active, string text = "", Color? textColor = null)
+        {
+            if (_ownerIdentity != null && HasGlobalHud())
+            {
+                _globalHud.UpdateDeathOverlay(active, text, textColor);
+                return;
+            }
 
-        /// <summary>
-        /// 로딩 오버레이를 띄우거나 닫습니다.
-        /// </summary>
+            TryBindLocalPlayerImmediate();
+
+            if (!IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
+            if (active)
+                SetViewActive(true);
+
+            ApplyDeathOverlay(active, text, textColor);
+        }
+
+        private void ApplyDeathOverlay(bool active, string text = "", Color? textColor = null)
+        {
+            if (active)
+                SetViewActive(true);
+
+            _hudView?.SetDeathOverlay(active, text, textColor);
+
+            if (!active)
+                SetViewActive(ShouldDisplayThisHud());
+        }
+
         public void UpdateLoadingOverlay(bool active)
         {
+            if (!IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
             string sceneName = SceneManager.GetActiveScene().name;
             bool canShowLoading = sceneName == "Battle";
             _hudView?.SetLoadingOverlay(active && canShowLoading);
         }
-
-        #endregion
     }
 }
-

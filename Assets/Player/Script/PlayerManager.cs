@@ -43,6 +43,7 @@ public class PlayerManager : NetworkBehaviour
     public bool IsMatchEndLocked => _matchEndLocked;
 
     private readonly int speedHash = Animator.StringToHash("Speed");
+    private readonly int dieHash = Animator.StringToHash("Die");
 
     private void Awake()
     {
@@ -135,6 +136,7 @@ public class PlayerManager : NetworkBehaviour
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
     public void OnMove(InputValue value)
     {
+        if (isClient && !isLocalPlayer) return;
         if (isDead || _matchEndLocked) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
@@ -275,6 +277,45 @@ public class PlayerManager : NetworkBehaviour
 
     private void HandleDeath()
     {
+        BeginLocalDeath();
+    }
+
+    [Server]
+    public void NotifyDeathFromServer()
+    {
+        PlayDeathVisual();
+        RpcPlayDeathVisual();
+
+        if (connectionToClient != null)
+            TargetBeginDeath(connectionToClient);
+    }
+
+    [TargetRpc]
+    private void TargetBeginDeath(NetworkConnection target)
+    {
+        PlayDeathVisual();
+        BeginLocalDeath();
+    }
+
+    [ClientRpc(includeOwner = false)]
+    private void RpcPlayDeathVisual()
+    {
+        PlayDeathVisual();
+    }
+
+    private void PlayDeathVisual()
+    {
+        if (animator == null)
+            return;
+
+        animator.SetFloat(speedHash, 0f);
+        animator.SetBool("IsDead", true);
+        animator.ResetTrigger(dieHash);
+        animator.SetTrigger(dieHash);
+    }
+
+    private void BeginLocalDeath()
+    {
         if (!isLocalPlayer) return;
         if (isDead) return;
 
@@ -282,11 +323,12 @@ public class PlayerManager : NetworkBehaviour
         inputVector = Vector2.zero;
         isAttacking = false;
 
-        animator.SetFloat(speedHash, 0f);
-        animator.SetBool("IsDead", true);
+        PlayDeathVisual();
 
         if (controller != null) controller.enabled = false;
 
+        if (_respawnRoutine != null)
+            StopCoroutine(_respawnRoutine);
         _respawnRoutine = StartCoroutine(RespawnRoutine());
     }
 
@@ -295,16 +337,14 @@ public class PlayerManager : NetworkBehaviour
         // 1. 사망 즉시 5초 카운트다운 시작
         for (int i = 5; i > 0; i--)
         {
-            if (BattlePvp.UI.PlayerHUD.Instance != null)
-                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"{i}", _deathOverlayTextColor);
+            BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(true, $"{i}", _deathOverlayTextColor);
             yield return new WaitForSeconds(1f);
         }
 
         // 2. 캐릭터 시각적/물리적 제거
         ToggleCharacterVisibility(false);
 
-        if (BattlePvp.UI.PlayerHUD.Instance != null)
-            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, _respawnPromptText, _deathOverlayTextColor);
+        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(true, _respawnPromptText, _deathOverlayTextColor);
 
         // 3. Space 키 입력 대기
         bool keyPressed = false;
@@ -315,8 +355,7 @@ public class PlayerManager : NetworkBehaviour
         }
 
         // 5. 부활 및 랜덤 스폰 로직
-        if (BattlePvp.UI.PlayerHUD.Instance != null)
-            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(false);
+        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(false);
 
         // 위치 이동 (NetworkManager의 시작지점 활용)
         Vector3 spawnPos = Vector3.zero;
@@ -358,7 +397,7 @@ public class PlayerManager : NetworkBehaviour
         if (_healthSystem != null)
         {
             _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
-            _healthSystem.Revive(1f);
+            _healthSystem.RequestRevive(1f);
         }
     }
 
@@ -392,8 +431,7 @@ public class PlayerManager : NetworkBehaviour
             _healthSystem.Revive(1f);
         }
 
-        if (BattlePvp.UI.PlayerHUD.Instance != null)
-            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(false);
+        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(false);
 
         if (followCamera == null)
             followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();

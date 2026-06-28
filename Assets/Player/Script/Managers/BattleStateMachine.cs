@@ -139,7 +139,7 @@ namespace BattlePvp.Networking
             var scoreSystems = FindObjectsByType<ScoreSystem>(FindObjectsSortMode.None);
             foreach (var score in scoreSystems)
             {
-                if (score != null)
+                if (score != null && score.GetComponent("PlayerManager") != null)
                     score.ResetMatchStats();
             }
 
@@ -180,6 +180,7 @@ namespace BattlePvp.Networking
             RemainingTime = 0f;
 
             var allScores = new List<ScoreSystem>(FindObjectsByType<ScoreSystem>(FindObjectsSortMode.None));
+            allScores.RemoveAll(score => score == null || score.GetComponent("PlayerManager") == null);
             int winnerScore = int.MinValue;
             foreach (var score in allScores)
             {
