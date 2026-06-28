@@ -72,3 +72,4 @@ MonoBehaviour:
   CountdownDuration: 5
   MatchDuration: 180
   RespawnDuration: 5
+  ResultDelaySeconds: 5

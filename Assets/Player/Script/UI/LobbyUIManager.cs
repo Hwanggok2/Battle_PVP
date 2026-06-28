@@ -161,8 +161,15 @@ namespace BattlePvp.UI
                 }
             }
 
-            var controller = FindFirstObjectByType<StatCustomizerController>(FindObjectsInactive.Include);
-            if (controller != null) _canvas_Customizer = controller.gameObject;
+            var controllers = Resources.FindObjectsOfTypeAll<StatCustomizerController>();
+            foreach (var controller in controllers)
+            {
+                if (controller == null || !controller.gameObject.scene.isLoaded)
+                    continue;
+
+                _canvas_Customizer = controller.gameObject;
+                return;
+            }
         }
 
         public void RefreshVisibility()
@@ -337,13 +344,72 @@ namespace BattlePvp.UI
         private void OnStatSettingButtonClicked()
         {
             if (_canvas_Customizer == null) FindCanvasCustomizer();
-            if (_canvas_Customizer != null) SetCustomizerActive(!_canvas_Customizer.activeSelf);
+            if (_canvas_Customizer != null) SetCustomizerActive(!IsCustomizerVisible());
+            else Debug.LogWarning("[LobbyUIManager] Stat customizer was not found in the loaded scene.");
         }
 
         public void SetCustomizerActive(bool active)
         {
             if (_canvas_Customizer == null) FindCanvasCustomizer();
-            if (_canvas_Customizer != null) _canvas_Customizer.SetActive(active);
+            if (_canvas_Customizer == null) return;
+
+            if (active)
+                EnsureCustomizerHierarchyVisible(_canvas_Customizer.transform);
+
+            _canvas_Customizer.SetActive(active);
+        }
+
+        private bool IsCustomizerVisible()
+        {
+            if (_canvas_Customizer == null)
+                return false;
+
+            if (!_canvas_Customizer.activeInHierarchy)
+                return false;
+
+            Transform current = _canvas_Customizer.transform;
+            while (current != null)
+            {
+                Vector3 scale = current.localScale;
+                if (Mathf.Approximately(scale.x, 0f) || Mathf.Approximately(scale.y, 0f))
+                    return false;
+                current = current.parent;
+            }
+
+            return true;
+        }
+
+        private static void EnsureCustomizerHierarchyVisible(Transform customizer)
+        {
+            Transform current = customizer;
+            while (current != null)
+            {
+                if (current != customizer &&
+                    (current.GetComponent<NetworkIdentity>() != null || current.GetComponent<PlayerManager>() != null))
+                {
+                    break;
+                }
+
+                if (!current.gameObject.activeSelf)
+                    current.gameObject.SetActive(true);
+
+                Canvas canvas = current.GetComponent<Canvas>();
+                if (canvas != null)
+                {
+                    canvas.overrideSorting = true;
+                    canvas.sortingOrder = Mathf.Max(canvas.sortingOrder, 50);
+                }
+
+                bool isUiCanvasRoot = canvas != null || current.name.Contains("UI_Root") || current.name.Contains("Canvas");
+                if (isUiCanvasRoot)
+                {
+                    Vector3 scale = current.localScale;
+                    if (Mathf.Approximately(scale.x, 0f) || Mathf.Approximately(scale.y, 0f) || Mathf.Approximately(scale.z, 0f))
+                        current.localScale = Vector3.one;
+                }
+
+                current = current.parent;
+            }
         }
 
         public void UpdateRoomButtonsInteractable(bool interactable) { }

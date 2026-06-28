@@ -1,4 +1,4 @@
-using PlayFab;
+﻿using PlayFab;
 using PlayFab.ClientModels;
 using UnityEngine;
 using System.Collections.Generic;
@@ -10,16 +10,21 @@ using Mirror;
 namespace BattlePvp.Networking
 {
     /// <summary>
-    /// PlayFab의 Shared Group Data를 이용해 방관리 및 유저 데이터를 동기화하는 클래스입니다.
+    /// PlayFab??Shared Group Data瑜??댁슜??諛⑷?由?諛??좎? ?곗씠?곕? ?숆린?뷀븯???대옒?ㅼ엯?덈떎.
     /// </summary>
     public class PlayFabBattleManager : MonoBehaviour
     {
         public static PlayFabBattleManager Instance { get; private set; }
 
-        private const string ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY"; // 방 목록을 저장할 공용 그룹 ID
+        private const string ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY"; // 諛?紐⑸줉????ν븷 怨듭슜 洹몃９ ID
         private const string ROOM_STARTED_KEY = "IsStarted";
         private const string ROOM_PLAYER_COUNT_KEY = "PlayerCount";
         private const string ROOM_MASTER_NAME_KEY = "MasterName";
+        private const string REGISTER_ROOM_FUNCTION = "RegisterRoomToRegistry";
+        private const string GET_ACTIVE_ROOMS_FUNCTION = "GetActiveRooms";
+        private const string GET_ACTIVE_ROOM_INFOS_FUNCTION = "GetActiveRoomInfos";
+        private const string JOIN_ROOM_FUNCTION = "JoinRoom";
+        private const string LEAVE_ROOM_FUNCTION = "LeaveRoom";
 
         public struct RoomInfo
         {
@@ -36,14 +41,14 @@ namespace BattlePvp.Networking
         }
 
         [Header("Scene Settings")]
-        [SerializeField] private string _waitSceneName = "Battle_wait"; // 인스펙터에서 설정 가능
+        [SerializeField] private string _waitSceneName = "Battle_wait"; // ?몄뒪?숉꽣?먯꽌 ?ㅼ젙 媛??
 
         public event Action<Dictionary<string, string>> OnRoomListLoaded;
         public event Action<Dictionary<string, RoomInfo>> OnRoomInfoListLoaded;
         public event Action OnRoomRegistryChanged;
         public event Action OnRoomJoined;
 
-        private bool _isHost = false; // 방장 여부 확인 플래그
+        private bool _isHost = false; // 諛⑹옣 ?щ? ?뺤씤 ?뚮옒洹?
 
         private string _ownedRoomId;
         private string _joinedRoomId;
@@ -52,6 +57,7 @@ namespace BattlePvp.Networking
         private readonly Dictionary<string, string> _knownRooms = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _knownRoomMasters = new Dictionary<string, string>();
         private readonly Dictionary<string, int> _knownRoomCounts = new Dictionary<string, int>();
+        private bool _clientStatisticUpdatesDisabled;
 
         public string CurrentRoomId => _joinedRoomId;
         public RoomInfo CurrentRoomInfo => _currentRoomInfo;
@@ -63,7 +69,7 @@ namespace BattlePvp.Networking
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
                 
-                // 방 입장에 성공하면 씬 전환 이벤트 연결
+                // 諛??낆옣???깃났?섎㈃ ???꾪솚 ?대깽???곌껐
                 OnRoomJoined += HandleRoomJoinSuccess;
             }
             else
@@ -88,7 +94,7 @@ namespace BattlePvp.Networking
             else
             {
                 Debug.Log($"[PlayFabManager] Starting Mirror Client connecting to localhost...");
-                NetworkManager.singleton.networkAddress = "localhost"; // 현재는 로컬 테스트용
+                NetworkManager.singleton.networkAddress = "localhost"; // ?꾩옱??濡쒖뺄 ?뚯뒪?몄슜
                 NetworkManager.singleton.StartClient();
             }
         }
@@ -96,12 +102,12 @@ namespace BattlePvp.Networking
         #region [Room Management]
 
         /// <summary>
-        /// 새로운 방을 생성하고 글로벌 레지스트리에 등록합니다.
+        /// ?덈줈??諛⑹쓣 ?앹꽦?섍퀬 湲濡쒕쾶 ?덉??ㅽ듃由ъ뿉 ?깅줉?⑸땲??
         /// </summary>
         public void CreateRoom(string roomName)
         {
-            _isHost = true; // 만드는 사람이 호스트가 됩니다.
-            string roomId = Guid.NewGuid().ToString("N"); // 영문자+숫자로만 구성된 안전한 식별자
+            _isHost = true; // 留뚮뱶???щ엺???몄뒪?멸? ?⑸땲??
+            string roomId = Guid.NewGuid().ToString("N"); // ?곷Ц???レ옄濡쒕쭔 援ъ꽦???덉쟾???앸퀎??
             _ownedRoomId = roomId;
             _joinedRoomId = roomId;
             _hasJoinedRoomCount = true;
@@ -118,22 +124,109 @@ namespace BattlePvp.Networking
 
             PlayFabClientAPI.CreateSharedGroup(request, 
                 result => {
-                    Debug.Log($"방 생성 성공: {roomName} (ID: {roomId})");
+                    Debug.Log($"諛??앹꽦 ?깃났: {roomName} (ID: {roomId})");
                     UpdateRoomData(roomId, ROOM_STARTED_KEY, "false");
                     UpdateRoomData(roomId, ROOM_PLAYER_COUNT_KEY, "1");
                     UpdateRoomData(roomId, ROOM_MASTER_NAME_KEY, masterName);
                     
-                    // 글로벌 레지스트리에 이 방의 고유 ID와 실제 제목을 쌍으로 등록합니다.
-                    RegisterRoomToRegistry(roomId, roomName);
+                    // 湲濡쒕쾶 ?덉??ㅽ듃由ъ뿉 ??諛⑹쓽 怨좎쑀 ID? ?ㅼ젣 ?쒕ぉ???띿쑝濡??깅줉?⑸땲??
+                    RegisterRoomToRegistry(roomId, roomName, masterName);
                 }, 
-                error => Debug.LogError($"방 생성 실패: {error.GenerateErrorReport()}")
+                error => Debug.LogError($"諛??앹꽦 ?ㅽ뙣: {error.GenerateErrorReport()}")
             );
         }
 
+        private void JoinRoomThroughCloudScript(string roomId)
+        {
+            _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "roomId", roomId }
+            };
+
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = JOIN_ROOM_FUNCTION,
+                    FunctionParameter = parameters,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] CloudScript room join failed: {result.Error.Message}");
+                        return;
+                    }
+
+                    RoomInfo joinedInfo = ParseRoomInfoFromCloudScript(result.FunctionResult, roomId);
+                    _joinedRoomId = roomId;
+                    _hasJoinedRoomCount = true;
+                    _knownRoomCounts[roomId] = joinedInfo.PlayerCount;
+                    _knownRoomMasters[roomId] = joinedInfo.MasterName;
+                    _knownRooms[roomId] = joinedInfo.RoomName;
+                    _currentRoomInfo = joinedInfo;
+
+                    Debug.Log($"[PlayFab] Joined room through CloudScript: {roomId}");
+                    OnRoomRegistryChanged?.Invoke();
+                    OnRoomJoined?.Invoke();
+                },
+                error => Debug.LogError($"[PlayFab] CloudScript room join request failed: {error.GenerateErrorReport()}")
+            );
+        }
+
+        private RoomInfo ParseRoomInfoFromCloudScript(object functionResult, string roomId)
+        {
+            if (functionResult is IDictionary<string, object> resultDict &&
+                resultDict.TryGetValue("roomInfo", out object roomInfoObject) &&
+                roomInfoObject is IDictionary<string, object> infoDict)
+            {
+                return new RoomInfo(
+                    GetStringValue(infoDict, "roomName", GetKnownRoomName(roomId)),
+                    GetStringValue(infoDict, "masterName", GetKnownRoomMasterName(roomId)),
+                    GetIntValue(infoDict, "playerCount", GetKnownRoomCount(roomId)));
+            }
+
+            return new RoomInfo(GetKnownRoomName(roomId), GetKnownRoomMasterName(roomId), GetKnownRoomCount(roomId));
+        }
+
         /// <summary>
-        /// 모든 플레이어가 볼 수 있는 공용 그룹에 현재 방 정보를 추가합니다.
+        /// 紐⑤뱺 ?뚮젅?댁뼱媛 蹂????덈뒗 怨듭슜 洹몃９???꾩옱 諛??뺣낫瑜?異붽??⑸땲??
         /// </summary>
-        private void RegisterRoomToRegistry(string roomId, string roomName)
+        private void RegisterRoomToRegistry(string roomId, string roomName, string masterName)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "roomId", roomId },
+                { "roomName", roomName },
+                { "masterName", masterName }
+            };
+
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = REGISTER_ROOM_FUNCTION,
+                    FunctionParameter = parameters,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] CloudScript room registry update failed: {result.Error.Message}");
+                        return;
+                    }
+
+                    Debug.Log($"[PlayFab] Room '{roomName}' registered through CloudScript.");
+                    OnRoomRegistryChanged?.Invoke();
+                    OnRoomJoined?.Invoke();
+                },
+                error => Debug.LogError($"[PlayFab] CloudScript room registry request failed: {error.GenerateErrorReport()}")
+            );
+        }
+
+        private void UpdateRoomRegistryData(string roomId, string roomName)
         {
             var request = new UpdateSharedGroupDataRequest
             {
@@ -143,22 +236,19 @@ namespace BattlePvp.Networking
 
             PlayFabClientAPI.UpdateSharedGroupData(request,
                 result => {
-                    Debug.Log($"글로벌 레지스트리에 방 '{roomName}' 등록 완료");
+                    Debug.Log($"湲濡쒕쾶 ?덉??ㅽ듃由ъ뿉 諛?'{roomName}' ?깅줉 ?꾨즺");
                     OnRoomRegistryChanged?.Invoke();
                     OnRoomJoined?.Invoke();
                 },
                 error => {
-                    // 레지스트리 그룹이 없으면 생성 시도 (최초 1회)
-                    if (error.Error.ToString().Contains("SharedGroupNotFound") || (int)error.Error == 1088)
+                    // ?덉??ㅽ듃由?洹몃９???놁쑝硫??앹꽦 ?쒕룄 (理쒖큹 1??
+                    if (IsSharedGroupNotFound(error))
                     {
                         CreateRegistryAndRegister(roomId, roomName);
                     }
                     else
                     {
-                        Debug.LogWarning($"레지스트리 등록 실패(권한 등): {error.GenerateErrorReport()}. 일단 호스트를 시작합니다.");
-                        // 권한이 없더라도(NotAuthorized) 방 생성은 성공했으므로 게임은 진행할 수 있게 함
-                        OnRoomRegistryChanged?.Invoke();
-                        OnRoomJoined?.Invoke();
+                        Debug.LogError($"[PlayFab] Room registry update failed. Other clients will not see this room: {error.GenerateErrorReport()}");
                     }
                 }
             );
@@ -167,19 +257,62 @@ namespace BattlePvp.Networking
         private void CreateRegistryAndRegister(string roomId, string roomName)
         {
             PlayFabClientAPI.CreateSharedGroup(new CreateSharedGroupRequest { SharedGroupId = ROOM_REGISTRY_ID },
-                result => RegisterRoomToRegistry(roomId, roomName),
+                result => UpdateRoomRegistryData(roomId, roomName),
                 error => {
-                    OnRoomRegistryChanged?.Invoke();
-                    OnRoomJoined?.Invoke();
+                    Debug.LogError($"[PlayFab] Room registry creation failed. Other clients will not see this room: {error.GenerateErrorReport()}");
                 }
             );
         }
 
+        private void EnsureCurrentPlayerInSharedGroup(string groupId, Action onComplete, Action<PlayFabError> onError)
+        {
+            PlayFabClientAPI.GetAccountInfo(new GetAccountInfoRequest(),
+                accountResult =>
+                {
+                    string playFabId = accountResult.AccountInfo.PlayFabId;
+                    var addRequest = new AddSharedGroupMembersRequest
+                    {
+                        SharedGroupId = groupId,
+                        PlayFabIds = new List<string> { playFabId }
+                    };
+
+                    PlayFabClientAPI.AddSharedGroupMembers(addRequest,
+                        _ => onComplete?.Invoke(),
+                        error =>
+                        {
+                            if (IsAlreadySharedGroupMember(error))
+                            {
+                                onComplete?.Invoke();
+                                return;
+                            }
+
+                            onError?.Invoke(error);
+                        });
+                },
+                onError);
+        }
+
+        private static bool IsSharedGroupNotFound(PlayFabError error)
+        {
+            return error != null && (error.Error.ToString().Contains("SharedGroupNotFound") || (int)error.Error == 1088);
+        }
+
+        private static bool IsAlreadySharedGroupMember(PlayFabError error)
+        {
+            return error != null && error.GenerateErrorReport().IndexOf("already", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         /// <summary>
-        /// 현재 개설된 방 목록을 가져옵니다. (Key: RoomID, Value: RoomName)
+        /// ?꾩옱 媛쒖꽕??諛?紐⑸줉??媛?몄샃?덈떎. (Key: RoomID, Value: RoomName)
         /// </summary>
         public void GetActiveRooms(Action<Dictionary<string, string>> callback)
         {
+            if (UseCloudScriptRoomRegistry())
+            {
+                GetActiveRoomsFromCloudScript(callback);
+                return;
+            }
+
             var request = new GetSharedGroupDataRequest { SharedGroupId = ROOM_REGISTRY_ID };
 
             PlayFabClientAPI.GetSharedGroupData(request,
@@ -189,7 +322,7 @@ namespace BattlePvp.Networking
                     {
                         foreach (var kv in result.Data)
                         {
-                            // Value가 null이 아니면 포함
+                            // Value媛 null???꾨땲硫??ы븿
                             if (kv.Value != null) rooms[kv.Key] = kv.Value.Value;
                         }
                     }
@@ -201,7 +334,7 @@ namespace BattlePvp.Networking
                     callback?.Invoke(rooms);
                 },
                 error => {
-                    Debug.LogWarning("방 목록을 가져올 수 없거나 목록이 비어 있습니다.");
+                    Debug.LogWarning("諛?紐⑸줉??媛?몄삱 ???녾굅??紐⑸줉??鍮꾩뼱 ?덉뒿?덈떎.");
                     var rooms = new Dictionary<string, string>(_knownRooms);
                     OnRoomListLoaded?.Invoke(rooms);
                     callback?.Invoke(rooms);
@@ -209,8 +342,185 @@ namespace BattlePvp.Networking
             );
         }
 
+        private void GetActiveRoomsFromCloudScript(Action<Dictionary<string, string>> callback)
+        {
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = GET_ACTIVE_ROOMS_FUNCTION,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    Dictionary<string, string> rooms = new Dictionary<string, string>();
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] CloudScript room list load failed: {result.Error.Message}");
+                    }
+                    else
+                    {
+                        rooms = ParseRoomListFromCloudScript(result.FunctionResult);
+                    }
+
+                    foreach (var kv in _knownRooms)
+                    {
+                        rooms[kv.Key] = kv.Value;
+                    }
+
+                    OnRoomListLoaded?.Invoke(rooms);
+                    callback?.Invoke(rooms);
+                },
+                error =>
+                {
+                    Debug.LogWarning($"[PlayFab] CloudScript room list request failed: {error.GenerateErrorReport()}");
+                    var rooms = new Dictionary<string, string>(_knownRooms);
+                    OnRoomListLoaded?.Invoke(rooms);
+                    callback?.Invoke(rooms);
+                }
+            );
+        }
+
+        private bool UseCloudScriptRoomRegistry()
+        {
+            return true;
+        }
+
+        private Dictionary<string, string> ParseRoomListFromCloudScript(object functionResult)
+        {
+            var rooms = new Dictionary<string, string>();
+            if (!(functionResult is IDictionary<string, object> resultDict))
+                return rooms;
+
+            if (!resultDict.TryGetValue("rooms", out object roomsObject) || roomsObject == null)
+                return rooms;
+
+            if (roomsObject is IDictionary<string, object> objectRooms)
+            {
+                foreach (var kv in objectRooms)
+                {
+                    if (kv.Value != null)
+                        rooms[kv.Key] = kv.Value.ToString();
+                }
+            }
+            else if (roomsObject is IDictionary<string, string> stringRooms)
+            {
+                foreach (var kv in stringRooms)
+                {
+                    if (!string.IsNullOrEmpty(kv.Value))
+                        rooms[kv.Key] = kv.Value;
+                }
+            }
+
+            return rooms;
+        }
+
+        private void GetActiveRoomInfosFromCloudScript(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = GET_ACTIVE_ROOM_INFOS_FUNCTION,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    Dictionary<string, RoomInfo> roomInfos = new Dictionary<string, RoomInfo>();
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] CloudScript room info list load failed: {result.Error.Message}");
+                    }
+                    else
+                    {
+                        roomInfos = ParseRoomInfoListFromCloudScript(result.FunctionResult);
+                    }
+
+                    OnRoomInfoListLoaded?.Invoke(roomInfos);
+                    callback?.Invoke(roomInfos);
+                },
+                error =>
+                {
+                    Debug.LogWarning($"[PlayFab] CloudScript room info list request failed: {error.GenerateErrorReport()}");
+                    var fallbackRooms = new Dictionary<string, RoomInfo>();
+                    foreach (var kv in _knownRooms)
+                    {
+                        fallbackRooms[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
+                    }
+
+                    OnRoomInfoListLoaded?.Invoke(fallbackRooms);
+                    callback?.Invoke(fallbackRooms);
+                }
+            );
+        }
+
+        private Dictionary<string, RoomInfo> ParseRoomInfoListFromCloudScript(object functionResult)
+        {
+            var roomInfos = new Dictionary<string, RoomInfo>();
+            if (!(functionResult is IDictionary<string, object> resultDict))
+                return roomInfos;
+
+            if (!resultDict.TryGetValue("roomInfos", out object roomInfosObject) || roomInfosObject == null)
+                return roomInfos;
+
+            if (!(roomInfosObject is IDictionary<string, object> objectRoomInfos))
+                return roomInfos;
+
+            foreach (var kv in objectRoomInfos)
+            {
+                if (!(kv.Value is IDictionary<string, object> infoDict))
+                    continue;
+
+                string roomName = GetStringValue(infoDict, "roomName", "Unnamed Room");
+                string masterName = GetStringValue(infoDict, "masterName", "Unknown");
+                int playerCount = GetIntValue(infoDict, "playerCount", 0);
+                if (playerCount <= 0)
+                    continue;
+
+                _knownRooms[kv.Key] = roomName;
+                _knownRoomMasters[kv.Key] = masterName;
+                _knownRoomCounts[kv.Key] = playerCount;
+                roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount);
+            }
+
+            return roomInfos;
+        }
+
+        private static string GetStringValue(IDictionary<string, object> values, string key, string fallback)
+        {
+            if (values.TryGetValue(key, out object value) && value != null)
+            {
+                string text = value.ToString();
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+
+            return fallback;
+        }
+
+        private static int GetIntValue(IDictionary<string, object> values, string key, int fallback)
+        {
+            if (!values.TryGetValue(key, out object value) || value == null)
+                return fallback;
+
+            if (value is int intValue)
+                return intValue;
+
+            if (value is long longValue)
+                return Mathf.Max(0, (int)longValue);
+
+            if (value is double doubleValue)
+                return Mathf.Max(0, Mathf.RoundToInt((float)doubleValue));
+
+            return int.TryParse(value.ToString(), out int parsed) ? Mathf.Max(0, parsed) : fallback;
+        }
+
         public void GetActiveRoomInfos(Action<Dictionary<string, RoomInfo>> callback)
         {
+            if (UseCloudScriptRoomRegistry())
+            {
+                GetActiveRoomInfosFromCloudScript(callback);
+                return;
+            }
+
             GetActiveRooms(rooms =>
             {
                 var roomInfos = new Dictionary<string, RoomInfo>();
@@ -276,13 +586,19 @@ namespace BattlePvp.Networking
         }
 
         /// <summary>
-        /// 기존 방에 참여합니다. (Shared Group 멤버 추가)
+        /// 湲곗〈 諛⑹뿉 李몄뿬?⑸땲?? (Shared Group 硫ㅻ쾭 異붽?)
         /// </summary>
         public void JoinRoom(string roomId)
         {
-            // 실제 구현에서는 먼저 GetSharedGroupData 등을 통해 방 존재 여부를 확인할 수도 있습니다.
-            // 여기서는 곧바로 멤버 추가를 시도합니다.
-            // 주의: PlayFabId는 현재 로그인된 유저의 ID여야 합니다.
+            // ?ㅼ젣 援ы쁽?먯꽌??癒쇱? GetSharedGroupData ?깆쓣 ?듯빐 諛?議댁옱 ?щ?瑜??뺤씤???섎룄 ?덉뒿?덈떎.
+            // ?ш린?쒕뒗 怨㏓컮濡?硫ㅻ쾭 異붽?瑜??쒕룄?⑸땲??
+            // 二쇱쓽: PlayFabId???꾩옱 濡쒓렇?몃맂 ?좎???ID?ъ빞 ?⑸땲??
+            if (UseCloudScriptRoomRegistry())
+            {
+                JoinRoomThroughCloudScript(roomId);
+                return;
+            }
+
             _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
 
             PlayFabClientAPI.GetAccountInfo(new GetAccountInfoRequest(), 
@@ -295,7 +611,7 @@ namespace BattlePvp.Networking
 
                     PlayFabClientAPI.AddSharedGroupMembers(addRequest,
                         addResult => {
-                            Debug.Log($"방 참여 성공: {roomId}");
+                            Debug.Log($"諛?李몄뿬 ?깃났: {roomId}");
                             UpdateRoomPlayerCount(roomId, 1, () =>
                             {
                                 _joinedRoomId = roomId;
@@ -303,15 +619,15 @@ namespace BattlePvp.Networking
                                 OnRoomJoined?.Invoke();
                             });
                         },
-                        addError => Debug.LogError($"방 참여 실패: {addError.GenerateErrorReport()}")
+                        addError => Debug.LogError($"諛?李몄뿬 ?ㅽ뙣: {addError.GenerateErrorReport()}")
                     );
                 },
-                error => Debug.LogError($"내 PlayFabID를 가져오는데 실패했습니다: {error.GenerateErrorReport()}")
+                error => Debug.LogError($"??PlayFabID瑜?媛?몄삤?붾뜲 ?ㅽ뙣?덉뒿?덈떎: {error.GenerateErrorReport()}")
             );
         }
 
         /// <summary>
-        /// 방 상태 정보를 업데이트합니다.
+        /// 諛??곹깭 ?뺣낫瑜??낅뜲?댄듃?⑸땲??
         /// </summary>
         public void UpdateRoomData(string groupId, string key, string value)
         {
@@ -322,8 +638,8 @@ namespace BattlePvp.Networking
             };
 
             PlayFabClientAPI.UpdateSharedGroupData(request, 
-                result => Debug.Log($"방 데이터 업데이트 완료: {key}={value}"),
-                error => Debug.LogError($"방 데이터 업데이트 실패: {error.GenerateErrorReport()}")
+                result => Debug.Log($"諛??곗씠???낅뜲?댄듃 ?꾨즺: {key}={value}"),
+                error => Debug.LogError($"諛??곗씠???낅뜲?댄듃 ?ㅽ뙣: {error.GenerateErrorReport()}")
             );
         }
 
@@ -334,6 +650,13 @@ namespace BattlePvp.Networking
             string roomId = _joinedRoomId;
             _joinedRoomId = null;
             _hasJoinedRoomCount = false;
+
+            if (UseCloudScriptRoomRegistry())
+            {
+                LeaveRoomThroughCloudScript(roomId);
+                return;
+            }
+
             UpdateRoomPlayerCount(roomId, -1);
         }
 
@@ -358,6 +681,49 @@ namespace BattlePvp.Networking
         private void OnApplicationQuit()
         {
             LeaveCurrentRoom();
+        }
+
+        private void LeaveRoomThroughCloudScript(string roomId)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "roomId", roomId }
+            };
+
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = LEAVE_ROOM_FUNCTION,
+                    FunctionParameter = parameters,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] CloudScript room leave failed: {result.Error.Message}");
+                        return;
+                    }
+
+                    int playerCount = 0;
+                    if (result.FunctionResult is IDictionary<string, object> resultDict)
+                        playerCount = GetIntValue(resultDict, "playerCount", 0);
+
+                    if (playerCount <= 0)
+                    {
+                        _knownRooms.Remove(roomId);
+                        _knownRoomMasters.Remove(roomId);
+                        _knownRoomCounts.Remove(roomId);
+                    }
+                    else
+                    {
+                        _knownRoomCounts[roomId] = playerCount;
+                    }
+
+                    OnRoomRegistryChanged?.Invoke();
+                },
+                error => Debug.LogError($"[PlayFab] CloudScript room leave request failed: {error.GenerateErrorReport()}")
+            );
         }
 
         private void UpdateRoomPlayerCount(string roomId, int delta, Action onComplete = null)
@@ -398,6 +764,17 @@ namespace BattlePvp.Networking
             return string.IsNullOrEmpty(roomId) ? 0 : 1;
         }
 
+        private string GetKnownRoomName(string roomId)
+        {
+            if (_knownRooms.TryGetValue(roomId, out string roomName) &&
+                !string.IsNullOrWhiteSpace(roomName))
+            {
+                return roomName;
+            }
+
+            return "Unnamed Room";
+        }
+
         private string GetKnownRoomMasterName(string roomId)
         {
             if (_knownRoomMasters.TryGetValue(roomId, out string masterName) &&
@@ -431,11 +808,11 @@ namespace BattlePvp.Networking
         #region [User Data Sync]
 
         /// <summary>
-        /// 플레이어의 기본 스탯 및 계산된 파생 스탯 정보를 PlayFab에 저장합니다. (10개 키 제한을 피해 두 번에 나누어 전송)
+        /// ?뚮젅?댁뼱??湲곕낯 ?ㅽ꺈 諛?怨꾩궛???뚯깮 ?ㅽ꺈 ?뺣낫瑜?PlayFab????ν빀?덈떎. (10媛????쒗븳???쇳빐 ??踰덉뿉 ?섎늻???꾩넚)
         /// </summary>
         public void SavePlayerStats(StatContainer stats, float atk, float maxHp, float defPercent, float pene, float regen, float moveSpd, float atkSpd)
         {
-            // 1. Primary 스탯 전송 (STR, CON, AGI, DEF - 4개)
+            // 1. Primary ?ㅽ꺈 ?꾩넚 (STR, CON, AGI, DEF - 4媛?
             int str = Mathf.RoundToInt(stats.STR.Invested);
             int con = Mathf.RoundToInt(stats.CON.Invested);
             int agi = Mathf.RoundToInt(stats.AGI.Invested);
@@ -457,7 +834,7 @@ namespace BattlePvp.Networking
                 result => {
                     Debug.Log("<color=green>[PlayFab] Primary stats saved.</color>");
                     
-                    // 2. Secondary 스탯 전송 (나머지 7개)
+                    // 2. Secondary ?ㅽ꺈 ?꾩넚 (?섎㉧吏 7媛?
                     var secondaryRequest = new UpdateUserDataRequest
                     {
                         Data = new Dictionary<string, string>
@@ -483,7 +860,7 @@ namespace BattlePvp.Networking
         }
 
         /// <summary>
-        /// PlayFab에서 플레이어 스탯 정보를 불러옵니다. (FormatException 방지를 위해 double/float 파싱 사용)
+        /// PlayFab?먯꽌 ?뚮젅?댁뼱 ?ㅽ꺈 ?뺣낫瑜?遺덈윭?듬땲?? (FormatException 諛⑹?瑜??꾪빐 double/float ?뚯떛 ?ъ슜)
         /// </summary>
         public void LoadPlayerStats(Action<StatContainer> onLoaded)
         {
@@ -494,7 +871,7 @@ namespace BattlePvp.Networking
                     var stats = new StatContainer();
                     if (result.Data != null && result.Data.Count > 0)
                     {
-                        // 모든 필드에 대해 안전하게 파싱하여 FormatException 방지
+                        // 紐⑤뱺 ?꾨뱶??????덉쟾?섍쾶 ?뚯떛?섏뿬 FormatException 諛⑹?
                         if (result.Data.ContainsKey("STR")) stats.STR.Invested = (float)ParseValue(result.Data["STR"].Value);
                         if (result.Data.ContainsKey("CON")) stats.CON.Invested = (float)ParseValue(result.Data["CON"].Value);
                         if (result.Data.ContainsKey("AGI")) stats.AGI.Invested = (float)ParseValue(result.Data["AGI"].Value);
@@ -528,10 +905,13 @@ namespace BattlePvp.Networking
         #endregion
         
         /// <summary>
-        /// 승리/플레이 기록을 리더보드에 업데이트합니다.
+        /// ?밸━/?뚮젅??湲곕줉??由щ뜑蹂대뱶???낅뜲?댄듃?⑸땲??
         /// </summary>
         public void UpdateStatistics(int points)
         {
+            if (_clientStatisticUpdatesDisabled)
+                return;
+
             var request = new UpdatePlayerStatisticsRequest
             {
                 Statistics = new List<StatisticUpdate>
@@ -541,9 +921,22 @@ namespace BattlePvp.Networking
             };
 
             PlayFabClientAPI.UpdatePlayerStatistics(request, 
-                result => Debug.Log("리더보드 업데이트 성공"),
-                error => Debug.LogError($"리더보드 업데이트 실패: {error.GenerateErrorReport()}")
+                result => Debug.Log("由щ뜑蹂대뱶 ?낅뜲?댄듃 ?깃났"),
+                error => HandleStatisticsUpdateError(error)
             );
+        }
+
+        private void HandleStatisticsUpdateError(PlayFabError error)
+        {
+            string report = error.GenerateErrorReport();
+            if (report.Contains("This API must be enabled for client access"))
+            {
+                _clientStatisticUpdatesDisabled = true;
+                Debug.LogWarning("[PlayFab] Client leaderboard updates are disabled in Game Manager API Features. Skipping future client statistic updates.");
+                return;
+            }
+
+            Debug.LogError($"Leaderboard update failed: {report}");
         }
     }
 }

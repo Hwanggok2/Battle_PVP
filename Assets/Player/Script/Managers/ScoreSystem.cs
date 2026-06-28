@@ -41,11 +41,88 @@ namespace BattlePvp.Combat
         public static readonly List<ScoreSystem> ActiveScores = new List<ScoreSystem>();
 
         private IXpDistributor _xpDistributor = new SimpleXpDistributor();
+        private readonly Dictionary<uint, int> _killsByVictim = new Dictionary<uint, int>();
+        private readonly Dictionary<uint, int> _deathsByKiller = new Dictionary<uint, int>();
 
         [Server]
         public void AddPoint(int amount)
         {
             CurrentPoints += amount;
+        }
+
+        [Server]
+        public void ResetMatchStats()
+        {
+            CurrentPoints = 0;
+            _killsByVictim.Clear();
+            _deathsByKiller.Clear();
+        }
+
+        [Server]
+        public void RecordKillAgainst(ScoreSystem victim)
+        {
+            if (victim == null || victim == this)
+                return;
+
+            AddPoint(1);
+            Increment(_killsByVictim, victim.netId);
+            victim.RecordDeathFrom(this);
+        }
+
+        [Server]
+        private void RecordDeathFrom(ScoreSystem killer)
+        {
+            if (killer == null || killer == this)
+                return;
+
+            Increment(_deathsByKiller, killer.netId);
+        }
+
+        public string GetMostKilledEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
+        {
+            return ResolveTopOpponentName(_killsByVictim, allPlayers);
+        }
+
+        public string GetMostKilledByEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
+        {
+            return ResolveTopOpponentName(_deathsByKiller, allPlayers);
+        }
+
+        private static void Increment(Dictionary<uint, int> values, uint netId)
+        {
+            if (values.ContainsKey(netId))
+                values[netId]++;
+            else
+                values[netId] = 1;
+        }
+
+        private static string ResolveTopOpponentName(Dictionary<uint, int> values, IReadOnlyList<ScoreSystem> allPlayers)
+        {
+            if (values == null || values.Count == 0)
+                return "None";
+
+            uint topNetId = 0;
+            int topCount = int.MinValue;
+            foreach (var pair in values)
+            {
+                if (pair.Value > topCount)
+                {
+                    topNetId = pair.Key;
+                    topCount = pair.Value;
+                }
+            }
+
+            if (allPlayers != null)
+            {
+                for (int i = 0; i < allPlayers.Count; i++)
+                {
+                    var player = allPlayers[i];
+                    if (player != null && player.netId == topNetId)
+                        return string.IsNullOrEmpty(player.PlayerName) ? "Unknown" : player.PlayerName;
+                }
+            }
+
+            return "Unknown";
         }
 
         /// <summary>

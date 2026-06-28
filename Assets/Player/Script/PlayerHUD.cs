@@ -1,7 +1,9 @@
 using System;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
+using Mirror;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BattlePvp.UI
 {
@@ -29,7 +31,7 @@ namespace BattlePvp.UI
         void SetScore(int points);
 
         /// <summary>플레이어 사망 패널 제어</summary>
-        void SetDeathOverlay(bool active, string text = "");
+        void SetDeathOverlay(bool active, string text = "", Color? textColor = null);
 
         /// <summary>전장 진입 시 로딩 패널 제어</summary>
         void SetLoadingOverlay(bool active);
@@ -133,6 +135,12 @@ namespace BattlePvp.UI
 
         private void Start()
         {
+            RefreshLocalInstance();
+            if (!IsLocalPlayerHud())
+            {
+                UpdateLoadingOverlay(false);
+                return;
+            }
             // 프리팹에서 기본 켜짐(Active) 상태인 로딩창을 안전하게 제어
             // 전장 진입 전(예: 로비)이거나 배틀 매니저가 없을 때는 로딩창을 즉시 끕니다.
             if (BattlePvp.Networking.BattleStateMachine.Instance != null)
@@ -160,8 +168,43 @@ namespace BattlePvp.UI
 
         private void Update()
         {
+            RefreshLocalInstance();
+            SyncLoadingOverlayFromBattleState();
+
             // 최적화를 위해 Update 루프를 제거했습니다.
             // 대신 HealthSystem의 HpChanged 이벤트를 통해 실시간 갱신을 수행합니다.
+        }
+
+        private void RefreshLocalInstance()
+        {
+            if (IsLocalPlayerHud())
+                Instance = this;
+        }
+
+        private bool IsLocalPlayerHud()
+        {
+            if (NetworkClient.localPlayer == null)
+                return false;
+
+            return transform == NetworkClient.localPlayer.transform ||
+                   transform.IsChildOf(NetworkClient.localPlayer.transform);
+        }
+
+        private void SyncLoadingOverlayFromBattleState()
+        {
+            if (!IsLocalPlayerHud())
+            {
+                _hudView?.SetLoadingOverlay(false);
+                return;
+            }
+
+            var battleState = BattlePvp.Networking.BattleStateMachine.Instance;
+            bool shouldShow = battleState != null &&
+                              battleState.IsLoading &&
+                              battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle &&
+                              battleState.CurrentState != BattlePvp.Networking.BattleState.MatchEnded;
+
+            UpdateLoadingOverlay(shouldShow);
         }
 
         private void OnHpChanged(float current, float max)
@@ -202,12 +245,17 @@ namespace BattlePvp.UI
         /// <summary>
         /// 사망 패널을 띄우거나 닫습니다.
         /// </summary>
-        public void UpdateDeathOverlay(bool active, string text = "") => _hudView?.SetDeathOverlay(active, text);
+        public void UpdateDeathOverlay(bool active, string text = "", Color? textColor = null) => _hudView?.SetDeathOverlay(active, text, textColor);
 
         /// <summary>
         /// 로딩 오버레이를 띄우거나 닫습니다.
         /// </summary>
-        public void UpdateLoadingOverlay(bool active) => _hudView?.SetLoadingOverlay(active);
+        public void UpdateLoadingOverlay(bool active)
+        {
+            string sceneName = SceneManager.GetActiveScene().name;
+            bool canShowLoading = sceneName == "Battle";
+            _hudView?.SetLoadingOverlay(active && canShowLoading);
+        }
 
         #endregion
     }

@@ -4,10 +4,13 @@ using System.Collections;
 using System.Collections.Generic;
 using BattlePvp.Combat;
 using BattlePvp.UI;
+using TMPro;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace BattlePvp.Networking
 {
-    public enum BattleState { Waiting, PreMatch, Countdown, InBattle, Respawn }
+    public enum BattleState { Waiting, PreMatch, Countdown, InBattle, Respawn, MatchEnded }
 
     /// <summary>
     /// Mirror를 이용해 전장의 상태(State Machine)를 동기화하고 관리하는 클래스입니다.
@@ -31,8 +34,21 @@ namespace BattlePvp.Networking
         public float CountdownDuration = 5f;
         public float MatchDuration = 180f;
         public float RespawnDuration = 5f;
+        public float ResultDelaySeconds = 5f;
+
+        [Header("Result UI")]
+        [SerializeField] private GameObject _resultPanel;
+        [SerializeField] private TMP_Text _nicknameText;
+        [SerializeField] private TMP_Text _rankText;
+        [SerializeField] private TMP_Text _mostKilledByText;
+        [SerializeField] private TMP_Text _mostKilledText;
+        [SerializeField] private TMP_Text _restartPromptText;
+        [SerializeField] private TMP_Text _resultSummaryText;
 
         private Coroutine _activeMatchRoutine;
+        private GameObject _runtimeResultPanel;
+        private bool _restartRequested;
+        private bool _resultPanelVisible;
 
         private void Awake()
         {
@@ -61,6 +77,9 @@ namespace BattlePvp.Networking
 
             // 정확히 "Battle" 씬일 때만 매치를 시작합니다. (Battle_waiting 등 오발 방지)
             string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (sceneName != "Battle")
+                IsLoading = false;
+
             if (sceneName == "Battle")
             {
                 Debug.Log("[BattleStateMachine] Battle scene detected. StartMatch 호출.");
@@ -94,23 +113,39 @@ namespace BattlePvp.Networking
             yield return new WaitForSeconds(1.5f);
 
             // 2. 스폰 포인트 배치
-            RpcTeleportToSpawnPoints();
+            try
+            {
+                TeleportPlayersToSpawnPointsOnServer();
 
             // 3. 모든 플레이어 체력 최대치로 강제 설정 (서버 권한)
             // 약간의 프레임 대기 후 갱신
-            yield return null;
             var allHealthSystems = FindObjectsByType<HealthSystem>(FindObjectsSortMode.None);
             foreach (var hs in allHealthSystems)
             {
+                hs.isInvincible = false;
                 hs.RefreshFromStats(keepCurrentHpFlat: false);
                 hs.RefillHealth();
             }
             Debug.Log($"[BattleStateMachine] {allHealthSystems.Length}명의 체력을 최대치로 초기화했습니다.");
 
             // 4. 로딩 화면 끄기
-            IsLoading = false;
+            }
+            finally
+            {
+                IsLoading = false;
+            }
 
             // 3. In-Battle
+            var scoreSystems = FindObjectsByType<ScoreSystem>(FindObjectsSortMode.None);
+            foreach (var score in scoreSystems)
+            {
+                if (score != null)
+                    score.ResetMatchStats();
+            }
+
+            _restartRequested = false;
+            _resultPanelVisible = false;
+            HideResultPanel();
             CurrentState = BattleState.InBattle;
             RemainingTime = MatchDuration;
             while (RemainingTime > 0)
@@ -120,12 +155,294 @@ namespace BattlePvp.Networking
             }
 
             // 4. Match End (추후 구현)
-            Debug.Log("Match Ended!");
+            EndMatchOnServer();
             _activeMatchRoutine = null;
+        }
+
+        private void Update()
+        {
+            if (CurrentState != BattleState.MatchEnded || _restartRequested || !_resultPanelVisible) return;
+
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
+            {
+                _restartRequested = true;
+                CmdRequestRestart();
+            }
+        }
+
+        [Server]
+        private void EndMatchOnServer()
+        {
+            CurrentState = BattleState.MatchEnded;
+            RemainingTime = 0f;
+
+            var allScores = new List<ScoreSystem>(FindObjectsByType<ScoreSystem>(FindObjectsSortMode.None));
+            int winnerScore = int.MinValue;
+            foreach (var score in allScores)
+            {
+                if (score == null) continue;
+                if (score.CurrentPoints > winnerScore)
+                    winnerScore = score.CurrentPoints;
+            }
+
+            var winners = new List<ScoreSystem>();
+            foreach (var score in allScores)
+            {
+                if (score != null && score.CurrentPoints == winnerScore)
+                    winners.Add(score);
+            }
+
+            var allHealthSystems = FindObjectsByType<HealthSystem>(FindObjectsSortMode.None);
+            foreach (var hs in allHealthSystems)
+            {
+                if (hs == null) continue;
+                hs.isInvincible = true;
+                hs.Revive(1f);
+            }
+
+            uint[] winnerNetIds = new uint[winners.Count];
+            string winnerName = winners.Count > 0 ? winners[0].PlayerName : "Unknown";
+            int displayWinnerScore = winners.Count > 0 ? winnerScore : 0;
+            for (int i = 0; i < winners.Count; i++)
+            {
+                winnerNetIds[i] = winners[i].netId;
+            }
+
+            if (winners.Count > 0)
+                winners[0].DistributeRewards(allScores);
+
+            RpcHandleMatchEnded(winnerNetIds);
+            SendPersonalResults(allScores);
+            Debug.Log($"[BattleStateMachine] Match ended. Winners={winners.Count}, Score={displayWinnerScore}");
+        }
+
+        [ClientRpc]
+        private void RpcHandleMatchEnded(uint[] winnerNetIds)
+        {
+            var localPlayer = NetworkClient.localPlayer;
+            bool isWinner = localPlayer != null && IsWinnerNetId(localPlayer.netId, winnerNetIds);
+            Transform spectateTarget = ResolveWinnerSpectateTarget(winnerNetIds);
+
+            if (localPlayer != null)
+            {
+                var playerManager = localPlayer.GetComponent<PlayerManager>();
+                if (playerManager != null)
+                    playerManager.EnterMatchEndMode(spectateTarget, isWinner);
+            }
+        }
+
+        [Server]
+        private void SendPersonalResults(List<ScoreSystem> allScores)
+        {
+            if (allScores == null)
+                return;
+
+            for (int i = 0; i < allScores.Count; i++)
+            {
+                var score = allScores[i];
+                if (score == null || score.connectionToClient == null)
+                    continue;
+
+                int rank = CalculateRank(score, allScores);
+                string playerName = string.IsNullOrEmpty(score.PlayerName) ? "Unknown" : score.PlayerName;
+                string mostKilledBy = score.GetMostKilledByEnemyName(allScores);
+                string mostKilled = score.GetMostKilledEnemyName(allScores);
+                TargetShowPersonalResult(score.connectionToClient, playerName, rank, mostKilledBy, mostKilled);
+            }
+        }
+
+        private int CalculateRank(ScoreSystem target, IReadOnlyList<ScoreSystem> allScores)
+        {
+            if (target == null || allScores == null)
+                return 0;
+
+            int rank = 1;
+            for (int i = 0; i < allScores.Count; i++)
+            {
+                var score = allScores[i];
+                if (score != null && score.CurrentPoints > target.CurrentPoints)
+                    rank++;
+            }
+
+            return rank;
+        }
+
+        [TargetRpc]
+        private void TargetShowPersonalResult(NetworkConnectionToClient target, string playerName, int rank, string mostKilledBy, string mostKilled)
+        {
+            StartCoroutine(CoShowResultPanel(playerName, rank, mostKilledBy, mostKilled));
+        }
+
+        private bool IsWinnerNetId(uint netId, uint[] winnerNetIds)
+        {
+            if (winnerNetIds == null) return false;
+            for (int i = 0; i < winnerNetIds.Length; i++)
+            {
+                if (winnerNetIds[i] == netId)
+                    return true;
+            }
+            return false;
+        }
+
+        private Transform ResolveWinnerSpectateTarget(uint[] winnerNetIds)
+        {
+            if (winnerNetIds == null || winnerNetIds.Length == 0)
+                return null;
+
+            int startIndex = Random.Range(0, winnerNetIds.Length);
+            for (int i = 0; i < winnerNetIds.Length; i++)
+            {
+                int index = (startIndex + i) % winnerNetIds.Length;
+                if (NetworkClient.spawned.TryGetValue(winnerNetIds[index], out NetworkIdentity identity))
+                    return identity.transform;
+            }
+
+            return null;
+        }
+
+        private IEnumerator CoShowResultPanel(string playerName, int rank, string mostKilledBy, string mostKilled)
+        {
+            _resultPanelVisible = false;
+            HideResultPanel();
+
+            yield return new WaitForSeconds(ResultDelaySeconds);
+
+            ShowResultPanel(playerName, rank, mostKilledBy, mostKilled);
+        }
+
+        private void HideResultPanel()
+        {
+            if (_runtimeResultPanel != null)
+            {
+                Destroy(_runtimeResultPanel);
+                _runtimeResultPanel = null;
+            }
+
+            if (_resultPanel != null)
+                _resultPanel.SetActive(false);
+        }
+
+        private void ShowResultPanel(string playerName, int rank, string mostKilledBy, string mostKilled)
+        {
+            string resultMessage = BuildResultMessage(playerName, rank, mostKilledBy, mostKilled);
+            if (_resultPanel != null)
+            {
+                ResolveResultTextReferences();
+                SetText(_nicknameText, $"Nickname: {playerName}");
+                SetText(_rankText, $"Rank: {rank}");
+                SetText(_mostKilledByText, $"Most defeated by: {mostKilledBy}");
+                SetText(_mostKilledText, $"Most defeated: {mostKilled}");
+                SetText(_restartPromptText, "Press Enter to Restart");
+
+                if (_resultSummaryText != null)
+                    _resultSummaryText.text = resultMessage;
+
+                _resultPanel.SetActive(true);
+                _resultPanelVisible = true;
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+                return;
+            }
+
+            Canvas canvas = FindFirstObjectByType<Canvas>();
+            if (canvas == null)
+            {
+                var canvasObject = new GameObject("ResultCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                canvas = canvasObject.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            }
+
+            _runtimeResultPanel = new GameObject("ResultPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            _runtimeResultPanel.transform.SetParent(canvas.transform, false);
+
+            var rect = _runtimeResultPanel.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var image = _runtimeResultPanel.GetComponent<Image>();
+            image.color = new Color(0f, 0f, 0f, 0.72f);
+            image.raycastTarget = true;
+
+            var textObject = new GameObject("ResultText", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textObject.transform.SetParent(_runtimeResultPanel.transform, false);
+
+            var textRect = textObject.GetComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
+            textRect.sizeDelta = new Vector2(760f, 220f);
+
+            var text = textObject.GetComponent<TextMeshProUGUI>();
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 34;
+            text.color = Color.white;
+            text.text = resultMessage;
+
+            _resultPanelVisible = true;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
+        private void ResolveResultTextReferences()
+        {
+            if (_resultPanel == null)
+                return;
+
+            var texts = _resultPanel.GetComponentsInChildren<TMP_Text>(true);
+            foreach (var text in texts)
+            {
+                if (text == null) continue;
+                string lowerName = text.name.ToLowerInvariant();
+
+                if (_nicknameText == null && lowerName.Contains("nickname"))
+                    _nicknameText = text;
+                else if (_rankText == null && lowerName.Contains("rank"))
+                    _rankText = text;
+                else if (_mostKilledByText == null && (lowerName.Contains("killedby") || lowerName.Contains("killed_by") || lowerName.Contains("killed by") || lowerName.Contains("defeatedby") || lowerName.Contains("defeated_by") || lowerName.Contains("defeated by")))
+                    _mostKilledByText = text;
+                else if (_mostKilledText == null && (lowerName.Contains("mostkilled") || lowerName.Contains("most_killed") || lowerName.Contains("most killed") || lowerName.Contains("mostdefeated") || lowerName.Contains("most_defeated") || lowerName.Contains("most defeated") || lowerName.Contains("defeated")))
+                    _mostKilledText = text;
+                else if (_restartPromptText == null && (lowerName.Contains("restart") || lowerName.Contains("prompt")))
+                    _restartPromptText = text;
+            }
+
+            if (_resultSummaryText == null && _nicknameText == null && _rankText == null && _mostKilledByText == null && _mostKilledText == null && texts.Length > 0)
+                _resultSummaryText = texts[0];
+        }
+
+        private static void SetText(TMP_Text text, string value)
+        {
+            if (text != null)
+                text.text = value;
+        }
+
+        private string BuildResultMessage(string playerName, int rank, string mostKilledBy, string mostKilled)
+        {
+            return $"Nickname: {playerName}\nRank: {rank}\nMost defeated by: {mostKilledBy}\nMost defeated: {mostKilled}\n\nPress Enter to Restart";
+        }
+
+        [Command(requiresAuthority = false)]
+        public void CmdRequestRestart(NetworkConnectionToClient sender = null)
+        {
+            if (CurrentState != BattleState.MatchEnded) return;
+            if (NetworkManager.singleton == null) return;
+
+            _restartRequested = true;
+            NetworkManager.singleton.ServerChangeScene("Battle_waiting");
         }
 
         private void OnIsLoadingChanged(bool oldVal, bool newVal)
         {
+            string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (sceneName != "Battle")
+                newVal = false;
+
             if (PlayerHUD.Instance != null)
             {
                 PlayerHUD.Instance.UpdateLoadingOverlay(newVal);
@@ -151,6 +468,52 @@ namespace BattlePvp.Networking
             }
         }
 
+        [Server]
+        private void TeleportPlayersToSpawnPointsOnServer()
+        {
+            var starts = FindObjectsByType<NetworkStartPosition>(FindObjectsSortMode.None);
+            if (starts == null || starts.Length == 0)
+            {
+                Debug.LogWarning("[BattleStateMachine] No NetworkStartPosition found. Players keep current positions.");
+                return;
+            }
+
+            var players = new List<PlayerManager>(FindObjectsByType<PlayerManager>(FindObjectsSortMode.None));
+            players.RemoveAll(player => player == null || player.netIdentity == null);
+            players.Sort((a, b) => a.netId.CompareTo(b.netId));
+
+            for (int i = 0; i < players.Count; i++)
+            {
+                PlayerManager player = players[i];
+                Transform start = starts[i % starts.Length].transform;
+                SnapPlayerTransform(player.gameObject, start.position, start.rotation);
+                RpcSnapPlayerToSpawn(player.netId, start.position, start.rotation);
+            }
+        }
+
+        [ClientRpc]
+        private void RpcSnapPlayerToSpawn(uint playerNetId, Vector3 position, Quaternion rotation)
+        {
+            if (NetworkClient.spawned.TryGetValue(playerNetId, out NetworkIdentity identity) && identity != null)
+                SnapPlayerTransform(identity.gameObject, position, rotation);
+        }
+
+        private static void SnapPlayerTransform(GameObject playerObject, Vector3 position, Quaternion rotation)
+        {
+            if (playerObject == null)
+                return;
+
+            CharacterController controller = playerObject.GetComponent<CharacterController>();
+            bool wasControllerEnabled = controller != null && controller.enabled;
+            if (wasControllerEnabled)
+                controller.enabled = false;
+
+            playerObject.transform.SetPositionAndRotation(position, rotation);
+
+            if (wasControllerEnabled)
+                controller.enabled = true;
+        }
+
         [ClientRpc]
         private void RpcTeleportToSpawnPoints()
         {
@@ -172,6 +535,11 @@ namespace BattlePvp.Networking
         private void OnStateChanged(BattleState oldState, BattleState newState)
         {
             Debug.Log($"Battle State Changed: {oldState} -> {newState}");
+            if (newState == BattleState.InBattle || newState == BattleState.MatchEnded)
+            {
+                if (PlayerHUD.Instance != null)
+                    PlayerHUD.Instance.UpdateLoadingOverlay(false);
+            }
             // UI 업데이트 알림 등을 여기서 수행할 수 있습니다.
             if (BattleTimerUI.Instance != null)
             {

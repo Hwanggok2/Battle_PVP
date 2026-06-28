@@ -3,6 +3,7 @@ using System.Collections;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
 using BattlePvp.Networking;
+using BattlePvp.UI;
 using Mirror;
 using UnityEngine;
 
@@ -220,6 +221,7 @@ namespace BattlePvp.Combat
             }
 
             _currentHp = next < 0f ? 0f : next;
+            ShowDamagePopup(hitPosition, amount);
 
             EvaluateDeath(); // [공통 로직으로 교체]
 
@@ -247,6 +249,31 @@ namespace BattlePvp.Combat
             }
 
             UpdateOverflowState();
+        }
+
+        private void ShowDamagePopup(Vector3 hitPosition, float amount)
+        {
+            Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
+
+            if (isServer)
+            {
+                RpcShowDamagePopup(popupPosition, amount);
+                return;
+            }
+
+            CreateDamagePopupLocal(popupPosition, amount);
+        }
+
+        [ClientRpc]
+        private void RpcShowDamagePopup(Vector3 position, float amount)
+        {
+            CreateDamagePopupLocal(position, amount);
+        }
+
+        private void CreateDamagePopupLocal(Vector3 position, float amount)
+        {
+            if (DamagePopupManager.Instance != null)
+                DamagePopupManager.Instance.CreatePopup(position, amount);
         }
 
         private float PredictMaxHp()
@@ -439,7 +466,8 @@ namespace BattlePvp.Combat
                         var attackerScore = attackerMb.GetComponent<ScoreSystem>();
                         if (attackerScore != null)
                         {
-                            attackerScore.AddPoint(1);
+                            var victimScore = GetComponent<ScoreSystem>();
+                            attackerScore.RecordKillAgainst(victimScore);
                             Debug.Log($"[HealthSystem] {_lastAttacker} killed {gameObject.name}. Awarded 1 point.");
                         }
                     }

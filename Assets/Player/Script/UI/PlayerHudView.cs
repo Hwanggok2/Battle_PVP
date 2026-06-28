@@ -80,10 +80,22 @@ namespace BattlePvp.UI
         [SerializeField] private GameObject _deathDimObject;
         [SerializeField] private TextMeshProUGUI _deathCountdownText;
 
-        public void SetDeathOverlay(bool active, string text = "")
+        private Color _defaultDeathTextColor = Color.white;
+
+        private void Start()
+        {
+            if (_deathCountdownText != null)
+                _defaultDeathTextColor = _deathCountdownText.color;
+        }
+
+        public void SetDeathOverlay(bool active, string text = "", Color? textColor = null)
         {
             if (_deathDimObject != null) _deathDimObject.SetActive(active);
-            if (_deathCountdownText != null && active) _deathCountdownText.text = text;
+            if (_deathCountdownText != null && active)
+            {
+                _deathCountdownText.text = text;
+                _deathCountdownText.color = textColor ?? _defaultDeathTextColor;
+            }
         }
 
         public void SetScore(int points)

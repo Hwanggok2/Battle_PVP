@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using BattlePvp.Stats;
 using BattlePvp.Combat;
+using UnityEngine.SceneManagement;
 
 public class PlayerCombat : MonoBehaviour
 {
@@ -40,7 +41,16 @@ public class PlayerCombat : MonoBehaviour
     public void OnAttack(InputValue value)
     {
         if (!value.isPressed) return;
+        if (IsBattleLoadingOrNotStarted()) return;
+
         var pm = GetComponent<PlayerManager>();
+        if (BattlePvp.Networking.BattleStateMachine.Instance != null &&
+            BattlePvp.Networking.BattleStateMachine.Instance.CurrentState == BattlePvp.Networking.BattleState.MatchEnded)
+        {
+            if (pm == null || pm.IsMatchEndLocked)
+                return;
+        }
+
         // Wait, isDead is private in PlayerManager, so I'll check HealthSystem IsDead instead.
         var health = GetComponent<HealthSystem>();
         if (health != null && health.IsDead) return;
@@ -67,6 +77,18 @@ public class PlayerCombat : MonoBehaviour
             // 공격 중이 아니라면 1타(Index 0)부터 즉시 시작합니다.
             StartAttack(0);
         }
+    }
+
+    private bool IsBattleLoadingOrNotStarted()
+    {
+        if (SceneManager.GetActiveScene().name != "Battle")
+            return false;
+
+        var battleState = BattlePvp.Networking.BattleStateMachine.Instance;
+        if (battleState == null)
+            return false;
+
+        return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 
     private void StartAttack(int index)

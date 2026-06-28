@@ -17,13 +17,40 @@ namespace BattlePvp.Lobby
         [SerializeField] private string _playerNameInScene = "Player";
         [SerializeField] private Vector3 _fallbackSpawnPosition = Vector3.zero;
 
+        private Coroutine _ensureRoutine;
+
+        private void Awake()
+        {
+            if (IsLobbyScene())
+                TryActivate();
+        }
+
+        private void OnEnable()
+        {
+            if (IsLobbyScene())
+                StartEnsureRoutine();
+        }
+
         private void Start()
         {
-            if (SceneManager.GetActiveScene().name == "Lobby")
+            if (IsLobbyScene())
             {
                 // Mirror 초기화 타임을 벌기 위해 프레임 지연 실행
-                StartCoroutine(CoEnsurePlayerActive());
+                StartEnsureRoutine();
             }
+        }
+
+        private static bool IsLobbyScene()
+        {
+            return SceneManager.GetActiveScene().name == "Lobby";
+        }
+
+        private void StartEnsureRoutine()
+        {
+            if (_ensureRoutine != null)
+                StopCoroutine(_ensureRoutine);
+
+            _ensureRoutine = StartCoroutine(CoEnsurePlayerActive());
         }
 
         private IEnumerator CoEnsurePlayerActive()
@@ -59,7 +86,7 @@ namespace BattlePvp.Lobby
                     var allTransforms = Resources.FindObjectsOfTypeAll<Transform>();
                     foreach (var t in allTransforms)
                     {
-                        if (t.hideFlags == HideFlags.None && t.name == _playerNameInScene)
+                        if (t.hideFlags == HideFlags.None && t.gameObject.scene.isLoaded && t.name == _playerNameInScene)
                         {
                             _targetPlayer = t.gameObject;
                             break;

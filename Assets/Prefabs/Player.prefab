@@ -3037,7 +3037,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &4515739555345072390
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4854,10 +4854,13 @@ MonoBehaviour:
   moveSpeed: 5
   gravity: 9.81
   rotationSpeed: 720
+  _respawnPromptText: Press Space to Respawn
+  _deathOverlayTextColor: {r: 0, g: 0, b: 0, a: 1}
   inputVector: {x: 0, y: 0}
   velocityY: 0
   isAttacking: 0
   isDead: 0
+  _matchEndLocked: 0
 --- !u!114 &4130369353287361673
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5571,6 +5574,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -290
       objectReference: {fileID: 0}
+    - target: {fileID: 4767723360512177645, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: -100
+      objectReference: {fileID: 0}
+    - target: {fileID: 4767723360512177645, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: -100
+      objectReference: {fileID: 0}
     - target: {fileID: 4910222472651138492, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_Enabled
       value: 0
@@ -5749,6 +5760,14 @@ PrefabInstance:
       objectReference: {fileID: 2650887370580843292, guid: b6ba224e29ba0954c8620cf966439c25, type: 2}
     - target: {fileID: 6597479379272171065, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_HorizontalAlignment
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6770097504617733570, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_SortingOrder
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 6770097504617733570, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_OverrideSorting
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6973300936554815612, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}

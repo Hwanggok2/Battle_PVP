@@ -4,6 +4,7 @@ using BattlePvp.Stats;
 using BattlePvp.Combat;
 using System.Collections;
 using Mirror;
+using UnityEngine.SceneManagement;
 using BattlePvp.Logic; // 추가
 
 [RequireComponent(typeof(CharacterController))]
@@ -15,6 +16,11 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float moveSpeed = 5.0f; // 기본 이동 속도
     [SerializeField] private float gravity = 9.81f; // 중력 값
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
+    [SerializeField] private float _transformSyncInterval = 0.033f;
+
+    [Header("Death Overlay Text")]
+    [SerializeField] private string _respawnPromptText = "Press Space to Respawn";
+    [SerializeField] private Color _deathOverlayTextColor = new Color(0.75f, 0.2f, 1f, 1f);
 
     private CharacterController controller;
     private Animator animator;
@@ -26,8 +32,15 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float velocityY;
     [SerializeField] private bool isAttacking = false; // 현재 공격 중인지 여부
     [SerializeField] private bool isDead = false; // 사망 여부
+    [SerializeField] private bool _matchEndLocked = false;
 
     private HealthSystem _healthSystem;
+    private Coroutine _respawnRoutine;
+    private float _nextTransformSyncTime;
+    private Vector3 _lastSentPosition;
+    private Quaternion _lastSentRotation;
+
+    public bool IsMatchEndLocked => _matchEndLocked;
 
     private readonly int speedHash = Animator.StringToHash("Speed");
 
@@ -38,6 +51,29 @@ public class PlayerManager : NetworkBehaviour
         rb = GetComponent<Rigidbody>();
         _healthSystem = GetComponent<HealthSystem>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+        DisableBuiltInNetworkTransforms();
+        ConfigureRigidbodyForCharacterController();
+    }
+
+    private void DisableBuiltInNetworkTransforms()
+    {
+        var networkTransforms = GetComponents<NetworkTransformBase>();
+        foreach (var networkTransform in networkTransforms)
+        {
+            if (networkTransform != null)
+                networkTransform.enabled = false;
+        }
+    }
+
+    private void ConfigureRigidbodyForCharacterController()
+    {
+        if (rb == null)
+            return;
+
+        rb.isKinematic = true;
+        rb.useGravity = false;
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
     }
 
     public override void OnStartLocalPlayer()
@@ -99,7 +135,7 @@ public class PlayerManager : NetworkBehaviour
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
     public void OnMove(InputValue value)
     {
-        if (isDead) { inputVector = Vector2.zero; return; }
+        if (isDead || _matchEndLocked) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
 
@@ -107,8 +143,20 @@ public class PlayerManager : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
-        if (isDead || GameInputController.IsPaused) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused) return;
         ApplyMovement();
+    }
+
+    private bool IsBattleLoadingOrNotStarted()
+    {
+        if (SceneManager.GetActiveScene().name != "Battle")
+            return false;
+
+        var battleState = BattlePvp.Networking.BattleStateMachine.Instance;
+        if (battleState == null)
+            return false;
+
+        return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 
     // Animator의 Animation Event 등에서 호출하여 공격 상태를 알립니다.
@@ -162,12 +210,67 @@ public class PlayerManager : NetworkBehaviour
 
         Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
         controller.Move(finalMove * Time.deltaTime);
+        TrySyncTransform();
 
         // 5. 애니메이션 (사망 시 업데이트 중지)
         if (!isDead)
         {
             animator.SetFloat(speedHash, inputVector.magnitude);
         }
+    }
+
+    private void TrySyncTransform()
+    {
+        if (!isLocalPlayer || !isClient || Time.time < _nextTransformSyncTime)
+            return;
+
+        if ((_lastSentPosition - transform.position).sqrMagnitude < 0.0001f &&
+            Quaternion.Angle(_lastSentRotation, transform.rotation) < 0.5f)
+            return;
+
+        _nextTransformSyncTime = Time.time + _transformSyncInterval;
+        _lastSentPosition = transform.position;
+        _lastSentRotation = transform.rotation;
+        CmdSyncTransform(transform.position, transform.rotation);
+    }
+
+    private void ForceSyncTransform()
+    {
+        if (!isLocalPlayer || !isClient)
+            return;
+
+        _nextTransformSyncTime = Time.time + _transformSyncInterval;
+        _lastSentPosition = transform.position;
+        _lastSentRotation = transform.rotation;
+        CmdSyncTransform(transform.position, transform.rotation);
+    }
+
+    [Command(channel = Channels.Unreliable)]
+    private void CmdSyncTransform(Vector3 position, Quaternion rotation)
+    {
+        ApplySyncedTransform(position, rotation);
+        RpcSyncTransform(position, rotation);
+    }
+
+    [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
+    private void RpcSyncTransform(Vector3 position, Quaternion rotation)
+    {
+        if (isLocalPlayer)
+            return;
+
+        ApplySyncedTransform(position, rotation);
+    }
+
+    private void ApplySyncedTransform(Vector3 position, Quaternion rotation)
+    {
+        bool controllerWasEnabled = controller != null && controller.enabled;
+        if (controllerWasEnabled)
+            controller.enabled = false;
+
+        transform.SetPositionAndRotation(position, rotation);
+
+        if (controllerWasEnabled)
+            controller.enabled = true;
     }
 
     private void HandleDeath()
@@ -184,7 +287,7 @@ public class PlayerManager : NetworkBehaviour
 
         if (controller != null) controller.enabled = false;
 
-        StartCoroutine(RespawnRoutine());
+        _respawnRoutine = StartCoroutine(RespawnRoutine());
     }
 
     private IEnumerator RespawnRoutine()
@@ -193,7 +296,7 @@ public class PlayerManager : NetworkBehaviour
         for (int i = 5; i > 0; i--)
         {
             if (BattlePvp.UI.PlayerHUD.Instance != null)
-                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"{i}");
+                BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, $"{i}", _deathOverlayTextColor);
             yield return new WaitForSeconds(1f);
         }
 
@@ -201,7 +304,7 @@ public class PlayerManager : NetworkBehaviour
         ToggleCharacterVisibility(false);
 
         if (BattlePvp.UI.PlayerHUD.Instance != null)
-            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, "스페이스바를 눌러 부활 (Space)");
+            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(true, _respawnPromptText, _deathOverlayTextColor);
 
         // 3. Space 키 입력 대기
         bool keyPressed = false;
@@ -228,6 +331,7 @@ public class PlayerManager : NetworkBehaviour
         }
 
         transform.SetPositionAndRotation(spawnPos, spawnRot);
+        ForceSyncTransform();
         
         // 상태 복구
         isDead = false;
@@ -256,6 +360,52 @@ public class PlayerManager : NetworkBehaviour
             _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
             _healthSystem.Revive(1f);
         }
+    }
+
+    public void EnterMatchEndMode(Transform winnerTarget, bool isWinner)
+    {
+        if (!isLocalPlayer) return;
+
+        _matchEndLocked = !isWinner;
+        inputVector = Vector2.zero;
+        isAttacking = false;
+        isDead = false;
+
+        if (_respawnRoutine != null)
+        {
+            StopCoroutine(_respawnRoutine);
+            _respawnRoutine = null;
+        }
+
+        ToggleCharacterVisibility(true);
+        if (controller != null) controller.enabled = true;
+
+        if (animator != null)
+        {
+            animator.SetBool("IsDead", false);
+            animator.SetFloat(speedHash, 0f);
+        }
+
+        if (_healthSystem != null)
+        {
+            _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
+            _healthSystem.Revive(1f);
+        }
+
+        if (BattlePvp.UI.PlayerHUD.Instance != null)
+            BattlePvp.UI.PlayerHUD.Instance.UpdateDeathOverlay(false);
+
+        if (followCamera == null)
+            followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+
+        if (followCamera != null)
+        {
+            followCamera.SetTarget(isWinner ? transform : winnerTarget);
+            followCamera.IsLocked = !isWinner;
+        }
+
+        Cursor.lockState = isWinner ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !isWinner;
     }
 
     private void ToggleCharacterVisibility(bool visible)
