@@ -17,7 +17,14 @@ handlers.RegisterRoomToRegistry = function(args, context) {
         playerCount: 1
     };
 
+    ensureSharedGroup(roomId);
+    server.UpdateSharedGroupData({
+        SharedGroupId: roomId,
+        Data: buildRoomData(roomInfo)
+    });
     setRegistryRoomInfo(roomId, roomInfo);
+    addCurrentPlayerToRoom(roomId, true);
+    log.info("Registered room " + roomId + " (" + roomName + ") to " + ROOM_REGISTRY_ID);
 
     return {
         ok: true,
@@ -43,8 +50,16 @@ handlers.GetActiveRooms = function(args, context) {
 };
 
 handlers.GetActiveRoomInfos = function(args, context) {
+    var roomInfos = loadActiveRoomInfos();
+    var roomCount = 0;
+    for (var roomId in roomInfos) {
+        if (roomInfos.hasOwnProperty(roomId))
+            roomCount++;
+    }
+    log.info("GetActiveRoomInfos returned " + roomCount + " room(s).");
+
     return {
-        roomInfos: loadActiveRoomInfos()
+        roomInfos: roomInfos
     };
 };
 
@@ -249,16 +264,23 @@ function getRoomInfo(roomId) {
     return normalizeRoomInfo(roomInfo, roomId);
 }
 
-function addCurrentPlayerToRoom(roomId) {
+function addCurrentPlayerToRoom(roomId, ignoreFailure) {
     try {
         server.AddSharedGroupMembers({
             SharedGroupId: roomId,
             PlayFabIds: [currentPlayerId]
         });
     } catch (e) {
-        var message = String(e);
+        var message = getErrorText(e);
         if (message.indexOf("already") === -1 &&
-            message.indexOf("MemberAlreadyExists") === -1) {
+            message.indexOf("Already") === -1 &&
+            message.indexOf("MemberAlreadyExists") === -1 &&
+            message.indexOf("UsersAlreadyInSharedGroup") === -1) {
+            if (ignoreFailure) {
+                log.info("AddSharedGroupMembers skipped for " + roomId + ": " + message);
+                return;
+            }
+
             throw e;
         }
     }

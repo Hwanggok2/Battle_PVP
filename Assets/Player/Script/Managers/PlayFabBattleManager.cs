@@ -29,6 +29,7 @@ namespace BattlePvp.Networking
         private const string ADMIN_VALIDATE_ROOM_KEY_FUNCTION = "AdminValidateRoomKey";
         private const string ADMIN_DELETE_ROOM_FUNCTION = "AdminDeleteRoom";
         private const string ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION = "AdminClearRoomRegistry";
+        private const string CLOUDSCRIPT_NOT_FOUND = "CloudScriptNotFound";
 
         public struct RoomInfo
         {
@@ -61,6 +62,7 @@ namespace BattlePvp.Networking
         private readonly Dictionary<string, string> _knownRooms = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _knownRoomMasters = new Dictionary<string, string>();
         private readonly Dictionary<string, int> _knownRoomCounts = new Dictionary<string, int>();
+        private readonly Dictionary<string, RoomInfo> _lastLoadedRoomInfos = new Dictionary<string, RoomInfo>();
         private bool _clientStatisticUpdatesDisabled;
 
         public string CurrentRoomId => _joinedRoomId;
@@ -110,6 +112,8 @@ namespace BattlePvp.Networking
         /// </summary>
         public void CreateRoom(string roomName)
         {
+            LeaveJoinedRoomBeforeSwitch(null);
+
             _isHost = true; // 留뚮뱶???щ엺???몄뒪?멸? ?⑸땲??
             string roomId = Guid.NewGuid().ToString("N"); // ?곷Ц???レ옄濡쒕쭔 援ъ꽦???덉쟾???앸퀎??
             _ownedRoomId = roomId;
@@ -142,6 +146,7 @@ namespace BattlePvp.Networking
 
         private void JoinRoomThroughCloudScript(string roomId)
         {
+            LeaveJoinedRoomBeforeSwitch(roomId);
             _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
 
             var parameters = new Dictionary<string, object>
@@ -160,7 +165,7 @@ namespace BattlePvp.Networking
                 {
                     if (result.Error != null)
                     {
-                        Debug.LogError($"[PlayFab] CloudScript room join failed: {result.Error.Message}");
+                        Debug.LogError($"[PlayFab] CloudScript room join failed: {FormatCloudScriptError(result)}");
                         return;
                     }
 
@@ -218,16 +223,40 @@ namespace BattlePvp.Networking
                 {
                     if (result.Error != null)
                     {
-                        Debug.LogError($"[PlayFab] CloudScript room registry update failed: {result.Error.Message}");
+                        Debug.LogError($"[PlayFab] CloudScript room registry update failed: {FormatCloudScriptError(result)}");
+                        TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
                         return;
                     }
 
-                    Debug.Log($"[PlayFab] Room '{roomName}' registered through CloudScript.");
+                    Debug.Log($"[PlayFab] Room '{roomName}' registered through CloudScript. Result={SerializeForLog(result.FunctionResult)}");
                     OnRoomRegistryChanged?.Invoke();
                     OnRoomJoined?.Invoke();
                 },
-                error => Debug.LogError($"[PlayFab] CloudScript room registry request failed: {error.GenerateErrorReport()}")
+                error =>
+                {
+                    Debug.LogError($"[PlayFab] CloudScript room registry request failed: {error.GenerateErrorReport()}");
+                    TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
+                }
             );
+        }
+
+        private void TryRegisterRoomToRegistryWithClientApi(string roomId, string roomName)
+        {
+            Debug.LogWarning("[PlayFab] Falling back to client SharedGroup room registry. Deploy combinedCloudScript.js to fix cross-client room sharing reliably.");
+
+            EnsureCurrentPlayerInSharedGroup(
+                ROOM_REGISTRY_ID,
+                () => UpdateRoomRegistryData(roomId, roomName),
+                error =>
+                {
+                    if (IsSharedGroupNotFound(error))
+                    {
+                        CreateRegistryAndRegister(roomId, roomName);
+                        return;
+                    }
+
+                    Debug.LogError($"[PlayFab] Client room registry fallback failed. Other clients may not see this room: {error.GenerateErrorReport()}");
+                });
         }
 
         private void UpdateRoomRegistryData(string roomId, string roomName)
@@ -431,29 +460,228 @@ namespace BattlePvp.Networking
                     Dictionary<string, RoomInfo> roomInfos = new Dictionary<string, RoomInfo>();
                     if (result.Error != null)
                     {
-                        Debug.LogError($"[PlayFab] CloudScript room info list load failed: {result.Error.Message}");
+                        Debug.LogError($"[PlayFab] CloudScript room info list load failed: {FormatCloudScriptError(result)}");
+                        GetActiveRoomInfosFromSharedGroup(callback);
+                        return;
                     }
                     else
                     {
                         roomInfos = ParseRoomInfoListFromCloudScript(result.FunctionResult);
+                        Debug.Log($"[PlayFab] CloudScript room info list loaded {roomInfos.Count} room(s). Result={SerializeForLog(result.FunctionResult)}");
                     }
 
+                    foreach (var kv in _knownRooms)
+                    {
+                        if (!roomInfos.ContainsKey(kv.Key))
+                            roomInfos[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
+                    }
+
+                    MergeKnownRoomInfos(roomInfos);
                     OnRoomInfoListLoaded?.Invoke(roomInfos);
                     callback?.Invoke(roomInfos);
                 },
                 error =>
                 {
                     Debug.LogWarning($"[PlayFab] CloudScript room info list request failed: {error.GenerateErrorReport()}");
-                    var fallbackRooms = new Dictionary<string, RoomInfo>();
-                    foreach (var kv in _knownRooms)
-                    {
-                        fallbackRooms[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
-                    }
-
-                    OnRoomInfoListLoaded?.Invoke(fallbackRooms);
-                    callback?.Invoke(fallbackRooms);
+                    GetActiveRoomInfosFromSharedGroup(callback);
                 }
             );
+        }
+
+        private void GetActiveRoomInfosFromSharedGroup(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            EnsureCurrentPlayerInSharedGroup(
+                ROOM_REGISTRY_ID,
+                () => GetActiveRoomInfosFromSharedGroupAfterMembership(callback),
+                error =>
+                {
+                    if (IsSharedGroupNotFound(error))
+                    {
+                        CreateRegistryThenLoadSharedGroupRooms(callback);
+                        return;
+                    }
+
+                    Debug.LogWarning($"[PlayFab] Could not join room registry before fallback load: {error.GenerateErrorReport()}");
+                    GetActiveRoomInfosFromSharedGroupAfterMembership(callback);
+                });
+        }
+
+        private void GetActiveRoomsFromSharedGroup(Action<Dictionary<string, string>> callback)
+        {
+            PlayFabClientAPI.GetSharedGroupData(
+                new GetSharedGroupDataRequest { SharedGroupId = ROOM_REGISTRY_ID },
+                result =>
+                {
+                    var rooms = new Dictionary<string, string>();
+                    if (result.Data != null)
+                    {
+                        foreach (var kv in result.Data)
+                        {
+                            if (kv.Value == null)
+                                continue;
+
+                            rooms[kv.Key] = ParseRoomNameFromRegistryValue(kv.Key, kv.Value.Value);
+                        }
+                    }
+
+                    foreach (var kv in _knownRooms)
+                        rooms[kv.Key] = kv.Value;
+
+                    OnRoomListLoaded?.Invoke(rooms);
+                    callback?.Invoke(rooms);
+                },
+                error =>
+                {
+                    Debug.LogWarning($"[PlayFab] SharedGroup room list fallback failed: {error.GenerateErrorReport()}");
+                    var rooms = new Dictionary<string, string>(_knownRooms);
+                    OnRoomListLoaded?.Invoke(rooms);
+                    callback?.Invoke(rooms);
+                });
+        }
+
+        private void CreateRegistryThenLoadSharedGroupRooms(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            PlayFabClientAPI.CreateSharedGroup(
+                new CreateSharedGroupRequest { SharedGroupId = ROOM_REGISTRY_ID },
+                _ => EnsureCurrentPlayerInSharedGroup(
+                    ROOM_REGISTRY_ID,
+                    () => GetActiveRoomInfosFromSharedGroupAfterMembership(callback),
+                    error =>
+                    {
+                        Debug.LogWarning($"[PlayFab] Could not join newly created room registry: {error.GenerateErrorReport()}");
+                        CompleteRoomInfoLoad(new Dictionary<string, RoomInfo>(), callback);
+                    }),
+                error =>
+                {
+                    if (IsAlreadySharedGroupMember(error) || error.GenerateErrorReport().IndexOf("already", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        GetActiveRoomInfosFromSharedGroupAfterMembership(callback);
+                        return;
+                    }
+
+                    Debug.LogWarning($"[PlayFab] Could not create room registry for fallback load: {error.GenerateErrorReport()}");
+                    CompleteRoomInfoLoad(new Dictionary<string, RoomInfo>(), callback);
+                });
+        }
+
+        private void GetActiveRoomInfosFromSharedGroupAfterMembership(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            GetActiveRoomsFromSharedGroup(rooms =>
+            {
+                var roomInfos = new Dictionary<string, RoomInfo>();
+                if (rooms.Count == 0)
+                {
+                    CompleteRoomInfoLoad(roomInfos, callback);
+                    return;
+                }
+
+                int remaining = rooms.Count;
+                foreach (var kvp in rooms)
+                {
+                    string roomId = kvp.Key;
+                    string roomName = string.IsNullOrWhiteSpace(kvp.Value) ? "Unnamed Room" : kvp.Value;
+                    string fallbackMasterName = GetKnownRoomMasterName(roomId);
+                    int fallbackCount = GetKnownRoomCount(roomId);
+
+                    PlayFabClientAPI.GetSharedGroupData(
+                        new GetSharedGroupDataRequest { SharedGroupId = roomId },
+                        result =>
+                        {
+                            int playerCount = fallbackCount;
+                            if (result.Data != null &&
+                                result.Data.TryGetValue(ROOM_PLAYER_COUNT_KEY, out SharedGroupDataRecord countRecord))
+                            {
+                                playerCount = ParseRoomPlayerCount(countRecord.Value, fallbackCount);
+                            }
+
+                            string masterName = fallbackMasterName;
+                            if (result.Data != null &&
+                                result.Data.TryGetValue(ROOM_MASTER_NAME_KEY, out SharedGroupDataRecord masterRecord))
+                            {
+                                masterName = string.IsNullOrWhiteSpace(masterRecord.Value) ? fallbackMasterName : masterRecord.Value;
+                            }
+
+                            if (playerCount > 0)
+                                roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount);
+
+                            if (--remaining == 0)
+                                CompleteRoomInfoLoad(roomInfos, callback);
+                        },
+                        error =>
+                        {
+                            Debug.LogWarning($"[PlayFab] Room detail fallback failed for {roomId}: {error.GenerateErrorReport()}");
+                            roomInfos[roomId] = new RoomInfo(roomName, fallbackMasterName, fallbackCount);
+
+                            if (--remaining == 0)
+                                CompleteRoomInfoLoad(roomInfos, callback);
+                        });
+                }
+            });
+        }
+
+        private void CompleteRoomInfoLoad(Dictionary<string, RoomInfo> roomInfos, Action<Dictionary<string, RoomInfo>> callback)
+        {
+            MergeKnownRoomInfos(roomInfos);
+            Debug.Log($"[PlayFab] SharedGroup room info fallback loaded {roomInfos.Count} room(s).");
+            OnRoomInfoListLoaded?.Invoke(roomInfos);
+            callback?.Invoke(roomInfos);
+        }
+
+        private void MergeKnownRoomInfos(Dictionary<string, RoomInfo> roomInfos)
+        {
+            foreach (var kv in _knownRooms)
+            {
+                if (!roomInfos.ContainsKey(kv.Key))
+                    roomInfos[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
+            }
+
+            if (roomInfos.Count == 0 && _lastLoadedRoomInfos.Count > 0)
+            {
+                foreach (var kv in _lastLoadedRoomInfos)
+                    roomInfos[kv.Key] = kv.Value;
+
+                Debug.LogWarning($"[PlayFab] Room query returned empty. Reusing {_lastLoadedRoomInfos.Count} cached room(s).");
+                return;
+            }
+
+            if (roomInfos.Count <= 0)
+                return;
+
+            _lastLoadedRoomInfos.Clear();
+            foreach (var kv in roomInfos)
+            {
+                _lastLoadedRoomInfos[kv.Key] = kv.Value;
+                _knownRooms[kv.Key] = kv.Value.RoomName;
+                _knownRoomMasters[kv.Key] = kv.Value.MasterName;
+                _knownRoomCounts[kv.Key] = kv.Value.PlayerCount;
+            }
+        }
+
+        private static string ParseRoomNameFromRegistryValue(string roomId, string registryValue)
+        {
+            if (string.IsNullOrWhiteSpace(registryValue))
+                return roomId;
+
+            string text = registryValue.Trim();
+            if (!text.StartsWith("{", StringComparison.Ordinal))
+                return text;
+
+            try
+            {
+                var parsed = PlayFab.PluginManager.GetPlugin<ISerializerPlugin>(PluginContract.PlayFab_Serializer).DeserializeObject<Dictionary<string, object>>(text);
+                if (parsed != null && parsed.TryGetValue("roomName", out object roomName) && roomName != null)
+                {
+                    string name = roomName.ToString();
+                    if (!string.IsNullOrWhiteSpace(name))
+                        return name;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PlayFab] Failed to parse room registry value for {roomId}: {ex.Message}");
+            }
+
+            return roomId;
         }
 
         private Dictionary<string, RoomInfo> ParseRoomInfoListFromCloudScript(object functionResult)
@@ -486,6 +714,21 @@ namespace BattlePvp.Networking
             }
 
             return roomInfos;
+        }
+
+        private static string SerializeForLog(object value)
+        {
+            if (value == null)
+                return "null";
+
+            try
+            {
+                return PlayFab.PluginManager.GetPlugin<ISerializerPlugin>(PluginContract.PlayFab_Serializer).SerializeObject(value);
+            }
+            catch (Exception)
+            {
+                return value.ToString();
+            }
         }
 
         private static string GetStringValue(IDictionary<string, object> values, string key, string fallback)
@@ -603,6 +846,7 @@ namespace BattlePvp.Networking
                 return;
             }
 
+            LeaveJoinedRoomBeforeSwitch(roomId);
             _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
 
             PlayFabClientAPI.GetAccountInfo(new GetAccountInfoRequest(), 
@@ -662,6 +906,29 @@ namespace BattlePvp.Networking
             }
 
             UpdateRoomPlayerCount(roomId, -1);
+        }
+
+        private void LeaveJoinedRoomBeforeSwitch(string nextRoomId)
+        {
+            if (!_hasJoinedRoomCount || string.IsNullOrEmpty(_joinedRoomId))
+                return;
+
+            if (!string.IsNullOrEmpty(nextRoomId) && string.Equals(_joinedRoomId, nextRoomId, StringComparison.Ordinal))
+                return;
+
+            string previousRoomId = _joinedRoomId;
+            _joinedRoomId = null;
+            _hasJoinedRoomCount = false;
+
+            Debug.Log($"[PlayFab] Leaving previous room before switching: {previousRoomId}");
+
+            if (UseCloudScriptRoomRegistry())
+            {
+                LeaveRoomThroughCloudScript(previousRoomId);
+                return;
+            }
+
+            UpdateRoomPlayerCount(previousRoomId, -1);
         }
 
         public void RefreshCurrentRoomInfo(Action<RoomInfo> callback = null)

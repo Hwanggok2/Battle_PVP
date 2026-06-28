@@ -302,7 +302,20 @@ namespace BattlePvp.UI
 
         private void OnBattleButtonClicked()
         {
-            if (_room_UI != null) _room_UI.SetActive(!_room_UI.activeSelf);
+            if (_room_UI == null)
+                return;
+
+            bool nextActive = !_room_UI.activeSelf;
+            _room_UI.SetActive(nextActive);
+
+            if (nextActive)
+            {
+                var roomList = _room_UI.GetComponentInChildren<RoomListManager>(true);
+                if (roomList == null)
+                    roomList = FindFirstObjectByType<RoomListManager>(FindObjectsInactive.Include);
+
+                roomList?.RefreshList();
+            }
         }
 
         private void OnCreateRoomButtonClicked()

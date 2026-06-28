@@ -137,17 +137,26 @@ namespace BattlePvp.UI
 
         private void ConfigureDeleteButton(bool showDeleteButton)
         {
+            if (!showDeleteButton)
+            {
+                if (_deleteButton != null)
+                {
+                    _deleteButton.onClick.RemoveAllListeners();
+                    _deleteButton.gameObject.SetActive(false);
+                }
+
+                return;
+            }
+
             if (_deleteButton == null)
                 _deleteButton = CreateDeleteButton();
 
             if (_deleteButton == null)
                 return;
 
-            _deleteButton.gameObject.SetActive(showDeleteButton);
+            _deleteButton.gameObject.SetActive(true);
             _deleteButton.onClick.RemoveAllListeners();
-
-            if (showDeleteButton)
-                _deleteButton.onClick.AddListener(OnDeleteClicked);
+            _deleteButton.onClick.AddListener(OnDeleteClicked);
         }
 
         private Button CreateDeleteButton()

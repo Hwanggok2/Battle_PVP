@@ -12,8 +12,6 @@ namespace BattlePvp.UI
     /// </summary>
     public sealed class RoomListManager : MonoBehaviour
     {
-        private static RoomListManager _activeInstance;
-
         [Header("UI References")]
         [SerializeField] private RectTransform _contentParent;      // ScrollView의 Content
         [SerializeField] private RoomListItem _itemPrefab;          // 방 항목 프리팹
@@ -23,15 +21,26 @@ namespace BattlePvp.UI
         [SerializeField] private Scrollbar _verticalScrollbar;
         [SerializeField] private GameObject _developerPanelRoot;
         [SerializeField] private TMP_InputField _adminKeyInput;
+        [SerializeField] private Button _editRoomAdminButton;
         [SerializeField] private Button _unlockDeleteButton;
+        [SerializeField] private Button _cancelUnlockButton;
         [SerializeField] private Button _clearAllButton;
         [SerializeField] private TextMeshProUGUI _developerStatusText;
 
         [SerializeField] private float _autoRefreshSeconds = 60f;
         [SerializeField] private float _scrollSensitivity = 24f;
 
+        private const float RoomItemHeight = 25f;
+        private const float RoomItemSpacing = 15f;
+        private const float RoomListPaddingLeft = 20f;
+        private const float RoomListPaddingRight = 20f;
+        private const float RoomListPaddingTop = 15f;
+        private const float RoomListPaddingBottom = 0f;
+
         private readonly List<RoomListItem> _instantiatedItems = new List<RoomListItem>();
+        private readonly Dictionary<string, PlayFabBattleManager.RoomInfo> _lastVisibleRooms = new Dictionary<string, PlayFabBattleManager.RoomInfo>();
         private Coroutine _autoRefreshRoutine;
+        private Coroutine _loginRefreshRoutine;
         private Coroutine _developerToastRoutine;
         private TextMeshProUGUI _developerToastText;
         private int _refreshVersion;
@@ -41,12 +50,6 @@ namespace BattlePvp.UI
         private void OnEnable()
         {
             _isAlive = true;
-            if (_activeInstance != null && _activeInstance != this)
-            {
-                _activeInstance._refreshVersion++;
-                _activeInstance.ClearList();
-            }
-            _activeInstance = this;
 
             if (_refreshButton != null)
                 _refreshButton.onClick.AddListener(RefreshList);
@@ -54,12 +57,15 @@ namespace BattlePvp.UI
             if (PlayFabBattleManager.Instance != null)
                 PlayFabBattleManager.Instance.OnRoomRegistryChanged += RefreshList;
 
+            if (PlayFabAuthManager.Instance != null)
+                PlayFabAuthManager.Instance.OnLoginSuccess += RefreshAfterLogin;
+
             EnsureScrollBarVisible();
             EnsureDeveloperPanel();
-            SetDeveloperPanelVisible(IsDeveloperRoomAdminEnabled());
+            SetDeveloperPanelVisible(false);
             
             // 초기 1회 로드
-            RefreshList();
+            RequestRefreshWhenReady();
 
             if (_autoRefreshRoutine != null) StopCoroutine(_autoRefreshRoutine);
             _autoRefreshRoutine = StartCoroutine(CoAutoRefresh());
@@ -68,8 +74,6 @@ namespace BattlePvp.UI
         private void OnDisable()
         {
             _isAlive = false;
-            if (_activeInstance == this)
-                _activeInstance = null;
 
             if (_refreshButton != null)
                 _refreshButton.onClick.RemoveListener(RefreshList);
@@ -77,16 +81,31 @@ namespace BattlePvp.UI
             if (PlayFabBattleManager.Instance != null)
                 PlayFabBattleManager.Instance.OnRoomRegistryChanged -= RefreshList;
 
+            if (PlayFabAuthManager.Instance != null)
+                PlayFabAuthManager.Instance.OnLoginSuccess -= RefreshAfterLogin;
+
             if (_clearAllButton != null)
                 _clearAllButton.onClick.RemoveListener(OnClearAllClicked);
 
+            if (_editRoomAdminButton != null)
+                _editRoomAdminButton.onClick.RemoveListener(OnEditRoomAdminClicked);
+
             if (_unlockDeleteButton != null)
                 _unlockDeleteButton.onClick.RemoveListener(OnUnlockDeleteClicked);
+
+            if (_cancelUnlockButton != null)
+                _cancelUnlockButton.onClick.RemoveListener(OnCloseDeveloperPanelClicked);
 
             if (_autoRefreshRoutine != null)
             {
                 StopCoroutine(_autoRefreshRoutine);
                 _autoRefreshRoutine = null;
+            }
+
+            if (_loginRefreshRoutine != null)
+            {
+                StopCoroutine(_loginRefreshRoutine);
+                _loginRefreshRoutine = null;
             }
 
             _refreshVersion++;
@@ -97,8 +116,6 @@ namespace BattlePvp.UI
         {
             _isAlive = false;
             _refreshVersion++;
-            if (_activeInstance == this)
-                _activeInstance = null;
         }
 
         private IEnumerator CoAutoRefresh()
@@ -107,8 +124,47 @@ namespace BattlePvp.UI
             while (true)
             {
                 yield return wait;
-                RefreshList();
+                RequestRefreshWhenReady();
             }
+        }
+
+        private void RefreshAfterLogin()
+        {
+            RequestRefreshWhenReady();
+        }
+
+        private void RequestRefreshWhenReady()
+        {
+            if (!_isAlive || this == null)
+                return;
+
+            if (_loginRefreshRoutine != null)
+                StopCoroutine(_loginRefreshRoutine);
+
+            _loginRefreshRoutine = StartCoroutine(CoRefreshWhenReady());
+        }
+
+        private IEnumerator CoRefreshWhenReady()
+        {
+            yield return null;
+
+            float timeout = 5f;
+            while (_isAlive && this != null && !IsPlayFabReadyForRoomList() && timeout > 0f)
+            {
+                timeout -= 0.1f;
+                yield return new WaitForSecondsRealtime(0.1f);
+            }
+
+            if (!_isAlive || this == null)
+                yield break;
+
+            RefreshList();
+
+            yield return new WaitForSecondsRealtime(0.5f);
+            if (_isAlive && this != null)
+                RefreshList();
+
+            _loginRefreshRoutine = null;
         }
 
         /// <summary>
@@ -117,8 +173,14 @@ namespace BattlePvp.UI
         public void RefreshList()
         {
             if (!_isAlive || this == null) return;
-            if (_activeInstance != this) return;
             if (PlayFabBattleManager.Instance == null) return;
+            if (!IsPlayFabReadyForRoomList())
+            {
+                Debug.Log("[RoomList] PlayFab is not logged in yet. Waiting before room refresh.");
+                RequestRefreshWhenReady();
+                return;
+            }
+
             EnsureContentParent();
             if (_contentParent == null || _itemPrefab == null)
             {
@@ -132,7 +194,13 @@ namespace BattlePvp.UI
             PlayFabBattleManager.Instance.GetActiveRoomInfos(rooms =>
             {
                 if (!_isAlive || this == null || requestVersion != _refreshVersion) return;
-                if (_activeInstance != this || _contentParent == null || _itemPrefab == null) return;
+                if (_contentParent == null || _itemPrefab == null) return;
+
+                if (rooms.Count == 0 && _lastVisibleRooms.Count > 0)
+                {
+                    Debug.LogWarning($"[RoomList] Room query returned empty. Keeping {_lastVisibleRooms.Count} visible cached room(s).");
+                    return;
+                }
 
                 ClearList();
 
@@ -150,6 +218,7 @@ namespace BattlePvp.UI
                     if (!shownRoomTitles.Add(roomTitle)) continue;
 
                     var item = Instantiate(_itemPrefab, _contentParent);
+                    PrepareItemForLayout(item);
                     item.SetInfo(
                         roomId,
                         roomTitle,
@@ -161,12 +230,23 @@ namespace BattlePvp.UI
                     _instantiatedItems.Add(item);
                     visibleCount++;
                 }
-                LayoutRebuilder.ForceRebuildLayoutImmediate(_contentParent);
-                Canvas.ForceUpdateCanvases();
-                ResizeContentForItems();
+
+                if (rooms.Count > 0)
+                {
+                    _lastVisibleRooms.Clear();
+                    foreach (var kvp in rooms)
+                        _lastVisibleRooms[kvp.Key] = kvp.Value;
+                }
+
+                LayoutRoomItems();
                 EnsureScrollBarVisible();
                 Debug.Log($"[RoomList] Refresh completed. {visibleCount} rooms shown ({rooms.Count} returned).");
             });
+        }
+
+        private static bool IsPlayFabReadyForRoomList()
+        {
+            return PlayFabAuthManager.Instance == null || PlayFabAuthManager.Instance.IsLoggedIn();
         }
 
         private void EnsureContentParent()
@@ -185,6 +265,32 @@ namespace BattlePvp.UI
             var content = transform.Find("Viewport/Content");
             if (content is RectTransform contentRect)
                 _contentParent = contentRect;
+        }
+
+        private static void PrepareItemForLayout(RoomListItem item)
+        {
+            if (item == null)
+                return;
+
+            var rect = item.GetComponent<RectTransform>();
+            if (rect != null)
+            {
+                rect.anchorMin = new Vector2(0f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(0.5f, 1f);
+                rect.anchoredPosition = Vector2.zero;
+                rect.localScale = Vector3.one;
+                rect.sizeDelta = new Vector2(-(RoomListPaddingLeft + RoomListPaddingRight), RoomItemHeight);
+            }
+
+            var layoutElement = item.GetComponent<LayoutElement>();
+            if (layoutElement == null)
+                layoutElement = item.gameObject.AddComponent<LayoutElement>();
+
+            layoutElement.ignoreLayout = false;
+            layoutElement.minHeight = RoomItemHeight;
+            layoutElement.preferredHeight = RoomItemHeight;
+            layoutElement.flexibleHeight = 0f;
         }
 
         private void EnsureScrollBarVisible()
@@ -216,56 +322,49 @@ namespace BattlePvp.UI
             }
         }
 
-        private void ResizeContentForItems()
+        private void LayoutRoomItems()
         {
             if (_contentParent == null)
                 return;
 
-            var layout = _contentParent.GetComponent<VerticalLayoutGroup>();
-            float totalHeight = 0f;
+            ConfigureContentLayout();
 
-            if (layout != null)
-            {
-                totalHeight += layout.padding.top + layout.padding.bottom;
-                int activeChildCount = 0;
-
-                for (int i = 0; i < _contentParent.childCount; i++)
-                {
-                    var child = _contentParent.GetChild(i) as RectTransform;
-                    if (child == null || !child.gameObject.activeSelf)
-                        continue;
-
-                    totalHeight += GetChildPreferredHeight(child);
-                    activeChildCount++;
-                }
-
-                if (activeChildCount > 1)
-                    totalHeight += layout.spacing * (activeChildCount - 1);
-            }
-            else
-            {
-                for (int i = 0; i < _contentParent.childCount; i++)
-                {
-                    var child = _contentParent.GetChild(i) as RectTransform;
-                    if (child == null || !child.gameObject.activeSelf)
-                        continue;
-
-                    totalHeight += GetChildPreferredHeight(child);
-                }
-            }
+            int itemCount = _instantiatedItems.Count;
+            float contentHeight = RoomListPaddingTop + RoomListPaddingBottom;
+            if (itemCount > 0)
+                contentHeight += itemCount * RoomItemHeight + Mathf.Max(0, itemCount - 1) * RoomItemSpacing;
 
             float viewportHeight = 0f;
-            if (_scrollRect == null)
-                _scrollRect = GetComponent<ScrollRect>();
-
             if (_scrollRect != null && _scrollRect.viewport != null)
                 viewportHeight = _scrollRect.viewport.rect.height;
 
-            _contentParent.anchorMin = new Vector2(0f, 1f);
-            _contentParent.anchorMax = new Vector2(1f, 1f);
-            _contentParent.pivot = new Vector2(0f, 1f);
+            contentHeight = Mathf.Max(contentHeight, viewportHeight);
+            _contentParent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
             _contentParent.anchoredPosition = Vector2.zero;
-            _contentParent.sizeDelta = new Vector2(0f, Mathf.Max(viewportHeight, totalHeight));
+
+            for (int i = 0; i < _instantiatedItems.Count; i++)
+            {
+                var item = _instantiatedItems[i];
+                if (item == null)
+                    continue;
+
+                var rect = item.GetComponent<RectTransform>();
+                if (rect == null)
+                    continue;
+
+                rect.anchorMin = new Vector2(0f, 1f);
+                rect.anchorMax = new Vector2(1f, 1f);
+                rect.pivot = new Vector2(0.5f, 1f);
+                rect.localScale = Vector3.one;
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, RoomItemHeight);
+                rect.sizeDelta = new Vector2(-(RoomListPaddingLeft + RoomListPaddingRight), RoomItemHeight);
+                rect.anchoredPosition = new Vector2(
+                    (RoomListPaddingLeft - RoomListPaddingRight) * 0.5f,
+                    -(RoomListPaddingTop + i * (RoomItemHeight + RoomItemSpacing)));
+            }
+
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_contentParent);
+            Canvas.ForceUpdateCanvases();
 
             if (_scrollRect != null)
             {
@@ -274,16 +373,32 @@ namespace BattlePvp.UI
             }
         }
 
-        private static float GetChildPreferredHeight(RectTransform child)
+        private void ConfigureContentLayout()
         {
-            float preferredHeight = LayoutUtility.GetPreferredHeight(child);
-            if (preferredHeight > 0f)
-                return preferredHeight;
+            if (_contentParent == null)
+                return;
 
-            if (child.sizeDelta.y > 0f)
-                return child.sizeDelta.y;
+            _contentParent.anchorMin = new Vector2(0f, 1f);
+            _contentParent.anchorMax = new Vector2(1f, 1f);
+            _contentParent.pivot = new Vector2(0.5f, 1f);
+            _contentParent.anchoredPosition = Vector2.zero;
+            _contentParent.sizeDelta = new Vector2(0f, Mathf.Max(0f, _contentParent.sizeDelta.y));
 
-            return child.rect.height > 0f ? child.rect.height : 32f;
+            var layout = _contentParent.GetComponent<VerticalLayoutGroup>();
+            if (layout == null)
+                layout = _contentParent.gameObject.AddComponent<VerticalLayoutGroup>();
+
+            layout.enabled = false;
+            layout.childAlignment = TextAnchor.UpperLeft;
+            layout.childControlWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.reverseArrangement = false;
+
+            var fitter = _contentParent.GetComponent<ContentSizeFitter>();
+            if (fitter != null)
+                fitter.enabled = false;
         }
 
         private void EnsureDeveloperPanel()
@@ -297,6 +412,16 @@ namespace BattlePvp.UI
             if (_developerPanelRoot == null)
                 _developerPanelRoot = CreateDeveloperPanel();
 
+            if (_editRoomAdminButton == null)
+                _editRoomAdminButton = CreateEditButton();
+
+            if (_editRoomAdminButton != null)
+            {
+                _editRoomAdminButton.onClick.RemoveListener(OnEditRoomAdminClicked);
+                _editRoomAdminButton.onClick.AddListener(OnEditRoomAdminClicked);
+                _editRoomAdminButton.gameObject.SetActive(IsDeveloperRoomAdminEnabled());
+            }
+
             if (_clearAllButton != null)
             {
                 _clearAllButton.onClick.RemoveListener(OnClearAllClicked);
@@ -309,21 +434,27 @@ namespace BattlePvp.UI
                 _unlockDeleteButton.onClick.AddListener(OnUnlockDeleteClicked);
             }
 
+            if (_cancelUnlockButton != null)
+            {
+                _cancelUnlockButton.onClick.RemoveListener(OnCloseDeveloperPanelClicked);
+                _cancelUnlockButton.onClick.AddListener(OnCloseDeveloperPanelClicked);
+            }
+
             RefreshDeveloperControlState();
         }
 
         private GameObject CreateDeveloperPanel()
         {
-            Transform panelParent = transform;
+            Transform panelParent = GetComponentInParent<Canvas>() != null ? GetComponentInParent<Canvas>().transform : transform;
             var panel = new GameObject("Developer_Room_Admin", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(VerticalLayoutGroup));
             panel.transform.SetParent(panelParent, false);
 
             var rect = panel.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = new Vector2(8f, -8f);
-            rect.sizeDelta = new Vector2(250f, 192f);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(320f, 230f);
 
             var image = panel.GetComponent<Image>();
             image.color = new Color(0.05f, 0.06f, 0.07f, 0.78f);
@@ -336,14 +467,53 @@ namespace BattlePvp.UI
             layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
 
-            CreatePanelLabel(panel.transform, "Developer Rooms", 18f);
+            CreatePanelLabel(panel.transform, "Room Edit", 18f);
             _adminKeyInput = CreateInput(panel.transform, "RoomAdminKey");
             _unlockDeleteButton = CreatePanelButton(panel.transform, "Unlock Delete");
+            _cancelUnlockButton = CreatePanelButton(panel.transform, "Close");
             _clearAllButton = CreatePanelButton(panel.transform, "Clear All Rooms");
             _developerStatusText = CreatePanelLabel(panel.transform, "", 14f);
             _developerStatusText.textWrappingMode = TextWrappingModes.Normal;
 
+            panel.SetActive(false);
             return panel;
+        }
+
+        private Button CreateEditButton()
+        {
+            var buttonObject = new GameObject("Developer_Room_Edit_Button", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
+            buttonObject.transform.SetParent(transform, false);
+
+            var rect = buttonObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-16f, -12f);
+            rect.sizeDelta = new Vector2(86f, 34f);
+
+            var image = buttonObject.GetComponent<Image>();
+            image.color = new Color(0.12f, 0.12f, 0.12f, 0.84f);
+
+            var button = buttonObject.GetComponent<Button>();
+            button.targetGraphic = image;
+
+            var labelObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(buttonObject.transform, false);
+
+            var labelRect = labelObject.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+
+            var text = labelObject.GetComponent<TextMeshProUGUI>();
+            text.text = "Edit";
+            text.fontSize = 16f;
+            text.color = Color.white;
+            text.alignment = TextAlignmentOptions.Center;
+            text.raycastTarget = false;
+
+            return button;
         }
 
         private static TextMeshProUGUI CreatePanelLabel(Transform parent, string text, float fontSize)
@@ -451,6 +621,21 @@ namespace BattlePvp.UI
 #endif
         }
 
+        private void DisableDeveloperRoomAdminFeature()
+        {
+            _isRoomAdminUnlocked = false;
+            SetDeveloperPanelVisible(false);
+
+            if (_editRoomAdminButton != null)
+                _editRoomAdminButton.gameObject.SetActive(false);
+
+            if (_clearAllButton != null)
+                _clearAllButton.gameObject.SetActive(false);
+
+            if (_unlockDeleteButton != null)
+                _unlockDeleteButton.gameObject.SetActive(false);
+        }
+
         private bool CanShowRoomDeleteControls()
         {
             return IsDeveloperRoomAdminEnabled() && _isRoomAdminUnlocked;
@@ -473,7 +658,13 @@ namespace BattlePvp.UI
             }
 
             if (_adminKeyInput != null)
+            {
+                _adminKeyInput.gameObject.SetActive(!canDelete);
                 _adminKeyInput.interactable = !canDelete;
+            }
+
+            if (_cancelUnlockButton != null)
+                _cancelUnlockButton.gameObject.SetActive(true);
         }
 
         private void SetDeveloperPanelVisible(bool visible)
@@ -534,6 +725,20 @@ namespace BattlePvp.UI
             });
         }
 
+        private void OnEditRoomAdminClicked()
+        {
+            if (!IsDeveloperRoomAdminEnabled())
+                return;
+
+            SetDeveloperPanelVisible(true);
+            RefreshDeveloperControlState();
+        }
+
+        private void OnCloseDeveloperPanelClicked()
+        {
+            SetDeveloperPanelVisible(false);
+        }
+
         private void OnUnlockDeleteClicked()
         {
             if (!IsDeveloperRoomAdminEnabled() || PlayFabBattleManager.Instance == null)
@@ -551,7 +756,11 @@ namespace BattlePvp.UI
                 _isRoomAdminUnlocked = ok;
                 RefreshDeveloperControlState();
                 SetDeveloperStatus(ok ? "Delete unlocked." : message);
-                if (ok) RefreshList();
+                if (ok)
+                {
+                    SetDeveloperPanelVisible(false);
+                    RefreshList();
+                }
             });
         }
 
