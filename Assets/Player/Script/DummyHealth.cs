@@ -118,7 +118,7 @@ namespace BattlePvp.Combat
             _attackSpeed = 0.6f + (agi * 0.02f);
             if (id.Type == IdentityType.Monostat)
             {
-                if (id.PrimaryStat == StatKind.AGI) _attackSpeed *= 1.6f;
+                if (id.PrimaryStat == StatKind.AGI) _attackSpeed *= 3f;
                 else if (id.PrimaryStat == StatKind.STR) _attackSpeed *= 0.75f;
             }
 

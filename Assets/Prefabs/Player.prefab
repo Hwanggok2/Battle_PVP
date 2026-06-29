@@ -5170,6 +5170,10 @@ PrefabInstance:
       value: 49.291
       objectReference: {fileID: 0}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _sweepPadding
+      value: 0.04
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _attackProcessor
       value: 
       objectReference: {fileID: 4130369353287361673}
@@ -5177,6 +5181,10 @@ PrefabInstance:
       propertyPath: _currentAttackData
       value: 
       objectReference: {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _useSweptHitDetection
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

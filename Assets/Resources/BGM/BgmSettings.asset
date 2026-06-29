@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36c72158edbc50f4d9d47b96b070e8b8, type: 3}
+  m_Name: BgmSettings
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Audio.BgmSettings
+  MasterVolume: 0.131
+  FadeSeconds: 0.6
+  LoopByDefault: 1
+  DefaultClip: {fileID: 8300000, guid: eaed69aa280d44342acc36e1e482280e, type: 3}
+  SceneBgms:
+  - SceneName: Login
+    Clip: {fileID: 8300000, guid: 14c69b85ac2647d44b10e258a52071c7, type: 3}
+    OverrideLoop: 0
+    Loop: 1

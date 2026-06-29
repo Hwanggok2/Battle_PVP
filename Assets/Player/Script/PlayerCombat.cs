@@ -122,7 +122,7 @@ public class PlayerCombat : NetworkBehaviour
             Identity id = _statManager.CurrentIdentity;
             if (id.Type == IdentityType.Monostat)
             {
-                if (id.PrimaryStat == StatKind.AGI) baseAs *= 1.6f;
+                if (id.PrimaryStat == StatKind.AGI) baseAs *= 3f;
                 else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f;
             }
 

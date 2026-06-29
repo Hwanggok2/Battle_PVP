@@ -161,7 +161,7 @@ namespace BattlePvp.Stats
                 if (vId.PrimaryStat == StatKind.AGI)
                 {
                     baseMs *= 1.2f;
-                    baseAs *= 1.6f;
+                    baseAs *= 3f;
                 }
                 else if (vId.PrimaryStat == StatKind.STR)
                 {
