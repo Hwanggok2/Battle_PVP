@@ -1,6 +1,7 @@
 using UnityEngine;
 using BattlePvp.Stats;
 using UnityEngine.SceneManagement;
+using Mirror;
 
 namespace BattlePvp.Managers
 {
@@ -123,7 +124,9 @@ namespace BattlePvp.Managers
         public void TryInjectToPlayer()
         {
             // "Player"라는 태그를 가진 오브젝트나 StatManager가 붙은 오브젝트를 찾습니다.
-            var statManager = FindFirstObjectByType<StatManager>();
+            var statManager = StatManager.Local;
+            if (statManager == null && NetworkClient.localPlayer != null)
+                statManager = NetworkClient.localPlayer.GetComponent<StatManager>();
             if (statManager != null)
             {
                 Debug.Log($"[GlobalDataManager] Found StatManager in scene {SceneManager.GetActiveScene().name}. Injecting stats: STR={_savedStats.STR.Invested}");

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36c72158edbc50f4d9d47b96b070e8b8, type: 3}
   m_Name: BgmSettings
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Audio.BgmSettings
-  MasterVolume: 0.131
+  MasterVolume: 0.288
   FadeSeconds: 0.6
   LoopByDefault: 1
   DefaultClip: {fileID: 8300000, guid: eaed69aa280d44342acc36e1e482280e, type: 3}

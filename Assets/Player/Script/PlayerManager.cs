@@ -160,6 +160,9 @@ public class PlayerManager : NetworkBehaviour
         if (battleState == null)
             return false;
 
+        if (battleState.CurrentState == BattlePvp.Networking.BattleState.MatchEnded && !_matchEndLocked)
+            return false;
+
         return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 

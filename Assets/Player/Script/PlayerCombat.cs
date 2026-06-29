@@ -95,6 +95,14 @@ public class PlayerCombat : NetworkBehaviour
         if (battleState == null)
             return false;
 
+        var pm = GetComponent<PlayerManager>();
+        if (battleState.CurrentState == BattlePvp.Networking.BattleState.MatchEnded &&
+            pm != null &&
+            !pm.IsMatchEndLocked)
+        {
+            return false;
+        }
+
         return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 

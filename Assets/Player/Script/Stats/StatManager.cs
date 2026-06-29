@@ -186,6 +186,9 @@ namespace BattlePvp.Stats
             if (_autoRecalculateOnEnable)
                 RecalculateIdentity();
 
+            if (netIdentity != null)
+                return;
+
             // [추가] 글로벌 데이터 업데이트 구독 (더미/로컬 플레이어 모두 대응)
             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
@@ -334,6 +337,8 @@ namespace BattlePvp.Stats
         /// </summary>
         public void ApplyStats(StatContainer stats, bool recalculateIdentity = true)
         {
+            if (netIdentity != null && !isLocalPlayer && !isServer)
+                return;
             // 로컬 플레이어라면 서버에 동기화 요청
             // 로컬 플레이어라면 서버에 동기화 요청 (netIdentity 존재 시에만)
             if (netIdentity != null && isLocalPlayer)
