@@ -1,5 +1,7 @@
 using BattlePvp.Networking;
+using Mirror;
 using TMPro;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -13,6 +15,9 @@ namespace BattlePvp.UI
         [SerializeField] private TextMeshProUGUI _roomNameText;
         [SerializeField] private TextMeshProUGUI _playerCountText;
         [SerializeField] private TextMeshProUGUI _masterNameText;
+        [SerializeField] private Button _leaveButton;
+
+        private const string LobbySceneName = "Lobby";
 
         [ContextMenu("Create Editable Scene UI")]
         private void CreateEditableSceneUI()
@@ -84,16 +89,25 @@ namespace BattlePvp.UI
 
         private void EnsureBanner()
         {
-            if (_bannerRoot != null) return;
-
-            var existing = transform.Find("BattleRoomInfo_Banner");
-            if (existing is RectTransform existingRect)
+            if (_bannerRoot == null)
             {
-                _bannerRoot = existingRect;
-                FindExistingTextReferences();
-                return;
+                var existing = transform.Find("BattleRoomInfo_Banner");
+                if (existing is RectTransform existingRect)
+                {
+                    _bannerRoot = existingRect;
+                    FindExistingTextReferences();
+                }
+                else
+                {
+                    CreateBanner();
+                }
             }
 
+            EnsureLeaveButton();
+        }
+
+        private void CreateBanner()
+        {
             var bannerObject = new GameObject("BattleRoomInfo_Banner", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(HorizontalLayoutGroup));
             _bannerRoot = bannerObject.GetComponent<RectTransform>();
             _bannerRoot.SetParent(transform, false);
@@ -137,7 +151,7 @@ namespace BattlePvp.UI
             text.color = Color.white;
             text.alignment = alignment;
             text.raycastTarget = false;
-            text.enableWordWrapping = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
             text.overflowMode = TextOverflowModes.Ellipsis;
             return text;
         }
@@ -152,12 +166,112 @@ namespace BattlePvp.UI
 
             if (_masterNameText == null)
                 _masterNameText = FindChildText("MasterName");
+
+            if (_leaveButton == null)
+                _leaveButton = FindChildButton("LeaveButton");
         }
 
         private TextMeshProUGUI FindChildText(string childName)
         {
             var child = _bannerRoot.Find(childName);
             return child != null ? child.GetComponent<TextMeshProUGUI>() : null;
+        }
+
+        private Button FindChildButton(string childName)
+        {
+            var child = _bannerRoot.Find(childName);
+            return child != null ? child.GetComponent<Button>() : null;
+        }
+
+        private void EnsureLeaveButton()
+        {
+            if (_bannerRoot == null) return;
+
+            if (_leaveButton == null)
+            {
+                _leaveButton = FindChildButton("LeaveButton");
+            }
+
+            if (_leaveButton == null)
+            {
+                _leaveButton = CreateLeaveButton();
+            }
+
+            _leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
+            _leaveButton.onClick.AddListener(OnLeaveButtonClicked);
+        }
+
+        private Button CreateLeaveButton()
+        {
+            var go = new GameObject("LeaveButton", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.transform.SetParent(_bannerRoot, false);
+
+            var layout = go.GetComponent<LayoutElement>();
+            layout.preferredWidth = 110f;
+            layout.minWidth = 96f;
+            layout.preferredHeight = 30f;
+            layout.flexibleWidth = 0f;
+
+            var image = go.GetComponent<Image>();
+            image.color = new Color(0.65f, 0.12f, 0.12f, 0.92f);
+
+            var button = go.GetComponent<Button>();
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 0.88f, 0.88f, 1f);
+            colors.pressedColor = new Color(0.85f, 0.65f, 0.65f, 1f);
+            button.colors = colors;
+
+            var textObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            textObject.transform.SetParent(go.transform, false);
+
+            var textRect = textObject.GetComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            var text = textObject.GetComponent<TextMeshProUGUI>();
+            text.text = "\uB098\uAC00\uAE30";
+            text.fontSize = 17f;
+            text.color = Color.white;
+            text.alignment = TextAlignmentOptions.Center;
+            text.raycastTarget = false;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+
+            return button;
+        }
+
+        private void OnLeaveButtonClicked()
+        {
+            if (_leaveButton != null)
+                _leaveButton.interactable = false;
+
+            PlayFabBattleManager.Instance?.LeaveCurrentRoom();
+            StartCoroutine(CoLeaveToLobby());
+        }
+
+        private IEnumerator CoLeaveToLobby()
+        {
+            if (NetworkManager.singleton != null)
+            {
+                if (NetworkServer.active && NetworkClient.active)
+                {
+                    NetworkManager.singleton.StopHost();
+                }
+                else if (NetworkClient.active)
+                {
+                    NetworkManager.singleton.StopClient();
+                }
+                else if (NetworkServer.active)
+                {
+                    NetworkManager.singleton.StopServer();
+                }
+
+                yield return null;
+            }
+
+            SceneManager.LoadScene(LobbySceneName);
         }
 
         private void SetInfo(PlayFabBattleManager.RoomInfo info)
