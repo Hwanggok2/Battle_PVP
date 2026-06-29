@@ -225,7 +225,6 @@ namespace BattlePvp.Networking
             {
                 int connectionId = _nextConnectionId++;
                 _serverConnections[connectionId] = connection;
-                OnServerConnected?.Invoke(connectionId);
                 OnServerConnectedWithAddress?.Invoke(connectionId, ServerGetClientAddress(connectionId));
             }
 
