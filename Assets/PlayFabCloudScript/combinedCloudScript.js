@@ -324,19 +324,22 @@ var ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY";
 var ROOM_STARTED_KEY = "IsStarted";
 var ROOM_PLAYER_COUNT_KEY = "PlayerCount";
 var ROOM_MASTER_NAME_KEY = "MasterName";
+var ROOM_RELAY_JOIN_CODE_KEY = "RelayJoinCode";
 var REMOVE_KEYS_BATCH_SIZE = 10;
 
 handlers.RegisterRoomToRegistry = function(args, context) {
     var roomId = requireString(args, "roomId");
     var roomName = requireString(args, "roomName");
     var masterName = getString(args, "masterName", "Unknown");
+    var relayJoinCode = getString(args, "relayJoinCode", "");
 
     ensureSharedGroup(ROOM_REGISTRY_ID);
 
     var roomInfo = {
         roomName: roomName,
         masterName: masterName,
-        playerCount: 1
+        playerCount: 1,
+        relayJoinCode: relayJoinCode
     };
 
     ensureSharedGroup(roomId);
@@ -352,6 +355,30 @@ handlers.RegisterRoomToRegistry = function(args, context) {
         ok: true,
         roomId: roomId,
         roomName: roomName,
+        roomInfo: roomInfo
+    };
+};
+
+handlers.UpdateRoomRelayJoinCode = function(args, context) {
+    var roomId = requireString(args, "roomId");
+    var relayJoinCode = requireString(args, "relayJoinCode");
+    var roomInfo = getRoomInfo(roomId);
+
+    if (!roomInfo)
+        throw "Room does not exist: " + roomId;
+
+    roomInfo.relayJoinCode = relayJoinCode;
+
+    server.UpdateSharedGroupData({
+        SharedGroupId: roomId,
+        Data: buildRoomData(roomInfo)
+    });
+
+    setRegistryRoomInfo(roomId, roomInfo);
+
+    return {
+        ok: true,
+        roomId: roomId,
         roomInfo: roomInfo
     };
 };
@@ -550,6 +577,7 @@ function loadActiveRoomInfos() {
         if (roomData) {
             roomInfo.playerCount = parseCount(getRecordValue(roomData, ROOM_PLAYER_COUNT_KEY), roomInfo.playerCount);
             roomInfo.masterName = getRecordValue(roomData, ROOM_MASTER_NAME_KEY) || roomInfo.masterName || "Unknown";
+            roomInfo.relayJoinCode = getRecordValue(roomData, ROOM_RELAY_JOIN_CODE_KEY) || roomInfo.relayJoinCode || "";
         }
 
         if (roomInfo.playerCount <= 0) {
@@ -581,6 +609,7 @@ function getRoomInfo(roomId) {
     if (roomData) {
         roomInfo.playerCount = parseCount(getRecordValue(roomData, ROOM_PLAYER_COUNT_KEY), roomInfo.playerCount);
         roomInfo.masterName = getRecordValue(roomData, ROOM_MASTER_NAME_KEY) || roomInfo.masterName || "Unknown";
+        roomInfo.relayJoinCode = getRecordValue(roomData, ROOM_RELAY_JOIN_CODE_KEY) || roomInfo.relayJoinCode || "";
     }
 
     return normalizeRoomInfo(roomInfo, roomId);
@@ -644,7 +673,8 @@ function buildRoomData(roomInfo) {
     return {
         IsStarted: "false",
         PlayerCount: String(Math.max(0, roomInfo.playerCount || 0)),
-        MasterName: roomInfo.masterName || "Unknown"
+        MasterName: roomInfo.masterName || "Unknown",
+        RelayJoinCode: roomInfo.relayJoinCode || ""
     };
 }
 
@@ -707,7 +737,8 @@ function normalizeRoomInfo(roomInfo, roomId) {
     return {
         roomName: roomInfo.roomName || roomId || "Unnamed Room",
         masterName: roomInfo.masterName || "Unknown",
-        playerCount: Math.max(0, parseCount(roomInfo.playerCount, 0))
+        playerCount: Math.max(0, parseCount(roomInfo.playerCount, 0)),
+        relayJoinCode: roomInfo.relayJoinCode || ""
     };
 }
 

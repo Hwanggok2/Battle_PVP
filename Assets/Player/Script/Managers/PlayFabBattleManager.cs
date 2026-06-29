@@ -21,11 +21,13 @@ namespace BattlePvp.Networking
         private const string ROOM_STARTED_KEY = "IsStarted";
         private const string ROOM_PLAYER_COUNT_KEY = "PlayerCount";
         private const string ROOM_MASTER_NAME_KEY = "MasterName";
+        private const string ROOM_RELAY_JOIN_CODE_KEY = "RelayJoinCode";
         private const string REGISTER_ROOM_FUNCTION = "RegisterRoomToRegistry";
         private const string GET_ACTIVE_ROOMS_FUNCTION = "GetActiveRooms";
         private const string GET_ACTIVE_ROOM_INFOS_FUNCTION = "GetActiveRoomInfos";
         private const string JOIN_ROOM_FUNCTION = "JoinRoom";
         private const string LEAVE_ROOM_FUNCTION = "LeaveRoom";
+        private const string UPDATE_ROOM_RELAY_JOIN_CODE_FUNCTION = "UpdateRoomRelayJoinCode";
         private const string ADMIN_VALIDATE_ROOM_KEY_FUNCTION = "AdminValidateRoomKey";
         private const string ADMIN_DELETE_ROOM_FUNCTION = "AdminDeleteRoom";
         private const string ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION = "AdminClearRoomRegistry";
@@ -33,16 +35,18 @@ namespace BattlePvp.Networking
 
         public struct RoomInfo
         {
-            public RoomInfo(string roomName, string masterName, int playerCount)
+            public RoomInfo(string roomName, string masterName, int playerCount, string relayJoinCode = "")
             {
                 RoomName = roomName;
                 MasterName = masterName;
                 PlayerCount = playerCount;
+                RelayJoinCode = relayJoinCode ?? string.Empty;
             }
 
             public string RoomName { get; private set; }
             public string MasterName { get; private set; }
             public int PlayerCount { get; private set; }
+            public string RelayJoinCode { get; private set; }
         }
 
         [Header("Scene Settings")]
@@ -62,6 +66,7 @@ namespace BattlePvp.Networking
         private readonly Dictionary<string, string> _knownRooms = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _knownRoomMasters = new Dictionary<string, string>();
         private readonly Dictionary<string, int> _knownRoomCounts = new Dictionary<string, int>();
+        private readonly Dictionary<string, string> _knownRoomRelayJoinCodes = new Dictionary<string, string>();
         private readonly Dictionary<string, RoomInfo> _lastLoadedRoomInfos = new Dictionary<string, RoomInfo>();
         private bool _clientStatisticUpdatesDisabled;
 
@@ -84,7 +89,7 @@ namespace BattlePvp.Networking
             }
         }
 
-        private void HandleRoomJoinSuccess()
+        private async void HandleRoomJoinSuccess()
         {
             if (NetworkManager.singleton == null)
             {
@@ -92,17 +97,92 @@ namespace BattlePvp.Networking
                 return;
             }
 
+            var relayTransport = EnsureRelayTransport();
+            if (relayTransport == null)
+                return;
+
             if (_isHost)
             {
-                Debug.Log($"[PlayFabManager] Starting Mirror Host for Room: {_waitSceneName}");
-                NetworkManager.singleton.StartHost();
+                await StartRelayHostAsync(relayTransport);
             }
             else
             {
-                Debug.Log($"[PlayFabManager] Starting Mirror Client connecting to localhost...");
-                NetworkManager.singleton.networkAddress = "localhost"; // ?꾩옱??濡쒖뺄 ?뚯뒪?몄슜
+                await StartRelayClientAsync(relayTransport);
+            }
+        }
+
+        private UnityRelayTransport EnsureRelayTransport()
+        {
+            var networkManager = NetworkManager.singleton;
+            var relayTransport = networkManager.GetComponent<UnityRelayTransport>();
+            if (relayTransport == null)
+                relayTransport = networkManager.gameObject.AddComponent<UnityRelayTransport>();
+
+            networkManager.transport = relayTransport;
+            Transport.active = relayTransport;
+            return relayTransport;
+        }
+
+        private async System.Threading.Tasks.Task StartRelayHostAsync(UnityRelayTransport relayTransport)
+        {
+            try
+            {
+                Debug.Log($"[PlayFabManager] Creating Unity Relay allocation for Room: {_waitSceneName}");
+                string joinCode = await relayTransport.PrepareHostAsync(NetworkManager.singleton.maxConnections);
+                Debug.Log($"[PlayFabManager] Unity Relay host prepared. JoinCode={joinCode}");
+
+                bool updated = await UpdateCurrentRoomRelayJoinCodeAsync(joinCode);
+                if (!updated)
+                    throw new InvalidOperationException("Failed to publish Relay join code to PlayFab.");
+
+                NetworkManager.singleton.StartHost();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayFabManager] Failed to start Relay host: {ex}");
+                LeaveCurrentRoom();
+            }
+        }
+
+        private async System.Threading.Tasks.Task StartRelayClientAsync(UnityRelayTransport relayTransport)
+        {
+            try
+            {
+                string joinCode = _currentRoomInfo.RelayJoinCode;
+                if (string.IsNullOrWhiteSpace(joinCode))
+                {
+                    await RefreshCurrentRoomInfoAsync();
+                    joinCode = _currentRoomInfo.RelayJoinCode;
+                }
+
+                if (string.IsNullOrWhiteSpace(joinCode))
+                    throw new InvalidOperationException("Room does not have a Relay join code yet.");
+
+                Debug.Log($"[PlayFabManager] Joining Unity Relay allocation. JoinCode={joinCode}");
+                await relayTransport.PrepareClientAsync(joinCode);
+
+                NetworkManager.singleton.networkAddress = "relay";
                 NetworkManager.singleton.StartClient();
             }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[PlayFabManager] Failed to start Relay client: {ex}");
+                LeaveCurrentRoom();
+            }
+        }
+
+        private System.Threading.Tasks.Task RefreshCurrentRoomInfoAsync()
+        {
+            var completion = new System.Threading.Tasks.TaskCompletionSource<bool>();
+            RefreshCurrentRoomInfo(_ => completion.TrySetResult(true));
+            return completion.Task;
+        }
+
+        private System.Threading.Tasks.Task<bool> UpdateCurrentRoomRelayJoinCodeAsync(string joinCode)
+        {
+            var completion = new System.Threading.Tasks.TaskCompletionSource<bool>();
+            UpdateCurrentRoomRelayJoinCode(joinCode, success => completion.TrySetResult(success));
+            return completion.Task;
         }
 
         #region [Room Management]
@@ -123,7 +203,8 @@ namespace BattlePvp.Networking
             _knownRooms[roomId] = roomName;
             _knownRoomMasters[roomId] = masterName;
             _knownRoomCounts[roomId] = 1;
-            _currentRoomInfo = new RoomInfo(roomName, masterName, 1);
+            _knownRoomRelayJoinCodes[roomId] = string.Empty;
+            _currentRoomInfo = new RoomInfo(roomName, masterName, 1, string.Empty);
             OnRoomRegistryChanged?.Invoke();
             var request = new CreateSharedGroupRequest
             {
@@ -175,6 +256,7 @@ namespace BattlePvp.Networking
                     _knownRoomCounts[roomId] = joinedInfo.PlayerCount;
                     _knownRoomMasters[roomId] = joinedInfo.MasterName;
                     _knownRooms[roomId] = joinedInfo.RoomName;
+                    _knownRoomRelayJoinCodes[roomId] = joinedInfo.RelayJoinCode;
                     _currentRoomInfo = joinedInfo;
 
                     Debug.Log($"[PlayFab] Joined room through CloudScript: {roomId}");
@@ -194,10 +276,15 @@ namespace BattlePvp.Networking
                 return new RoomInfo(
                     GetStringValue(infoDict, "roomName", GetKnownRoomName(roomId)),
                     GetStringValue(infoDict, "masterName", GetKnownRoomMasterName(roomId)),
-                    GetIntValue(infoDict, "playerCount", GetKnownRoomCount(roomId)));
+                    GetIntValue(infoDict, "playerCount", GetKnownRoomCount(roomId)),
+                    GetStringValue(infoDict, "relayJoinCode", GetKnownRoomRelayJoinCode(roomId)));
             }
 
-            return new RoomInfo(GetKnownRoomName(roomId), GetKnownRoomMasterName(roomId), GetKnownRoomCount(roomId));
+            return new RoomInfo(
+                GetKnownRoomName(roomId),
+                GetKnownRoomMasterName(roomId),
+                GetKnownRoomCount(roomId),
+                GetKnownRoomRelayJoinCode(roomId));
         }
 
         /// <summary>
@@ -473,7 +560,7 @@ namespace BattlePvp.Networking
                     foreach (var kv in _knownRooms)
                     {
                         if (!roomInfos.ContainsKey(kv.Key))
-                            roomInfos[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
+                            roomInfos[kv.Key] = BuildKnownRoomInfo(kv.Key, kv.Value);
                     }
 
                     MergeKnownRoomInfos(roomInfos);
@@ -602,7 +689,7 @@ namespace BattlePvp.Networking
                             }
 
                             if (playerCount > 0)
-                                roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount);
+                                roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount, GetKnownRoomRelayJoinCode(roomId));
 
                             if (--remaining == 0)
                                 CompleteRoomInfoLoad(roomInfos, callback);
@@ -610,7 +697,7 @@ namespace BattlePvp.Networking
                         error =>
                         {
                             Debug.LogWarning($"[PlayFab] Room detail fallback failed for {roomId}: {error.GenerateErrorReport()}");
-                            roomInfos[roomId] = new RoomInfo(roomName, fallbackMasterName, fallbackCount);
+                            roomInfos[roomId] = BuildKnownRoomInfo(roomId, roomName);
 
                             if (--remaining == 0)
                                 CompleteRoomInfoLoad(roomInfos, callback);
@@ -632,7 +719,7 @@ namespace BattlePvp.Networking
             foreach (var kv in _knownRooms)
             {
                 if (!roomInfos.ContainsKey(kv.Key))
-                    roomInfos[kv.Key] = new RoomInfo(kv.Value, GetKnownRoomMasterName(kv.Key), GetKnownRoomCount(kv.Key));
+                    roomInfos[kv.Key] = BuildKnownRoomInfo(kv.Key, kv.Value);
             }
 
             if (roomInfos.Count == 0 && _lastLoadedRoomInfos.Count > 0)
@@ -654,6 +741,7 @@ namespace BattlePvp.Networking
                 _knownRooms[kv.Key] = kv.Value.RoomName;
                 _knownRoomMasters[kv.Key] = kv.Value.MasterName;
                 _knownRoomCounts[kv.Key] = kv.Value.PlayerCount;
+                _knownRoomRelayJoinCodes[kv.Key] = kv.Value.RelayJoinCode;
             }
         }
 
@@ -704,13 +792,15 @@ namespace BattlePvp.Networking
                 string roomName = GetStringValue(infoDict, "roomName", "Unnamed Room");
                 string masterName = GetStringValue(infoDict, "masterName", "Unknown");
                 int playerCount = GetIntValue(infoDict, "playerCount", 0);
+                string relayJoinCode = GetStringValue(infoDict, "relayJoinCode", GetKnownRoomRelayJoinCode(kv.Key));
                 if (playerCount <= 0)
                     continue;
 
                 _knownRooms[kv.Key] = roomName;
                 _knownRoomMasters[kv.Key] = masterName;
                 _knownRoomCounts[kv.Key] = playerCount;
-                roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount);
+                _knownRoomRelayJoinCodes[kv.Key] = relayJoinCode;
+                roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount, relayJoinCode);
             }
 
             return roomInfos;
@@ -806,14 +896,14 @@ namespace BattlePvp.Networking
 
                             _knownRoomCounts[roomId] = playerCount;
                             _knownRoomMasters[roomId] = masterName;
-                            roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount);
+                            roomInfos[roomId] = new RoomInfo(roomName, masterName, playerCount, GetKnownRoomRelayJoinCode(roomId));
                             if (roomId == _joinedRoomId)
                                 _currentRoomInfo = roomInfos[roomId];
                             FinishRoomInfoLoad();
                         },
                         error =>
                         {
-                            roomInfos[roomId] = new RoomInfo(roomName, fallbackMasterName, fallbackCount);
+                            roomInfos[roomId] = BuildKnownRoomInfo(roomId, roomName);
                             if (roomId == _joinedRoomId)
                                 _currentRoomInfo = roomInfos[roomId];
                             FinishRoomInfoLoad();
@@ -889,6 +979,56 @@ namespace BattlePvp.Networking
                 result => Debug.Log($"諛??곗씠???낅뜲?댄듃 ?꾨즺: {key}={value}"),
                 error => Debug.LogError($"諛??곗씠???낅뜲?댄듃 ?ㅽ뙣: {error.GenerateErrorReport()}")
             );
+        }
+
+        public void UpdateCurrentRoomRelayJoinCode(string relayJoinCode, Action<bool> callback = null)
+        {
+            if (string.IsNullOrWhiteSpace(_joinedRoomId))
+            {
+                Debug.LogWarning("[PlayFab] Cannot update Relay join code without a joined room.");
+                callback?.Invoke(false);
+                return;
+            }
+
+            relayJoinCode = relayJoinCode?.Trim() ?? string.Empty;
+            string roomId = _joinedRoomId;
+            _knownRoomRelayJoinCodes[roomId] = relayJoinCode;
+            _currentRoomInfo = new RoomInfo(
+                _currentRoomInfo.RoomName,
+                _currentRoomInfo.MasterName,
+                _currentRoomInfo.PlayerCount,
+                relayJoinCode);
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "roomId", roomId },
+                { "relayJoinCode", relayJoinCode }
+            };
+
+            PlayFabClientAPI.ExecuteCloudScript(
+                new ExecuteCloudScriptRequest
+                {
+                    FunctionName = UPDATE_ROOM_RELAY_JOIN_CODE_FUNCTION,
+                    FunctionParameter = parameters,
+                    GeneratePlayStreamEvent = false
+                },
+                result =>
+                {
+                    if (result.Error != null)
+                    {
+                        Debug.LogError($"[PlayFab] Relay join code update failed: {FormatCloudScriptError(result)}");
+                        callback?.Invoke(false);
+                        return;
+                    }
+
+                    OnRoomRegistryChanged?.Invoke();
+                    callback?.Invoke(true);
+                },
+                error =>
+                {
+                    Debug.LogError($"[PlayFab] Relay join code update request failed: {error.GenerateErrorReport()}");
+                    callback?.Invoke(false);
+                });
         }
 
         public void LeaveCurrentRoom()
@@ -976,6 +1116,7 @@ namespace BattlePvp.Networking
                     _knownRooms.Remove(roomId);
                     _knownRoomMasters.Remove(roomId);
                     _knownRoomCounts.Remove(roomId);
+                    _knownRoomRelayJoinCodes.Remove(roomId);
                     OnRoomRegistryChanged?.Invoke();
                 }
 
@@ -1019,6 +1160,7 @@ namespace BattlePvp.Networking
                     _knownRooms.Clear();
                     _knownRoomMasters.Clear();
                     _knownRoomCounts.Clear();
+                    _knownRoomRelayJoinCodes.Clear();
                     OnRoomRegistryChanged?.Invoke();
                 }
 
@@ -1122,6 +1264,7 @@ namespace BattlePvp.Networking
                         _knownRooms.Remove(roomId);
                         _knownRoomMasters.Remove(roomId);
                         _knownRoomCounts.Remove(roomId);
+                        _knownRoomRelayJoinCodes.Remove(roomId);
                     }
                     else
                     {
@@ -1192,6 +1335,32 @@ namespace BattlePvp.Networking
             }
 
             return "Unknown";
+        }
+
+        private string GetKnownRoomRelayJoinCode(string roomId)
+        {
+            if (_knownRoomRelayJoinCodes.TryGetValue(roomId, out string relayJoinCode) &&
+                !string.IsNullOrWhiteSpace(relayJoinCode))
+            {
+                return relayJoinCode;
+            }
+
+            if (_lastLoadedRoomInfos.TryGetValue(roomId, out RoomInfo lastInfo) &&
+                !string.IsNullOrWhiteSpace(lastInfo.RelayJoinCode))
+            {
+                return lastInfo.RelayJoinCode;
+            }
+
+            return string.Empty;
+        }
+
+        private RoomInfo BuildKnownRoomInfo(string roomId, string roomName = null)
+        {
+            return new RoomInfo(
+                string.IsNullOrWhiteSpace(roomName) ? GetKnownRoomName(roomId) : roomName,
+                GetKnownRoomMasterName(roomId),
+                GetKnownRoomCount(roomId),
+                GetKnownRoomRelayJoinCode(roomId));
         }
 
         private string GetCurrentPlayerNickname()
