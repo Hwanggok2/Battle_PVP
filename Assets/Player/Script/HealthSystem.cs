@@ -522,6 +522,14 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
             OnRevived?.Invoke();
 
+            var playerManager = GetComponent<PlayerManager>();
+            if (playerManager != null)
+            {
+                playerManager.PlayReviveVisual();
+                if (isServer)
+                    playerManager.RpcPlayReviveVisual();
+            }
+
             if (isServer && connectionToClient != null)
                 TargetForceRevive(connectionToClient, _currentHp);
         }
@@ -555,6 +563,10 @@ namespace BattlePvp.Combat
             RaiseHpChanged();
             UpdateOverflowState();
             OnRevived?.Invoke();
+
+            var playerManager = GetComponent<PlayerManager>();
+            if (playerManager != null)
+                playerManager.PlayReviveVisual();
         }
 
         /// <summary>

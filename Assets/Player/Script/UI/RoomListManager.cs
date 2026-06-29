@@ -28,6 +28,7 @@ namespace BattlePvp.UI
         [SerializeField] private TextMeshProUGUI _developerStatusText;
 
         [SerializeField] private float _autoRefreshSeconds = 60f;
+        [SerializeField] private float _manualRefreshCooldownSeconds = 2f;
         [SerializeField] private float _scrollSensitivity = 24f;
 
         private const float RoomItemHeight = 25f;
@@ -46,6 +47,9 @@ namespace BattlePvp.UI
         private int _refreshVersion;
         private bool _isAlive;
         private bool _isRoomAdminUnlocked;
+        private bool _isRefreshInProgress;
+        private bool _refreshQueued;
+        private float _lastRefreshRequestTime = -999f;
 
         private void OnEnable()
         {
@@ -160,10 +164,6 @@ namespace BattlePvp.UI
 
             RefreshList();
 
-            yield return new WaitForSecondsRealtime(0.5f);
-            if (_isAlive && this != null)
-                RefreshList();
-
             _loginRefreshRoutine = null;
         }
 
@@ -174,6 +174,17 @@ namespace BattlePvp.UI
         {
             if (!_isAlive || this == null) return;
             if (PlayFabBattleManager.Instance == null) return;
+            if (_isRefreshInProgress)
+            {
+                _refreshQueued = true;
+                return;
+            }
+
+            if (Time.unscaledTime - _lastRefreshRequestTime < _manualRefreshCooldownSeconds)
+            {
+                return;
+            }
+
             if (!IsPlayFabReadyForRoomList())
             {
                 Debug.Log("[RoomList] PlayFab is not logged in yet. Waiting before room refresh.");
@@ -188,17 +199,22 @@ namespace BattlePvp.UI
                 return;
             }
 
+            _isRefreshInProgress = true;
+            _lastRefreshRequestTime = Time.unscaledTime;
             int requestVersion = ++_refreshVersion;
 
             // 실제 서버(글로벌 레지스트리)로부터 데이터를 가져옵니다.
             PlayFabBattleManager.Instance.GetActiveRoomInfos(rooms =>
             {
+                _isRefreshInProgress = false;
+
                 if (!_isAlive || this == null || requestVersion != _refreshVersion) return;
                 if (_contentParent == null || _itemPrefab == null) return;
 
                 if (rooms.Count == 0 && _lastVisibleRooms.Count > 0)
                 {
                     Debug.LogWarning($"[RoomList] Room query returned empty. Keeping {_lastVisibleRooms.Count} visible cached room(s).");
+                    RunQueuedRefreshIfNeeded();
                     return;
                 }
 
@@ -241,7 +257,17 @@ namespace BattlePvp.UI
                 LayoutRoomItems();
                 EnsureScrollBarVisible();
                 Debug.Log($"[RoomList] Refresh completed. {visibleCount} rooms shown ({rooms.Count} returned).");
+                RunQueuedRefreshIfNeeded();
             });
+        }
+
+        private void RunQueuedRefreshIfNeeded()
+        {
+            if (!_refreshQueued)
+                return;
+
+            _refreshQueued = false;
+            RequestRefreshWhenReady();
         }
 
         private static bool IsPlayFabReadyForRoomList()

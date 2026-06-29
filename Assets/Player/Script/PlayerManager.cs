@@ -44,6 +44,8 @@ public class PlayerManager : NetworkBehaviour
 
     private readonly int speedHash = Animator.StringToHash("Speed");
     private readonly int dieHash = Animator.StringToHash("Die");
+    private readonly int isDeadHash = Animator.StringToHash("IsDead");
+    private readonly int movementStateHash = Animator.StringToHash("Movement");
 
     private void Awake()
     {
@@ -309,9 +311,27 @@ public class PlayerManager : NetworkBehaviour
             return;
 
         animator.SetFloat(speedHash, 0f);
-        animator.SetBool("IsDead", true);
+        animator.SetBool(isDeadHash, true);
         animator.ResetTrigger(dieHash);
         animator.SetTrigger(dieHash);
+    }
+
+    public void PlayReviveVisual()
+    {
+        if (animator == null)
+            return;
+
+        animator.ResetTrigger(dieHash);
+        animator.SetBool(isDeadHash, false);
+        animator.SetFloat(speedHash, 0f);
+        animator.Play(movementStateHash, 0, 0f);
+        animator.Update(0f);
+    }
+
+    [ClientRpc(includeOwner = false)]
+    public void RpcPlayReviveVisual()
+    {
+        PlayReviveVisual();
     }
 
     private void BeginLocalDeath()
@@ -378,9 +398,7 @@ public class PlayerManager : NetworkBehaviour
         if (controller != null) controller.enabled = true;
         
         // 애니메이션 상태 강제 초기화
-        animator.SetBool("IsDead", false);
-        animator.SetFloat(speedHash, 0f);
-        animator.Play("Idle", 0, 0f); 
+        PlayReviveVisual();
 
         // 카메라 및 입력을 게임 모드로 리셋
         if (followCamera != null)
@@ -421,8 +439,7 @@ public class PlayerManager : NetworkBehaviour
 
         if (animator != null)
         {
-            animator.SetBool("IsDead", false);
-            animator.SetFloat(speedHash, 0f);
+            PlayReviveVisual();
         }
 
         if (_healthSystem != null)

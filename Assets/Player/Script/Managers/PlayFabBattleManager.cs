@@ -32,6 +32,7 @@ namespace BattlePvp.Networking
         private const string ADMIN_DELETE_ROOM_FUNCTION = "AdminDeleteRoom";
         private const string ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION = "AdminClearRoomRegistry";
         private const string CLOUDSCRIPT_NOT_FOUND = "CloudScriptNotFound";
+        private const float ROOM_INFO_CACHE_SECONDS = 3f;
 
         public struct RoomInfo
         {
@@ -68,6 +69,9 @@ namespace BattlePvp.Networking
         private readonly Dictionary<string, int> _knownRoomCounts = new Dictionary<string, int>();
         private readonly Dictionary<string, string> _knownRoomRelayJoinCodes = new Dictionary<string, string>();
         private readonly Dictionary<string, RoomInfo> _lastLoadedRoomInfos = new Dictionary<string, RoomInfo>();
+        private readonly List<Action<Dictionary<string, RoomInfo>>> _pendingRoomInfoCallbacks = new List<Action<Dictionary<string, RoomInfo>>>();
+        private bool _isRoomInfoRequestInFlight;
+        private float _lastRoomInfoLoadTime = -999f;
         private bool _clientStatisticUpdatesDisabled;
 
         public string CurrentRoomId => _joinedRoomId;
@@ -852,9 +856,30 @@ namespace BattlePvp.Networking
 
         public void GetActiveRoomInfos(Action<Dictionary<string, RoomInfo>> callback)
         {
+            if (TryReturnCachedRoomInfos(callback))
+                return;
+
+            _pendingRoomInfoCallbacks.Add(callback);
+            if (_isRoomInfoRequestInFlight)
+                return;
+
+            _isRoomInfoRequestInFlight = true;
+
+            void CompleteRequest(Dictionary<string, RoomInfo> roomInfos)
+            {
+                _isRoomInfoRequestInFlight = false;
+                _lastRoomInfoLoadTime = Time.unscaledTime;
+
+                var callbacks = new List<Action<Dictionary<string, RoomInfo>>>(_pendingRoomInfoCallbacks);
+                _pendingRoomInfoCallbacks.Clear();
+
+                foreach (var pendingCallback in callbacks)
+                    pendingCallback?.Invoke(roomInfos);
+            }
+
             if (UseCloudScriptRoomRegistry())
             {
-                GetActiveRoomInfosFromCloudScript(callback);
+                GetActiveRoomInfosFromCloudScript(CompleteRequest);
                 return;
             }
 
@@ -864,7 +889,7 @@ namespace BattlePvp.Networking
                 if (rooms.Count == 0)
                 {
                     OnRoomInfoListLoaded?.Invoke(roomInfos);
-                    callback?.Invoke(roomInfos);
+                    CompleteRequest(roomInfos);
                     return;
                 }
 
@@ -917,9 +942,21 @@ namespace BattlePvp.Networking
                     if (remaining > 0) return;
 
                     OnRoomInfoListLoaded?.Invoke(roomInfos);
-                    callback?.Invoke(roomInfos);
+                    CompleteRequest(roomInfos);
                 }
             });
+        }
+
+        private bool TryReturnCachedRoomInfos(Action<Dictionary<string, RoomInfo>> callback)
+        {
+            if (_lastLoadedRoomInfos.Count == 0)
+                return false;
+
+            if (Time.unscaledTime - _lastRoomInfoLoadTime > ROOM_INFO_CACHE_SECONDS)
+                return false;
+
+            callback?.Invoke(new Dictionary<string, RoomInfo>(_lastLoadedRoomInfos));
+            return true;
         }
 
         /// <summary>

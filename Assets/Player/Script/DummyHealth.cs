@@ -164,13 +164,13 @@ namespace BattlePvp.Combat
                         // 서버라면 직접 AddPoint, 클라이언트라면 Command를 통해 서버에 요청
                         if (Mirror.NetworkServer.active)
                         {
-                            attackerScore.AddPoint(1);
+                            attackerScore.AddPoint(0);
                         }
                         else
                         {
-                            attackerScore.CmdAddPoint(1);
+                            attackerScore.CmdAddPoint(0);
                         }
-                        Debug.Log($"[DummyHealth] {attackerMb.gameObject.name} killed Dummy. Awarded 1 point.");
+                        Debug.Log($"[DummyHealth] {attackerMb.gameObject.name} killed Dummy. No score awarded.");
                     }
                 }
 
