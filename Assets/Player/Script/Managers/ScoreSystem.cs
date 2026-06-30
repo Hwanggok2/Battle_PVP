@@ -33,12 +33,18 @@ namespace BattlePvp.Combat
         [SyncVar(hook = nameof(OnPointsChanged))]
         public int CurrentPoints = 0;
 
+        [SyncVar(hook = nameof(OnDeathsChanged))]
+        public int CurrentDeaths = 0;
+
         [SyncVar(hook = nameof(OnNameChanged))]
         public string PlayerName = "Unknown";
 
         public static event System.Action<ScoreSystem> OnScoreUpdated;
 
         public static readonly List<ScoreSystem> ActiveScores = new List<ScoreSystem>();
+
+        public int CurrentKills => CurrentPoints;
+        public float KillsPerDeath => CurrentDeaths <= 0 ? CurrentKills : CurrentKills / (float)CurrentDeaths;
 
         private IXpDistributor _xpDistributor = new SimpleXpDistributor();
         private readonly Dictionary<uint, int> _killsByVictim = new Dictionary<uint, int>();
@@ -54,6 +60,7 @@ namespace BattlePvp.Combat
         public void ResetMatchStats()
         {
             CurrentPoints = 0;
+            CurrentDeaths = 0;
             _killsByVictim.Clear();
             _deathsByKiller.Clear();
         }
@@ -67,6 +74,9 @@ namespace BattlePvp.Combat
             AddPoint(1);
             Increment(_killsByVictim, victim.netId);
             victim.RecordDeathFrom(this);
+
+            if (connectionToClient != null)
+                TargetAddCumulativeKill(connectionToClient);
         }
 
         [Server]
@@ -76,6 +86,36 @@ namespace BattlePvp.Combat
                 return;
 
             Increment(_deathsByKiller, killer.netId);
+            CurrentDeaths++;
+
+            if (connectionToClient != null)
+                TargetAddCumulativeDeath(connectionToClient);
+        }
+
+        [TargetRpc]
+        private void TargetAddCumulativeKill(NetworkConnection target)
+        {
+            ApplyLocalCombatRecordDelta(1, 0);
+        }
+
+        [TargetRpc]
+        private void TargetAddCumulativeDeath(NetworkConnection target)
+        {
+            ApplyLocalCombatRecordDelta(0, 1);
+        }
+
+        private void ApplyLocalCombatRecordDelta(int killsDelta, int deathsDelta)
+        {
+            var gdm = BattlePvp.Managers.GlobalDataManager.Instance;
+            if (gdm == null)
+                return;
+
+            gdm.AddCombatRecord(killsDelta, deathsDelta);
+
+            if (PlayFabBattleManager.Instance != null)
+                PlayFabBattleManager.Instance.SaveCombatRecord(gdm.CumulativeKills, gdm.CumulativeDeaths);
+
+            OnScoreUpdated?.Invoke(this);
         }
 
         public string GetMostKilledEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
@@ -180,6 +220,11 @@ namespace BattlePvp.Combat
         }
 
         private void OnPointsChanged(int oldVal, int newVal)
+        {
+            OnScoreUpdated?.Invoke(this);
+        }
+
+        private void OnDeathsChanged(int oldVal, int newVal)
         {
             OnScoreUpdated?.Invoke(this);
         }

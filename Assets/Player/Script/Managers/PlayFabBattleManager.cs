@@ -1506,6 +1506,45 @@ namespace BattlePvp.Networking
             );
         }
 
+        public void LoadCombatRecord(Action<int, int> onLoaded)
+        {
+            PlayFabClientAPI.GetUserData(new GetUserDataRequest(),
+                result =>
+                {
+                    int kills = 0;
+                    int deaths = 0;
+                    if (result.Data != null)
+                    {
+                        if (result.Data.ContainsKey("LifetimeKills")) kills = Mathf.Max(0, Mathf.RoundToInt((float)ParseValue(result.Data["LifetimeKills"].Value)));
+                        if (result.Data.ContainsKey("LifetimeDeaths")) deaths = Mathf.Max(0, Mathf.RoundToInt((float)ParseValue(result.Data["LifetimeDeaths"].Value)));
+                    }
+
+                    onLoaded?.Invoke(kills, deaths);
+                },
+                error =>
+                {
+                    Debug.LogError($"<color=red>[PlayFabBattleManager] Combat record load FAILED: {error.GenerateErrorReport()}</color>");
+                    onLoaded?.Invoke(0, 0);
+                });
+        }
+
+        public void SaveCombatRecord(int kills, int deaths)
+        {
+            var request = new UpdateUserDataRequest
+            {
+                Data = new Dictionary<string, string>
+                {
+                    { "LifetimeKills", Mathf.Max(0, kills).ToString() },
+                    { "LifetimeDeaths", Mathf.Max(0, deaths).ToString() }
+                },
+                Permission = UserDataPermission.Public
+            };
+
+            PlayFabClientAPI.UpdateUserData(request,
+                _ => Debug.Log($"<color=green>[PlayFab] Combat record saved. K={kills}, D={deaths}</color>"),
+                error => Debug.LogError($"[PlayFab] Combat record save FAILED: {error.GenerateErrorReport()}"));
+        }
+
         private double ParseValue(string val)
         {
             if (string.IsNullOrEmpty(val)) return 0;

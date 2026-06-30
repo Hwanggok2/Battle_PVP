@@ -428,6 +428,26 @@ namespace BattlePvp.Networking
             return $"Nickname: {playerName}\nRank: {rank}\nMost defeated by: {mostKilledBy}\nMost defeated: {mostKilled}\n\nPress Enter to Restart";
         }
 
+        [Server]
+        public void AnnounceKill(string killerName, string victimName)
+        {
+            if (CurrentState != BattleState.InBattle)
+                return;
+
+            if (string.IsNullOrWhiteSpace(killerName))
+                killerName = "Unknown";
+            if (string.IsNullOrWhiteSpace(victimName))
+                victimName = "Unknown";
+
+            RpcShowKillAnnouncement(killerName, victimName);
+        }
+
+        [ClientRpc]
+        private void RpcShowKillAnnouncement(string killerName, string victimName)
+        {
+            KillAnnouncementUI.ShowGlobal(killerName, victimName);
+        }
+
         [Command(requiresAuthority = false)]
         public void CmdRequestRestart(NetworkConnectionToClient sender = null)
         {

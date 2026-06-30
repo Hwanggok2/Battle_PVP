@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using BattlePvp.Stats;
+using BattlePvp.Combat;
 using Mirror;
 
 namespace BattlePvp.UI
@@ -34,6 +35,13 @@ namespace BattlePvp.UI
         [SerializeField] private TMP_Text _moveSpdText;
         [SerializeField] private TMP_Text _atkSpdText;
 
+        [Header("Battle Record")]
+        [SerializeField] private TMP_Text _killsText;
+        [SerializeField] private TMP_Text _deathsText;
+        [SerializeField] private TMP_Text _killsPerDeathText;
+
+        private ScoreSystem _scoreSystem;
+
         private void Awake()
         {
             if (_playerIconButton != null)
@@ -48,9 +56,12 @@ namespace BattlePvp.UI
             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
                 BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+                BattlePvp.Managers.GlobalDataManager.Instance.OnCombatRecordUpdated += OnCombatRecordUpdated;
             }
+            ScoreSystem.OnScoreUpdated += OnScoreUpdated;
 
             TryFindLocalPlayer();
+            EnsureBattleRecordTexts();
 
             UpdateStatsDisplay();
         }
@@ -60,7 +71,9 @@ namespace BattlePvp.UI
             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
                 BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+                BattlePvp.Managers.GlobalDataManager.Instance.OnCombatRecordUpdated -= OnCombatRecordUpdated;
             }
+            ScoreSystem.OnScoreUpdated -= OnScoreUpdated;
 
             if (_statManager != null)
             {
@@ -108,7 +121,13 @@ namespace BattlePvp.UI
             {
                 _statManager.StatsChanged -= OnStatsChanged;
                 _statManager.StatsChanged += OnStatsChanged;
+
+                if (_scoreSystem == null)
+                    _scoreSystem = _statManager.GetComponent<ScoreSystem>();
             }
+
+            if (_scoreSystem == null && NetworkClient.localPlayer != null)
+                _scoreSystem = NetworkClient.localPlayer.GetComponent<ScoreSystem>();
         }
 
         private void OnStatsChanged(StatContainer _)
@@ -118,6 +137,21 @@ namespace BattlePvp.UI
             {
                 UpdateStatsDisplay();
             }
+        }
+
+        private void OnScoreUpdated(ScoreSystem score)
+        {
+            if (_scoreSystem != null && score != null && score != _scoreSystem)
+                return;
+
+            if (_infoPanel == null || _infoPanel.activeSelf)
+                UpdateBattleRecordDisplay();
+        }
+
+        private void OnCombatRecordUpdated(int kills, int deaths)
+        {
+            if (_infoPanel == null || _infoPanel.activeSelf)
+                UpdateBattleRecordDisplay();
         }
 
         private void OnDestroy()
@@ -140,6 +174,7 @@ namespace BattlePvp.UI
 
             if (!isActive)
             {
+                EnsureBattleRecordTexts();
                 UpdateStatsDisplay();
             }
         }
@@ -156,6 +191,8 @@ namespace BattlePvp.UI
             {
                 _loginIdText.text = BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname;
             }
+
+            UpdateBattleRecordDisplay();
 
             StatContainer displayStats;
             
@@ -218,6 +255,114 @@ namespace BattlePvp.UI
             stats = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
             float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
             return total > 0.1f;
+        }
+
+        private void EnsureBattleRecordTexts()
+        {
+            if (_infoPanel == null)
+                return;
+
+            if (_killsText == null) _killsText = FindTextByName("kill");
+            if (_deathsText == null) _deathsText = FindTextByName("death");
+            if (_killsPerDeathText == null) _killsPerDeathText = FindTextByName("kda", "kd", "ratio");
+
+            TMP_Text template = _atkSpdText != null ? _atkSpdText :
+                                _regenText != null ? _regenText :
+                                _defText != null ? _defText :
+                                _infoPanel.GetComponentInChildren<TMP_Text>(true);
+
+            Transform parent = template != null ? template.transform.parent : _infoPanel.transform;
+            if (_killsText == null) _killsText = CreateRecordText(parent, template, "KillsText", 1);
+            if (_deathsText == null) _deathsText = CreateRecordText(parent, template, "DeathsText", 2);
+            if (_killsPerDeathText == null) _killsPerDeathText = CreateRecordText(parent, template, "KillsPerDeathText", 3);
+        }
+
+        private TMP_Text FindTextByName(params string[] tokens)
+        {
+            if (_infoPanel == null || tokens == null)
+                return null;
+
+            TMP_Text[] texts = _infoPanel.GetComponentsInChildren<TMP_Text>(true);
+            foreach (TMP_Text text in texts)
+            {
+                if (text == null)
+                    continue;
+
+                string lowerName = text.name.ToLowerInvariant();
+                foreach (string token in tokens)
+                {
+                    if (!string.IsNullOrEmpty(token) && lowerName.Contains(token))
+                        return text;
+                }
+            }
+
+            return null;
+        }
+
+        private TMP_Text CreateRecordText(Transform parent, TMP_Text template, string objectName, int lineOffset)
+        {
+            GameObject textObject = new GameObject(objectName, typeof(RectTransform));
+            textObject.transform.SetParent(parent, false);
+
+            TMP_Text text = textObject.AddComponent<TextMeshProUGUI>();
+            if (template != null)
+            {
+                text.font = template.font;
+                text.fontSize = template.fontSize;
+                text.color = template.color;
+                text.alignment = template.alignment;
+                text.enableAutoSizing = template.enableAutoSizing;
+                text.fontSizeMin = template.fontSizeMin;
+                text.fontSizeMax = template.fontSizeMax;
+
+                RectTransform sourceRect = template.rectTransform;
+                RectTransform rect = text.rectTransform;
+                rect.anchorMin = sourceRect.anchorMin;
+                rect.anchorMax = sourceRect.anchorMax;
+                rect.pivot = sourceRect.pivot;
+                rect.sizeDelta = sourceRect.sizeDelta;
+
+                if (parent.GetComponent<LayoutGroup>() == null)
+                {
+                    float lineHeight = Mathf.Max(sourceRect.rect.height, template.fontSize + 4f);
+                    rect.anchoredPosition = sourceRect.anchoredPosition + new Vector2(0f, -lineHeight * lineOffset);
+                }
+            }
+
+            return text;
+        }
+
+        private void UpdateBattleRecordDisplay()
+        {
+            EnsureBattleRecordTexts();
+
+            if (_scoreSystem == null)
+            {
+                if (NetworkClient.localPlayer != null)
+                    _scoreSystem = NetworkClient.localPlayer.GetComponent<ScoreSystem>();
+                else if (_statManager != null)
+                    _scoreSystem = _statManager.GetComponent<ScoreSystem>();
+            }
+
+            int kills = 0;
+            int deaths = 0;
+
+            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            {
+                kills = BattlePvp.Managers.GlobalDataManager.Instance.CumulativeKills;
+                deaths = BattlePvp.Managers.GlobalDataManager.Instance.CumulativeDeaths;
+            }
+            else if (_scoreSystem != null)
+            {
+                kills = _scoreSystem.CurrentKills;
+                deaths = _scoreSystem.CurrentDeaths;
+            }
+
+            float killsPerDeath = deaths <= 0 ? kills : kills / (float)deaths;
+
+            if (_killsText != null) _killsText.text = $"Kills : {kills}";
+            if (_deathsText != null) _deathsText.text = $"Deaths : {deaths}";
+            if (_killsPerDeathText != null) _killsPerDeathText.text = $"K/D : {killsPerDeath:F2}";
         }
     }
 }

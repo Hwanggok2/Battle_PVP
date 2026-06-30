@@ -23,12 +23,37 @@ public class PlayerCombat : NetworkBehaviour
     private Animator animator;
     private PlayerInput _playerInput;
     private Coroutine _comboRoutine;
+    private HealthSystem _healthSystem;
 
     private void Awake()
     {
         animator = GetComponent<Animator>();
         _playerInput = GetComponent<PlayerInput>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+        _healthSystem = GetComponent<HealthSystem>();
+    }
+
+    private void OnEnable()
+    {
+        if (_healthSystem == null)
+            _healthSystem = GetComponent<HealthSystem>();
+
+        if (_healthSystem != null)
+        {
+            _healthSystem.OnDied += CancelCurrentAttack;
+            _healthSystem.OnRevived += HandleRevived;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_healthSystem != null)
+        {
+            _healthSystem.OnDied -= CancelCurrentAttack;
+            _healthSystem.OnRevived -= HandleRevived;
+        }
+
+        DisableHitBox();
     }
 
     public override void OnStartClient()
@@ -68,8 +93,7 @@ public class PlayerCombat : NetworkBehaviour
                 return;
         }
 
-        var health = GetComponent<HealthSystem>();
-        if (health != null && health.IsDead) return;
+        if (_healthSystem != null && _healthSystem.IsDead) return;
 
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
 
@@ -108,6 +132,9 @@ public class PlayerCombat : NetworkBehaviour
 
     private void StartAttack(int index, bool notifyServer)
     {
+        if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
             return;
 
@@ -164,6 +191,9 @@ public class PlayerCombat : NetworkBehaviour
     [Command]
     private void CmdStartAttack(int index)
     {
+        if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
         StartAttack(index, false);
         RpcStartAttack(index);
     }
@@ -179,6 +209,9 @@ public class PlayerCombat : NetworkBehaviour
 
     public void EnableHitBox()
     {
+        if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
@@ -232,6 +265,38 @@ public class PlayerCombat : NetworkBehaviour
 
     public void OnAttackAnimationEnd()
     {
+    }
+
+    public void CancelCurrentAttack()
+    {
+        if (_comboRoutine != null)
+        {
+            StopCoroutine(_comboRoutine);
+            _comboRoutine = null;
+        }
+
+        DisableHitBox();
+        isAttacking = false;
+        currentComboIndex = 0;
+        hasComboReserved = false;
+
+        if (animator != null)
+            animator.speed = 1.0f;
+
+        var pm = GetComponent<PlayerManager>();
+        if (pm != null)
+            pm.SetMovementLock(false);
+    }
+
+    private void HandleRevived()
+    {
+        if (animator != null)
+            animator.speed = 1.0f;
+
+        DisableHitBox();
+        isAttacking = false;
+        hasComboReserved = false;
+        currentComboIndex = 0;
     }
 
     private void StopCombo()

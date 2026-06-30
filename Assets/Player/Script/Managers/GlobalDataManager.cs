@@ -50,6 +50,8 @@ namespace BattlePvp.Managers
         [Header("Persistent Data")]
         [SerializeField] private StatContainer _savedStats;
         [SerializeField] private string _playerNickname = "Unknown";
+        [SerializeField] private int _cumulativeKills;
+        [SerializeField] private int _cumulativeDeaths;
         private bool _isPlayerStatsLoadInFlight;
 
         /// <summary>
@@ -66,6 +68,11 @@ namespace BattlePvp.Managers
         }
         
         public event System.Action<StatContainer> OnSavedStatsUpdated;
+        public event System.Action<int, int> OnCombatRecordUpdated;
+
+        public int CumulativeKills => _cumulativeKills;
+        public int CumulativeDeaths => _cumulativeDeaths;
+        public float CumulativeKillsPerDeath => _cumulativeDeaths <= 0 ? _cumulativeKills : _cumulativeKills / (float)_cumulativeDeaths;
 
         public StatContainer SavedStats 
         { 
@@ -77,6 +84,19 @@ namespace BattlePvp.Managers
                 OnSavedStatsUpdated?.Invoke(_savedStats);
                 Debug.Log($"[GlobalDataManager] SavedStats Updated (Clamped to 30): {_savedStats.STR.Invested}/{_savedStats.AGI.Invested}/{_savedStats.CON.Invested}/{_savedStats.DEF.Invested}");
             }
+        }
+
+        public void SetCombatRecord(int kills, int deaths)
+        {
+            _cumulativeKills = Mathf.Max(0, kills);
+            _cumulativeDeaths = Mathf.Max(0, deaths);
+            OnCombatRecordUpdated?.Invoke(_cumulativeKills, _cumulativeDeaths);
+            Debug.Log($"[GlobalDataManager] Combat record updated: K={_cumulativeKills}, D={_cumulativeDeaths}");
+        }
+
+        public void AddCombatRecord(int killsDelta, int deathsDelta)
+        {
+            SetCombatRecord(_cumulativeKills + killsDelta, _cumulativeDeaths + deathsDelta);
         }
 
         private StatContainer ClampStatBudget(StatContainer stats, int budget)

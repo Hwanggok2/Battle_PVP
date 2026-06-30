@@ -104,6 +104,14 @@ namespace BattlePvp.Networking
                                 Debug.Log("[AuthManager] Stats loaded and synced via BattleManager.");
                             }
                         });
+
+                        battleManager.LoadCombatRecord((kills, deaths) => {
+                            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+                            {
+                                BattlePvp.Managers.GlobalDataManager.Instance.SetCombatRecord(kills, deaths);
+                                Debug.Log("[AuthManager] Combat record loaded and cached.");
+                            }
+                        });
                     }
                     else
                     {

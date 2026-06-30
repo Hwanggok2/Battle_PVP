@@ -64,7 +64,7 @@ namespace BattlePvp.UI
             for (int i = 0; i < sortedScores.Count; i++)
             {
                 int rank = i + 1;
-                _activeEntries[i].SetData(rank, sortedScores[i].PlayerName, sortedScores[i].CurrentPoints);
+                _activeEntries[i].SetData(rank, sortedScores[i].PlayerName, sortedScores[i].CurrentPoints, sortedScores[i].CurrentDeaths);
                 
                 // 순서 보장 (Hierarchy)
                 _activeEntries[i].transform.SetSiblingIndex(i);

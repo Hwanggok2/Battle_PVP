@@ -471,10 +471,18 @@ namespace BattlePvp.Combat
                         {
                             var victimScore = GetComponent<ScoreSystem>();
                             attackerScore.RecordKillAgainst(victimScore);
+                            string killerName = string.IsNullOrWhiteSpace(attackerScore.PlayerName) ? "Unknown" : attackerScore.PlayerName;
+                            string victimName = victimScore != null && !string.IsNullOrWhiteSpace(victimScore.PlayerName) ? victimScore.PlayerName : gameObject.name;
+                            if (BattleStateMachine.Instance != null)
+                                BattleStateMachine.Instance.AnnounceKill(killerName, victimName);
                             Debug.Log($"[HealthSystem] {_lastAttacker} killed {gameObject.name}. Awarded 1 point.");
                         }
                     }
                 }
+
+                var combat = GetComponent<PlayerCombat>();
+                if (combat != null)
+                    combat.CancelCurrentAttack();
 
                 OnDied?.Invoke();
                 if (isServer)

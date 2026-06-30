@@ -101,6 +101,8 @@ public sealed class AttackProcessor : MonoBehaviour
             return;
         if (defender == null || (defender is MonoBehaviour mb && mb == null))
             return;
+        if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
+            return;
 
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
         Identity defenderIdentity = defenderStats.CurrentIdentity;

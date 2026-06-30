@@ -378,6 +378,8 @@ MonoBehaviour:
       Invested: 0
       Item: 0
   _playerNickname: Unknown
+  _cumulativeKills: 0
+  _cumulativeDeaths: 0
 --- !u!114 &302068496
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -654,6 +656,22 @@ PrefabInstance:
     - target: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 4350802580665085354, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4773390282845009339, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _killsText
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4773390282845009339, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _deathsText
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4773390282845009339, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _killsPerDeathText
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 5818000519435866579, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_AnchorMax.x
