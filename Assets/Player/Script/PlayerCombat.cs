@@ -71,7 +71,7 @@ public class PlayerCombat : NetworkBehaviour
         var health = GetComponent<HealthSystem>();
         if (health != null && health.IsDead) return;
 
-        if (BattlePvp.Logic.GameInputController.IsPaused) return;
+        if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
 
         if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
             return;

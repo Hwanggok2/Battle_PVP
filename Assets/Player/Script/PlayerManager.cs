@@ -147,7 +147,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (!isLocalPlayer) return;
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
         ApplyMovement();
     }
 

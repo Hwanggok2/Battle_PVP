@@ -13,6 +13,7 @@ namespace BattlePvp.Logic
     {
         // 전역에서 접근 가능한 일시정지(메뉴) 상태
         public static bool IsPaused { get; private set; } = false;
+        public static bool IsTextInputActive { get; private set; } = false;
 
         private FollowCamera _followCamera;
         private bool _isCursorUnlocked = false;
@@ -25,6 +26,7 @@ namespace BattlePvp.Logic
             _followCamera = FindFirstObjectByType<FollowCamera>();
             // 씬 진입 시마다 초기화 (Lobby에서 공격이 안 되는 현상 방지)
             IsPaused = false;
+            IsTextInputActive = false;
             _isCursorUnlocked = false;
         }
 
@@ -33,15 +35,30 @@ namespace BattlePvp.Logic
         /// </summary>
         public void ResetToPlayMode()
         {
+            IsTextInputActive = false;
             _isCursorUnlocked = false;
             IsPaused = false;
             ApplyCursorState();
+        }
+
+        public static void SetTextInputActive(bool isActive)
+        {
+            IsTextInputActive = isActive;
+
+            if (Instance != null)
+                Instance.ApplyCursorState();
+            else if (isActive)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
         }
 
         private void OnDisable()
         {
             // 오브젝트가 사라지거나 씬이 바뀔 때 상태 초기화
             IsPaused = false;
+            IsTextInputActive = false;
         }
 
         private void Start()
@@ -55,11 +72,17 @@ namespace BattlePvp.Logic
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             {
+                if (IsTextInputActive)
+                {
+                    SetTextInputActive(false);
+                    return;
+                }
+
                 ToggleCursor();
             }
 
             // ESC로 풀린 상태(메뉴 모드)에서는 커서 잠금이 되지 않도록 강제 유지 (Task 1)
-            if (_isCursorUnlocked)
+            if (_isCursorUnlocked || IsTextInputActive)
             {
                 if (Cursor.lockState != CursorLockMode.None)
                 {
@@ -85,7 +108,7 @@ namespace BattlePvp.Logic
 
             ApplyCursorState();
 
-            if (_isCursorUnlocked)
+            if (_isCursorUnlocked || IsTextInputActive)
                 Debug.Log("[GameInput] Pause Mode: Cursor Free, Camera Fixed, Attack Disabled");
             else
                 Debug.Log("[GameInput] Play Mode: Cursor Locked, Camera Active, Attack Enabled");
@@ -93,7 +116,7 @@ namespace BattlePvp.Logic
 
         private void ApplyCursorState()
         {
-            if (_isCursorUnlocked)
+            if (_isCursorUnlocked || IsTextInputActive)
             {
                 // ESC 1회: 커서 활성화, 카메라 고정 (Task 1)
                 Cursor.lockState = CursorLockMode.None;
