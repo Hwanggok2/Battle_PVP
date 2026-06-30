@@ -12,6 +12,10 @@ namespace BattlePvp.Combat
     [RequireComponent(typeof(StatManager))]
     public class DummyHealth : MonoBehaviour, IDamageReceiverWithContext
     {
+        private const float BaseAttackPower = 22f;
+        private const float BaseStatTotal = 5f;
+        private const float AttackPowerPerStr = 3f;
+
         [Header("Stat Configuration")]
         [SerializeField] private DummyStatData _statData;
 
@@ -97,8 +101,8 @@ namespace BattlePvp.Combat
             _currentRegen = con * 0.15f; 
             if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON) _currentRegen += 5f;
 
-            // 3. Attack Power 공식 (STR * 4)
-            _attackPower = str * 4f; 
+            // 3. Attack Power 공식 (Base 22 + STR * 3)
+            _attackPower = BaseAttackPower + (Mathf.Max(0f, str - BaseStatTotal) * AttackPowerPerStr); 
             if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.STR) _attackPower *= 1.4f;
 
             // 4. Physical Penetration 공식 (STR * 0.3)

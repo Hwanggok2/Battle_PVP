@@ -52,10 +52,7 @@ namespace BattlePvp.UI
 
             TryFindLocalPlayer();
 
-            if (_infoPanel != null && _infoPanel.activeSelf)
-            {
-                UpdateStatsDisplay();
-            }
+            UpdateStatsDisplay();
         }
 
         private void OnDisable()
@@ -74,14 +71,20 @@ namespace BattlePvp.UI
         private void OnGlobalStatsUpdated(StatContainer stats)
         {
             // 전역 데이터가 업데이트되면 UI도 즉시 갱신을 시도합니다.
-            if (_infoPanel != null && _infoPanel.activeSelf)
-            {
-                UpdateStatsDisplay();
-            }
+            UpdateStatsDisplay();
         }
 
         private void TryFindLocalPlayer()
         {
+            if (_statManager == null && StatManager.Local != null)
+                _statManager = StatManager.Local;
+
+            if (_statManager == null && NetworkClient.localPlayer != null)
+                _statManager = NetworkClient.localPlayer.GetComponent<StatManager>();
+
+            if (_statManager == null)
+                _statManager = GetComponentInParent<StatManager>();
+
             // [수정] 단순히 첫 번째 StatManager가 아니라 '로컬 플레이어' 권한을 가진 객체를 찾습니다.
             if (_statManager == null)
             {
@@ -96,6 +99,15 @@ namespace BattlePvp.UI
                         break;
                     }
                 }
+            }
+
+            if (_statManager == null)
+                _statManager = FindFirstObjectByType<StatManager>();
+
+            if (_statManager != null)
+            {
+                _statManager.StatsChanged -= OnStatsChanged;
+                _statManager.StatsChanged += OnStatsChanged;
             }
         }
 
@@ -147,7 +159,11 @@ namespace BattlePvp.UI
 
             StatContainer displayStats;
             
-            if (_statManager != null)
+            if (TryGetSavedStats(out StatContainer savedStats))
+            {
+                displayStats = savedStats;
+            }
+            else if (_statManager != null)
             {
                 displayStats = _statManager.GetStatsCopy();
             }
@@ -190,6 +206,18 @@ namespace BattlePvp.UI
                 // 현재 StatManager에 계산 로직이 몰려 있으므로 최소한의 표시만 진행
                 if (_atkText != null) _atkText.text = "로딩 중...";
             }
+        }
+
+        private static bool TryGetSavedStats(out StatContainer stats)
+        {
+            stats = default;
+
+            if (BattlePvp.Managers.GlobalDataManager.Instance == null)
+                return false;
+
+            stats = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
+            float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
+            return total > 0.1f;
         }
     }
 }

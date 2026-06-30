@@ -2,6 +2,7 @@ using UnityEngine;
 using BattlePvp.CameraLogic;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 namespace BattlePvp.Logic
 {
@@ -84,10 +85,18 @@ namespace BattlePvp.Logic
             // ESC로 풀린 상태(메뉴 모드)에서는 커서 잠금이 되지 않도록 강제 유지 (Task 1)
             if (_isCursorUnlocked || IsTextInputActive)
             {
-                if (Cursor.lockState != CursorLockMode.None)
+                if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
                 {
                     Cursor.lockState = CursorLockMode.None;
                     Cursor.visible = true;
+                }
+            }
+            else if (IsBattleCursorControlledScene())
+            {
+                if (Cursor.lockState != CursorLockMode.Locked || Cursor.visible)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
                 }
             }
         }
@@ -126,10 +135,21 @@ namespace BattlePvp.Logic
             else
             {
                 // ESC 2회: 커서 잠금, 카메라 회전 (기본 상태)
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                if (IsBattleCursorControlledScene())
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
+                }
                 if (_followCamera != null) _followCamera.IsLocked = false;
             }
+        }
+
+        private static bool IsBattleCursorControlledScene()
+        {
+            string sceneName = SceneManager.GetActiveScene().name;
+            return sceneName == "Battle" ||
+                   sceneName.Contains("Battle_wait") ||
+                   sceneName.Contains("Battle_waiting");
         }
 
         /// <summary>

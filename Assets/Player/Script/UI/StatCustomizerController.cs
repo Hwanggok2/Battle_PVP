@@ -132,7 +132,7 @@ namespace BattlePvp.UI
             if (_applyButton != null)
                 _applyButton.onClick.AddListener(Apply);
 
-            RefreshSliderVisuals();
+            LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
 
             // [추가] 초기 DB 스멀스멀 동기화 루틴 시작
@@ -163,8 +163,10 @@ namespace BattlePvp.UI
             // [핵심 해결] 전역 데이터가 로드되면 동기화용 루틴을 다시 구동하여 UI를 강제 갱신합니다.
             if (gameObject.activeInHierarchy)
             {
-                if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
-                _syncCoroutine = StartCoroutine(CoInitialSyncWithDB());
+                _baseStats = updatedStats;
+                _virtualStats = _baseStats;
+                RefreshSliderVisuals();
+                RebuildBudgetAndPreview();
             }
         }
 
@@ -207,6 +209,30 @@ namespace BattlePvp.UI
             _baseStats = _statManager.GetStatsCopy();
             _virtualStats = _baseStats;
             RefreshSliderVisuals();
+        }
+
+        private bool TryLoadFromSavedStats()
+        {
+            if (GlobalDataManager.Instance == null)
+                return false;
+
+            StatContainer saved = GlobalDataManager.Instance.SavedStats;
+            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
+            if (total <= 0.1f)
+                return false;
+
+            _baseStats = saved;
+            _virtualStats = _baseStats;
+            RefreshSliderVisuals();
+            return true;
+        }
+
+        private void LoadFromSavedStatsOrTarget()
+        {
+            if (TryLoadFromSavedStats())
+                return;
+
+            LoadFromTarget();
         }
 
         private void Hook(StatSlider s) { if (s != null) s.InvestedChanged += OnInvestedChanged; }
@@ -361,22 +387,21 @@ namespace BattlePvp.UI
                 if (StatManager.IsMonostat(_virtualStats))
                 {
                     ShowFloatingMessage("몰빵형 변환은 불가능합니다.");
-                    LoadFromTarget();
+                    LoadFromSavedStatsOrTarget();
                     RebuildBudgetAndPreview();
                     return;
                 }
             }
 
-            var investedOnly = default(StatContainer);
-            investedOnly.STR.Invested = _virtualStats.STR.Invested;
-            investedOnly.AGI.Invested = _virtualStats.AGI.Invested;
-            investedOnly.CON.Invested = _virtualStats.CON.Invested;
-            investedOnly.DEF.Invested = _virtualStats.DEF.Invested;
+            StatContainer currentStats = _baseStats;
+            currentStats.STR.Invested = _virtualStats.STR.Invested;
+            currentStats.AGI.Invested = _virtualStats.AGI.Invested;
+            currentStats.CON.Invested = _virtualStats.CON.Invested;
+            currentStats.DEF.Invested = _virtualStats.DEF.Invested;
 
-            _statManager.ApplyInvestedOnly(investedOnly, recalculateIdentity: true);
+            _statManager.ApplyStats(currentStats, recalculateIdentity: true);
             if (_playerHealth != null) _playerHealth.RefillHealth();
 
-            var currentStats = _statManager.GetStatsCopy();
             GlobalDataManager.Instance.SavedStats = currentStats;
             if (PlayFabBattleManager.Instance != null)
             {
@@ -386,7 +411,8 @@ namespace BattlePvp.UI
 
             // [수정] _statManager = null; 처리를 제거하여 Apply 직후 참조 유실로 인한 예외를 방지합니다.
             // 대신 데이터 갱신만 수행합니다.
-            LoadFromTarget();
+            _baseStats = currentStats;
+            _virtualStats = _baseStats;
             RefreshSliderVisuals();
             RebuildBudgetAndPreview();
             

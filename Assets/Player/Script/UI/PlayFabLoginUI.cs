@@ -24,8 +24,16 @@ namespace BattlePvp.UI
         [Header("Status Feedback")]
         [SerializeField] private TextMeshProUGUI _statusText;  // 결과 메시지 표시용 텍스트
 
+        private void OnEnable()
+        {
+            if (IsLoginScene())
+                EnsureLoginCursorVisible();
+        }
+
         private void Start()
         {
+            if (IsLoginScene())
+                EnsureLoginCursorVisible();
             // 버튼 클릭 시 실행될 함수 등록
             if (_loginButton != null) _loginButton.onClick.AddListener(OnLoginClicked);
             if (_registerButton != null) _registerButton.onClick.AddListener(OnRegisterClicked);
@@ -40,6 +48,15 @@ namespace BattlePvp.UI
             }
         }
 
+        private void Update()
+        {
+            if (!IsLoginScene())
+                return;
+
+            if (Cursor.lockState != CursorLockMode.None || !Cursor.visible)
+                EnsureLoginCursorVisible();
+        }
+
         private void OnDestroy()
         {
             // 이벤트 구독 해제 (메모리 누수 방지)
@@ -50,6 +67,17 @@ namespace BattlePvp.UI
                 PlayFabAuthManager.Instance.OnRegisterSuccess -= HandleRegisterSuccess;
                 PlayFabAuthManager.Instance.OnRegisterFailure -= HandleFailure;
             }
+        }
+
+        private static void EnsureLoginCursorVisible()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
+        private static bool IsLoginScene()
+        {
+            return SceneManager.GetActiveScene().name == "Login";
         }
 
         private void OnLoginClicked()

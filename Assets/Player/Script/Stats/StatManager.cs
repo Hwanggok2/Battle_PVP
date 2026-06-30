@@ -9,6 +9,10 @@ namespace BattlePvp.Stats
     /// </summary>
     public sealed class StatManager : Mirror.NetworkBehaviour, IIdentitySource
     {
+        private const float BaseAttackPower = 22f;
+        private const float BaseStatTotal = 5f;
+        private const float AttackPowerPerStr = 3f;
+
         public static StatManager Local { get; private set; }
 
         [Header("Stat Data")]
@@ -116,7 +120,7 @@ namespace BattlePvp.Stats
             Identity vId = Calculator.ResolveIdentity(virtualStats, out _);
 
             // 1) ATK & Pene
-            float baseAtk = vStr * 4f;
+            float baseAtk = CalculateAttackPower(vStr);
             float basePene = vStr * 0.3f;
             if (vId.Type == IdentityType.Monostat && vId.PrimaryStat == StatKind.STR)
             {
@@ -127,7 +131,7 @@ namespace BattlePvp.Stats
             previewPene = Mathf.Clamp(basePene, 0f, 100f);
 
             // 2) MaxHP & Regen (BaseMaxHp 100, MaxHpPerCon 15, RegenPerCon 0.15)
-            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 5f);
+            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 4f);
             float baseRegen = vCon * 0.15f;
             if (vId.Type == IdentityType.Monostat)
             {
@@ -373,6 +377,11 @@ namespace BattlePvp.Stats
             next.AGI.Invested = investedOnly.AGI.Invested;
             next.DEF.Invested = investedOnly.DEF.Invested;
             ApplyStats(next, recalculateIdentity);
+        }
+
+        private static float CalculateAttackPower(float finalStr)
+        {
+            return BaseAttackPower + (Mathf.Max(0f, finalStr - BaseStatTotal) * AttackPowerPerStr);
         }
     }
 }

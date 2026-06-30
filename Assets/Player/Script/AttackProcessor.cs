@@ -11,6 +11,10 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class AttackProcessor : MonoBehaviour
 {
+    private const float BaseAttackPower = 22f;
+    private const float BaseStatTotal = 5f;
+    private const float AttackPowerPerStr = 3f;
+
     [Header("Self (Attacker)")]
     [SerializeField] private StatManager _attackerStats;
 
@@ -71,7 +75,7 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_attackerStats == null) return;
 
         float str = _attackerStats.GetFinalTotal(StatKind.STR);
-        _currentAtk = str * 4f;
+        _currentAtk = CalculateAttackPower(str);
         _currentPene = str * 0.3f;
 
         Identity id = _attackerStats.CurrentIdentity;
@@ -101,9 +105,9 @@ public sealed class AttackProcessor : MonoBehaviour
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
         Identity defenderIdentity = defenderStats.CurrentIdentity;
 
-        // 1) ATK / Piercing 구성 (기획안: 1 STR당 ATK 4, 물관 0.3%)
+        // 1) ATK / Piercing 구성 (기획안: 1 STR당 ATK 3, 물관 0.3%)
         float attackerStrFinal = _attackerStats.GetFinalTotal(StatKind.STR);
-        float baseAtk = attackerStrFinal * 4f;
+        float baseAtk = CalculateAttackPower(attackerStrFinal);
         float basePene = attackerStrFinal * 0.3f;
 
         // AttackData.damage는 실제 공격의 세기를 곱해주는 계수
@@ -173,6 +177,11 @@ public sealed class AttackProcessor : MonoBehaviour
         if (v < min) return min;
         if (v > max) return max;
         return v;
+    }
+
+    private static float CalculateAttackPower(float finalStr)
+    {
+        return BaseAttackPower + (Mathf.Max(0f, finalStr - BaseStatTotal) * AttackPowerPerStr);
     }
 }
 
