@@ -1,4 +1,6 @@
 using System.Collections;
+using BattlePvp.Managers;
+using BattlePvp.Stats;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -27,8 +29,23 @@ namespace BattlePvp.Lobby
 
         private void OnEnable()
         {
+            if (GlobalDataManager.Instance != null)
+                GlobalDataManager.Instance.OnSavedStatsUpdated += OnSavedStatsUpdated;
+
             if (IsLobbyScene())
                 StartEnsureRoutine();
+        }
+
+        private void OnDisable()
+        {
+            if (GlobalDataManager.Instance != null)
+                GlobalDataManager.Instance.OnSavedStatsUpdated -= OnSavedStatsUpdated;
+
+            if (_ensureRoutine != null)
+            {
+                StopCoroutine(_ensureRoutine);
+                _ensureRoutine = null;
+            }
         }
 
         private void Start()
@@ -106,6 +123,32 @@ namespace BattlePvp.Lobby
                 _targetPlayer.name = _playerNameInScene;
                 Debug.LogWarning($"[LobbyPlayerActivator] Player was missing in Lobby. Spawned fallback prefab '{_fallbackPlayerPrefab.name}'.");
             }
+
+            ApplySavedStatsToTarget();
+        }
+
+        private void OnSavedStatsUpdated(StatContainer _)
+        {
+            if (IsLobbyScene())
+                TryActivate();
+        }
+
+        private void ApplySavedStatsToTarget()
+        {
+            if (_targetPlayer == null || GlobalDataManager.Instance == null)
+                return;
+
+            StatContainer saved = GlobalDataManager.Instance.SavedStats;
+            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
+            if (total <= 0.1f)
+                return;
+
+            StatManager statManager = _targetPlayer.GetComponent<StatManager>();
+            if (statManager == null)
+                return;
+
+            statManager.ApplyLocalSceneStats(saved, recalculateIdentity: true);
+            Debug.Log($"[LobbyPlayerActivator] Applied saved stats to lobby player. STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
         }
     }
 }

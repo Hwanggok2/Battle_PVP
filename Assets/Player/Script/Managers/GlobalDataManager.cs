@@ -2,6 +2,7 @@ using UnityEngine;
 using BattlePvp.Stats;
 using UnityEngine.SceneManagement;
 using Mirror;
+using BattlePvp.Networking;
 
 namespace BattlePvp.Managers
 {
@@ -49,6 +50,7 @@ namespace BattlePvp.Managers
         [Header("Persistent Data")]
         [SerializeField] private StatContainer _savedStats;
         [SerializeField] private string _playerNickname = "Unknown";
+        private bool _isPlayerStatsLoadInFlight;
 
         /// <summary>
         /// 로그인 시 설정된 플레이어 닉네임. 씬 전환 후에도 유지됩니다.
@@ -115,6 +117,7 @@ namespace BattlePvp.Managers
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             Debug.Log($"[GlobalDataManager] Scene Loaded: {scene.name}. Attempting to inject stats.");
+            EnsurePlayerStatsLoadedForScene(scene.name);
             TryInjectToPlayer();
         }
 
@@ -136,6 +139,44 @@ namespace BattlePvp.Managers
             {
                 Debug.Log("[GlobalDataManager] No StatManager found in current scene to inject stats.");
             }
+        }
+
+        private void EnsurePlayerStatsLoadedForScene(string sceneName)
+        {
+            if (!IsPlayerStatScene(sceneName) || HasUsableSavedStats() || _isPlayerStatsLoadInFlight)
+                return;
+
+            if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn())
+                return;
+
+            PlayFabBattleManager battleManager = PlayFabBattleManager.Instance;
+            if (battleManager == null)
+                battleManager = FindFirstObjectByType<PlayFabBattleManager>();
+
+            if (battleManager == null)
+            {
+                Debug.LogWarning("[GlobalDataManager] PlayFabBattleManager not found. Player stats cannot be loaded for this scene yet.");
+                return;
+            }
+
+            _isPlayerStatsLoadInFlight = true;
+            battleManager.LoadPlayerStats(stats =>
+            {
+                _isPlayerStatsLoadInFlight = false;
+                SavedStats = stats;
+                TryInjectToPlayer();
+                Debug.Log("[GlobalDataManager] Player stats loaded automatically for scene entry.");
+            });
+        }
+
+        private bool HasUsableSavedStats()
+        {
+            return _savedStats.STR.Invested + _savedStats.AGI.Invested + _savedStats.CON.Invested + _savedStats.DEF.Invested > 0.1f;
+        }
+
+        private static bool IsPlayerStatScene(string sceneName)
+        {
+            return sceneName == "Lobby" || sceneName == "Battle" || sceneName == "Battle_wait" || sceneName == "Battle_waiting";
         }
     }
 }

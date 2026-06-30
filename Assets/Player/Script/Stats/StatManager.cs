@@ -355,6 +355,15 @@ namespace BattlePvp.Stats
             InternalApplyStats(stats, recalculateIdentity);
         }
 
+        /// <summary>
+        /// 씬에 배치된 로비용 플레이어처럼 네트워크 권한이 아직 없는 표시 대상에 저장 스텟을 반영합니다.
+        /// 서버/로컬 플레이어 동기화 용도가 아니라 로컬 씬 초기화 전용입니다.
+        /// </summary>
+        public void ApplyLocalSceneStats(StatContainer stats, bool recalculateIdentity = true)
+        {
+            InternalApplyStats(stats, recalculateIdentity);
+        }
+
         private void InternalApplyStats(StatContainer stats, bool recalculateIdentity)
         {
             _stats = stats;
