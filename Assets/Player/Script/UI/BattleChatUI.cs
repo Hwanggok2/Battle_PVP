@@ -28,6 +28,7 @@ namespace BattlePvp.UI
         private float _dragStartHeight;
         private float _dragStartPointerY;
         private bool _isTyping;
+        private int _lastSubmitFrame = -1;
 
         private void Awake()
         {
@@ -65,10 +66,7 @@ namespace BattlePvp.UI
             if (!_isTyping)
             {
                 SetTyping(true);
-                return;
             }
-
-            SubmitCurrentText();
         }
 
         private void Reset()
@@ -77,12 +75,21 @@ namespace BattlePvp.UI
             ResolveReferences();
         }
 
-        private void SubmitCurrentText()
+        private void SubmitCurrentText(string submittedText = null)
         {
+            if (Time.frameCount == _lastSubmitFrame)
+                return;
+
+            _lastSubmitFrame = Time.frameCount;
+
             if (_input == null)
                 return;
 
-            string text = _input.text;
+            string text = string.IsNullOrEmpty(submittedText) ? _input.text : submittedText;
+            string composition = Input.compositionString;
+            if (!string.IsNullOrEmpty(composition) && !text.EndsWith(composition))
+                text += composition;
+
             _input.text = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(text))
@@ -182,7 +189,11 @@ namespace BattlePvp.UI
             }
 
             if (_input != null)
+            {
                 _input.lineType = TMP_InputField.LineType.SingleLine;
+                _input.onSubmit.RemoveListener(HandleInputSubmit);
+                _input.onSubmit.AddListener(HandleInputSubmit);
+            }
 
             if (_resizeHandle != null)
             {
@@ -212,6 +223,12 @@ namespace BattlePvp.UI
             var entry = new EventTrigger.Entry { eventID = type };
             entry.callback.AddListener(data => callback(data));
             trigger.triggers.Add(entry);
+        }
+
+        private void HandleInputSubmit(string _)
+        {
+            if (_isTyping)
+                SubmitCurrentText(_);
         }
 
         private static void EnsureEventSystem()
