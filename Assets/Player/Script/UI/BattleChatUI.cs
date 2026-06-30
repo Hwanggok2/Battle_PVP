@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using BattlePvp.Logic;
 using TMPro;
 using UnityEngine;
@@ -29,6 +30,9 @@ namespace BattlePvp.UI
         private float _dragStartPointerY;
         private bool _isTyping;
         private int _lastSubmitFrame = -1;
+        private Coroutine _submitRoutine;
+        private Coroutine _scrollRoutine;
+        private string _queuedSubmitText;
 
         private void Awake()
         {
@@ -53,20 +57,31 @@ namespace BattlePvp.UI
 
         private void Update()
         {
-            if (_isTyping && !GameInputController.IsTextInputActive)
-            {
-                SetTyping(false);
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard == null)
                 return;
+
+            if (_isTyping)
+            {
+                GameInputController.SetTextInputActive(true);
+
+                if (keyboard.escapeKey.wasPressedThisFrame)
+                {
+                    SetTyping(false);
+                    return;
+                }
             }
 
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
-            if (keyboard == null || !keyboard.enterKey.wasPressedThisFrame)
+            if (!IsSubmitKeyPressedThisFrame())
                 return;
 
             if (!_isTyping)
             {
                 SetTyping(true);
+                return;
             }
+
+            QueueSubmitCurrentText(BuildCurrentInputText());
         }
 
         private void Reset()
@@ -85,10 +100,7 @@ namespace BattlePvp.UI
             if (_input == null)
                 return;
 
-            string text = string.IsNullOrEmpty(submittedText) ? _input.text : submittedText;
-            string composition = Input.compositionString;
-            if (!string.IsNullOrEmpty(composition) && !text.EndsWith(composition))
-                text += composition;
+            string text = string.IsNullOrEmpty(submittedText) ? BuildCurrentInputText() : submittedText;
 
             _input.text = string.Empty;
 
@@ -96,6 +108,33 @@ namespace BattlePvp.UI
                 BattleChatNetwork.Send(text);
 
             SetTyping(false);
+        }
+
+        private string BuildCurrentInputText()
+        {
+            if (_input == null)
+                return string.Empty;
+
+            return _input.text + Input.compositionString;
+        }
+
+        private void QueueSubmitCurrentText(string text)
+        {
+            _queuedSubmitText = text;
+
+            if (_submitRoutine != null)
+                return;
+
+            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles());
+        }
+
+        private IEnumerator CoSubmitAfterInputSettles()
+        {
+            yield return new WaitForEndOfFrame();
+            _submitRoutine = null;
+            string text = _queuedSubmitText;
+            _queuedSubmitText = null;
+            SubmitCurrentText(text);
         }
 
         private void SetTyping(bool isTyping)
@@ -128,9 +167,7 @@ namespace BattlePvp.UI
                 _lines.RemoveAt(0);
 
             _logText.text = string.Join("\n", _lines);
-            Canvas.ForceUpdateCanvases();
-            UpdateContentHeight();
-            _scrollRect.verticalNormalizedPosition = 0f;
+            RefreshLogLayoutAndStickToBottom();
         }
 
         private void UpdateContentHeight()
@@ -141,6 +178,34 @@ namespace BattlePvp.UI
             float viewportHeight = Mathf.Max(1f, _viewportRect.rect.height);
             float preferredHeight = Mathf.Ceil(_logText.preferredHeight);
             _contentRect.sizeDelta = new Vector2(0f, Mathf.Max(viewportHeight, preferredHeight));
+        }
+
+        private void RefreshLogLayoutAndStickToBottom()
+        {
+            if (_scrollRect == null)
+                return;
+
+            Canvas.ForceUpdateCanvases();
+            UpdateContentHeight();
+            Canvas.ForceUpdateCanvases();
+
+            _scrollRect.velocity = Vector2.zero;
+            _scrollRect.verticalNormalizedPosition = 0f;
+        }
+
+        private void QueueScrollToBottom()
+        {
+            if (_scrollRoutine != null)
+                StopCoroutine(_scrollRoutine);
+
+            _scrollRoutine = StartCoroutine(CoScrollToBottomAfterLayout());
+        }
+
+        private IEnumerator CoScrollToBottomAfterLayout()
+        {
+            yield return null;
+            RefreshLogLayoutAndStickToBottom();
+            _scrollRoutine = null;
         }
 
         private void ResolveReferences()
@@ -191,8 +256,6 @@ namespace BattlePvp.UI
             if (_input != null)
             {
                 _input.lineType = TMP_InputField.LineType.SingleLine;
-                _input.onSubmit.RemoveListener(HandleInputSubmit);
-                _input.onSubmit.AddListener(HandleInputSubmit);
             }
 
             if (_resizeHandle != null)
@@ -204,6 +267,7 @@ namespace BattlePvp.UI
                 trigger.triggers.Clear();
                 AddDragTrigger(trigger, EventTriggerType.BeginDrag, data =>
                 {
+                    GameInputController.SetTextInputActive(true);
                     var pointer = (PointerEventData)data;
                     _dragStartHeight = _panelRect.sizeDelta.y;
                     _dragStartPointerY = pointer.position.y;
@@ -214,6 +278,11 @@ namespace BattlePvp.UI
                     float delta = pointer.position.y - _dragStartPointerY;
                     float height = Mathf.Clamp(_dragStartHeight + delta, _minHeight, _maxHeight);
                     _panelRect.sizeDelta = new Vector2(_panelRect.sizeDelta.x, height);
+                    RefreshLogLayoutAndStickToBottom();
+                });
+                AddDragTrigger(trigger, EventTriggerType.EndDrag, data =>
+                {
+                    QueueScrollToBottom();
                 });
             }
         }
@@ -225,10 +294,14 @@ namespace BattlePvp.UI
             trigger.triggers.Add(entry);
         }
 
-        private void HandleInputSubmit(string _)
+        private static bool IsSubmitKeyPressedThisFrame()
         {
-            if (_isTyping)
-                SubmitCurrentText(_);
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard == null)
+                return false;
+
+            return keyboard.enterKey.wasPressedThisFrame ||
+                   keyboard.numpadEnterKey.wasPressedThisFrame;
         }
 
         private static void EnsureEventSystem()
