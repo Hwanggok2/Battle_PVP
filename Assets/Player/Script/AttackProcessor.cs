@@ -93,7 +93,7 @@ public sealed class AttackProcessor : MonoBehaviour
     /// <param name="defenderStats">피격자 StatManager</param>
     /// <param name="defender">피격자 HP 수신자</param>
     /// <param name="defenderGuard">선택적 가드 컴포넌트 (없으면 null)</param>
-    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null)
+    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null, float bodyPartMultiplier = 1f)
     {
         if (attackData == null)
             return;
@@ -151,8 +151,10 @@ public sealed class AttackProcessor : MonoBehaviour
         if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
             finalDamage *= 0.7f;
 
+        finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
+
         // [디버그] 최종 계산 데미지 로그
-        Debug.Log($"[AttackProcessor] Hit! Power:{attackPower:F1}, Pene:{penetrationPercent:F1}%, DefEff:{defenderCurrentDefNormalized:F2}, FinalDamage:{finalDamage:F1}");
+        Debug.Log($"[AttackProcessor] Hit! Power:{attackPower:F1}, Pene:{penetrationPercent:F1}%, DefEff:{defenderCurrentDefNormalized:F2}, BodyPartMul:{bodyPartMultiplier:F2}, FinalDamage:{finalDamage:F1}");
 
         if (finalDamage <= 0f)
             return;

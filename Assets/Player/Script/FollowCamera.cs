@@ -81,5 +81,11 @@ namespace BattlePvp.CameraLogic
 
         // 플레이어 매니저에서 참조할 현재 수평 회전값
         public float GetYaw() => _yaw;
+        public float GetPitch() => _pitch;
+
+        public Vector3 GetAimDirection()
+        {
+            return Quaternion.Euler(_pitch, _yaw, 0f) * Vector3.forward;
+        }
     }
 }

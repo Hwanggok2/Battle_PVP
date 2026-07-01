@@ -1,5 +1,6 @@
 using BattlePvp.Combat;
 using BattlePvp.Stats;
+using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -19,11 +20,14 @@ public class PlayerCombat : NetworkBehaviour
     private bool isAttacking;
     private bool hasComboReserved;
     private bool _isPointerOverUI;
+    private readonly HashSet<IDamageReceiver> _hitTargetsThisSwing = new HashSet<IDamageReceiver>();
 
     private Animator animator;
     private PlayerInput _playerInput;
     private Coroutine _comboRoutine;
     private HealthSystem _healthSystem;
+    private PlayerManager _playerManager;
+    private BattlePvp.CameraLogic.FollowCamera _followCamera;
 
     private void Awake()
     {
@@ -31,6 +35,7 @@ public class PlayerCombat : NetworkBehaviour
         _playerInput = GetComponent<PlayerInput>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
         _healthSystem = GetComponent<HealthSystem>();
+        _playerManager = GetComponent<PlayerManager>();
     }
 
     private void OnEnable()
@@ -68,6 +73,8 @@ public class PlayerCombat : NetworkBehaviour
         base.OnStartLocalPlayer();
         if (_playerInput != null)
             _playerInput.enabled = true;
+
+        _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
     }
 
     private void Update()
@@ -107,7 +114,7 @@ public class PlayerCombat : NetworkBehaviour
             return;
         }
 
-        StartAttack(0, true);
+        StartAttack(0, true, GetCurrentAimDirection());
     }
 
     private bool IsBattleLoadingOrNotStarted()
@@ -130,7 +137,7 @@ public class PlayerCombat : NetworkBehaviour
         return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 
-    private void StartAttack(int index, bool notifyServer)
+    private void StartAttack(int index, bool notifyServer, Vector3 aimDirection)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
@@ -141,11 +148,12 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
+        aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
 
         if (animator != null)
             animator.applyRootMotion = false;
 
-        var pm = GetComponent<PlayerManager>();
+        var pm = _playerManager != null ? _playerManager : GetComponent<PlayerManager>();
         if (pm != null)
             pm.SetMovementLock(true);
 
@@ -176,41 +184,46 @@ public class PlayerCombat : NetworkBehaviour
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
+            {
                 hb.SetAttackData(comboList[index]);
+                hb.SetAttackContext(aimDirection, pm != null && pm.IsCrouching);
+            }
         }
 
         if (notifyServer && isClient && isLocalPlayer)
         {
             if (isServer)
-                RpcStartAttack(index);
+                RpcStartAttack(index, aimDirection);
             else
-                CmdStartAttack(index);
+                CmdStartAttack(index, aimDirection);
         }
     }
 
     [Command]
-    private void CmdStartAttack(int index)
+    private void CmdStartAttack(int index, Vector3 aimDirection)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        StartAttack(index, false);
-        RpcStartAttack(index);
+        StartAttack(index, false, aimDirection);
+        RpcStartAttack(index, aimDirection);
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcStartAttack(int index)
+    private void RpcStartAttack(int index, Vector3 aimDirection)
     {
         if (isServer)
             return;
 
-        StartAttack(index, false);
+        StartAttack(index, false, aimDirection);
     }
 
     public void EnableHitBox()
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
+
+        _hitTargetsThisSwing.Clear();
 
         foreach (var hb in _hitboxes)
         {
@@ -226,6 +239,18 @@ public class PlayerCombat : NetworkBehaviour
             if (hb != null)
                 hb.DisableHitBox();
         }
+    }
+
+    public bool TryRegisterHitTarget(IDamageReceiver target)
+    {
+        if (target == null)
+            return false;
+
+        if (_hitTargetsThisSwing.Contains(target))
+            return false;
+
+        _hitTargetsThisSwing.Add(target);
+        return true;
     }
 
     private System.Collections.IEnumerator CoComboMonitor(int index)
@@ -254,7 +279,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (hasComboReserved && currentComboIndex < comboList.Length - 1)
-            StartAttack(currentComboIndex + 1, true);
+            StartAttack(currentComboIndex + 1, true, GetCurrentAimDirection());
         else
         {
             StopCombo();
@@ -283,7 +308,7 @@ public class PlayerCombat : NetworkBehaviour
         if (animator != null)
             animator.speed = 1.0f;
 
-        var pm = GetComponent<PlayerManager>();
+        var pm = _playerManager != null ? _playerManager : GetComponent<PlayerManager>();
         if (pm != null)
             pm.SetMovementLock(false);
     }
@@ -310,5 +335,16 @@ public class PlayerCombat : NetworkBehaviour
             pm.SetMovementLock(false);
 
         Debug.Log("Combo ended.");
+    }
+
+    private Vector3 GetCurrentAimDirection()
+    {
+        if (_followCamera == null && isLocalPlayer)
+            _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+
+        if (_followCamera != null)
+            return _followCamera.GetAimDirection();
+
+        return transform.forward;
     }
 }

@@ -21,9 +21,16 @@ namespace BattlePvp.Combat
         [SerializeField] private int _maxSweepSamples = 8;
         [SerializeField] private float _sweepPadding = 0.02f;
 
+        [Header("Aim/Crouch Hit Position")]
+        [SerializeField] private float _aimForwardOffset = 0.8f;
+        [SerializeField] private float _crouchVerticalOffset = -0.45f;
+
         private bool _hitBoxActive;
         private Vector3 _previousPosition;
         private Quaternion _previousRotation;
+        private Vector3 _aimDirection = Vector3.forward;
+        private bool _isCrouching;
+        private PlayerCombat _playerCombat;
 
         private void Awake()
         {
@@ -34,6 +41,8 @@ namespace BattlePvp.Combat
 
             if (_attackProcessor == null)
                 _attackProcessor = GetComponentInParent<AttackProcessor>();
+
+            _playerCombat = GetComponentInParent<PlayerCombat>();
 
             Rigidbody rb = GetComponent<Rigidbody>();
             if (rb != null)
@@ -59,6 +68,12 @@ namespace BattlePvp.Combat
             _currentAttackData = data;
         }
 
+        public void SetAttackContext(Vector3 aimDirection, bool isCrouching)
+        {
+            _aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
+            _isCrouching = isCrouching;
+        }
+
         public void EnableHitBox()
         {
             if (_collider != null)
@@ -80,6 +95,9 @@ namespace BattlePvp.Combat
 
         private void OnTriggerEnter(Collider other)
         {
+            if (_useSweptHitDetection && _boxCollider != null)
+                return;
+
             TryProcessHit(other);
         }
 
@@ -130,14 +148,15 @@ namespace BattlePvp.Combat
                 return;
 
             Vector3 scale = Abs(transform.lossyScale);
-            Vector3 center = samplePosition + sampleRotation * Vector3.Scale(_boxCollider.center, scale);
+            Quaternion hitRotation = GetHitRotation(sampleRotation);
+            Vector3 center = GetHitCenter(samplePosition, hitRotation, scale);
             Vector3 halfExtents = Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding;
 
             int count = Physics.OverlapBoxNonAlloc(
                 center,
                 halfExtents,
                 _sweepResults,
-                sampleRotation,
+                hitRotation,
                 ~0,
                 QueryTriggerInteraction.Collide);
 
@@ -156,16 +175,44 @@ namespace BattlePvp.Combat
             return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
         }
 
+        private Quaternion GetHitRotation(Quaternion fallbackRotation)
+        {
+            if (_aimDirection.sqrMagnitude <= 0.001f)
+                return fallbackRotation;
+
+            return Quaternion.LookRotation(_aimDirection.normalized, Vector3.up);
+        }
+
+        private Vector3 GetHitCenter(Vector3 samplePosition, Quaternion hitRotation, Vector3 scale)
+        {
+            Vector3 center = samplePosition + hitRotation * Vector3.Scale(_boxCollider.center, scale);
+            center += _aimDirection.normalized * _aimForwardOffset;
+
+            if (_isCrouching)
+                center += Vector3.up * _crouchVerticalOffset;
+
+            return center;
+        }
+
         private void TryProcessHit(Collider other)
         {
             if (other == null || other.transform.root == transform.root)
                 return;
+
+            HitBodyPart bodyPart = other.GetComponent<HitBodyPart>();
+            if (bodyPart == null)
+                bodyPart = other.GetComponentInParent<HitBodyPart>();
 
             IDamageReceiver defender = other.GetComponent<IDamageReceiver>();
             if (defender == null)
                 defender = other.GetComponentInParent<IDamageReceiver>();
 
             if (defender == null || _hitTargets.Contains(defender))
+                return;
+
+            // Player movement colliders/CharacterController are not damage hitboxes.
+            // For players, only colliders marked with HitBodyPart can receive melee damage.
+            if (defender is HealthSystem && bodyPart == null)
                 return;
 
             if (NetworkClient.active && !NetworkServer.active && defender is HealthSystem)
@@ -178,8 +225,17 @@ namespace BattlePvp.Combat
             if (defenderStats == null || _attackProcessor == null)
                 return;
 
-            Vector3 hitPosition = other.ClosestPoint(transform.position);
-            _attackProcessor.ProcessHit(_currentAttackData, defenderStats, defender, hitPosition);
+            float bodyPartMultiplier = bodyPart != null ? bodyPart.DamageMultiplier : 1f;
+
+            Vector3 hitQueryPosition = transform.position + (_aimDirection.normalized * _aimForwardOffset);
+            if (_isCrouching)
+                hitQueryPosition += Vector3.up * _crouchVerticalOffset;
+
+            Vector3 hitPosition = other.ClosestPoint(hitQueryPosition);
+            if (_playerCombat != null && !_playerCombat.TryRegisterHitTarget(defender))
+                return;
+
+            _attackProcessor.ProcessHit(_currentAttackData, defenderStats, defender, hitPosition, bodyPartMultiplier: bodyPartMultiplier);
             _hitTargets.Add(defender);
         }
     }

@@ -15,8 +15,13 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private StatManager _statManager;
     [SerializeField] private float moveSpeed = 5.0f; // 기본 이동 속도
     [SerializeField] private float gravity = 9.81f; // 중력 값
+    [SerializeField] private float jumpHeight = 1.4f;
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
+
+    [Header("Crouch Settings")]
+    [SerializeField] private float crouchSpeedMultiplier = 0.7f;
+    [SerializeField] private float crouchControllerHeightMultiplier = 0.55f;
 
     [Header("Death Overlay Text")]
     [SerializeField] private string _respawnPromptText = "Press Space to Respawn";
@@ -33,19 +38,25 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private bool isAttacking = false; // 현재 공격 중인지 여부
     [SerializeField] private bool isDead = false; // 사망 여부
     [SerializeField] private bool _matchEndLocked = false;
+    [SyncVar(hook = nameof(OnCrouchStateChanged))]
+    [SerializeField] private bool isCrouching = false;
 
     private HealthSystem _healthSystem;
     private Coroutine _respawnRoutine;
     private float _nextTransformSyncTime;
     private Vector3 _lastSentPosition;
     private Quaternion _lastSentRotation;
+    private float _standingControllerHeight;
+    private Vector3 _standingControllerCenter;
 
     public bool IsMatchEndLocked => _matchEndLocked;
+    public bool IsCrouching => isCrouching;
 
     private readonly int speedHash = Animator.StringToHash("Speed");
     private readonly int dieHash = Animator.StringToHash("Die");
     private readonly int isDeadHash = Animator.StringToHash("IsDead");
     private readonly int movementStateHash = Animator.StringToHash("Movement");
+    private readonly int isCrouchingHash = Animator.StringToHash("IsCrouching");
 
     private void Awake()
     {
@@ -53,6 +64,11 @@ public class PlayerManager : NetworkBehaviour
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
         _healthSystem = GetComponent<HealthSystem>();
+        if (controller != null)
+        {
+            _standingControllerHeight = controller.height;
+            _standingControllerCenter = controller.center;
+        }
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
         DisableBuiltInNetworkTransforms();
         ConfigureRigidbodyForCharacterController();
@@ -143,6 +159,27 @@ public class PlayerManager : NetworkBehaviour
         inputVector = value.Get<Vector2>();
     }
 
+    public void OnJump(InputValue value)
+    {
+        if (isClient && !isLocalPlayer) return;
+        if (!value.isPressed) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted()) return;
+        if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
+        if (controller == null || !controller.enabled || !controller.isGrounded) return;
+
+        velocityY = Mathf.Sqrt(jumpHeight * 2f * gravity);
+    }
+
+    public void OnCrouch(InputValue value)
+    {
+        if (isClient && !isLocalPlayer) return;
+        if (!value.isPressed) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted()) return;
+        if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
+
+        SetCrouchState(!isCrouching, true);
+    }
+
     private void Update()
     {
         if (!isLocalPlayer) return;
@@ -170,6 +207,63 @@ public class PlayerManager : NetworkBehaviour
     public void SetMovementLock(bool isLocked)
     {
         isAttacking = isLocked;
+    }
+
+    private void SetCrouchState(bool crouching, bool notifyServer)
+    {
+        if (isCrouching == crouching)
+        {
+            ApplyCrouchState(crouching);
+            return;
+        }
+
+        isCrouching = crouching;
+        ApplyCrouchState(crouching);
+
+        if (notifyServer && isClient && isLocalPlayer)
+        {
+            if (isServer)
+                RpcSetCrouchState(crouching);
+            else
+                CmdSetCrouchState(crouching);
+        }
+    }
+
+    private void OnCrouchStateChanged(bool oldValue, bool newValue)
+    {
+        ApplyCrouchState(newValue);
+    }
+
+    private void ApplyCrouchState(bool crouching)
+    {
+        if (controller != null && _standingControllerHeight > 0f)
+        {
+            float targetHeight = crouching
+                ? _standingControllerHeight * Mathf.Clamp01(crouchControllerHeightMultiplier)
+                : _standingControllerHeight;
+            float heightDelta = _standingControllerHeight - targetHeight;
+
+            controller.height = targetHeight;
+            controller.center = crouching
+                ? _standingControllerCenter - (Vector3.up * heightDelta * 0.5f)
+                : _standingControllerCenter;
+        }
+
+        if (animator != null)
+            animator.SetBool(isCrouchingHash, crouching);
+    }
+
+    [Command]
+    private void CmdSetCrouchState(bool crouching)
+    {
+        SetCrouchState(crouching, false);
+        RpcSetCrouchState(crouching);
+    }
+
+    [ClientRpc(includeOwner = false)]
+    private void RpcSetCrouchState(bool crouching)
+    {
+        SetCrouchState(crouching, false);
     }
 
     private void ApplyMovement()
@@ -200,13 +294,17 @@ public class PlayerManager : NetworkBehaviour
         }
 
         // 3. 중력 처리
-        if (controller.isGrounded)
+        if (controller.isGrounded && velocityY < 0f)
             velocityY = -0.5f;
         else
             velocityY -= gravity * Time.deltaTime;
 
         // 4. 최종 이동
-        float currentMoveSpeed = moveSpeed * (isAttacking ? 0.6f : 1.0f);
+        float currentMoveSpeed = moveSpeed;
+        if (isAttacking)
+            currentMoveSpeed *= 0.6f;
+        if (isCrouching)
+            currentMoveSpeed *= crouchSpeedMultiplier;
         
         // Anti-Gliding: 입력이 없을 때는 0으로 고정
         if (isAttacking && inputVector.sqrMagnitude < 0.001f)
@@ -345,6 +443,7 @@ public class PlayerManager : NetworkBehaviour
         isDead = true;
         inputVector = Vector2.zero;
         isAttacking = false;
+        SetCrouchState(false, true);
 
         PlayDeathVisual();
 
@@ -397,6 +496,7 @@ public class PlayerManager : NetworkBehaviour
         
         // 상태 복구
         isDead = false;
+        SetCrouchState(false, true);
         ToggleCharacterVisibility(true);
         if (controller != null) controller.enabled = true;
         
@@ -430,6 +530,7 @@ public class PlayerManager : NetworkBehaviour
         inputVector = Vector2.zero;
         isAttacking = false;
         isDead = false;
+        SetCrouchState(false, true);
 
         if (_respawnRoutine != null)
         {
