@@ -6081,16 +6081,48 @@ PrefabInstance:
       objectReference: {fileID: 4130369353287361673}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _aimForwardOffset
-      value: 1.2
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _currentAttackData
       value: 
       objectReference: {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _sweepSampleSpacing
+      value: 0.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathColor.a
+      value: 0.1764706
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathColor.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathColor.r
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathDuration
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _useSweptHitDetection
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugHitPathLineWidth
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: _debugSlashTrailMaterial
+      value: 
+      objectReference: {fileID: 2100000, guid: d1aa3bc5d7a43ff468799b44e57a50a3, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
