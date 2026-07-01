@@ -53,6 +53,8 @@ namespace BattlePvp.Managers
         [SerializeField] private int _cumulativeKills;
         [SerializeField] private int _cumulativeDeaths;
         private bool _isPlayerStatsLoadInFlight;
+        private bool _isCombatRecordLoadInFlight;
+        private bool _hasLoadedCombatRecord;
 
         /// <summary>
         /// 로그인 시 설정된 플레이어 닉네임. 씬 전환 후에도 유지됩니다.
@@ -90,6 +92,7 @@ namespace BattlePvp.Managers
         {
             _cumulativeKills = Mathf.Max(0, kills);
             _cumulativeDeaths = Mathf.Max(0, deaths);
+            _hasLoadedCombatRecord = true;
             OnCombatRecordUpdated?.Invoke(_cumulativeKills, _cumulativeDeaths);
             Debug.Log($"[GlobalDataManager] Combat record updated: K={_cumulativeKills}, D={_cumulativeDeaths}");
         }
@@ -138,6 +141,7 @@ namespace BattlePvp.Managers
         {
             Debug.Log($"[GlobalDataManager] Scene Loaded: {scene.name}. Attempting to inject stats.");
             EnsurePlayerStatsLoadedForScene(scene.name);
+            EnsureCombatRecordLoadedForScene(scene.name);
             TryInjectToPlayer();
         }
 
@@ -186,6 +190,33 @@ namespace BattlePvp.Managers
                 SavedStats = stats;
                 TryInjectToPlayer();
                 Debug.Log("[GlobalDataManager] Player stats loaded automatically for scene entry.");
+            });
+        }
+
+        private void EnsureCombatRecordLoadedForScene(string sceneName)
+        {
+            if (!IsPlayerStatScene(sceneName) || _hasLoadedCombatRecord || _isCombatRecordLoadInFlight)
+                return;
+
+            if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn())
+                return;
+
+            PlayFabBattleManager battleManager = PlayFabBattleManager.Instance;
+            if (battleManager == null)
+                battleManager = FindFirstObjectByType<PlayFabBattleManager>();
+
+            if (battleManager == null)
+            {
+                Debug.LogWarning("[GlobalDataManager] PlayFabBattleManager not found. Combat record cannot be loaded for this scene yet.");
+                return;
+            }
+
+            _isCombatRecordLoadInFlight = true;
+            battleManager.LoadCombatRecord((kills, deaths) =>
+            {
+                _isCombatRecordLoadInFlight = false;
+                SetCombatRecord(kills, deaths);
+                Debug.Log("[GlobalDataManager] Combat record loaded automatically for scene entry.");
             });
         }
 
