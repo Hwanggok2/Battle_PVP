@@ -19,6 +19,11 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
 
+    [Header("Remote Movement Smoothing")]
+    [SerializeField] private float _remotePositionLerpSpeed = 18f;
+    [SerializeField] private float _remoteRotationLerpSpeed = 18f;
+    [SerializeField] private float _remoteSnapDistance = 3f;
+
     [Header("Crouch Settings")]
     [SerializeField] private float crouchSpeedMultiplier = 0.7f;
     [SerializeField] private float crouchControllerHeightMultiplier = 0.55f;
@@ -46,6 +51,9 @@ public class PlayerManager : NetworkBehaviour
     private float _nextTransformSyncTime;
     private Vector3 _lastSentPosition;
     private Quaternion _lastSentRotation;
+    private Vector3 _remoteTargetPosition;
+    private Quaternion _remoteTargetRotation;
+    private bool _hasRemoteTransformTarget;
     private float _standingControllerHeight;
     private Vector3 _standingControllerCenter;
 
@@ -182,7 +190,12 @@ public class PlayerManager : NetworkBehaviour
 
     private void Update()
     {
-        if (!isLocalPlayer) return;
+        if (!isLocalPlayer)
+        {
+            SmoothRemoteTransform();
+            return;
+        }
+
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
         if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
         ApplyMovement();
@@ -353,7 +366,9 @@ public class PlayerManager : NetworkBehaviour
     [Command(channel = Channels.Unreliable)]
     private void CmdSyncTransform(Vector3 position, Quaternion rotation)
     {
-        ApplySyncedTransform(position, rotation);
+        if (!isLocalPlayer)
+            ApplySyncedTransform(position, rotation, false);
+
         RpcSyncTransform(position, rotation);
     }
 
@@ -363,16 +378,57 @@ public class PlayerManager : NetworkBehaviour
         if (isLocalPlayer)
             return;
 
-        ApplySyncedTransform(position, rotation);
+        ApplySyncedTransform(position, rotation, true);
     }
 
-    private void ApplySyncedTransform(Vector3 position, Quaternion rotation)
+    private void ApplySyncedTransform(Vector3 position, Quaternion rotation, bool interpolate)
     {
+        if (interpolate && isClient && !isLocalPlayer)
+        {
+            SetRemoteTransformTarget(position, rotation);
+            return;
+        }
+
         bool controllerWasEnabled = controller != null && controller.enabled;
         if (controllerWasEnabled)
             controller.enabled = false;
 
         transform.SetPositionAndRotation(position, rotation);
+
+        if (controllerWasEnabled)
+            controller.enabled = true;
+
+        _remoteTargetPosition = position;
+        _remoteTargetRotation = rotation;
+        _hasRemoteTransformTarget = true;
+    }
+
+    private void SetRemoteTransformTarget(Vector3 position, Quaternion rotation)
+    {
+        _remoteTargetPosition = position;
+        _remoteTargetRotation = rotation;
+        _hasRemoteTransformTarget = true;
+
+        if (Vector3.Distance(transform.position, position) > _remoteSnapDistance)
+            ApplySyncedTransform(position, rotation, false);
+    }
+
+    private void SmoothRemoteTransform()
+    {
+        if (!_hasRemoteTransformTarget || !isClient)
+            return;
+
+        float positionT = 1f - Mathf.Exp(-Mathf.Max(0f, _remotePositionLerpSpeed) * Time.deltaTime);
+        float rotationT = 1f - Mathf.Exp(-Mathf.Max(0f, _remoteRotationLerpSpeed) * Time.deltaTime);
+
+        Vector3 nextPosition = Vector3.Lerp(transform.position, _remoteTargetPosition, positionT);
+        Quaternion nextRotation = Quaternion.Slerp(transform.rotation, _remoteTargetRotation, rotationT);
+
+        bool controllerWasEnabled = controller != null && controller.enabled;
+        if (controllerWasEnabled)
+            controller.enabled = false;
+
+        transform.SetPositionAndRotation(nextPosition, nextRotation);
 
         if (controllerWasEnabled)
             controller.enabled = true;
