@@ -68,6 +68,8 @@ namespace BattlePvp.Combat
         private Coroutine _regenRoutine;
 
         private IDamageReceiver _lastAttacker;
+        private static readonly Color ThornsPopupColor = new Color(0.25f, 0.65f, 1f, 1f);
+        private static readonly Vector3 ThornsPopupOffset = new Vector3(0.65f, 1.25f, 0f);
 
         private void Awake()
         {
@@ -224,7 +226,7 @@ namespace BattlePvp.Combat
             }
 
             _currentHp = next < 0f ? 0f : next;
-            ShowDamagePopup(hitPosition, amount);
+            ShowDamagePopup(hitPosition, amount, source);
 
             EvaluateDeath(); // [공통 로직으로 교체]
 
@@ -236,7 +238,7 @@ namespace BattlePvp.Combat
             // - attacker 정보가 있어야 반사 가능
             if (source == DamageSource.Physical && attacker != null && attackerAttackPower > 0f && IsMonostatDef())
             {
-                float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, MaxHp);
+                float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, attacker.MaxHp);
                 if (thorns > 0f)
                 {
                     // attacker가 여전히 유효한지 확인
@@ -244,9 +246,9 @@ namespace BattlePvp.Combat
                     {
                         // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
                         if (attacker is IDamageReceiverWithContext ctx)
-                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null, hitPosition);
+                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null, GetThornsPopupPosition(attackerMb));
                         else
-                            attacker.ApplyDamage(thorns, DamageSource.Thorns, hitPosition);
+                            attacker.ApplyDamage(thorns, DamageSource.Thorns, GetThornsPopupPosition(attackerMb));
                     }
                 }
             }
@@ -254,29 +256,45 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
         }
 
-        private void ShowDamagePopup(Vector3 hitPosition, float amount)
+        private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source)
         {
             Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
+            bool useCustomColor = source == DamageSource.Thorns;
+            Color popupColor = useCustomColor ? ThornsPopupColor : Color.white;
 
             if (isServer)
             {
-                RpcShowDamagePopup(popupPosition, amount);
+                RpcShowDamagePopup(popupPosition, amount, useCustomColor, popupColor);
                 return;
             }
 
-            CreateDamagePopupLocal(popupPosition, amount);
+            CreateDamagePopupLocal(popupPosition, amount, useCustomColor, popupColor);
         }
 
         [ClientRpc]
-        private void RpcShowDamagePopup(Vector3 position, float amount)
+        private void RpcShowDamagePopup(Vector3 position, float amount, bool useCustomColor, Color popupColor)
         {
-            CreateDamagePopupLocal(position, amount);
+            CreateDamagePopupLocal(position, amount, useCustomColor, popupColor);
         }
 
-        private void CreateDamagePopupLocal(Vector3 position, float amount)
+        private void CreateDamagePopupLocal(Vector3 position, float amount, bool useCustomColor, Color popupColor)
         {
             if (DamagePopupManager.Instance != null)
-                DamagePopupManager.Instance.CreatePopup(position, amount);
+            {
+                if (useCustomColor)
+                    DamagePopupManager.Instance.CreatePopup(position, amount, false, popupColor);
+                else
+                    DamagePopupManager.Instance.CreatePopup(position, amount);
+            }
+        }
+
+        private static Vector3 GetThornsPopupPosition(MonoBehaviour attackerMb)
+        {
+            Transform attackerTransform = attackerMb.transform;
+            return attackerTransform.position
+                + (attackerTransform.right * ThornsPopupOffset.x)
+                + (Vector3.up * ThornsPopupOffset.y)
+                + (attackerTransform.forward * ThornsPopupOffset.z);
         }
 
         private float PredictMaxHp()

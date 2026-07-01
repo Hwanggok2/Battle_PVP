@@ -37,6 +37,16 @@ namespace BattlePvp.UI
  
         public void Setup(float damageAmount, bool isCritical = false)
         {
+            Setup(damageAmount, isCritical, false, Color.white);
+        }
+
+        public void Setup(float damageAmount, bool isCritical, Color color)
+        {
+            Setup(damageAmount, isCritical, true, color);
+        }
+
+        private void Setup(float damageAmount, bool isCritical, bool useColorOverride, Color colorOverride)
+        {
             if (_textMesh == null)
             {
                 Debug.LogError($"[DamagePopup] _textMesh가 할당되지 않았습니다! 프리팹을 확인해 주세요.", gameObject);
@@ -53,7 +63,7 @@ namespace BattlePvp.UI
             else
             {
                 _textMesh.fontSize = _defaultFontSize;
-                _textColor = _defaultColor;
+                _textColor = useColorOverride ? colorOverride : _defaultColor;
             }
 
             _textMesh.color = _textColor;

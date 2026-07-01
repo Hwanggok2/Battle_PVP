@@ -40,6 +40,7 @@ namespace BattlePvp.EditorTools
         private float _penetrationPercent = 0f;
         private float _defenseBonusEffNormalized = 0f; // 0..1
 
+        private float _attackerMaxHp = 100f;
         private float _defenderCurrentHp = 100f;
         private float _defenderMaxHp = 100f;
 
@@ -103,6 +104,7 @@ namespace BattlePvp.EditorTools
             _defenseBonusEffNormalized = EditorGUILayout.Slider("Defense BonusEff (0..1)", _defenseBonusEffNormalized, 0f, 1f);
 
             EditorGUILayout.Space(6);
+            _attackerMaxHp = EditorGUILayout.FloatField("Attacker MaxHP", _attackerMaxHp);
             _defenderCurrentHp = EditorGUILayout.FloatField("Defender CurrentHP", _defenderCurrentHp);
             _defenderMaxHp = EditorGUILayout.FloatField("Defender MaxHP", _defenderMaxHp);
 
@@ -209,10 +211,10 @@ namespace BattlePvp.EditorTools
 
             if (_enableThorns)
             {
-                float thornsDamage = _damageCalculator.PredictThornsReflectDamage(attackerAtkPower, _defenderMaxHp);
+                float thornsDamage = _damageCalculator.PredictThornsReflectDamage(attackerAtkPower, _attackerMaxHp);
                 sb.AppendLine();
                 sb.AppendLine("[StatSimulator] === Thorns Preview ===");
-                sb.AppendLine($"ThornsReflectDamage = {thornsDamage:0.##} (cap = {_defenderMaxHp * 0.07f:0.##})");
+                sb.AppendLine($"ThornsReflectDamage = {thornsDamage:0.##} (min(ATK * 0.15, AttackerMaxHP * 0.07) + 5, cap = {_attackerMaxHp * 0.07f:0.##})");
             }
 
             sb.AppendLine("[StatSimulator] =====================");

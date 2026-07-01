@@ -24,6 +24,16 @@ namespace BattlePvp.UI
 
         public void CreatePopup(Vector3 position, float damage, bool isCritical = false)
         {
+            CreatePopup(position, damage, isCritical, false, Color.white);
+        }
+
+        public void CreatePopup(Vector3 position, float damage, bool isCritical, Color color)
+        {
+            CreatePopup(position, damage, isCritical, true, color);
+        }
+
+        private void CreatePopup(Vector3 position, float damage, bool isCritical, bool useColorOverride, Color colorOverride)
+        {
             if (_popupPrefab == null)
             {
                 Debug.LogError("[DamagePopupManager] Popup Prefab이 할당되지 않았습니다!");
@@ -33,7 +43,10 @@ namespace BattlePvp.UI
             // [수정] 랜덤 오프셋을 최소화하고 위쪽(Y축)으로만 살짝 띄웁니다.
             Vector3 spawnPos = position + new Vector3(0, 0.5f, 0); 
             DamagePopup popup = Instantiate(_popupPrefab, spawnPos, Quaternion.identity);
-            popup.Setup(damage, isCritical);
+            if (useColorOverride)
+                popup.Setup(damage, isCritical, colorOverride);
+            else
+                popup.Setup(damage, isCritical);
 
             Debug.Log($"[DamagePopupManager] Popup spawned at {spawnPos} with damage {damage}");
         }

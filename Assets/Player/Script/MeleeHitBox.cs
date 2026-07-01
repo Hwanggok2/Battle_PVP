@@ -2,6 +2,9 @@ using System.Collections.Generic;
 using BattlePvp.Stats;
 using Mirror;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace BattlePvp.Combat
 {
@@ -41,6 +44,7 @@ namespace BattlePvp.Combat
 
         private readonly List<DebugHitBoxPose> _debugHitBoxPoses = new List<DebugHitBoxPose>(128);
         private readonly List<DebugHitBoxRenderer> _debugHitBoxRenderers = new List<DebugHitBoxRenderer>(128);
+        private DebugHitBoxRenderer _currentDebugHitBoxRenderer;
         private Material _debugHitPathMaterial;
 
         private struct DebugHitBoxPose
@@ -51,14 +55,59 @@ namespace BattlePvp.Combat
             public float ExpireTime;
         }
 
-        private struct DebugHitBoxRenderer
+        private sealed class DebugHitBoxRenderer
         {
             public LineRenderer Renderer;
             public float ExpireTime;
+            public readonly List<Vector3> Positions = new List<Vector3>(256);
         }
+
+        private sealed class DebugHitBoxPathLifetime : MonoBehaviour
+        {
+            private LineRenderer _renderer;
+            private Color _baseColor;
+            private float _createdAt;
+            private float _duration;
+
+            public void Initialize(LineRenderer renderer, Color baseColor, float duration)
+            {
+                _renderer = renderer;
+                _baseColor = baseColor;
+                _duration = Mathf.Max(0.01f, duration);
+                _createdAt = Time.unscaledTime;
+            }
+
+            private void Update()
+            {
+                float remaining = Mathf.Clamp01(1f - ((Time.unscaledTime - _createdAt) / _duration));
+                if (remaining <= 0f)
+                {
+                    Destroy(gameObject);
+                    return;
+                }
+
+                if (_renderer == null)
+                    return;
+
+                Color color = _baseColor;
+                color.a *= remaining;
+                _renderer.startColor = color;
+                _renderer.endColor = color;
+            }
+        }
+
+#if UNITY_EDITOR
+        [InitializeOnLoadMethod]
+        private static void ScheduleEditorDebugHitBoxCleanup()
+        {
+            EditorApplication.delayCall += CleanupOrphanedDebugHitBoxPaths;
+        }
+#endif
 
         private void Awake()
         {
+            CleanupOrphanedDebugHitBoxPaths();
+
             _collider = GetComponent<Collider>();
             _boxCollider = _collider as BoxCollider;
             if (_collider != null)
@@ -111,6 +160,7 @@ namespace BattlePvp.Combat
 
             _hitBoxActive = true;
             _hitTargets.Clear();
+            _currentDebugHitBoxRenderer = null;
             CaptureCurrentPose();
 
             ProcessCurrentOverlaps();
@@ -121,6 +171,16 @@ namespace BattlePvp.Combat
             _hitBoxActive = false;
             if (_collider != null)
                 _collider.enabled = false;
+        }
+
+        private void OnDisable()
+        {
+            CleanupOwnedDebugHitBoxRenderers();
+        }
+
+        private void OnDestroy()
+        {
+            CleanupOwnedDebugHitBoxRenderers();
         }
 
         private void OnTriggerEnter(Collider other)
@@ -291,27 +351,41 @@ namespace BattlePvp.Combat
 
         private void CreateDebugHitBoxRenderer(Vector3 center, Vector3 halfExtents, Quaternion rotation, float expireTime)
         {
-            GameObject lineObject = new GameObject("Debug Melee HitBox");
-            lineObject.hideFlags = HideFlags.DontSave;
-            lineObject.transform.SetPositionAndRotation(center, rotation);
+            DebugHitBoxRenderer debugRenderer = GetOrCreateCurrentDebugHitBoxRenderer(expireTime);
+            debugRenderer.ExpireTime = expireTime;
+            AppendBoxLinePositions(debugRenderer.Positions, center, halfExtents, rotation);
+            debugRenderer.Renderer.positionCount = debugRenderer.Positions.Count;
+            debugRenderer.Renderer.SetPositions(debugRenderer.Positions.ToArray());
+        }
+
+        private DebugHitBoxRenderer GetOrCreateCurrentDebugHitBoxRenderer(float expireTime)
+        {
+            if (_currentDebugHitBoxRenderer != null && _currentDebugHitBoxRenderer.Renderer != null)
+                return _currentDebugHitBoxRenderer;
+
+            GameObject lineObject = new GameObject("Debug Melee HitBox Path");
 
             LineRenderer lineRenderer = lineObject.AddComponent<LineRenderer>();
-            lineRenderer.useWorldSpace = false;
+            lineRenderer.useWorldSpace = true;
             lineRenderer.loop = false;
-            lineRenderer.positionCount = 24;
+            lineRenderer.positionCount = 0;
             lineRenderer.widthMultiplier = Mathf.Max(0.001f, _debugHitPathLineWidth);
             lineRenderer.material = GetDebugHitPathMaterial();
             lineRenderer.startColor = _debugHitPathColor;
             lineRenderer.endColor = _debugHitPathColor;
             lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             lineRenderer.receiveShadows = false;
-            lineRenderer.SetPositions(BuildBoxLinePositions(halfExtents));
 
-            _debugHitBoxRenderers.Add(new DebugHitBoxRenderer
+            var lifetime = lineObject.AddComponent<DebugHitBoxPathLifetime>();
+            lifetime.Initialize(lineRenderer, _debugHitPathColor, _debugHitPathDuration);
+
+            _currentDebugHitBoxRenderer = new DebugHitBoxRenderer
             {
                 Renderer = lineRenderer,
                 ExpireTime = expireTime
-            });
+            };
+            _debugHitBoxRenderers.Add(_currentDebugHitBoxRenderer);
+            return _currentDebugHitBoxRenderer;
         }
 
         private Material GetDebugHitPathMaterial()
@@ -330,7 +404,7 @@ namespace BattlePvp.Combat
             return _debugHitPathMaterial;
         }
 
-        private static Vector3[] BuildBoxLinePositions(Vector3 halfExtents)
+        private static void AppendBoxLinePositions(List<Vector3> positions, Vector3 center, Vector3 halfExtents, Quaternion rotation)
         {
             Vector3 a = new Vector3(-halfExtents.x, -halfExtents.y, -halfExtents.z);
             Vector3 b = new Vector3(halfExtents.x, -halfExtents.y, -halfExtents.z);
@@ -341,12 +415,24 @@ namespace BattlePvp.Combat
             Vector3 g = new Vector3(halfExtents.x, halfExtents.y, halfExtents.z);
             Vector3 h = new Vector3(-halfExtents.x, halfExtents.y, halfExtents.z);
 
-            return new[]
-            {
-                a, b, b, c, c, d, d, a,
-                e, f, f, g, g, h, h, e,
-                a, e, b, f, c, g, d, h
-            };
+            AddLine(positions, center, rotation, a, b);
+            AddLine(positions, center, rotation, b, c);
+            AddLine(positions, center, rotation, c, d);
+            AddLine(positions, center, rotation, d, a);
+            AddLine(positions, center, rotation, e, f);
+            AddLine(positions, center, rotation, f, g);
+            AddLine(positions, center, rotation, g, h);
+            AddLine(positions, center, rotation, h, e);
+            AddLine(positions, center, rotation, a, e);
+            AddLine(positions, center, rotation, b, f);
+            AddLine(positions, center, rotation, c, g);
+            AddLine(positions, center, rotation, d, h);
+        }
+
+        private static void AddLine(List<Vector3> positions, Vector3 center, Quaternion rotation, Vector3 from, Vector3 to)
+        {
+            positions.Add(center + rotation * from);
+            positions.Add(center + rotation * to);
         }
 
         private void UpdateDebugHitBoxRenderers()
@@ -368,6 +454,9 @@ namespace BattlePvp.Combat
                 if (remaining <= 0f)
                 {
                     Destroy(debugRenderer.Renderer.gameObject);
+                    if (_currentDebugHitBoxRenderer == debugRenderer)
+                        _currentDebugHitBoxRenderer = null;
+
                     _debugHitBoxRenderers.RemoveAt(i);
                     continue;
                 }
@@ -376,6 +465,47 @@ namespace BattlePvp.Combat
                 color.a *= remaining;
                 debugRenderer.Renderer.startColor = color;
                 debugRenderer.Renderer.endColor = color;
+            }
+        }
+
+        private void CleanupOwnedDebugHitBoxRenderers()
+        {
+            for (int i = _debugHitBoxRenderers.Count - 1; i >= 0; i--)
+            {
+                DebugHitBoxRenderer debugRenderer = _debugHitBoxRenderers[i];
+                if (debugRenderer.Renderer != null)
+                    Destroy(debugRenderer.Renderer.gameObject);
+            }
+
+            _debugHitBoxRenderers.Clear();
+            _debugHitBoxPoses.Clear();
+            _currentDebugHitBoxRenderer = null;
+        }
+
+        private static void CleanupOrphanedDebugHitBoxPaths()
+        {
+#if UNITY_EDITOR
+            LineRenderer[] lineRenderers = Application.isPlaying
+                ? FindObjectsByType<LineRenderer>(FindObjectsSortMode.None)
+                : Resources.FindObjectsOfTypeAll<LineRenderer>();
+#else
+            LineRenderer[] lineRenderers = FindObjectsByType<LineRenderer>(FindObjectsSortMode.None);
+#endif
+            for (int i = 0; i < lineRenderers.Length; i++)
+            {
+                LineRenderer lineRenderer = lineRenderers[i];
+                if (lineRenderer == null || lineRenderer.gameObject.name != "Debug Melee HitBox Path")
+                    continue;
+
+#if UNITY_EDITOR
+                if (!Application.isPlaying && EditorUtility.IsPersistent(lineRenderer.gameObject))
+                    continue;
+#endif
+
+                if (Application.isPlaying)
+                    Destroy(lineRenderer.gameObject);
+                else
+                    DestroyImmediate(lineRenderer.gameObject);
             }
         }
 

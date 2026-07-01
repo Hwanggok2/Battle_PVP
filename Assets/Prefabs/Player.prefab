@@ -6089,11 +6089,11 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _sweepSampleSpacing
-      value: 0.05
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _debugHitPathColor.a
-      value: 0.1764706
+      value: 0.015686275
       objectReference: {fileID: 0}
     - target: {fileID: 3594752087180375350, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
       propertyPath: _debugHitPathColor.b

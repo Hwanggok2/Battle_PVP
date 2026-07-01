@@ -9,6 +9,7 @@ namespace BattlePvp.Stats
     {
         // reference-formulae.md 기준
         private const float HardCapDefenseEff = 0.75f; // 75%
+        private const float ThornsFixedDamage = 5f;
 
         /// <summary>
         /// 최종 데미지 공식:
@@ -49,11 +50,11 @@ namespace BattlePvp.Stats
         /// - 공격자 ATK * 0.15
         /// - 나의 MaxHP * 0.07 상한
         /// </summary>
-        public float PredictThornsReflectDamage(float attackerAtkPower, float myMaxHp)
+        public float PredictThornsReflectDamage(float attackerAtkPower, float attackerMaxHp)
         {
             float reflect = attackerAtkPower * 0.15f;
-            float cap = myMaxHp * 0.07f;
-            return Math.Max(0f, Math.Min(reflect, cap));
+            float cap = attackerMaxHp * 0.07f;
+            return Math.Max(0f, Math.Min(reflect, cap) + ThornsFixedDamage);
         }
 
         private static float Clamp01(float v)
