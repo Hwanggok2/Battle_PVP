@@ -25,14 +25,12 @@ namespace BattlePvp.Combat
         [SerializeField] private float _aimForwardOffset = 0.8f;
         [SerializeField] private float _crouchVerticalOffset = -0.45f;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         [Header("Debug")]
         [SerializeField] private bool _drawDebugHitPath = true;
         [SerializeField] private bool _drawDebugHitPathInGame = true;
         [SerializeField] private float _debugHitPathDuration = 3f;
         [SerializeField] private Color _debugHitPathColor = new Color(1f, 0.2f, 0.05f, 0.35f);
         [SerializeField] private float _debugHitPathLineWidth = 0.025f;
-#endif
 
         private bool _hitBoxActive;
         private Vector3 _previousPosition;
@@ -41,7 +39,6 @@ namespace BattlePvp.Combat
         private bool _isCrouching;
         private PlayerCombat _playerCombat;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         private readonly List<DebugHitBoxPose> _debugHitBoxPoses = new List<DebugHitBoxPose>(128);
         private readonly List<DebugHitBoxRenderer> _debugHitBoxRenderers = new List<DebugHitBoxRenderer>(128);
         private Material _debugHitPathMaterial;
@@ -59,7 +56,6 @@ namespace BattlePvp.Combat
             public LineRenderer Renderer;
             public float ExpireTime;
         }
-#endif
 
         private void Awake()
         {
@@ -87,18 +83,14 @@ namespace BattlePvp.Combat
         {
             if (!_hitBoxActive || !_useSweptHitDetection || _boxCollider == null)
             {
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
                 UpdateDebugHitBoxRenderers();
-#endif
                 return;
             }
 
             ProcessSweptBox();
             CaptureCurrentPose();
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             UpdateDebugHitBoxRenderers();
-#endif
         }
 
         public void SetAttackData(AttackData data)
@@ -190,9 +182,7 @@ namespace BattlePvp.Combat
             Vector3 center = GetHitCenter(samplePosition, hitRotation, scale);
             Vector3 halfExtents = Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding;
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
             RecordDebugHitBoxPose(center, halfExtents, hitRotation);
-#endif
 
             int count = Physics.OverlapBoxNonAlloc(
                 center,
@@ -281,7 +271,6 @@ namespace BattlePvp.Combat
             _hitTargets.Add(defender);
         }
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
         private void RecordDebugHitBoxPose(Vector3 center, Vector3 halfExtents, Quaternion rotation)
         {
             if (!_drawDebugHitPath || _debugHitPathDuration <= 0f)
@@ -421,6 +410,5 @@ namespace BattlePvp.Combat
                 Gizmos.color = oldColor;
             }
         }
-#endif
     }
 }
