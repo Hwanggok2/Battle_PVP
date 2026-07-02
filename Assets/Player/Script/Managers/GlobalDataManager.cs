@@ -158,6 +158,7 @@ namespace BattlePvp.Managers
             {
                 Debug.Log($"[GlobalDataManager] Found StatManager in scene {SceneManager.GetActiveScene().name}. Injecting stats: STR={_savedStats.STR.Invested}");
                 statManager.ApplyStats(_savedStats, recalculateIdentity: true);
+                BattlePvp.UI.PlayerHUD.BindToPlayer(statManager);
             }
             else
             {

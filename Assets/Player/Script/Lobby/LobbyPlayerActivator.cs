@@ -1,6 +1,7 @@
 using System.Collections;
 using BattlePvp.Managers;
 using BattlePvp.Stats;
+using BattlePvp.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -140,14 +141,19 @@ namespace BattlePvp.Lobby
 
             StatContainer saved = GlobalDataManager.Instance.SavedStats;
             float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
-            if (total <= 0.1f)
-                return;
 
             StatManager statManager = _targetPlayer.GetComponent<StatManager>();
             if (statManager == null)
                 return;
 
+            if (total <= 0.1f)
+            {
+                PlayerHUD.BindToPlayer(statManager);
+                return;
+            }
+
             statManager.ApplyLocalSceneStats(saved, recalculateIdentity: true);
+            PlayerHUD.BindToPlayer(statManager);
             Debug.Log($"[LobbyPlayerActivator] Applied saved stats to lobby player. STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
         }
     }

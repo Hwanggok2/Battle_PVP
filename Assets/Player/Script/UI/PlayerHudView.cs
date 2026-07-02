@@ -49,11 +49,13 @@ namespace BattlePvp.UI
 
         public void SetHp(float current, float max)
         {
+            ResolveReferences();
+
             if (_hpSlider != null)
-                _hpSlider.value = max > 0f ? current / max : 0f;
+                _hpSlider.value = max > 0f ? Mathf.Clamp01(current / max) : 0f;
 
             if (_hpText != null)
-                _hpText.text = $"{Mathf.CeilToInt(max)} / {Mathf.CeilToInt(current)}";
+                _hpText.text = $"{Mathf.CeilToInt(current)} / {Mathf.CeilToInt(max)}";
         }
 
         public void SetIdentity(Identity identity)
@@ -130,28 +132,46 @@ namespace BattlePvp.UI
         private void ResolveReferences()
         {
             if (_hpSlider == null)
-                _hpSlider = GetComponentInChildren<Slider>(true);
+            {
+                Slider[] sliders = GetComponentsInChildren<Slider>(true);
+                _hpSlider = FindNamed(sliders, "hp", "health");
+                if (_hpSlider == null && sliders.Length == 1)
+                    _hpSlider = sliders[0];
+            }
 
             if (_hpText == null)
             {
                 TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>(true);
-                foreach (TextMeshProUGUI text in texts)
-                {
-                    if (text.name.Contains("HP") || text.name.Contains("Text"))
-                    {
-                        _hpText = text;
-                        break;
-                    }
-                }
-
-                if (_hpText == null && texts.Length > 0)
+                _hpText = FindNamed(texts, "hp", "health");
+                if (_hpText == null && texts.Length == 1)
                     _hpText = texts[0];
             }
 
             if (_overflowEffect == null)
-                _overflowEffect = GetComponentInChildren<Image>(true);
+            {
+                Image[] images = GetComponentsInChildren<Image>(true);
+                _overflowEffect = FindNamed(images, "overflow");
+            }
 
             ResolveSkillUI();
+        }
+
+        private static T FindNamed<T>(T[] components, params string[] keywords) where T : Component
+        {
+            foreach (T component in components)
+            {
+                if (component == null)
+                    continue;
+
+                string lowerName = component.name.ToLowerInvariant();
+                foreach (string keyword in keywords)
+                {
+                    if (lowerName.Contains(keyword))
+                        return component;
+                }
+            }
+
+            return null;
         }
 
         private void ResolveSkillUI()
