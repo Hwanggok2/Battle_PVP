@@ -4,7 +4,6 @@ using UnityEngine;
 public sealed class KickSkillHitBox : MonoBehaviour
 {
     [SerializeField] private PlayerCombat _owner;
-    [SerializeField] private bool _logOverlapCount;
 
     private Collider _collider;
     private BoxCollider _boxCollider;
@@ -60,9 +59,6 @@ public sealed class KickSkillHitBox : MonoBehaviour
             rotation,
             ~0,
             QueryTriggerInteraction.Collide);
-
-        if (_logOverlapCount)
-            Debug.Log($"[KickSkillHitBox] Overlap count: {count}", this);
 
         for (int i = 0; i < count; i++)
             _owner.TryProcessKickHit(_overlapResults[i]);

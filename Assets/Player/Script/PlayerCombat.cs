@@ -790,7 +790,6 @@ public class PlayerCombat : NetworkBehaviour
 
     public void EnableKickHitBox()
     {
-        Debug.Log("[PlayerCombat] EnableKickHitBox animation event received.", this);
         SetKickHitBoxEnabled(true);
     }
 
@@ -801,7 +800,6 @@ public class PlayerCombat : NetworkBehaviour
 
     public void DisableKickHitBox()
     {
-        Debug.Log("[PlayerCombat] DisableKickHitBox animation event received.", this);
         SetKickHitBoxEnabled(false);
     }
 
@@ -850,17 +848,11 @@ public class PlayerCombat : NetworkBehaviour
     {
         bool isKickSkill = skillKey == (int)JobSkillKind.MonostatConKick;
         if (!isKickSkill && skillKey != _pendingAdvancedSkillHitKey)
-        {
-            Debug.LogWarning($"[PlayerCombat] Kick hitbox {(enabled ? "enable" : "disable")} ignored. skillKey={skillKey}, pending={_pendingAdvancedSkillHitKey}", this);
             return;
-        }
 
         JobSkillData data = ResolveAssignedAdvancedSkillData(skillKey);
         if (data == null || data.SkillKind != JobSkillKind.MonostatConKick)
-        {
-            Debug.LogWarning($"[PlayerCombat] Kick hitbox {(enabled ? "enable" : "disable")} ignored. CON kick skill data was not resolved.", this);
             return;
-        }
 
         if (enabled)
         {
@@ -875,10 +867,6 @@ public class PlayerCombat : NetworkBehaviour
                 if (_kickHitBoxRoutine != null)
                     StopCoroutine(_kickHitBoxRoutine);
                 _kickHitBoxRoutine = StartCoroutine(CoProcessKickHitBox());
-            }
-            else
-            {
-                Debug.LogWarning("[PlayerCombat] Kick hitbox enabled, but Kick Hit Box is not assigned.", this);
             }
             return;
         }
@@ -965,20 +953,14 @@ public class PlayerCombat : NetworkBehaviour
         IDamageReceiver target = hit.GetComponentInParent<IDamageReceiver>();
         StatManager targetStats = hit.GetComponentInParent<StatManager>();
         if (target == null || targetStats == null)
-        {
-            Debug.LogWarning($"[PlayerCombat] Kick hit '{hit.name}' but target damage components were not found.", hit);
             return;
-        }
 
         if (!_kickHitTargets.Add(target))
             return;
 
         Vector3 hitPosition = hit.ClosestPoint(_kickHitBox != null ? _kickHitBox.transform.position : transform.position);
         if (!_attackProcessor.ProcessSkillHit(data.KickDamageMultiplier, targetStats, target, hitPosition))
-        {
-            Debug.LogWarning($"[PlayerCombat] Kick hit '{hit.name}' but damage was not applied. Check Kick Damage Multiplier and target defense.", hit);
             return;
-        }
 
         if (target is Component targetComponent)
         {
