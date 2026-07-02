@@ -181,14 +181,37 @@ public sealed class AttackProcessor : MonoBehaviour
         }
 
         float actualDamage = Mathf.Max(0f, defenderHpBefore - defender.CurrentHp);
-        if (actualDamage > 0f)
-        {
-            if (_playerCombat == null)
-                _playerCombat = GetComponent<PlayerCombat>();
+        if (_playerCombat == null)
+            _playerCombat = GetComponent<PlayerCombat>();
+        _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
+    }
 
-            if (_playerCombat != null)
-                _playerCombat.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
-        }
+    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition)
+    {
+        if (damageMultiplier <= 0f || defenderStats == null || defender == null)
+            return false;
+        if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
+            return false;
+
+        float attackPower = _currentAtk * damageMultiplier;
+        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
+        Identity defenderIdentity = defenderStats.CurrentIdentity;
+        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, bonusDefense, Mathf.Clamp(_currentPene, 0f, 100f));
+        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
+            finalDamage *= 0.7f;
+        if (finalDamage <= 0f)
+            return false;
+
+        float hpBefore = defender.CurrentHp;
+        if (defender is IDamageReceiverWithContext context)
+            context.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver, hitPosition);
+        else
+            defender.ApplyDamage(finalDamage, DamageSource.Physical, hitPosition);
+
+        float actualDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
+        _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
+        return true;
     }
 
     private static float Clamp(float v, float min, float max)

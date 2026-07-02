@@ -47,6 +47,7 @@ namespace BattlePvp.Combat
         public float CurrentHp => _currentHp;
         public float MaxHp => _maxHp;
         public float CurrentRegen => _currentRegen;
+        public float CurrentShield => _currentShield;
         public bool IsDead { get; private set; }
 
         public event Action<float, float> HpChanged;
@@ -59,6 +60,13 @@ namespace BattlePvp.Combat
         [SerializeField] private float _currentRegen;
         [SerializeField] private float _defenseRate;
         [SerializeField] private float _bonusDefenseEff;
+        [SyncVar] [SerializeField] private float _currentShield;
+        [SyncVar] [SerializeField] private double _shieldExpiresAt;
+        [SyncVar] [SerializeField] private double _skillInvulnerableUntil;
+        [SyncVar] [SerializeField] private double _tauntDefenseUntil;
+        [SyncVar] [SerializeField] private float _tauntIncomingDamageMultiplier = 1f;
+        [SyncVar] [SerializeField] private float _tauntReflectMultiplier = 1f;
+        [SyncVar] [SerializeField] private float _tauntReflectHealthCapRatio = 0.07f;
         private float _lastOverlapPercent;
         private bool _isOverflowActive;
 
@@ -66,6 +74,7 @@ namespace BattlePvp.Combat
         private StrategistRules _strategistRules;
         private Coroutine _overflowRoutine;
         private Coroutine _regenRoutine;
+        private Coroutine _shieldRoutine;
 
         private IDamageReceiver _lastAttacker;
         private static readonly Color ThornsPopupColor = new Color(0.25f, 0.65f, 1f, 1f);
@@ -217,6 +226,45 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
         }
 
+        public void GrantDecayingShield(float amount, float durationSeconds)
+        {
+            if (amount <= 0f || durationSeconds <= 0f || IsDead)
+                return;
+
+            _currentShield = amount;
+            _shieldExpiresAt = NetworkTime.time + durationSeconds;
+            if (_shieldRoutine != null)
+                StopCoroutine(_shieldRoutine);
+            _shieldRoutine = StartCoroutine(CoDecayShield());
+        }
+
+        public void SetSkillInvulnerable(float durationSeconds)
+        {
+            _skillInvulnerableUntil = Math.Max(_skillInvulnerableUntil, NetworkTime.time + Math.Max(0f, durationSeconds));
+        }
+
+        public void SetTauntDefense(float durationSeconds, float incomingDamageMultiplier, float reflectMultiplier, float reflectHealthCapRatio)
+        {
+            _tauntDefenseUntil = NetworkTime.time + Math.Max(0f, durationSeconds);
+            _tauntIncomingDamageMultiplier = Mathf.Clamp01(incomingDamageMultiplier);
+            _tauntReflectMultiplier = Mathf.Max(0f, reflectMultiplier);
+            _tauntReflectHealthCapRatio = Mathf.Clamp01(reflectHealthCapRatio);
+        }
+
+        private IEnumerator CoDecayShield()
+        {
+            while (_currentShield > 0f && NetworkTime.time < _shieldExpiresAt)
+            {
+                float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - NetworkTime.time));
+                _currentShield = Mathf.Max(0f, _currentShield - ((_currentShield / remaining) * Time.deltaTime));
+                yield return null;
+            }
+
+            _currentShield = 0f;
+            _shieldExpiresAt = 0d;
+            _shieldRoutine = null;
+        }
+
         public void ApplyDamage(float amount, DamageSource source, Vector3 hitPosition)
         {
             ApplyDamage(amount, source, attackerAttackPower: 0f, attacker: null, hitPosition);
@@ -227,15 +275,22 @@ namespace BattlePvp.Combat
             if (NetworkClient.active && !NetworkServer.active)
                 return;
 
-            if (isInvincible || amount <= 0f)
+            if (isInvincible || NetworkTime.time < _skillInvulnerableUntil || amount <= 0f)
                 return;
+
+            bool tauntDefenseActive = NetworkTime.time < _tauntDefenseUntil;
+            if (tauntDefenseActive)
+                amount *= _tauntIncomingDamageMultiplier;
 
             if (attacker != null)
             {
                 _lastAttacker = attacker;
             }
 
-            float next = _currentHp - amount;
+            float absorbedByShield = Mathf.Min(_currentShield, amount);
+            _currentShield -= absorbedByShield;
+            float hpDamage = amount - absorbedByShield;
+            float next = _currentHp - hpDamage;
             
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle_waiting")
             {
@@ -256,6 +311,11 @@ namespace BattlePvp.Combat
             if (source == DamageSource.Physical && attacker != null && attackerAttackPower > 0f && IsMonostatDef())
             {
                 float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, attacker.MaxHp);
+                if (tauntDefenseActive)
+                {
+                    thorns *= _tauntReflectMultiplier;
+                    thorns = Mathf.Min(thorns, attacker.MaxHp * _tauntReflectHealthCapRatio);
+                }
                 if (thorns > 0f)
                 {
                     // attacker가 여전히 유효한지 확인

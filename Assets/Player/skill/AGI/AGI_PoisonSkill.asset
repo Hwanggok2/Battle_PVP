@@ -10,20 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 48a1b7f500a8b26498c78173cbfc771e, type: 3}
-  m_Name: STR_lifeSteal
+  m_Name: AGI_PoisonSkill
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
-  _skillKind: 0
-  _displayName: "\uAD11\uD3ED"
-  _iconSprite: {fileID: 21300000, guid: 0a6d87dcc101c1d4dbecd464b793eeeb, type: 3}
-  _castSeconds: 0.7
-  _durationSeconds: 10
+  _skillKind: 1
+  _displayName: "\uB3C5 \uBC14\uB974\uAE30"
+  _iconSprite: {fileID: 21300000, guid: e53a4520fe2bf5a4696b476e9537241d, type: 3}
+  _castSeconds: 1
+  _durationSeconds: 7
   _cooldownSeconds: 40
-  _lifestealRatio: 0.1
-  _strCastAnimationStateName: Battle_Cry
-  _strCastAnimationLayer: 0
-  _poisonMaxStacks: 0
-  _poisonDamagePerStackPerSecond: 0
-  _poisonStackDurationSeconds: 0
+  _lifestealRatio: 0
+  _poisonMaxStacks: 5
+  _poisonDamagePerStackPerSecond: 2
+  _poisonStackDurationSeconds: 6
   _kickDamageMultiplier: 1.5
   _kickRange: 2.5
   _kickRadius: 0.8
@@ -58,5 +56,5 @@ MonoBehaviour:
   _maximumBowDamageMultiplier: 0.75
   _bowChargeMoveMultiplier: 0.25
   _bowRange: 30
-  _useSfx: {fileID: 8300000, guid: b9e052204dc21504ab3ad7cda9907985, type: 3}
+  _useSfx: {fileID: 0}
   _sfxVolume: 0.9

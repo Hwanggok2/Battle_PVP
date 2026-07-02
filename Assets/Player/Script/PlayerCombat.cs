@@ -32,6 +32,21 @@ public class PlayerCombat : NetworkBehaviour
     [Header("Job Skill - Monostat AGI")]
     [SerializeField] private JobSkillData _monostatAgiSkillData;
 
+    [Header("Job Skill - Monostat CON")]
+    [SerializeField] private JobSkillData _monostatConSkillData;
+
+    [Header("Job Skill - Monostat DEF")]
+    [SerializeField] private JobSkillData _monostatDefSkillData;
+
+    [Header("Job Skills - Strategist")]
+    [SerializeField] private JobSkillData _strategistRollSkillData;
+    [SerializeField] private JobSkillData _strategistPresetSkillData;
+
+    [Header("Job Skills - Polymath")]
+    [SerializeField] private JobSkillData _polymathRollSkillData;
+    [SerializeField] private JobSkillData _polymathPresetSkillData;
+    [SerializeField] private JobSkillData _polymathWeaponSwapSkillData;
+
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAttackSpeed = 1.0f;
     [SerializeField] private int _selectedSkillIndex;
@@ -51,6 +66,14 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private double _monostatAgiSkillActiveUntil;
     [SyncVar]
     [SerializeField] private double _monostatAgiSkillCooldownUntil;
+    [SyncVar] [SerializeField] private int _advancedCastingSkillKey = -1;
+    [SyncVar] [SerializeField] private double _advancedCastCompleteAt;
+    [SyncVar] [SerializeField] private int _advancedActiveSkillKey = -1;
+    [SyncVar] [SerializeField] private double _advancedActiveUntil;
+    [SyncVar] [SerializeField] private bool _isBowEquipped;
+    [SyncVar] [SerializeField] private uint _tauntedByNetId;
+    [SyncVar] [SerializeField] private double _tauntedUntil;
+    private readonly SyncDictionary<int, double> _advancedCooldownUntil = new SyncDictionary<int, double>();
 
     private int currentComboIndex;
     private bool isAttacking;
@@ -70,6 +93,11 @@ public class PlayerCombat : NetworkBehaviour
     private double _localMonostatStrSkillAttackLockUntil;
     private double _localMonostatAgiSkillAttackLockUntil;
     private AudioSource _audioSource;
+    private AttackProcessor _attackProcessor;
+    private Coroutine _advancedSkillRoutine;
+    private Coroutine _localAdvancedMoveLockRoutine;
+    private double _localAdvancedAttackLockUntil;
+    private double _bowChargeStartedAt = -1d;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
@@ -79,9 +107,13 @@ public class PlayerCombat : NetworkBehaviour
 
     private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
     private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
+    private JobSkillData MonostatConSkillData => IsSkillDataKind(_monostatConSkillData, JobSkillKind.MonostatConKick) ? _monostatConSkillData : null;
+    private JobSkillData MonostatDefSkillData => IsSkillDataKind(_monostatDefSkillData, JobSkillKind.MonostatDefTaunt) ? _monostatDefSkillData : null;
     private float MonostatStrCastSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CastSeconds : MonostatStrSkillCastSeconds;
     private float MonostatStrDurationSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.DurationSeconds : MonostatStrSkillDurationSeconds;
     private float MonostatStrCooldownSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CooldownSeconds : MonostatStrSkillCooldownSeconds;
+    private string MonostatStrCastAnimationStateName => MonostatStrSkillData != null ? MonostatStrSkillData.StrCastAnimationStateName : string.Empty;
+    private int MonostatStrCastAnimationLayer => MonostatStrSkillData != null ? MonostatStrSkillData.StrCastAnimationLayer : 1;
     private float MonostatAgiCastSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CastSeconds : MonostatAgiSkillCastSeconds;
     private float MonostatAgiDurationSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.DurationSeconds : MonostatAgiSkillDurationSeconds;
     private float MonostatAgiCooldownSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CooldownSeconds : MonostatAgiSkillCooldownSeconds;
@@ -109,6 +141,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
         _healthSystem = GetComponent<HealthSystem>();
         _playerManager = GetComponent<PlayerManager>();
+        _attackProcessor = GetComponent<AttackProcessor>();
         _audioSource = GetComponent<AudioSource>();
         if (_audioSource == null)
             _audioSource = gameObject.AddComponent<AudioSource>();
@@ -119,6 +152,13 @@ public class PlayerCombat : NetworkBehaviour
     {
         WarnIfSkillKindMismatch(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal, nameof(_monostatStrSkillData));
         WarnIfSkillKindMismatch(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison, nameof(_monostatAgiSkillData));
+        WarnIfSkillKindMismatch(_monostatConSkillData, JobSkillKind.MonostatConKick, nameof(_monostatConSkillData));
+        WarnIfSkillKindMismatch(_monostatDefSkillData, JobSkillKind.MonostatDefTaunt, nameof(_monostatDefSkillData));
+        WarnIfSkillKindMismatch(_strategistRollSkillData, JobSkillKind.StrategistRoll, nameof(_strategistRollSkillData));
+        WarnIfSkillKindMismatch(_strategistPresetSkillData, JobSkillKind.StrategistPresetChange, nameof(_strategistPresetSkillData));
+        WarnIfSkillKindMismatch(_polymathRollSkillData, JobSkillKind.PolymathRoll, nameof(_polymathRollSkillData));
+        WarnIfSkillKindMismatch(_polymathPresetSkillData, JobSkillKind.PolymathPresetChange, nameof(_polymathPresetSkillData));
+        WarnIfSkillKindMismatch(_polymathWeaponSwapSkillData, JobSkillKind.PolymathWeaponSwap, nameof(_polymathWeaponSwapSkillData));
     }
 
     private void WarnIfSkillKindMismatch(JobSkillData data, JobSkillKind expectedKind, string fieldName)
@@ -228,6 +268,11 @@ public class PlayerCombat : NetworkBehaviour
     public void OnAttack(InputValue value)
     {
         if (isClient && !isLocalPlayer) return;
+        if (IsPolymath() && _isBowEquipped)
+        {
+            HandleBowAttackInput(value.isPressed);
+            return;
+        }
         if (!value.isPressed) return;
         if (IsBattleLoadingOrNotStarted()) return;
 
@@ -292,7 +337,7 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
-        aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
+        aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward);
 
         if (animator != null)
             animator.applyRootMotion = false;
@@ -459,10 +504,7 @@ public class PlayerCombat : NetworkBehaviour
 
     public void NotifyPhysicalDamageDealt(float actualDamage, IDamageReceiver defender = null, Vector3 hitPosition = default)
     {
-        if (actualDamage <= 0f)
-            return;
-
-        if (IsMonostatStrLifestealActive)
+        if (actualDamage > 0f && IsMonostatStrLifestealActive)
         {
             if (_healthSystem == null)
                 _healthSystem = GetComponent<HealthSystem>();
@@ -473,6 +515,21 @@ public class PlayerCombat : NetworkBehaviour
 
         if (IsMonostatAgiPoisonCoatingActive && defender != null)
             ApplyMonostatAgiPoisonStack(defender, hitPosition);
+
+        if (_advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && NetworkTime.time < _advancedActiveUntil)
+        {
+            JobSkillData taunt = MonostatDefSkillData;
+            _advancedActiveSkillKey = -1;
+            _advancedActiveUntil = 0d;
+            if (_healthSystem != null && taunt != null)
+                _healthSystem.SetTauntDefense(taunt.TauntDurationSeconds, taunt.TauntIncomingDamageMultiplier,
+                    taunt.TauntReflectMultiplier, taunt.TauntReflectHealthCapRatio);
+            if (defender is Component defenderComponent)
+            {
+                PlayerCombat defenderCombat = defenderComponent.GetComponentInParent<PlayerCombat>();
+                defenderCombat?.SetTauntedBy(netId, taunt != null ? taunt.TauntDurationSeconds : 0f);
+            }
+        }
     }
 
     private void TryUseMonostatStrSkill()
@@ -481,6 +538,7 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         _localMonostatStrSkillAttackLockUntil = NetworkTime.time + MonostatStrCastSeconds;
+        PlayMonostatStrCastAnimationLocal();
 
         if (isClient && isLocalPlayer)
         {
@@ -508,6 +566,13 @@ public class PlayerCombat : NetworkBehaviour
         if (IsMonostatAgi() && _selectedSkillIndex == 0)
         {
             TryUseMonostatAgiSkill();
+            return;
+        }
+
+        JobSkillData data = ResolveSelectedAdvancedSkillData();
+        if (data != null)
+        {
+            TryUseAdvancedSkill(data);
             return;
         }
 
@@ -539,6 +604,178 @@ public class PlayerCombat : NetworkBehaviour
         BeginMonostatAgiSkill();
     }
 
+    [Command]
+    private void CmdUseAdvancedSkill(int skillKey, Vector3 direction)
+    {
+        BeginAdvancedSkill(skillKey, direction);
+    }
+
+    private void TryUseAdvancedSkill(JobSkillData data)
+    {
+        int key = (int)data.SkillKind;
+        Vector3 direction = _playerManager != null ? _playerManager.GetSkillMoveDirection() : transform.forward;
+        _localAdvancedAttackLockUntil = NetworkTime.time + data.CastSeconds;
+        LockLocalAdvancedMovement(data.CastSeconds);
+        if (isClient && isLocalPlayer && !isServer)
+            CmdUseAdvancedSkill(key, direction);
+        else
+            BeginAdvancedSkill(key, direction);
+    }
+
+    private void LockLocalAdvancedMovement(float seconds)
+    {
+        if (seconds <= 0f || _playerManager == null)
+            return;
+
+        _playerManager.SetSkillMovementLock(true);
+        if (_localAdvancedMoveLockRoutine != null)
+            StopCoroutine(_localAdvancedMoveLockRoutine);
+        _localAdvancedMoveLockRoutine = StartCoroutine(CoLocalAdvancedMoveLock(seconds));
+    }
+
+    private System.Collections.IEnumerator CoLocalAdvancedMoveLock(float seconds)
+    {
+        float endTime = Time.time + seconds;
+        while (Time.time < endTime)
+            yield return null;
+
+        _playerManager?.SetSkillMovementLock(false);
+        _localAdvancedMoveLockRoutine = null;
+    }
+
+    private void BeginAdvancedSkill(int skillKey, Vector3 direction)
+    {
+        JobSkillData data = ResolveAdvancedSkillData(skillKey);
+        double now = NetworkTime.time;
+        if (data == null || (_healthSystem != null && _healthSystem.IsDead))
+            return;
+        if (_advancedCastingSkillKey >= 0 || (_advancedCooldownUntil.TryGetValue(skillKey, out double cooldown) && now < cooldown))
+            return;
+
+        if (data.CooldownSeconds > 0f)
+            _advancedCooldownUntil[skillKey] = now + data.CooldownSeconds;
+
+        CancelCurrentAttack();
+        PlaySkillSfx(skillKey);
+        if (data.CastSeconds <= 0f)
+        {
+            ApplyAdvancedSkill(data, direction);
+            return;
+        }
+
+        _advancedCastingSkillKey = skillKey;
+        _advancedCastCompleteAt = now + data.CastSeconds;
+        _playerManager?.SetSkillMovementLock(true);
+        if (_advancedSkillRoutine != null)
+            StopCoroutine(_advancedSkillRoutine);
+        _advancedSkillRoutine = StartCoroutine(CoAdvancedSkillCast(data, direction));
+    }
+
+    private System.Collections.IEnumerator CoAdvancedSkillCast(JobSkillData data, Vector3 direction)
+    {
+        while (NetworkTime.time < _advancedCastCompleteAt)
+            yield return null;
+
+        _advancedCastingSkillKey = -1;
+        _advancedCastCompleteAt = 0d;
+        _playerManager?.SetSkillMovementLock(false);
+        ApplyAdvancedSkill(data, direction);
+        _advancedSkillRoutine = null;
+    }
+
+    private void ApplyAdvancedSkill(JobSkillData data, Vector3 direction)
+    {
+        switch (data.SkillKind)
+        {
+            case JobSkillKind.MonostatConKick:
+                ExecuteKick(data);
+                break;
+            case JobSkillKind.MonostatDefTaunt:
+                _advancedActiveSkillKey = (int)data.SkillKind;
+                _advancedActiveUntil = NetworkTime.time + data.TauntReadyDurationSeconds;
+                break;
+            case JobSkillKind.StrategistRoll:
+            case JobSkillKind.PolymathRoll:
+                _advancedActiveSkillKey = (int)data.SkillKind;
+                _advancedActiveUntil = NetworkTime.time + data.RollDurationSeconds;
+                _healthSystem?.SetSkillInvulnerable(data.RollDurationSeconds);
+                RpcExecuteSkillMove(direction, data.RollDistance, data.RollDurationSeconds, 1f, 0f);
+                break;
+            case JobSkillKind.StrategistPresetChange:
+            case JobSkillKind.PolymathPresetChange:
+                ExecutePresetChange(data);
+                break;
+            case JobSkillKind.PolymathWeaponSwap:
+                _isBowEquipped = !_isBowEquipped;
+                break;
+        }
+    }
+
+    private void ExecuteKick(JobSkillData data)
+    {
+        if (_attackProcessor == null)
+            _attackProcessor = GetComponent<AttackProcessor>();
+
+        Vector3 center = transform.position + transform.forward * data.KickRange;
+        Collider[] hits = Physics.OverlapSphere(center, data.KickRadius, ~0, QueryTriggerInteraction.Collide);
+        var targets = new HashSet<IDamageReceiver>();
+        foreach (Collider hit in hits)
+        {
+            if (hit == null || hit.transform.root == transform.root)
+                continue;
+            IDamageReceiver target = hit.GetComponentInParent<IDamageReceiver>();
+            StatManager targetStats = hit.GetComponentInParent<StatManager>();
+            if (target == null || targetStats == null || !targets.Add(target))
+                continue;
+            Vector3 hitPosition = hit.ClosestPoint(center);
+            if (!_attackProcessor.ProcessSkillHit(data.KickDamageMultiplier, targetStats, target, hitPosition))
+                continue;
+            if (target is Component targetComponent)
+            {
+                PlayerManager targetManager = targetComponent.GetComponentInParent<PlayerManager>();
+                if (targetManager != null)
+                {
+                    Vector3 push = targetManager.transform.position - transform.position;
+                    RpcApplyMovementEffect(targetManager.netId, push, data.KickKnockbackDistance, 0.2f,
+                        data.KickSlowMoveMultiplier, data.KickSlowDurationSeconds);
+                }
+            }
+        }
+    }
+
+    private void ExecutePresetChange(JobSkillData data)
+    {
+        if (_statManager == null || _healthSystem == null)
+            return;
+        float oldMax = _healthSystem.MaxHp;
+        float oldCurrent = _healthSystem.CurrentHp;
+        _statManager.ApplyStats(data.TargetPreset, true);
+        float newMax = _healthSystem.MaxHp;
+        float shield = newMax > oldMax
+            ? (newMax - oldMax) * data.MaxHealthIncreaseShieldRatio
+            : Mathf.Max(0f, oldCurrent - newMax);
+        _healthSystem.SetCurrentHp(Mathf.Min(oldCurrent, newMax));
+        _healthSystem.GrantDecayingShield(shield, data.ShieldDurationSeconds);
+    }
+
+    [ClientRpc]
+    private void RpcExecuteSkillMove(Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
+    {
+        _playerManager?.MoveBySkill(direction, distance, duration);
+        if (slowDuration > 0f)
+            _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
+    }
+
+    [ClientRpc]
+    private void RpcApplyMovementEffect(uint targetNetId, Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
+    {
+        if (!NetworkClient.spawned.TryGetValue(targetNetId, out NetworkIdentity identity))
+            return;
+        PlayerManager manager = identity.GetComponent<PlayerManager>();
+        manager?.MoveBySkill(direction, distance, duration);
+        manager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
+    }
+
     private void BeginMonostatStrSkill()
     {
         double now = NetworkTime.time;
@@ -550,6 +787,7 @@ public class PlayerCombat : NetworkBehaviour
         _monostatStrSkillCooldownUntil = now + MonostatStrCooldownSeconds;
 
         CancelCurrentAttack();
+        PlayMonostatStrCastAnimationNetworked();
         PlaySkillSfx(0);
         PublishSkillHudState();
 
@@ -600,8 +838,15 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoMonostatStrSkill()
     {
-        while (NetworkTime.time < _monostatStrSkillCastCompleteAt)
+        bool hasCastAnimation = HasMonostatStrCastAnimation();
+        if (hasCastAnimation)
+            _playerManager?.SetSkillMovementLock(true);
+
+        while (NetworkTime.time < _monostatStrSkillCastCompleteAt || !IsMonostatStrCastAnimationFinished())
             yield return null;
+
+        if (hasCastAnimation)
+            _playerManager?.SetSkillMovementLock(false);
 
         _isCastingMonostatStrSkill = false;
         PublishSkillHudState();
@@ -630,6 +875,73 @@ public class PlayerCombat : NetworkBehaviour
         _monostatStrSkillActiveUntil = 0d;
         _monostatStrSkillRoutine = null;
         PublishSkillHudState();
+    }
+
+    private bool HasMonostatStrCastAnimation()
+    {
+        return !string.IsNullOrWhiteSpace(MonostatStrCastAnimationStateName);
+    }
+
+    private bool IsMonostatStrCastAnimationFinished()
+    {
+        if (!HasMonostatStrCastAnimation())
+            return true;
+
+        if (animator == null)
+            return true;
+
+        int layer = Mathf.Clamp(MonostatStrCastAnimationLayer, 0, animator.layerCount - 1);
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(layer);
+        if (!stateInfo.IsName(MonostatStrCastAnimationStateName))
+            return true;
+
+        return !animator.IsInTransition(layer) && stateInfo.normalizedTime >= 1f;
+    }
+
+    private void PlayMonostatStrCastAnimationNetworked()
+    {
+        if (!HasMonostatStrCastAnimation())
+            return;
+
+        string stateName = MonostatStrCastAnimationStateName;
+        int layer = MonostatStrCastAnimationLayer;
+        PlaySkillAnimationLocal(stateName, layer);
+
+        if (NetworkServer.active)
+            RpcPlaySkillAnimation(stateName, layer);
+    }
+
+    private void PlayMonostatStrCastAnimationLocal()
+    {
+        if (!HasMonostatStrCastAnimation())
+            return;
+
+        PlaySkillAnimationLocal(MonostatStrCastAnimationStateName, MonostatStrCastAnimationLayer);
+    }
+
+    [ClientRpc(includeOwner = false)]
+    private void RpcPlaySkillAnimation(string stateName, int layer)
+    {
+        PlaySkillAnimationLocal(stateName, layer);
+    }
+
+    private void PlaySkillAnimationLocal(string stateName, int layer)
+    {
+        if (animator == null || string.IsNullOrWhiteSpace(stateName))
+            return;
+
+        int safeLayer = Mathf.Clamp(layer, 0, animator.layerCount - 1);
+        int stateHash = Animator.StringToHash(stateName);
+        if (!animator.HasState(safeLayer, stateHash))
+        {
+            Debug.LogWarning(
+                $"[PlayerCombat] Animator state '{stateName}' was not found on layer {safeLayer}. Check the skill SO animation name/layer.",
+                this);
+            return;
+        }
+
+        animator.speed = 1f;
+        animator.Play(stateName, safeLayer, 0f);
     }
 
     private System.Collections.IEnumerator CoMonostatAgiSkill()
@@ -718,12 +1030,14 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool IsSkillCastingOrAttackLocked()
     {
-        if (_isCastingMonostatStrSkill || _isCastingMonostatAgiSkill)
+        if (_isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0)
             return true;
 
         double now = NetworkTime.time;
         return now < _localMonostatStrSkillAttackLockUntil ||
-               now < _localMonostatAgiSkillAttackLockUntil;
+               now < _localMonostatAgiSkillAttackLockUntil ||
+               now < _localAdvancedAttackLockUntil;
+
     }
 
     private bool IsMonostatStr()
@@ -748,6 +1062,123 @@ public class PlayerCombat : NetworkBehaviour
 
         Identity identity = _statManager.CurrentIdentity;
         return identity.Type == IdentityType.Monostat && identity.PrimaryStat == StatKind.AGI;
+    }
+
+    private bool IsMonostat(StatKind statKind)
+    {
+        if (_statManager == null)
+            _statManager = GetComponentInParent<StatManager>();
+        return _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Monostat &&
+               _statManager.CurrentIdentity.PrimaryStat == statKind;
+    }
+
+    private bool IsPolymath()
+    {
+        if (_statManager == null)
+            _statManager = GetComponentInParent<StatManager>();
+        return _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Polymath;
+    }
+
+    private JobSkillData ResolveSelectedAdvancedSkillData()
+    {
+        if (_statManager == null)
+            return null;
+        Identity identity = _statManager.CurrentIdentity;
+        if (identity.Type == IdentityType.Monostat)
+        {
+            if (identity.PrimaryStat == StatKind.CON) return MonostatConSkillData;
+            if (identity.PrimaryStat == StatKind.DEF) return MonostatDefSkillData;
+            return null;
+        }
+        if (identity.Type == IdentityType.Strategist)
+            return _selectedSkillIndex == 0
+                ? (IsSkillDataKind(_strategistRollSkillData, JobSkillKind.StrategistRoll) ? _strategistRollSkillData : null)
+                : (IsSkillDataKind(_strategistPresetSkillData, JobSkillKind.StrategistPresetChange) ? _strategistPresetSkillData : null);
+        if (identity.Type == IdentityType.Polymath)
+        {
+            if (_selectedSkillIndex == 0) return IsSkillDataKind(_polymathRollSkillData, JobSkillKind.PolymathRoll) ? _polymathRollSkillData : null;
+            if (_selectedSkillIndex == 1) return IsSkillDataKind(_polymathPresetSkillData, JobSkillKind.PolymathPresetChange) ? _polymathPresetSkillData : null;
+            return IsSkillDataKind(_polymathWeaponSwapSkillData, JobSkillKind.PolymathWeaponSwap) ? _polymathWeaponSwapSkillData : null;
+        }
+        return null;
+    }
+
+    private JobSkillData ResolveAdvancedSkillData(int skillKey)
+    {
+        if (_statManager == null)
+            return null;
+        Identity identity = _statManager.CurrentIdentity;
+        JobSkillKind kind = (JobSkillKind)skillKey;
+        if (identity.Type == IdentityType.Monostat)
+        {
+            if (identity.PrimaryStat == StatKind.CON && kind == JobSkillKind.MonostatConKick) return MonostatConSkillData;
+            if (identity.PrimaryStat == StatKind.DEF && kind == JobSkillKind.MonostatDefTaunt) return MonostatDefSkillData;
+            return null;
+        }
+        if (identity.Type == IdentityType.Strategist)
+        {
+            if (kind == JobSkillKind.StrategistRoll && IsSkillDataKind(_strategistRollSkillData, kind)) return _strategistRollSkillData;
+            if (kind == JobSkillKind.StrategistPresetChange && IsSkillDataKind(_strategistPresetSkillData, kind)) return _strategistPresetSkillData;
+            return null;
+        }
+        if (identity.Type == IdentityType.Polymath)
+        {
+            if (kind == JobSkillKind.PolymathRoll && IsSkillDataKind(_polymathRollSkillData, kind)) return _polymathRollSkillData;
+            if (kind == JobSkillKind.PolymathPresetChange && IsSkillDataKind(_polymathPresetSkillData, kind)) return _polymathPresetSkillData;
+            if (kind == JobSkillKind.PolymathWeaponSwap && IsSkillDataKind(_polymathWeaponSwapSkillData, kind)) return _polymathWeaponSwapSkillData;
+        }
+        return null;
+    }
+
+    private void HandleBowAttackInput(bool pressed)
+    {
+        JobSkillData bow = _polymathWeaponSwapSkillData;
+        if (bow == null)
+            return;
+        if (pressed)
+        {
+            if (IsSkillCastingOrAttackLocked() || _bowChargeStartedAt >= 0d)
+                return;
+            _bowChargeStartedAt = NetworkTime.time;
+            _playerManager?.ApplySkillMoveMultiplier(bow.BowChargeMoveMultiplier, 86400f);
+            return;
+        }
+        if (_bowChargeStartedAt < 0d)
+            return;
+        float chargeSeconds = Mathf.Max(0f, (float)(NetworkTime.time - _bowChargeStartedAt));
+        _bowChargeStartedAt = -1d;
+        _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
+        Vector3 direction = GetCurrentAimDirection();
+        if (isClient && isLocalPlayer && !isServer)
+            CmdFireBow(chargeSeconds, direction);
+        else
+            FireBow(chargeSeconds, direction);
+    }
+
+    [Command]
+    private void CmdFireBow(float chargeSeconds, Vector3 direction)
+    {
+        FireBow(chargeSeconds, direction);
+    }
+
+    private void FireBow(float chargeSeconds, Vector3 direction)
+    {
+        JobSkillData bow = _polymathWeaponSwapSkillData;
+        if (!IsPolymath() || !_isBowEquipped || bow == null || chargeSeconds < bow.MinimumBowChargeSeconds)
+            return;
+        float denominator = Mathf.Max(0.001f, bow.MaximumBowDamageChargeSeconds - bow.MinimumBowChargeSeconds);
+        float t = Mathf.Clamp01((chargeSeconds - bow.MinimumBowChargeSeconds) / denominator);
+        float multiplier = Mathf.Lerp(bow.MinimumBowDamageMultiplier, bow.MaximumBowDamageMultiplier, t);
+        Vector3 origin = transform.position + Vector3.up;
+        direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        if (!Physics.Raycast(origin, direction, out RaycastHit hit, bow.BowRange, ~0, QueryTriggerInteraction.Collide))
+            return;
+        if (hit.transform.root == transform.root)
+            return;
+        IDamageReceiver target = hit.collider.GetComponentInParent<IDamageReceiver>();
+        StatManager targetStats = hit.collider.GetComponentInParent<StatManager>();
+        if (target != null && targetStats != null)
+            _attackProcessor?.ProcessSkillHit(multiplier, targetStats, target, hit.point);
     }
 
     private int ResolveAvailableSkillCount()
@@ -778,6 +1209,10 @@ public class PlayerCombat : NetworkBehaviour
 
         if (IsMonostatAgi())
             return ResolveMonostatAgiDisplayName();
+
+        JobSkillData advanced = ResolveSelectedAdvancedSkillData();
+        if (advanced != null && !string.IsNullOrWhiteSpace(advanced.DisplayName))
+            return advanced.DisplayName;
 
         if (_statManager == null)
             return string.Empty;
@@ -893,6 +1328,34 @@ public class PlayerCombat : NetworkBehaviour
                 fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatAgiCooldownSeconds));
             }
         }
+        else
+        {
+            JobSkillData data = ResolveSelectedAdvancedSkillData();
+            if (data != null)
+            {
+                int key = (int)data.SkillKind;
+                iconSprite = data.IconSprite;
+                double now = NetworkTime.time;
+                if (_advancedCastingSkillKey == key)
+                {
+                    phase = SkillHudPhase.Casting;
+                    remaining = Mathf.Max(0f, (float)(_advancedCastCompleteAt - now));
+                    fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, data.CastSeconds));
+                }
+                else if (_advancedActiveSkillKey == key && now < _advancedActiveUntil)
+                {
+                    phase = SkillHudPhase.Active;
+                    remaining = Mathf.Max(0f, (float)(_advancedActiveUntil - now));
+                    fill = 1f;
+                }
+                else if (_advancedCooldownUntil.TryGetValue(key, out double cooldownUntil) && now < cooldownUntil)
+                {
+                    phase = SkillHudPhase.Cooldown;
+                    remaining = Mathf.Max(0f, (float)(cooldownUntil - now));
+                    fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, data.CooldownSeconds));
+                }
+            }
+        }
 
         return new SkillHudState(true, ResolveSelectedSkillName(), _selectedSkillIndex, count, phase, fill, remaining, iconSprite);
     }
@@ -932,13 +1395,19 @@ public class PlayerCombat : NetworkBehaviour
 
     private JobSkillData ResolveSkillDataForSfx(int skillId)
     {
-        if (skillId == 0)
-            return MonostatStrSkillData;
-
-        if (skillId == 1)
-            return MonostatAgiSkillData;
-
-        return null;
+        return skillId switch
+        {
+            (int)JobSkillKind.MonostatStrLifesteal => MonostatStrSkillData,
+            (int)JobSkillKind.MonostatAgiPoison => MonostatAgiSkillData,
+            (int)JobSkillKind.MonostatConKick => MonostatConSkillData,
+            (int)JobSkillKind.MonostatDefTaunt => MonostatDefSkillData,
+            (int)JobSkillKind.StrategistRoll => _strategistRollSkillData,
+            (int)JobSkillKind.StrategistPresetChange => _strategistPresetSkillData,
+            (int)JobSkillKind.PolymathRoll => _polymathRollSkillData,
+            (int)JobSkillKind.PolymathPresetChange => _polymathPresetSkillData,
+            (int)JobSkillKind.PolymathWeaponSwap => _polymathWeaponSwapSkillData,
+            _ => null
+        };
     }
 
     private void ApplyMonostatAgiPoisonStack(IDamageReceiver target, Vector3 hitPosition)
@@ -1052,12 +1521,41 @@ public class PlayerCombat : NetworkBehaviour
 
     private Vector3 GetCurrentAimDirection()
     {
+        Vector3 fallback;
         if (_followCamera == null && isLocalPlayer)
             _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
 
         if (_followCamera != null)
-            return _followCamera.GetAimDirection();
+            fallback = _followCamera.GetAimDirection();
+        else
+            fallback = transform.forward;
 
-        return transform.forward;
+        return ResolveTauntAimDirection(fallback);
+    }
+
+    private void SetTauntedBy(uint taunterNetId, float durationSeconds)
+    {
+        if (!NetworkServer.active || durationSeconds <= 0f)
+            return;
+        _tauntedByNetId = taunterNetId;
+        _tauntedUntil = NetworkTime.time + durationSeconds;
+    }
+
+    private Vector3 ResolveTauntAimDirection(Vector3 fallback)
+    {
+        if (_tauntedByNetId == 0 || NetworkTime.time >= _tauntedUntil)
+            return fallback;
+
+        NetworkIdentity targetIdentity = null;
+        if (NetworkServer.active)
+            NetworkServer.spawned.TryGetValue(_tauntedByNetId, out targetIdentity);
+        if (targetIdentity == null && NetworkClient.active)
+            NetworkClient.spawned.TryGetValue(_tauntedByNetId, out targetIdentity);
+        if (targetIdentity == null)
+            return fallback;
+
+        Vector3 direction = targetIdentity.transform.position - transform.position;
+        direction.y = 0f;
+        return direction.sqrMagnitude > 0.001f ? direction.normalized : fallback;
     }
 }

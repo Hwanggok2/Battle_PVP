@@ -6386,6 +6386,13 @@ MonoBehaviour:
   _currentRegen: 0
   _defenseRate: 0
   _bonusDefenseEff: 0
+  _currentShield: 0
+  _shieldExpiresAt: 0
+  _skillInvulnerableUntil: 0
+  _tauntDefenseUntil: 0
+  _tauntIncomingDamageMultiplier: 1
+  _tauntReflectMultiplier: 1
+  _tauntReflectHealthCapRatio: 0.07
 --- !u!114 &4372210679468838409
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6461,12 +6468,31 @@ MonoBehaviour:
   _hitboxes:
   - {fileID: 572502645874766807}
   _monostatStrSkillData: {fileID: 11400000, guid: 5a50ed52fa85e0841b0c8ee1f9d1c5ab, type: 2}
+  _monostatAgiSkillData: {fileID: 11400000, guid: 05f8cf419408da6469ce258e8c1f7cf6, type: 2}
+  _monostatConSkillData: {fileID: 11400000, guid: 69ac0f1c56b300346a90d492ebfb63af, type: 2}
+  _monostatDefSkillData: {fileID: 11400000, guid: 5aaa0bbbd6554974c9b566e56c1f645f, type: 2}
+  _strategistRollSkillData: {fileID: 11400000, guid: bee418ed14f145047a0103373470075d, type: 2}
+  _strategistPresetSkillData: {fileID: 11400000, guid: 1ffc76eb352b89949b0e449e711a14e7, type: 2}
+  _polymathRollSkillData: {fileID: 11400000, guid: a357684c44735964bae03a09b28591e5, type: 2}
+  _polymathPresetSkillData: {fileID: 11400000, guid: 5e7f808b5861cc04588096d262a39070, type: 2}
+  _polymathWeaponSwapSkillData: {fileID: 11400000, guid: f871b314ec0b80b41b44bdba3b3d2835, type: 2}
   _currentAttackSpeed: 1
   _selectedSkillIndex: 0
   _isCastingMonostatStrSkill: 0
   _monostatStrSkillCastCompleteAt: 0
   _monostatStrSkillActiveUntil: 0
   _monostatStrSkillCooldownUntil: 0
+  _isCastingMonostatAgiSkill: 0
+  _monostatAgiSkillCastCompleteAt: 0
+  _monostatAgiSkillActiveUntil: 0
+  _monostatAgiSkillCooldownUntil: 0
+  _advancedCastingSkillKey: -1
+  _advancedCastCompleteAt: 0
+  _advancedActiveSkillKey: -1
+  _advancedActiveUntil: 0
+  _isBowEquipped: 0
+  _tauntedByNetId: 0
+  _tauntedUntil: 0
 --- !u!114 &1361630273049683799
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -56,9 +56,65 @@ public class PlayerManager : NetworkBehaviour
     private bool _hasRemoteTransformTarget;
     private float _standingControllerHeight;
     private Vector3 _standingControllerCenter;
+    private float _skillMoveMultiplier = 1f;
+    private double _skillMoveMultiplierUntil;
+    private Coroutine _forcedMoveRoutine;
+    private bool _skillMovementLocked;
 
     public bool IsMatchEndLocked => _matchEndLocked;
     public bool IsCrouching => isCrouching;
+
+    public Vector3 GetSkillMoveDirection()
+    {
+        if (inputVector.sqrMagnitude <= 0.001f)
+            return transform.forward;
+
+        if (followCamera == null)
+            return new Vector3(inputVector.x, 0f, inputVector.y).normalized;
+
+        float cameraYaw = followCamera.GetYaw();
+        Vector3 cameraForward = Quaternion.Euler(0f, cameraYaw, 0f) * Vector3.forward;
+        Vector3 cameraRight = Quaternion.Euler(0f, cameraYaw, 0f) * Vector3.right;
+        return (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
+    }
+
+    public void ApplySkillMoveMultiplier(float multiplier, float durationSeconds)
+    {
+        _skillMoveMultiplier = Mathf.Clamp01(multiplier);
+        _skillMoveMultiplierUntil = NetworkTime.time + Mathf.Max(0f, durationSeconds);
+    }
+
+    public void SetSkillMovementLock(bool locked)
+    {
+        _skillMovementLocked = locked;
+        if (locked)
+            inputVector = Vector2.zero;
+    }
+
+    public void MoveBySkill(Vector3 direction, float distance, float durationSeconds)
+    {
+        if (_forcedMoveRoutine != null)
+            StopCoroutine(_forcedMoveRoutine);
+        _forcedMoveRoutine = StartCoroutine(CoMoveBySkill(direction, distance, durationSeconds));
+    }
+
+    private IEnumerator CoMoveBySkill(Vector3 direction, float distance, float durationSeconds)
+    {
+        direction.y = 0f;
+        direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        float duration = Mathf.Max(0.01f, durationSeconds);
+        float speed = Mathf.Max(0f, distance) / duration;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            float step = Mathf.Min(Time.deltaTime, duration - elapsed);
+            if (controller != null && controller.enabled)
+                controller.Move(direction * speed * step);
+            elapsed += step;
+            yield return null;
+        }
+        _forcedMoveRoutine = null;
+    }
 
     private readonly int speedHash = Animator.StringToHash("Speed");
     private readonly int dieHash = Animator.StringToHash("Die");
@@ -314,6 +370,11 @@ public class PlayerManager : NetworkBehaviour
 
         // 4. 최종 이동
         float currentMoveSpeed = moveSpeed;
+        if (_skillMovementLocked)
+            currentMoveSpeed = 0f;
+        if (NetworkTime.time >= _skillMoveMultiplierUntil)
+            _skillMoveMultiplier = 1f;
+        currentMoveSpeed *= _skillMoveMultiplier;
         if (isAttacking)
             currentMoveSpeed *= 0.6f;
         if (isCrouching)
