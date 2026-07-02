@@ -21,7 +21,6 @@ namespace BattlePvp.UI
 
         [Header("Fallback Display")]
         [SerializeField] private Sprite _fallbackIconSprite;
-        [SerializeField] private Color _readyColor = Color.white;
         [SerializeField] private Color _activeOverlayColor = new Color(0f, 0f, 0f, 0.55f);
         [SerializeField] private Color _cooldownOverlayColor = new Color(0.25f, 0.25f, 0.25f, 0.82f);
 
@@ -65,7 +64,7 @@ namespace BattlePvp.UI
                 : (_fallbackIconSprite != null ? _fallbackIconSprite : GetRuntimeWhiteSprite());
 
             if (_baseImage != null)
-                ConfigureImage(_baseImage, iconSprite, Image.Type.Simple, _readyColor);
+                ConfigureImage(_baseImage, iconSprite, Image.Type.Simple, Color.white);
 
             if (_nameText != null)
                 _nameText.text = state.Name;
@@ -100,7 +99,7 @@ namespace BattlePvp.UI
                 return;
 
             if (_baseImage != null && _previewSkillData.IconSprite != null)
-                ConfigureImage(_baseImage, _previewSkillData.IconSprite, Image.Type.Simple, _readyColor);
+                ConfigureImage(_baseImage, _previewSkillData.IconSprite, Image.Type.Simple, Color.white);
 
             if (_overlayImage != null)
             {

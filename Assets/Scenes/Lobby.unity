@@ -653,6 +653,10 @@ PrefabInstance:
       propertyPath: sceneId
       value: 1678606113
       objectReference: {fileID: 0}
+    - target: {fileID: 1806473458369697011, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: m_text
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_Name
       value: Player
@@ -665,6 +669,10 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6066071896109153664, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: m_text
+      value: "\uBC1C\uCC28\uAE30"
+      objectReference: {fileID: 0}
     - target: {fileID: 6270019826179831182, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0
@@ -680,6 +688,26 @@ PrefabInstance:
     - target: {fileID: 6523655991056865252, guid: c377d1d192637934798ae1c57f82befb, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710979956859807965, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _readyColor.a
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710979956859807965, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _readyColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710979956859807965, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _readyColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710979956859807965, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _readyColor.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6710979956859807965, guid: c377d1d192637934798ae1c57f82befb, type: 3}
+      propertyPath: _previewSkillData
+      value: 
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

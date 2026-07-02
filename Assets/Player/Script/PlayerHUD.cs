@@ -425,6 +425,8 @@ namespace BattlePvp.UI
                 return;
 
             _hudView.SetIdentity(identity);
+            if (_combatSource != null)
+                _hudView.SetSkill(_combatSource.GetSkillHudState());
         }
 
         private void OnSkillHudChanged(SkillHudState state)

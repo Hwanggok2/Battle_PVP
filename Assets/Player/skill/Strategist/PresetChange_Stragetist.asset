@@ -14,17 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
   _skillKind: 11
   _displayName: "\uD504\uB9AC\uC14B \uBCC0\uACBD"
-  _iconSprite: {fileID: 0}
+  _iconSprite: {fileID: 21300000, guid: 9e6f3c312786c54428e82b21052cbc9a, type: 3}
   _castSeconds: 1.2
   _durationSeconds: 0
   _cooldownSeconds: 40
+  _castAnimationStateName: 
+  _castAnimationLayer: 0
   _lifestealRatio: 0
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0
   _kickDamageMultiplier: 1.5
-  _kickRange: 2.5
-  _kickRadius: 0.8
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65

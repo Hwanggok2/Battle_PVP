@@ -640,7 +640,7 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         int key = (int)data.SkillKind;
-        Vector3 direction = _playerManager != null ? _playerManager.GetSkillMoveDirection() : transform.forward;
+        Vector3 direction = ResolveAdvancedSkillDirection(data);
         _localAdvancedAttackLockUntil = NetworkTime.time + data.CastSeconds;
         _pendingAdvancedSkillHitKey = key;
         _pendingAdvancedSkillDirection = direction;
@@ -651,6 +651,19 @@ public class PlayerCombat : NetworkBehaviour
             CmdUseAdvancedSkill(key, direction);
         else
             BeginAdvancedSkill(key, direction);
+    }
+
+    private Vector3 ResolveAdvancedSkillDirection(JobSkillData data)
+    {
+        if (data != null &&
+            (data.SkillKind == JobSkillKind.StrategistRoll || data.SkillKind == JobSkillKind.PolymathRoll))
+        {
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            return forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
+        }
+
+        return _playerManager != null ? _playerManager.GetSkillMoveDirection() : transform.forward;
     }
 
     private void LockLocalAdvancedMovement(JobSkillData data)
