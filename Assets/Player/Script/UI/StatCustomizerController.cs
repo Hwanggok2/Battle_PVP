@@ -199,7 +199,7 @@ namespace BattlePvp.UI
             if (_statManager != null && _playerHealth == null)
                 _playerHealth = _statManager.GetComponent<HealthSystem>();
 
-            BindPlayerHud();
+            PlayerHUD.BindToPlayer(_statManager, _playerHealth);
         }
 
         private void LoadFromTarget()
@@ -208,21 +208,6 @@ namespace BattlePvp.UI
             _baseStats = _statManager.GetStatsCopy();
             _virtualStats = _baseStats;
             RefreshSliderVisuals();
-        }
-
-        private void BindPlayerHud()
-        {
-            if (_statManager == null || _playerHealth == null)
-                return;
-
-            PlayerHUD hud = _statManager.GetComponent<PlayerHUD>();
-            if (hud == null)
-                hud = PlayerHUD.Instance;
-            if (hud == null)
-                hud = FindFirstObjectByType<PlayerHUD>(FindObjectsInactive.Include);
-
-            if (hud != null)
-                hud.SetTarget(_statManager, _playerHealth, _statManager.GetComponent<PlayerCombat>());
         }
 
         private bool TryLoadFromSavedStats()
@@ -415,7 +400,7 @@ namespace BattlePvp.UI
 
             _statManager.ApplyStats(currentStats, recalculateIdentity: true);
             if (_playerHealth != null) _playerHealth.RefillHealth();
-            BindPlayerHud();
+            PlayerHUD.BindToPlayer(_statManager, _playerHealth);
 
             GlobalDataManager.Instance.SavedStats = currentStats;
             if (PlayFabBattleManager.Instance != null)

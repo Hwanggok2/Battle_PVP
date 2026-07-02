@@ -192,10 +192,6 @@ namespace BattlePvp.UI
             }
 
             _skillUI = GetComponentInParent<SkillUI>(true);
-            if (_skillUI != null)
-                return;
-
-            _skillUI = FindFirstObjectByType<SkillUI>(FindObjectsInactive.Include);
         }
     }
 }
