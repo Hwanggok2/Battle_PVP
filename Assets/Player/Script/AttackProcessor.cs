@@ -24,6 +24,7 @@ public sealed class AttackProcessor : MonoBehaviour
     private DamageCalculator _damageCalculator;
 
     private IDamageReceiver _attackerDamageReceiver;
+    private PlayerCombat _playerCombat;
 
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAtk;
@@ -40,6 +41,8 @@ public sealed class AttackProcessor : MonoBehaviour
 
         if (_attackerStats == null)
             _attackerStats = GetComponent<StatManager>();
+
+        _playerCombat = GetComponent<PlayerCombat>();
 
         if (_attackerDamageReceiver == null)
         {
@@ -164,6 +167,8 @@ public sealed class AttackProcessor : MonoBehaviour
 
         // 5) 물리 피해 적용 (+ 컨텍스트 전달 가능하면 전달)
         // Thorns 반사는 HealthSystem이 "Physical 피해 수신 시" 처리한다.
+        float defenderHpBefore = defender.CurrentHp;
+
         if (defender is IDamageReceiverWithContext ctx)
         {
             // defender가 여전히 유효한지 확인
@@ -173,6 +178,16 @@ public sealed class AttackProcessor : MonoBehaviour
         else
         {
             defender.ApplyDamage(finalDamage, DamageSource.Physical, hitPosition);
+        }
+
+        float actualDamage = Mathf.Max(0f, defenderHpBefore - defender.CurrentHp);
+        if (actualDamage > 0f)
+        {
+            if (_playerCombat == null)
+                _playerCombat = GetComponent<PlayerCombat>();
+
+            if (_playerCombat != null)
+                _playerCombat.NotifyPhysicalDamageDealt(actualDamage);
         }
     }
 

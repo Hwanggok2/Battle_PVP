@@ -200,6 +200,23 @@ namespace BattlePvp.Combat
             EvaluateDeath(); // [추가] 강제 체력 설정 시에도 사망 판정
         }
 
+        public void Heal(float amount)
+        {
+            if (amount <= 0f || IsDead)
+                return;
+
+            if (NetworkClient.active && !NetworkServer.active)
+                return;
+
+            float next = Mathf.Min(_currentHp + amount, _maxHp);
+            if (Math.Abs(next - _currentHp) <= 0.0001f)
+                return;
+
+            _currentHp = next;
+            RaiseHpChanged();
+            UpdateOverflowState();
+        }
+
         public void ApplyDamage(float amount, DamageSource source, Vector3 hitPosition)
         {
             ApplyDamage(amount, source, attackerAttackPower: 0f, attacker: null, hitPosition);
