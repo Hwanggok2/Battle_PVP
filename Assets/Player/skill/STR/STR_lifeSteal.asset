@@ -18,9 +18,9 @@ MonoBehaviour:
   _castSeconds: 0.7
   _durationSeconds: 10
   _cooldownSeconds: 40
+  _castAnimationStateName: Battle_Cry
+  _castAnimationLayer: 1
   _lifestealRatio: 0.1
-  _strCastAnimationStateName: Battle_Cry
-  _strCastAnimationLayer: 0
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0

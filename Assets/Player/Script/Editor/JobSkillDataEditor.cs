@@ -12,17 +12,15 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _castSeconds;
     private SerializedProperty _durationSeconds;
     private SerializedProperty _cooldownSeconds;
+    private SerializedProperty _castAnimationStateName;
+    private SerializedProperty _castAnimationLayer;
     private SerializedProperty _useSfx;
     private SerializedProperty _sfxVolume;
     private SerializedProperty _lifestealRatio;
-    private SerializedProperty _strCastAnimationStateName;
-    private SerializedProperty _strCastAnimationLayer;
     private SerializedProperty _poisonMaxStacks;
     private SerializedProperty _poisonDamagePerStackPerSecond;
     private SerializedProperty _poisonStackDurationSeconds;
     private SerializedProperty _kickDamageMultiplier;
-    private SerializedProperty _kickRange;
-    private SerializedProperty _kickRadius;
     private SerializedProperty _kickKnockbackDistance;
     private SerializedProperty _kickSlowMoveMultiplier;
     private SerializedProperty _kickSlowDurationSeconds;
@@ -51,17 +49,15 @@ public sealed class JobSkillDataEditor : Editor
         _castSeconds = serializedObject.FindProperty("_castSeconds");
         _durationSeconds = serializedObject.FindProperty("_durationSeconds");
         _cooldownSeconds = serializedObject.FindProperty("_cooldownSeconds");
+        _castAnimationStateName = serializedObject.FindProperty("_castAnimationStateName");
+        _castAnimationLayer = serializedObject.FindProperty("_castAnimationLayer");
         _useSfx = serializedObject.FindProperty("_useSfx");
         _sfxVolume = serializedObject.FindProperty("_sfxVolume");
         _lifestealRatio = serializedObject.FindProperty("_lifestealRatio");
-        _strCastAnimationStateName = serializedObject.FindProperty("_strCastAnimationStateName");
-        _strCastAnimationLayer = serializedObject.FindProperty("_strCastAnimationLayer");
         _poisonMaxStacks = serializedObject.FindProperty("_poisonMaxStacks");
         _poisonDamagePerStackPerSecond = serializedObject.FindProperty("_poisonDamagePerStackPerSecond");
         _poisonStackDurationSeconds = serializedObject.FindProperty("_poisonStackDurationSeconds");
         _kickDamageMultiplier = serializedObject.FindProperty("_kickDamageMultiplier");
-        _kickRange = serializedObject.FindProperty("_kickRange");
-        _kickRadius = serializedObject.FindProperty("_kickRadius");
         _kickKnockbackDistance = serializedObject.FindProperty("_kickKnockbackDistance");
         _kickSlowMoveMultiplier = serializedObject.FindProperty("_kickSlowMoveMultiplier");
         _kickSlowDurationSeconds = serializedObject.FindProperty("_kickSlowDurationSeconds");
@@ -95,6 +91,10 @@ public sealed class JobSkillDataEditor : Editor
 
         DrawSection("Common", _displayName, _iconSprite);
         DrawSection("Timing", _castSeconds, _durationSeconds, _cooldownSeconds);
+        DrawSectionWithLabels(
+            "Animation",
+            (_castAnimationStateName, "Cast Animation State Name"),
+            (_castAnimationLayer, "Cast Animation Layer"));
         DrawSection("Audio", _useSfx, _sfxVolume);
 
         if (_skillKind.hasMultipleDifferentValues)
@@ -142,9 +142,7 @@ public sealed class JobSkillDataEditor : Editor
             case JobSkillKind.MonostatStrLifesteal:
                 DrawSectionWithLabels(
                     "STR Lifesteal",
-                    (_lifestealRatio, "Lifesteal Ratio"),
-                    (_strCastAnimationStateName, "Cast Animation State Name"),
-                    (_strCastAnimationLayer, "Cast Animation Layer"));
+                    (_lifestealRatio, "Lifesteal Ratio"));
                 break;
 
             case JobSkillKind.MonostatAgiPoison:
@@ -159,8 +157,6 @@ public sealed class JobSkillDataEditor : Editor
                 DrawSectionWithLabels(
                     "CON Kick",
                     (_kickDamageMultiplier, "Damage Multiplier"),
-                    (_kickRange, "Range"),
-                    (_kickRadius, "Radius"),
                     (_kickKnockbackDistance, "Knockback Distance"),
                     (_kickSlowMoveMultiplier, "Slow Move Multiplier"),
                     (_kickSlowDurationSeconds, "Slow Duration Seconds"));

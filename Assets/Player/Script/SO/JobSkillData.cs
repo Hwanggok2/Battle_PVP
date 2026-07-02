@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace BattlePvp.Combat
 {
@@ -26,18 +27,18 @@ namespace BattlePvp.Combat
         [Min(0f)] [SerializeField] private float _castSeconds = 0f;
         [Min(0f)] [SerializeField] private float _durationSeconds = 0f;
         [Min(0f)] [SerializeField] private float _cooldownSeconds = 0f;
+        [FormerlySerializedAs("_strCastAnimationStateName")]
+        [SerializeField] private string _castAnimationStateName = string.Empty;
+        [FormerlySerializedAs("_strCastAnimationLayer")]
+        [Min(0)] [SerializeField] private int _castAnimationLayer = 0;
 
         [Min(0f)] [SerializeField] private float _lifestealRatio = 0f;
-        [SerializeField] private string _strCastAnimationStateName = string.Empty;
-        [Min(0)] [SerializeField] private int _strCastAnimationLayer = 0;
 
         [Min(0)] [SerializeField] private int _poisonMaxStacks = 0;
         [Min(0f)] [SerializeField] private float _poisonDamagePerStackPerSecond = 0f;
         [Min(0f)] [SerializeField] private float _poisonStackDurationSeconds = 0f;
 
         [Min(0f)] [SerializeField] private float _kickDamageMultiplier = 1.5f;
-        [Min(0f)] [SerializeField] private float _kickRange = 2.5f;
-        [Min(0f)] [SerializeField] private float _kickRadius = 0.8f;
         [Min(0f)] [SerializeField] private float _kickKnockbackDistance = 3f;
         [Range(0f, 1f)] [SerializeField] private float _kickSlowMoveMultiplier = 0.2f;
         [Min(0f)] [SerializeField] private float _kickSlowDurationSeconds = 0.65f;
@@ -71,15 +72,13 @@ namespace BattlePvp.Combat
         public float CastSeconds => _castSeconds;
         public float DurationSeconds => _durationSeconds;
         public float CooldownSeconds => _cooldownSeconds;
+        public string CastAnimationStateName => _castAnimationStateName;
+        public int CastAnimationLayer => _castAnimationLayer;
         public float LifestealRatio => _lifestealRatio;
-        public string StrCastAnimationStateName => _strCastAnimationStateName;
-        public int StrCastAnimationLayer => _strCastAnimationLayer;
         public int PoisonMaxStacks => _poisonMaxStacks;
         public float PoisonDamagePerStackPerSecond => _poisonDamagePerStackPerSecond;
         public float PoisonStackDurationSeconds => _poisonStackDurationSeconds;
         public float KickDamageMultiplier => _kickDamageMultiplier;
-        public float KickRange => _kickRange;
-        public float KickRadius => _kickRadius;
         public float KickKnockbackDistance => _kickKnockbackDistance;
         public float KickSlowMoveMultiplier => _kickSlowMoveMultiplier;
         public float KickSlowDurationSeconds => _kickSlowDurationSeconds;
