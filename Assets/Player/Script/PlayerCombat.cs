@@ -1,4 +1,4 @@
-using BattlePvp.Combat;
+﻿using BattlePvp.Combat;
 using BattlePvp.Stats;
 using System;
 using System.Collections.Generic;
@@ -111,9 +111,10 @@ public class PlayerCombat : NetworkBehaviour
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
-    public bool IsMonostatStrLifestealActive => NetworkTime.time < _monostatStrSkillActiveUntil;
+    private double SkillTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
+    public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
-    public bool IsMonostatAgiPoisonCoatingActive => NetworkTime.time < _monostatAgiSkillActiveUntil;
+    public bool IsMonostatAgiPoisonCoatingActive => SkillTime < _monostatAgiSkillActiveUntil;
 
     private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
     private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
@@ -539,7 +540,7 @@ public class PlayerCombat : NetworkBehaviour
         if (IsMonostatAgiPoisonCoatingActive && defender != null)
             ApplyMonostatAgiPoisonStack(defender, hitPosition);
 
-        if (_advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && NetworkTime.time < _advancedActiveUntil)
+        if (_advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && SkillTime < _advancedActiveUntil)
         {
             JobSkillData taunt = MonostatDefSkillData;
             _advancedActiveSkillKey = -1;
@@ -560,7 +561,7 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseMonostatStrSkillInput())
             return;
 
-        _localMonostatStrSkillAttackLockUntil = NetworkTime.time + MonostatStrCastSeconds;
+        _localMonostatStrSkillAttackLockUntil = SkillTime + MonostatStrCastSeconds;
         PlaySkillAnimationLocal(MonostatStrSkillData);
         LockLocalSkillAnimationAttack(MonostatStrSkillData);
 
@@ -641,7 +642,7 @@ public class PlayerCombat : NetworkBehaviour
 
         int key = (int)data.SkillKind;
         Vector3 direction = ResolveAdvancedSkillDirection(data);
-        _localAdvancedAttackLockUntil = NetworkTime.time + data.CastSeconds;
+        _localAdvancedAttackLockUntil = SkillTime + data.CastSeconds;
         _pendingAdvancedSkillHitKey = key;
         _pendingAdvancedSkillDirection = direction;
         PlaySkillAnimationLocal(data);
@@ -726,7 +727,7 @@ public class PlayerCombat : NetworkBehaviour
     private void BeginAdvancedSkill(int skillKey, Vector3 direction)
     {
         JobSkillData data = ResolveAdvancedSkillData(skillKey);
-        double now = NetworkTime.time;
+        double now = SkillTime;
         if (data == null || (_healthSystem != null && _healthSystem.IsDead))
             return;
         if (_advancedCastingSkillKey >= 0 || (_advancedCooldownUntil.TryGetValue(skillKey, out double cooldown) && now < cooldown))
@@ -761,7 +762,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoAdvancedSkillCast(JobSkillData data, Vector3 direction, bool lockMovement, bool alreadyApplied)
     {
-        while (NetworkTime.time < _advancedCastCompleteAt || !IsSkillCastAnimationFinished(data))
+        while (SkillTime < _advancedCastCompleteAt || !IsSkillCastAnimationFinished(data))
             yield return null;
 
         _advancedCastingSkillKey = -1;
@@ -932,12 +933,12 @@ public class PlayerCombat : NetworkBehaviour
                 break;
             case JobSkillKind.MonostatDefTaunt:
                 _advancedActiveSkillKey = (int)data.SkillKind;
-                _advancedActiveUntil = NetworkTime.time + data.TauntReadyDurationSeconds;
+                _advancedActiveUntil = SkillTime + data.TauntReadyDurationSeconds;
                 break;
             case JobSkillKind.StrategistRoll:
             case JobSkillKind.PolymathRoll:
                 _advancedActiveSkillKey = (int)data.SkillKind;
-                _advancedActiveUntil = NetworkTime.time + data.RollDurationSeconds;
+                _advancedActiveUntil = SkillTime + data.RollDurationSeconds;
                 _healthSystem?.SetSkillInvulnerable(data.RollDurationSeconds);
                 RpcExecuteSkillMove(direction, data.RollDistance, data.RollDurationSeconds, 1f, 0f);
                 break;
@@ -1022,7 +1023,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void BeginMonostatStrSkill()
     {
-        double now = NetworkTime.time;
+        double now = SkillTime;
         if (!CanStartMonostatStrSkill(now))
             return;
 
@@ -1046,7 +1047,7 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseMonostatAgiSkillInput())
             return;
 
-        _localMonostatAgiSkillAttackLockUntil = NetworkTime.time + MonostatAgiCastSeconds;
+        _localMonostatAgiSkillAttackLockUntil = SkillTime + MonostatAgiCastSeconds;
         PlaySkillAnimationLocal(MonostatAgiSkillData);
         LockLocalSkillAnimationAttack(MonostatAgiSkillData);
 
@@ -1064,7 +1065,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void BeginMonostatAgiSkill()
     {
-        double now = NetworkTime.time;
+        double now = SkillTime;
         if (!CanStartMonostatAgiSkill(now))
             return;
 
@@ -1085,7 +1086,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoMonostatStrSkill()
     {
-        while (NetworkTime.time < _monostatStrSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatStrSkillData))
+        while (SkillTime < _monostatStrSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatStrSkillData))
             yield return null;
 
         _isCastingMonostatStrSkill = false;
@@ -1106,10 +1107,10 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        _monostatStrSkillActiveUntil = NetworkTime.time + MonostatStrDurationSeconds;
+        _monostatStrSkillActiveUntil = SkillTime + MonostatStrDurationSeconds;
         PublishSkillHudState();
 
-        while (NetworkTime.time < _monostatStrSkillActiveUntil)
+        while (SkillTime < _monostatStrSkillActiveUntil)
             yield return null;
 
         _monostatStrSkillActiveUntil = 0d;
@@ -1184,7 +1185,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoMonostatAgiSkill()
     {
-        while (NetworkTime.time < _monostatAgiSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatAgiSkillData))
+        while (SkillTime < _monostatAgiSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatAgiSkillData))
             yield return null;
 
         _isCastingMonostatAgiSkill = false;
@@ -1205,10 +1206,10 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        _monostatAgiSkillActiveUntil = NetworkTime.time + MonostatAgiDurationSeconds;
+        _monostatAgiSkillActiveUntil = SkillTime + MonostatAgiDurationSeconds;
         PublishSkillHudState();
 
-        while (NetworkTime.time < _monostatAgiSkillActiveUntil)
+        while (SkillTime < _monostatAgiSkillActiveUntil)
             yield return null;
 
         _monostatAgiSkillActiveUntil = 0d;
@@ -1232,14 +1233,14 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (!CanUseSkillInput()) return false;
 
-        return CanStartMonostatStrSkill(NetworkTime.time);
+        return CanStartMonostatStrSkill(SkillTime);
     }
 
     private bool CanUseMonostatAgiSkillInput()
     {
         if (!CanUseSkillInput()) return false;
 
-        return CanStartMonostatAgiSkill(NetworkTime.time);
+        return CanStartMonostatAgiSkill(SkillTime);
     }
 
     private bool CanUseAdvancedSkillInput(JobSkillData data)
@@ -1247,9 +1248,9 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseSkillInput()) return false;
         if (data == null) return false;
         if (_advancedCastingSkillKey >= 0) return false;
-        if (_advancedActiveSkillKey == (int)data.SkillKind && NetworkTime.time < _advancedActiveUntil) return false;
+        if (_advancedActiveSkillKey == (int)data.SkillKind && SkillTime < _advancedActiveUntil) return false;
         if (_advancedCooldownUntil.TryGetValue((int)data.SkillKind, out double cooldownUntil) &&
-            NetworkTime.time < cooldownUntil) return false;
+            SkillTime < cooldownUntil) return false;
 
         return ResolveAdvancedSkillData((int)data.SkillKind) == data;
     }
@@ -1282,7 +1283,7 @@ public class PlayerCombat : NetworkBehaviour
             _localSkillAnimationAttackLocked)
             return true;
 
-        double now = NetworkTime.time;
+        double now = SkillTime;
         return now < _localMonostatStrSkillAttackLockUntil ||
                now < _localMonostatAgiSkillAttackLockUntil ||
                now < _localAdvancedAttackLockUntil;
@@ -1404,13 +1405,13 @@ public class PlayerCombat : NetworkBehaviour
         {
             if (IsSkillCastingOrAttackLocked() || _bowChargeStartedAt >= 0d)
                 return;
-            _bowChargeStartedAt = NetworkTime.time;
+            _bowChargeStartedAt = SkillTime;
             _playerManager?.ApplySkillMoveMultiplier(bow.BowChargeMoveMultiplier, 86400f);
             return;
         }
         if (_bowChargeStartedAt < 0d)
             return;
-        float chargeSeconds = Mathf.Max(0f, (float)(NetworkTime.time - _bowChargeStartedAt));
+        float chargeSeconds = Mathf.Max(0f, (float)(SkillTime - _bowChargeStartedAt));
         _bowChargeStartedAt = -1d;
         _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
         Vector3 direction = GetCurrentAimDirection();
@@ -1548,7 +1549,7 @@ public class PlayerCombat : NetworkBehaviour
             if (MonostatStrSkillData != null)
                 iconSprite = MonostatStrSkillData.IconSprite;
 
-            double now = NetworkTime.time;
+            double now = SkillTime;
             if (_isCastingMonostatStrSkill)
             {
                 phase = SkillHudPhase.Casting;
@@ -1573,7 +1574,7 @@ public class PlayerCombat : NetworkBehaviour
             if (MonostatAgiSkillData != null)
                 iconSprite = MonostatAgiSkillData.IconSprite;
 
-            double now = NetworkTime.time;
+            double now = SkillTime;
             if (_isCastingMonostatAgiSkill)
             {
                 phase = SkillHudPhase.Casting;
@@ -1600,7 +1601,7 @@ public class PlayerCombat : NetworkBehaviour
             {
                 int key = (int)data.SkillKind;
                 iconSprite = data.IconSprite;
-                double now = NetworkTime.time;
+                double now = SkillTime;
                 if (_advancedCastingSkillKey == key)
                 {
                     phase = SkillHudPhase.Casting;
@@ -1700,7 +1701,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         state.StackCount = Mathf.Min(state.StackCount + 1, MonostatAgiPoisonMaxStackCount);
-        state.ExpiresAt = NetworkTime.time + MonostatAgiPoisonStackDurationSecondsValue;
+        state.ExpiresAt = SkillTime + MonostatAgiPoisonStackDurationSecondsValue;
         state.LastHitPosition = hitPosition;
 
         if (_monostatAgiPoisonRoutine == null)
@@ -1712,7 +1713,7 @@ public class PlayerCombat : NetworkBehaviour
         var wait = new WaitForSeconds(1f);
         while (_monostatAgiPoisonStacks.Count > 0)
         {
-            double now = NetworkTime.time;
+            double now = SkillTime;
             float damagePerStack = MonostatAgiPoisonDamagePerStackPerSecondValue;
 
             for (int i = _monostatAgiPoisonStacks.Count - 1; i >= 0; i--)
@@ -1803,12 +1804,12 @@ public class PlayerCombat : NetworkBehaviour
         if (!NetworkServer.active || durationSeconds <= 0f)
             return;
         _tauntedByNetId = taunterNetId;
-        _tauntedUntil = NetworkTime.time + durationSeconds;
+        _tauntedUntil = SkillTime + durationSeconds;
     }
 
     private Vector3 ResolveTauntAimDirection(Vector3 fallback)
     {
-        if (_tauntedByNetId == 0 || NetworkTime.time >= _tauntedUntil)
+        if (_tauntedByNetId == 0 || SkillTime >= _tauntedUntil)
             return fallback;
 
         NetworkIdentity targetIdentity = null;
