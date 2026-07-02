@@ -14,6 +14,12 @@ public class PlayerCombat : NetworkBehaviour
     private const float MonostatStrSkillDurationSeconds = 10f;
     private const float MonostatStrSkillCooldownSeconds = 35f;
     private const float MonostatStrSkillHealRatio = 0.1f;
+    private const float MonostatAgiSkillCastSeconds = 1f;
+    private const float MonostatAgiSkillDurationSeconds = 7f;
+    private const float MonostatAgiSkillCooldownSeconds = 40f;
+    private const int MonostatAgiPoisonMaxStacks = 5;
+    private const float MonostatAgiPoisonDamagePerStackPerSecond = 2f;
+    private const float MonostatAgiPoisonStackDurationSeconds = 6f;
 
     [Header("Combo Settings")]
     [SerializeField] private AttackData[] comboList;
@@ -22,6 +28,9 @@ public class PlayerCombat : NetworkBehaviour
 
     [Header("Job Skill - Monostat STR")]
     [SerializeField] private JobSkillData _monostatStrSkillData;
+
+    [Header("Job Skill - Monostat AGI")]
+    [SerializeField] private JobSkillData _monostatAgiSkillData;
 
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAttackSpeed = 1.0f;
@@ -34,6 +43,14 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private double _monostatStrSkillActiveUntil;
     [SyncVar]
     [SerializeField] private double _monostatStrSkillCooldownUntil;
+    [SyncVar]
+    [SerializeField] private bool _isCastingMonostatAgiSkill;
+    [SyncVar]
+    [SerializeField] private double _monostatAgiSkillCastCompleteAt;
+    [SyncVar]
+    [SerializeField] private double _monostatAgiSkillActiveUntil;
+    [SyncVar]
+    [SerializeField] private double _monostatAgiSkillCooldownUntil;
 
     private int currentComboIndex;
     private bool isAttacking;
@@ -48,16 +65,42 @@ public class PlayerCombat : NetworkBehaviour
     private PlayerManager _playerManager;
     private BattlePvp.CameraLogic.FollowCamera _followCamera;
     private Coroutine _monostatStrSkillRoutine;
+    private Coroutine _monostatAgiSkillRoutine;
+    private Coroutine _monostatAgiPoisonRoutine;
     private double _localMonostatStrSkillAttackLockUntil;
+    private double _localMonostatAgiSkillAttackLockUntil;
     private AudioSource _audioSource;
+    private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
     public bool IsMonostatStrLifestealActive => NetworkTime.time < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
+    public bool IsMonostatAgiPoisonCoatingActive => NetworkTime.time < _monostatAgiSkillActiveUntil;
 
-    private float MonostatStrCastSeconds => _monostatStrSkillData != null ? _monostatStrSkillData.CastSeconds : MonostatStrSkillCastSeconds;
-    private float MonostatStrDurationSeconds => _monostatStrSkillData != null ? _monostatStrSkillData.DurationSeconds : MonostatStrSkillDurationSeconds;
-    private float MonostatStrCooldownSeconds => _monostatStrSkillData != null ? _monostatStrSkillData.CooldownSeconds : MonostatStrSkillCooldownSeconds;
+    private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
+    private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
+    private float MonostatStrCastSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CastSeconds : MonostatStrSkillCastSeconds;
+    private float MonostatStrDurationSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.DurationSeconds : MonostatStrSkillDurationSeconds;
+    private float MonostatStrCooldownSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CooldownSeconds : MonostatStrSkillCooldownSeconds;
+    private float MonostatAgiCastSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CastSeconds : MonostatAgiSkillCastSeconds;
+    private float MonostatAgiDurationSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.DurationSeconds : MonostatAgiSkillDurationSeconds;
+    private float MonostatAgiCooldownSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CooldownSeconds : MonostatAgiSkillCooldownSeconds;
+    private int MonostatAgiPoisonMaxStackCount => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonMaxStacks > 0 ? MonostatAgiSkillData.PoisonMaxStacks : MonostatAgiPoisonMaxStacks;
+    private float MonostatAgiPoisonDamagePerStackPerSecondValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonDamagePerStackPerSecond > 0f ? MonostatAgiSkillData.PoisonDamagePerStackPerSecond : MonostatAgiPoisonDamagePerStackPerSecond;
+    private float MonostatAgiPoisonStackDurationSecondsValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonStackDurationSeconds > 0f ? MonostatAgiSkillData.PoisonStackDurationSeconds : MonostatAgiPoisonStackDurationSeconds;
+
+    private sealed class PoisonStackState
+    {
+        public IDamageReceiver Target;
+        public int StackCount;
+        public double ExpiresAt;
+        public Vector3 LastHitPosition;
+    }
+
+    private static bool IsSkillDataKind(JobSkillData data, JobSkillKind expectedKind)
+    {
+        return data != null && data.SkillKind == expectedKind;
+    }
 
     private void Awake()
     {
@@ -70,6 +113,24 @@ public class PlayerCombat : NetworkBehaviour
         if (_audioSource == null)
             _audioSource = gameObject.AddComponent<AudioSource>();
     }
+
+#if UNITY_EDITOR
+    private new void OnValidate()
+    {
+        WarnIfSkillKindMismatch(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal, nameof(_monostatStrSkillData));
+        WarnIfSkillKindMismatch(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison, nameof(_monostatAgiSkillData));
+    }
+
+    private void WarnIfSkillKindMismatch(JobSkillData data, JobSkillKind expectedKind, string fieldName)
+    {
+        if (data == null || data.SkillKind == expectedKind)
+            return;
+
+        Debug.LogWarning(
+            $"[PlayerCombat] {fieldName} expects {expectedKind}, but assigned {data.SkillKind}: {data.name}",
+            this);
+    }
+#endif
 
     private void OnEnable()
     {
@@ -182,7 +243,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
 
-        if (_isCastingMonostatStrSkill || NetworkTime.time < _localMonostatStrSkillAttackLockUntil) return;
+        if (IsSkillCastingOrAttackLocked()) return;
 
         if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
             return;
@@ -222,7 +283,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        if (_isCastingMonostatStrSkill || NetworkTime.time < _localMonostatStrSkillAttackLockUntil)
+        if (IsSkillCastingOrAttackLocked())
             return;
 
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
@@ -396,18 +457,22 @@ public class PlayerCombat : NetworkBehaviour
             pm.SetMovementLock(false);
     }
 
-    public void NotifyPhysicalDamageDealt(float actualDamage)
+    public void NotifyPhysicalDamageDealt(float actualDamage, IDamageReceiver defender = null, Vector3 hitPosition = default)
     {
-        if (actualDamage <= 0f || !IsMonostatStrLifestealActive)
+        if (actualDamage <= 0f)
             return;
 
-        if (_healthSystem == null)
-            _healthSystem = GetComponent<HealthSystem>();
+        if (IsMonostatStrLifestealActive)
+        {
+            if (_healthSystem == null)
+                _healthSystem = GetComponent<HealthSystem>();
 
-        if (_healthSystem == null)
-            return;
+            if (_healthSystem != null)
+                _healthSystem.Heal(actualDamage * MonostatStrSkillLifestealRatio);
+        }
 
-        _healthSystem.Heal(actualDamage * MonostatStrSkillLifestealRatio);
+        if (IsMonostatAgiPoisonCoatingActive && defender != null)
+            ApplyMonostatAgiPoisonStack(defender, hitPosition);
     }
 
     private void TryUseMonostatStrSkill()
@@ -440,6 +505,12 @@ public class PlayerCombat : NetworkBehaviour
             return;
         }
 
+        if (IsMonostatAgi() && _selectedSkillIndex == 0)
+        {
+            TryUseMonostatAgiSkill();
+            return;
+        }
+
         Debug.Log($"[PlayerCombat] Skill slot {_selectedSkillIndex + 1} is not implemented yet.");
     }
 
@@ -462,6 +533,12 @@ public class PlayerCombat : NetworkBehaviour
         BeginMonostatStrSkill();
     }
 
+    [Command]
+    private void CmdUseMonostatAgiSkill()
+    {
+        BeginMonostatAgiSkill();
+    }
+
     private void BeginMonostatStrSkill()
     {
         double now = NetworkTime.time;
@@ -480,6 +557,45 @@ public class PlayerCombat : NetworkBehaviour
             StopCoroutine(_monostatStrSkillRoutine);
 
         _monostatStrSkillRoutine = StartCoroutine(CoMonostatStrSkill());
+    }
+
+    private void TryUseMonostatAgiSkill()
+    {
+        if (!CanUseMonostatAgiSkillInput())
+            return;
+
+        _localMonostatAgiSkillAttackLockUntil = NetworkTime.time + MonostatAgiCastSeconds;
+
+        if (isClient && isLocalPlayer)
+        {
+            if (isServer)
+                BeginMonostatAgiSkill();
+            else
+                CmdUseMonostatAgiSkill();
+            return;
+        }
+
+        BeginMonostatAgiSkill();
+    }
+
+    private void BeginMonostatAgiSkill()
+    {
+        double now = NetworkTime.time;
+        if (!CanStartMonostatAgiSkill(now))
+            return;
+
+        _isCastingMonostatAgiSkill = true;
+        _monostatAgiSkillCastCompleteAt = now + MonostatAgiCastSeconds;
+        _monostatAgiSkillCooldownUntil = now + MonostatAgiCooldownSeconds;
+
+        CancelCurrentAttack();
+        PlaySkillSfx(1);
+        PublishSkillHudState();
+
+        if (_monostatAgiSkillRoutine != null)
+            StopCoroutine(_monostatAgiSkillRoutine);
+
+        _monostatAgiSkillRoutine = StartCoroutine(CoMonostatAgiSkill());
     }
 
     private System.Collections.IEnumerator CoMonostatStrSkill()
@@ -516,6 +632,40 @@ public class PlayerCombat : NetworkBehaviour
         PublishSkillHudState();
     }
 
+    private System.Collections.IEnumerator CoMonostatAgiSkill()
+    {
+        while (NetworkTime.time < _monostatAgiSkillCastCompleteAt)
+            yield return null;
+
+        _isCastingMonostatAgiSkill = false;
+        PublishSkillHudState();
+
+        if (_healthSystem == null)
+            _healthSystem = GetComponent<HealthSystem>();
+
+        if (_healthSystem != null && _healthSystem.IsDead)
+        {
+            _monostatAgiSkillRoutine = null;
+            yield break;
+        }
+
+        if (!IsMonostatAgi())
+        {
+            _monostatAgiSkillRoutine = null;
+            yield break;
+        }
+
+        _monostatAgiSkillActiveUntil = NetworkTime.time + MonostatAgiDurationSeconds;
+        PublishSkillHudState();
+
+        while (NetworkTime.time < _monostatAgiSkillActiveUntil)
+            yield return null;
+
+        _monostatAgiSkillActiveUntil = 0d;
+        _monostatAgiSkillRoutine = null;
+        PublishSkillHudState();
+    }
+
     private bool CanUseSkillInput()
     {
         if (isClient && !isLocalPlayer) return false;
@@ -536,6 +686,14 @@ public class PlayerCombat : NetworkBehaviour
         return true;
     }
 
+    private bool CanUseMonostatAgiSkillInput()
+    {
+        if (!CanUseSkillInput()) return false;
+        if (!IsMonostatAgi()) return false;
+
+        return true;
+    }
+
     private bool CanStartMonostatStrSkill(double now)
     {
         if (_isCastingMonostatStrSkill) return false;
@@ -545,6 +703,27 @@ public class PlayerCombat : NetworkBehaviour
         if (!IsMonostatStr()) return false;
 
         return true;
+    }
+
+    private bool CanStartMonostatAgiSkill(double now)
+    {
+        if (_isCastingMonostatAgiSkill) return false;
+        if (now < _monostatAgiSkillActiveUntil) return false;
+        if (now < _monostatAgiSkillCooldownUntil) return false;
+        if (_healthSystem != null && _healthSystem.IsDead) return false;
+        if (!IsMonostatAgi()) return false;
+
+        return true;
+    }
+
+    private bool IsSkillCastingOrAttackLocked()
+    {
+        if (_isCastingMonostatStrSkill || _isCastingMonostatAgiSkill)
+            return true;
+
+        double now = NetworkTime.time;
+        return now < _localMonostatStrSkillAttackLockUntil ||
+               now < _localMonostatAgiSkillAttackLockUntil;
     }
 
     private bool IsMonostatStr()
@@ -557,6 +736,18 @@ public class PlayerCombat : NetworkBehaviour
 
         Identity identity = _statManager.CurrentIdentity;
         return identity.Type == IdentityType.Monostat && identity.PrimaryStat == StatKind.STR;
+    }
+
+    private bool IsMonostatAgi()
+    {
+        if (_statManager == null)
+            _statManager = GetComponentInParent<StatManager>();
+
+        if (_statManager == null)
+            return false;
+
+        Identity identity = _statManager.CurrentIdentity;
+        return identity.Type == IdentityType.Monostat && identity.PrimaryStat == StatKind.AGI;
     }
 
     private int ResolveAvailableSkillCount()
@@ -585,6 +776,9 @@ public class PlayerCombat : NetworkBehaviour
         if (IsMonostatStr())
             return ResolveMonostatStrDisplayName();
 
+        if (IsMonostatAgi())
+            return ResolveMonostatAgiDisplayName();
+
         if (_statManager == null)
             return string.Empty;
 
@@ -604,17 +798,25 @@ public class PlayerCombat : NetworkBehaviour
 
     private string ResolveMonostatStrDisplayName()
     {
-        if (_monostatStrSkillData != null && !string.IsNullOrWhiteSpace(_monostatStrSkillData.DisplayName))
-            return _monostatStrSkillData.DisplayName;
+        if (MonostatStrSkillData != null && !string.IsNullOrWhiteSpace(MonostatStrSkillData.DisplayName))
+            return MonostatStrSkillData.DisplayName;
 
         return "흡혈";
     }
 
     private float ResolveMonostatStrLifestealRatio()
     {
-        return _monostatStrSkillData != null && _monostatStrSkillData.LifestealRatio > 0f
-            ? _monostatStrSkillData.LifestealRatio
+        return MonostatStrSkillData != null && MonostatStrSkillData.LifestealRatio > 0f
+            ? MonostatStrSkillData.LifestealRatio
             : MonostatStrSkillHealRatio;
+    }
+
+    private string ResolveMonostatAgiDisplayName()
+    {
+        if (MonostatAgiSkillData != null && !string.IsNullOrWhiteSpace(MonostatAgiSkillData.DisplayName))
+            return MonostatAgiSkillData.DisplayName;
+
+        return "독 바르기";
     }
 
     private void ClampSelectedSkillIndex()
@@ -643,8 +845,8 @@ public class PlayerCombat : NetworkBehaviour
 
         if (IsMonostatStr() && _selectedSkillIndex == 0)
         {
-            if (_monostatStrSkillData != null)
-                iconSprite = _monostatStrSkillData.IconSprite;
+            if (MonostatStrSkillData != null)
+                iconSprite = MonostatStrSkillData.IconSprite;
 
             double now = NetworkTime.time;
             if (_isCastingMonostatStrSkill)
@@ -664,6 +866,31 @@ public class PlayerCombat : NetworkBehaviour
                 phase = SkillHudPhase.Cooldown;
                 remaining = Mathf.Max(0f, (float)(_monostatStrSkillCooldownUntil - now));
                 fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatStrCooldownSeconds));
+            }
+        }
+        else if (IsMonostatAgi() && _selectedSkillIndex == 0)
+        {
+            if (MonostatAgiSkillData != null)
+                iconSprite = MonostatAgiSkillData.IconSprite;
+
+            double now = NetworkTime.time;
+            if (_isCastingMonostatAgiSkill)
+            {
+                phase = SkillHudPhase.Casting;
+                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillCastCompleteAt - now));
+                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatAgiCastSeconds));
+            }
+            else if (now < _monostatAgiSkillActiveUntil)
+            {
+                phase = SkillHudPhase.Active;
+                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillActiveUntil - now));
+                fill = 1f;
+            }
+            else if (now < _monostatAgiSkillCooldownUntil)
+            {
+                phase = SkillHudPhase.Cooldown;
+                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillCooldownUntil - now));
+                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatAgiCooldownSeconds));
             }
         }
 
@@ -694,12 +921,109 @@ public class PlayerCombat : NetworkBehaviour
 
     private void PlaySkillSfxLocal(int skillId)
     {
-        AudioClip clip = skillId == 0 && _monostatStrSkillData != null ? _monostatStrSkillData.UseSfx : null;
+        JobSkillData skillData = ResolveSkillDataForSfx(skillId);
+        AudioClip clip = skillData != null ? skillData.UseSfx : null;
         if (clip == null || _audioSource == null)
             return;
 
-        float volume = skillId == 0 && _monostatStrSkillData != null ? _monostatStrSkillData.SfxVolume : 1f;
+        float volume = skillData != null ? skillData.SfxVolume : 1f;
         _audioSource.PlayOneShot(clip, volume);
+    }
+
+    private JobSkillData ResolveSkillDataForSfx(int skillId)
+    {
+        if (skillId == 0)
+            return MonostatStrSkillData;
+
+        if (skillId == 1)
+            return MonostatAgiSkillData;
+
+        return null;
+    }
+
+    private void ApplyMonostatAgiPoisonStack(IDamageReceiver target, Vector3 hitPosition)
+    {
+        if (!NetworkServer.active)
+            return;
+
+        if (!IsValidPoisonTarget(target))
+            return;
+
+        PoisonStackState state = null;
+        for (int i = 0; i < _monostatAgiPoisonStacks.Count; i++)
+        {
+            if (_monostatAgiPoisonStacks[i].Target == target)
+            {
+                state = _monostatAgiPoisonStacks[i];
+                break;
+            }
+        }
+
+        if (state == null)
+        {
+            state = new PoisonStackState { Target = target };
+            _monostatAgiPoisonStacks.Add(state);
+        }
+
+        state.StackCount = Mathf.Min(state.StackCount + 1, MonostatAgiPoisonMaxStackCount);
+        state.ExpiresAt = NetworkTime.time + MonostatAgiPoisonStackDurationSecondsValue;
+        state.LastHitPosition = hitPosition;
+
+        if (_monostatAgiPoisonRoutine == null)
+            _monostatAgiPoisonRoutine = StartCoroutine(CoMonostatAgiPoisonTick());
+    }
+
+    private System.Collections.IEnumerator CoMonostatAgiPoisonTick()
+    {
+        while (_monostatAgiPoisonStacks.Count > 0)
+        {
+            double now = NetworkTime.time;
+            float deltaTime = Time.deltaTime;
+            float damagePerStack = MonostatAgiPoisonDamagePerStackPerSecondValue;
+
+            for (int i = _monostatAgiPoisonStacks.Count - 1; i >= 0; i--)
+            {
+                PoisonStackState state = _monostatAgiPoisonStacks[i];
+                if (state == null || !IsValidPoisonTarget(state.Target) || now >= state.ExpiresAt)
+                {
+                    _monostatAgiPoisonStacks.RemoveAt(i);
+                    continue;
+                }
+
+                float damage = state.StackCount * damagePerStack * deltaTime;
+                if (damage <= 0f)
+                    continue;
+
+                if (_healthSystem == null)
+                    _healthSystem = GetComponent<HealthSystem>();
+
+                if (state.Target is IDamageReceiverWithContext ctx)
+                    ctx.ApplyDamage(damage, DamageSource.Poison, 0f, _healthSystem, state.LastHitPosition);
+                else
+                    state.Target.ApplyDamage(damage, DamageSource.Poison, state.LastHitPosition);
+            }
+
+            yield return null;
+        }
+
+        _monostatAgiPoisonRoutine = null;
+    }
+
+    private static bool IsValidPoisonTarget(IDamageReceiver target)
+    {
+        if (target == null)
+            return false;
+
+        if (target is MonoBehaviour mb && mb == null)
+            return false;
+
+        if (target.CurrentHp <= 0f)
+            return false;
+
+        if (target is HealthSystem health && health.IsDead)
+            return false;
+
+        return true;
     }
 
     private void HandleRevived()

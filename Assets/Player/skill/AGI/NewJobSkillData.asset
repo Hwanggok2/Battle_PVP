@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
   _displayName: Skill
   _iconSprite: {fileID: 0}
-  _overlaySprite: {fileID: 0}
   _castSeconds: 0
   _durationSeconds: 0
   _cooldownSeconds: 0
   _lifestealRatio: 0
+  _poisonMaxStacks: 0
+  _poisonDamagePerStackPerSecond: 0
+  _poisonStackDurationSeconds: 0
   _useSfx: {fileID: 0}
   _sfxVolume: 0.9

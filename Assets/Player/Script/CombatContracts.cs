@@ -8,7 +8,8 @@ namespace BattlePvp.Combat
     public enum DamageSource
     {
         Physical = 0,
-        Thorns = 1
+        Thorns = 1,
+        Poison = 2
     }
 
     /// <summary>

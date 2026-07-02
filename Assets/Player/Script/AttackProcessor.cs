@@ -187,7 +187,7 @@ public sealed class AttackProcessor : MonoBehaviour
                 _playerCombat = GetComponent<PlayerCombat>();
 
             if (_playerCombat != null)
-                _playerCombat.NotifyPhysicalDamageDealt(actualDamage);
+                _playerCombat.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
         }
     }
 
