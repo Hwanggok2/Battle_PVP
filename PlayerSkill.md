@@ -14,6 +14,12 @@
 #### Preset Change Bonus
 - When changing preset, the bonus is decided by the highest stat in the target preset.
 - The cooldown is long, but the skill should be powerful when used with good situational judgment.
+- While a STR, AGI, or DEF preset bonus is active, a stat-specific aura material can be shown around the character.
+- CON aura is tied to shield state instead of a fixed timer:
+  - If shield is `1` or higher, CON aura is shown.
+  - If another timed preset bonus aura is active, that timed aura has priority.
+  - When the timed aura ends, CON aura is shown if shield still exists.
+  - CON aura disappears when shield drops below `1`.
 
 ##### STR Target Preset
 - For 5 seconds:
@@ -23,7 +29,7 @@
 ##### AGI Target Preset
 - For 4 seconds:
   - Move speed is increased by `15%`.
-  - Attack speed is increased by `20%`.
+  - Attack speed is increased by `35%`.
 
 ##### CON Target Preset
 - Gain shield from the existing preset-change shield rules.

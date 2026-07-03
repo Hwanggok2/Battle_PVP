@@ -44,7 +44,7 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors:
-    - _Aura_Color: {r: 0.8805029, g: 0, b: 0, a: 1}
+    - _Aura_Color: {r: 4, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &2764439093753986078

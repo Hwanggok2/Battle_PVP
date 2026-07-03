@@ -59,7 +59,7 @@ namespace BattlePvp.Combat
         [Min(0f)] [SerializeField] private float _strategistStrAttackBonusDurationSeconds = 5f;
         [Min(0f)] [SerializeField] private float _strategistAgiBonusDurationSeconds = 4f;
         [Min(0f)] [SerializeField] private float _strategistAgiMoveMultiplier = 1.15f;
-        [Min(0f)] [SerializeField] private float _strategistAgiAttackSpeedMultiplier = 1.2f;
+        [Min(0f)] [SerializeField] private float _strategistAgiAttackSpeedMultiplier = 1.35f;
         [Range(0f, 1f)] [SerializeField] private float _strategistConTargetMaxHpShieldRatio = 0.2f;
         [Min(0f)] [SerializeField] private float _strategistDefInvulnerableSeconds = 2f;
 

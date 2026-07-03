@@ -58,8 +58,11 @@ public class PlayerCombat : NetworkBehaviour
     [Header("Job Skill Hit Boxes")]
     [SerializeField] private KickSkillHitBox _kickHitBox;
 
-    [Header("Strategist STR Aura")]
+    [Header("Strategist Preset Aura")]
     [SerializeField] private Material _strategistStrAuraMaterial;
+    [SerializeField] private Material _strategistAgiAuraMaterial;
+    [SerializeField] private Material _strategistConAuraMaterial;
+    [SerializeField] private Material _strategistDefAuraMaterial;
     [SerializeField] private AuraPrimitiveShape _strategistStrAuraShape = AuraPrimitiveShape.Sphere;
     [SerializeField] private bool _fitStrategistStrAuraToPlayer = true;
     [SerializeField] private Vector3 _strategistStrAuraScale = new Vector3(1.25f, 1.15f, 1.25f);
@@ -130,6 +133,10 @@ public class PlayerCombat : NetworkBehaviour
     private double _attackSpeedBonusUntil;
     private GameObject _strategistStrAuraObject;
     private Material _runtimeStrategistStrAuraMaterial;
+    private Material _activeStrategistAuraMaterialSource;
+    private StatKind _activeStrategistAuraStat = StatKind.STR;
+    private StatKind _timedStrategistAuraStat = StatKind.STR;
+    private double _strategistPresetAuraUntil;
     private StatContainer _runtimeStrategistTargetPreset;
     private bool _hasRuntimeStrategistTargetPreset;
     private StatContainer _strategistSwapReturnPreset;
@@ -1120,6 +1127,9 @@ public class PlayerCombat : NetworkBehaviour
                 return Mathf.Max(0f, targetMaxHp * data.StrategistConTargetMaxHpShieldRatio);
             case StatKind.DEF:
                 _healthSystem?.SetSkillInvulnerable(data.StrategistDefInvulnerableSeconds);
+                ShowStrategistPresetAuraLocal(StatKind.DEF, data.StrategistDefInvulnerableSeconds);
+                if (NetworkServer.active)
+                    RpcShowStrategistPresetAura(StatKind.DEF, data.StrategistDefInvulnerableSeconds);
                 break;
         }
 
@@ -1136,7 +1146,7 @@ public class PlayerCombat : NetworkBehaviour
     {
         _attackPowerBonusMultiplier = Mathf.Max(1f, attackMultiplier);
         _attackPowerBonusUntil = SkillTime + Mathf.Max(0f, durationSeconds);
-        UpdateStrategistStrAura();
+        ShowStrategistPresetAuraLocal(StatKind.STR, durationSeconds);
     }
 
     private void ApplyWeaponSwapBonus(JobSkillData data)
@@ -1159,11 +1169,18 @@ public class PlayerCombat : NetworkBehaviour
         ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
     }
 
+    [ClientRpc]
+    private void RpcShowStrategistPresetAura(StatKind statKind, float durationSeconds)
+    {
+        ShowStrategistPresetAuraLocal(statKind, durationSeconds);
+    }
+
     private void ApplyAgiPresetBonusLocal(float moveMultiplier, float attackSpeedMultiplier, float durationSeconds)
     {
         ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
         _attackSpeedBonusMultiplier = attackSpeedMultiplier;
         _attackSpeedBonusUntil = SkillTime + Mathf.Max(0f, durationSeconds);
+        ShowStrategistPresetAuraLocal(StatKind.AGI, durationSeconds);
     }
 
     private void ApplyMoveBonusLocal(float moveMultiplier, float durationSeconds)
@@ -1171,13 +1188,26 @@ public class PlayerCombat : NetworkBehaviour
         _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, durationSeconds);
     }
 
+    private void ShowStrategistPresetAuraLocal(StatKind statKind, float durationSeconds)
+    {
+        float clampedDuration = Mathf.Max(0f, durationSeconds);
+        if (clampedDuration <= 0f)
+            return;
+
+        _timedStrategistAuraStat = statKind;
+        _strategistPresetAuraUntil = SkillTime + clampedDuration;
+        UpdateStrategistStrAura();
+    }
+
     private void UpdateStrategistStrAura()
     {
-        bool active = SkillTime < _attackPowerBonusUntil;
+        bool active = TryResolveStrategistAuraStat(out StatKind auraStat);
         SetStrategistStrAuraVisible(active);
         if (!active || _strategistStrAuraObject == null)
             return;
 
+        _activeStrategistAuraStat = auraStat;
+        ApplyStrategistPresetAuraMaterial();
         _strategistStrAuraObject.transform.localPosition = ResolveStrategistStrAuraLocalPosition();
         _strategistStrAuraObject.transform.localScale = ResolveStrategistStrAuraLocalScale();
         if (_runtimeStrategistStrAuraMaterial != null)
@@ -1186,6 +1216,24 @@ public class PlayerCombat : NetworkBehaviour
             if (_runtimeStrategistStrAuraMaterial.HasProperty("_Pulse"))
                 _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", pulse);
         }
+    }
+
+    private bool TryResolveStrategistAuraStat(out StatKind auraStat)
+    {
+        if (SkillTime < _strategistPresetAuraUntil)
+        {
+            auraStat = _timedStrategistAuraStat;
+            return true;
+        }
+
+        if (_healthSystem != null && _healthSystem.CurrentShield >= 1f)
+        {
+            auraStat = StatKind.CON;
+            return true;
+        }
+
+        auraStat = StatKind.STR;
+        return false;
     }
 
     private void SetStrategistStrAuraVisible(bool visible)
@@ -1217,27 +1265,61 @@ public class PlayerCombat : NetworkBehaviour
         Renderer auraRenderer = aura.GetComponent<Renderer>();
         if (auraRenderer != null)
         {
-            Material source = _strategistStrAuraMaterial;
-            if (source == null)
-            {
-                Shader shader = Shader.Find("BattlePVP/FresnelAura");
-                if (shader != null)
-                    _runtimeStrategistStrAuraMaterial = new Material(shader);
-            }
-
-            if (_runtimeStrategistStrAuraMaterial == null && source != null)
-                _runtimeStrategistStrAuraMaterial = new Material(source);
-
-            if (_runtimeStrategistStrAuraMaterial != null)
-            {
-                auraRenderer.material = _runtimeStrategistStrAuraMaterial;
-            }
-
             auraRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             auraRenderer.receiveShadows = false;
+            ApplyStrategistPresetAuraMaterial();
         }
 
         _strategistStrAuraObject.SetActive(false);
+    }
+
+    private void ApplyStrategistPresetAuraMaterial()
+    {
+        if (_strategistStrAuraObject == null)
+            return;
+
+        Renderer auraRenderer = _strategistStrAuraObject.GetComponent<Renderer>();
+        if (auraRenderer == null)
+            return;
+
+        Material source = ResolveStrategistPresetAuraMaterial(_activeStrategistAuraStat);
+        if (_runtimeStrategistStrAuraMaterial != null && _activeStrategistAuraMaterialSource == source)
+        {
+            auraRenderer.material = _runtimeStrategistStrAuraMaterial;
+            return;
+        }
+
+        if (_runtimeStrategistStrAuraMaterial != null)
+        {
+            Destroy(_runtimeStrategistStrAuraMaterial);
+            _runtimeStrategistStrAuraMaterial = null;
+        }
+
+        _activeStrategistAuraMaterialSource = source;
+        if (source != null)
+        {
+            _runtimeStrategistStrAuraMaterial = new Material(source);
+        }
+        else
+        {
+            Shader shader = Shader.Find("BattlePVP/FresnelAura");
+            if (shader != null)
+                _runtimeStrategistStrAuraMaterial = new Material(shader);
+        }
+
+        if (_runtimeStrategistStrAuraMaterial != null)
+            auraRenderer.material = _runtimeStrategistStrAuraMaterial;
+    }
+
+    private Material ResolveStrategistPresetAuraMaterial(StatKind statKind)
+    {
+        return statKind switch
+        {
+            StatKind.AGI => _strategistAgiAuraMaterial != null ? _strategistAgiAuraMaterial : _strategistStrAuraMaterial,
+            StatKind.CON => _strategistConAuraMaterial != null ? _strategistConAuraMaterial : _strategistStrAuraMaterial,
+            StatKind.DEF => _strategistDefAuraMaterial != null ? _strategistDefAuraMaterial : _strategistStrAuraMaterial,
+            _ => _strategistStrAuraMaterial
+        };
     }
 
     private Vector3 ResolveStrategistStrAuraLocalPosition()
