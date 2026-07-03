@@ -47,7 +47,7 @@
   - The max HP increase shield does not apply because max HP decreased.
 
 ##### DEF Target Preset
-- Gain invincibility for 2 seconds.
+- Gain invincibility for 5 seconds.
 
 ### Polymath
 - Polymath has 2 skills.

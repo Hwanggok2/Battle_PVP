@@ -65,6 +65,7 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private Material _strategistDefAuraMaterial;
     [SerializeField] private AuraPrimitiveShape _strategistStrAuraShape = AuraPrimitiveShape.Sphere;
     [SerializeField] private bool _fitStrategistStrAuraToPlayer = true;
+    [SerializeField] private bool _preferCharacterControllerAuraBounds = true;
     [SerializeField] private Vector3 _strategistStrAuraScale = new Vector3(1.25f, 1.15f, 1.25f);
     [SerializeField] private Vector3 _strategistStrAuraOffset = Vector3.zero;
 
@@ -132,11 +133,14 @@ public class PlayerCombat : NetworkBehaviour
     private float _attackSpeedBonusMultiplier = 1f;
     private double _attackSpeedBonusUntil;
     private GameObject _strategistStrAuraObject;
+    private Renderer _strategistStrAuraRenderer;
     private Material _runtimeStrategistStrAuraMaterial;
     private Material _activeStrategistAuraMaterialSource;
     private StatKind _activeStrategistAuraStat = StatKind.STR;
     private StatKind _timedStrategistAuraStat = StatKind.STR;
     private double _strategistPresetAuraUntil;
+    private Bounds _cachedStrategistAuraBounds;
+    private bool _hasCachedStrategistAuraBounds;
     private StatContainer _runtimeStrategistTargetPreset;
     private bool _hasRuntimeStrategistTargetPreset;
     private StatContainer _strategistSwapReturnPreset;
@@ -1265,6 +1269,7 @@ public class PlayerCombat : NetworkBehaviour
         Renderer auraRenderer = aura.GetComponent<Renderer>();
         if (auraRenderer != null)
         {
+            _strategistStrAuraRenderer = auraRenderer;
             auraRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             auraRenderer.receiveShadows = false;
             ApplyStrategistPresetAuraMaterial();
@@ -1275,19 +1280,12 @@ public class PlayerCombat : NetworkBehaviour
 
     private void ApplyStrategistPresetAuraMaterial()
     {
-        if (_strategistStrAuraObject == null)
-            return;
-
-        Renderer auraRenderer = _strategistStrAuraObject.GetComponent<Renderer>();
-        if (auraRenderer == null)
+        if (_strategistStrAuraRenderer == null)
             return;
 
         Material source = ResolveStrategistPresetAuraMaterial(_activeStrategistAuraStat);
         if (_runtimeStrategistStrAuraMaterial != null && _activeStrategistAuraMaterialSource == source)
-        {
-            auraRenderer.material = _runtimeStrategistStrAuraMaterial;
             return;
-        }
 
         if (_runtimeStrategistStrAuraMaterial != null)
         {
@@ -1308,7 +1306,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (_runtimeStrategistStrAuraMaterial != null)
-            auraRenderer.material = _runtimeStrategistStrAuraMaterial;
+            _strategistStrAuraRenderer.sharedMaterial = _runtimeStrategistStrAuraMaterial;
     }
 
     private Material ResolveStrategistPresetAuraMaterial(StatKind statKind)
@@ -1351,16 +1349,25 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool TryGetPlayerRenderBounds(out Bounds bounds)
     {
-        bounds = default;
-        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        if (_preferCharacterControllerAuraBounds && TryGetCharacterControllerAuraBounds(out bounds))
+            return true;
+
+        if (_hasCachedStrategistAuraBounds)
+        {
+            bounds = _cachedStrategistAuraBounds;
+            return true;
+        }
+
+        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
         bool found = false;
+        bounds = default;
 
         foreach (Renderer rendererComponent in renderers)
         {
             if (rendererComponent == null || rendererComponent.gameObject == _strategistStrAuraObject)
                 continue;
 
-            if (rendererComponent is ParticleSystemRenderer)
+            if (rendererComponent.GetComponentInParent<Canvas>() != null)
                 continue;
 
             if (!found)
@@ -1374,7 +1381,27 @@ public class PlayerCombat : NetworkBehaviour
             }
         }
 
+        _cachedStrategistAuraBounds = bounds;
+        _hasCachedStrategistAuraBounds = found;
         return found;
+    }
+
+    private bool TryGetCharacterControllerAuraBounds(out Bounds bounds)
+    {
+        CharacterController characterController = GetComponent<CharacterController>();
+        if (characterController == null)
+        {
+            bounds = default;
+            return false;
+        }
+
+        Vector3 worldCenter = transform.TransformPoint(characterController.center);
+        Vector3 scale = transform.lossyScale;
+        float radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float radius = Mathf.Max(0.01f, characterController.radius * radiusScale);
+        float height = Mathf.Max(radius * 2f, characterController.height * Mathf.Abs(scale.y));
+        bounds = new Bounds(worldCenter, new Vector3(radius * 2f, height, radius * 2f));
+        return true;
     }
 
     private static PrimitiveType ToPrimitiveType(AuraPrimitiveShape shape)

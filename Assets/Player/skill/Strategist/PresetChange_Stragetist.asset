@@ -56,7 +56,7 @@ MonoBehaviour:
   _strategistAgiMoveMultiplier: 1.15
   _strategistAgiAttackSpeedMultiplier: 1.35
   _strategistConTargetMaxHpShieldRatio: 0.2
-  _strategistDefInvulnerableSeconds: 2
+  _strategistDefInvulnerableSeconds: 5
   _minimumBowChargeSeconds: 0.25
   _maximumBowDamageChargeSeconds: 1
   _minimumBowDamageMultiplier: 0.4
