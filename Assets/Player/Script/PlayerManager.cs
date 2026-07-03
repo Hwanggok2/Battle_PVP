@@ -37,6 +37,8 @@ public class PlayerManager : NetworkBehaviour
     private Rigidbody rb; // Rigidbody 참조 추가 (요청사항 반영)
     private BattlePvp.CameraLogic.FollowCamera followCamera; // 카메라 참조 추가
 
+    private PlayerInput _playerInput;
+
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private Vector2 inputVector; // 신형 시스템에서 받을 Vector2 값
     [SerializeField] private float velocityY;
@@ -87,9 +89,34 @@ public class PlayerManager : NetworkBehaviour
 
     public void SetSkillMovementLock(bool locked)
     {
+        bool wasLocked = _skillMovementLocked;
         _skillMovementLocked = locked;
         if (locked)
+        {
             inputVector = Vector2.zero;
+        }
+        else if (wasLocked)
+        {
+            RefreshMoveInputFromCurrentAction();
+        }
+    }
+
+    public void RefreshMoveInputFromCurrentAction()
+    {
+        if (isClient && !isLocalPlayer)
+            return;
+
+        if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive)
+        {
+            inputVector = Vector2.zero;
+            return;
+        }
+
+        if (_playerInput == null)
+            _playerInput = GetComponent<PlayerInput>();
+
+        InputAction moveAction = _playerInput != null ? _playerInput.actions.FindAction("Move", false) : null;
+        inputVector = moveAction != null && moveAction.enabled ? moveAction.ReadValue<Vector2>() : Vector2.zero;
     }
 
     public void MoveBySkill(Vector3 direction, float distance, float durationSeconds)
@@ -128,6 +155,7 @@ public class PlayerManager : NetworkBehaviour
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
+        _playerInput = GetComponent<PlayerInput>();
         _healthSystem = GetComponent<HealthSystem>();
         if (controller != null)
         {
