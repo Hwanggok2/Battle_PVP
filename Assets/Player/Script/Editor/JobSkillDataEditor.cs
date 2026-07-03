@@ -34,12 +34,21 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _targetPreset;
     private SerializedProperty _maxHealthIncreaseShieldRatio;
     private SerializedProperty _shieldDurationSeconds;
+    private SerializedProperty _strategistStrNextAttackMultiplier;
+    private SerializedProperty _strategistAgiBonusDurationSeconds;
+    private SerializedProperty _strategistAgiMoveMultiplier;
+    private SerializedProperty _strategistAgiAttackSpeedMultiplier;
+    private SerializedProperty _strategistConTargetMaxHpShieldRatio;
+    private SerializedProperty _strategistDefInvulnerableSeconds;
     private SerializedProperty _minimumBowChargeSeconds;
     private SerializedProperty _maximumBowDamageChargeSeconds;
     private SerializedProperty _minimumBowDamageMultiplier;
     private SerializedProperty _maximumBowDamageMultiplier;
     private SerializedProperty _bowChargeMoveMultiplier;
     private SerializedProperty _bowRange;
+    private SerializedProperty _weaponSwapMoveBonusDurationSeconds;
+    private SerializedProperty _weaponSwapMoveMultiplier;
+    private SerializedProperty _weaponSwapNextAttackMultiplier;
 
     private void OnEnable()
     {
@@ -71,12 +80,21 @@ public sealed class JobSkillDataEditor : Editor
         _targetPreset = serializedObject.FindProperty("_targetPreset");
         _maxHealthIncreaseShieldRatio = serializedObject.FindProperty("_maxHealthIncreaseShieldRatio");
         _shieldDurationSeconds = serializedObject.FindProperty("_shieldDurationSeconds");
+        _strategistStrNextAttackMultiplier = serializedObject.FindProperty("_strategistStrNextAttackMultiplier");
+        _strategistAgiBonusDurationSeconds = serializedObject.FindProperty("_strategistAgiBonusDurationSeconds");
+        _strategistAgiMoveMultiplier = serializedObject.FindProperty("_strategistAgiMoveMultiplier");
+        _strategistAgiAttackSpeedMultiplier = serializedObject.FindProperty("_strategistAgiAttackSpeedMultiplier");
+        _strategistConTargetMaxHpShieldRatio = serializedObject.FindProperty("_strategistConTargetMaxHpShieldRatio");
+        _strategistDefInvulnerableSeconds = serializedObject.FindProperty("_strategistDefInvulnerableSeconds");
         _minimumBowChargeSeconds = serializedObject.FindProperty("_minimumBowChargeSeconds");
         _maximumBowDamageChargeSeconds = serializedObject.FindProperty("_maximumBowDamageChargeSeconds");
         _minimumBowDamageMultiplier = serializedObject.FindProperty("_minimumBowDamageMultiplier");
         _maximumBowDamageMultiplier = serializedObject.FindProperty("_maximumBowDamageMultiplier");
         _bowChargeMoveMultiplier = serializedObject.FindProperty("_bowChargeMoveMultiplier");
         _bowRange = serializedObject.FindProperty("_bowRange");
+        _weaponSwapMoveBonusDurationSeconds = serializedObject.FindProperty("_weaponSwapMoveBonusDurationSeconds");
+        _weaponSwapMoveMultiplier = serializedObject.FindProperty("_weaponSwapMoveMultiplier");
+        _weaponSwapNextAttackMultiplier = serializedObject.FindProperty("_weaponSwapNextAttackMultiplier");
     }
 
     public override void OnInspectorGUI()
@@ -181,6 +199,19 @@ public sealed class JobSkillDataEditor : Editor
                 break;
 
             case JobSkillKind.StrategistPresetChange:
+                DrawSectionWithLabels(
+                    "Preset Change",
+                    (_targetPreset, "Target Preset"),
+                    (_maxHealthIncreaseShieldRatio, "Max HP Increase Shield Ratio"),
+                    (_shieldDurationSeconds, "Shield Duration Seconds"),
+                    (_strategistStrNextAttackMultiplier, "STR Next Attack Multiplier"),
+                    (_strategistAgiBonusDurationSeconds, "AGI Bonus Duration Seconds"),
+                    (_strategistAgiMoveMultiplier, "AGI Move Multiplier"),
+                    (_strategistAgiAttackSpeedMultiplier, "AGI Attack Speed Multiplier"),
+                    (_strategistConTargetMaxHpShieldRatio, "CON Target Max HP Shield Ratio"),
+                    (_strategistDefInvulnerableSeconds, "DEF Invulnerable Seconds"));
+                break;
+
             case JobSkillKind.PolymathPresetChange:
                 DrawSectionWithLabels(
                     "Preset Change",
@@ -197,7 +228,10 @@ public sealed class JobSkillDataEditor : Editor
                     (_minimumBowDamageMultiplier, "Minimum Damage Multiplier"),
                     (_maximumBowDamageMultiplier, "Maximum Damage Multiplier"),
                     (_bowChargeMoveMultiplier, "Charge Move Multiplier"),
-                    (_bowRange, "Range"));
+                    (_bowRange, "Range"),
+                    (_weaponSwapMoveBonusDurationSeconds, "Swap Move Bonus Duration Seconds"),
+                    (_weaponSwapMoveMultiplier, "Swap Move Multiplier"),
+                    (_weaponSwapNextAttackMultiplier, "Swap Next Attack Multiplier"));
                 break;
 
             default:

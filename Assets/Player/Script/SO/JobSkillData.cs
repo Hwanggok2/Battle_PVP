@@ -55,6 +55,12 @@ namespace BattlePvp.Combat
         [SerializeField] private BattlePvp.Stats.StatContainer _targetPreset;
         [Range(0f, 1f)] [SerializeField] private float _maxHealthIncreaseShieldRatio = 0.5f;
         [Min(0f)] [SerializeField] private float _shieldDurationSeconds = 20f;
+        [Min(0f)] [SerializeField] private float _strategistStrNextAttackMultiplier = 1.2f;
+        [Min(0f)] [SerializeField] private float _strategistAgiBonusDurationSeconds = 4f;
+        [Min(0f)] [SerializeField] private float _strategistAgiMoveMultiplier = 1.15f;
+        [Min(0f)] [SerializeField] private float _strategistAgiAttackSpeedMultiplier = 1.2f;
+        [Range(0f, 1f)] [SerializeField] private float _strategistConTargetMaxHpShieldRatio = 0.2f;
+        [Min(0f)] [SerializeField] private float _strategistDefInvulnerableSeconds = 2f;
 
         [Min(0f)] [SerializeField] private float _minimumBowChargeSeconds = 0.25f;
         [Min(0f)] [SerializeField] private float _maximumBowDamageChargeSeconds = 1f;
@@ -62,6 +68,9 @@ namespace BattlePvp.Combat
         [Min(0f)] [SerializeField] private float _maximumBowDamageMultiplier = 0.75f;
         [Range(0f, 1f)] [SerializeField] private float _bowChargeMoveMultiplier = 0.25f;
         [Min(0f)] [SerializeField] private float _bowRange = 30f;
+        [Min(0f)] [SerializeField] private float _weaponSwapMoveBonusDurationSeconds = 3f;
+        [Min(0f)] [SerializeField] private float _weaponSwapMoveMultiplier = 1.2f;
+        [Min(0f)] [SerializeField] private float _weaponSwapNextAttackMultiplier = 1.3f;
 
         [SerializeField] private AudioClip _useSfx;
         [Range(0f, 1f)] [SerializeField] private float _sfxVolume = 0.9f;
@@ -92,12 +101,21 @@ namespace BattlePvp.Combat
         public BattlePvp.Stats.StatContainer TargetPreset => _targetPreset;
         public float MaxHealthIncreaseShieldRatio => _maxHealthIncreaseShieldRatio;
         public float ShieldDurationSeconds => _shieldDurationSeconds;
+        public float StrategistStrNextAttackMultiplier => _strategistStrNextAttackMultiplier;
+        public float StrategistAgiBonusDurationSeconds => _strategistAgiBonusDurationSeconds;
+        public float StrategistAgiMoveMultiplier => _strategistAgiMoveMultiplier;
+        public float StrategistAgiAttackSpeedMultiplier => _strategistAgiAttackSpeedMultiplier;
+        public float StrategistConTargetMaxHpShieldRatio => _strategistConTargetMaxHpShieldRatio;
+        public float StrategistDefInvulnerableSeconds => _strategistDefInvulnerableSeconds;
         public float MinimumBowChargeSeconds => _minimumBowChargeSeconds;
         public float MaximumBowDamageChargeSeconds => _maximumBowDamageChargeSeconds;
         public float MinimumBowDamageMultiplier => _minimumBowDamageMultiplier;
         public float MaximumBowDamageMultiplier => _maximumBowDamageMultiplier;
         public float BowChargeMoveMultiplier => _bowChargeMoveMultiplier;
         public float BowRange => _bowRange;
+        public float WeaponSwapMoveBonusDurationSeconds => _weaponSwapMoveBonusDurationSeconds;
+        public float WeaponSwapMoveMultiplier => _weaponSwapMoveMultiplier;
+        public float WeaponSwapNextAttackMultiplier => _weaponSwapNextAttackMultiplier;
         public AudioClip UseSfx => _useSfx;
         public float SfxVolume => _sfxVolume;
     }

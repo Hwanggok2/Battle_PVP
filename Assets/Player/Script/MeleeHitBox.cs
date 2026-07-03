@@ -327,7 +327,8 @@ namespace BattlePvp.Combat
             if (_playerCombat != null && !_playerCombat.TryRegisterHitTarget(defender))
                 return;
 
-            _attackProcessor.ProcessHit(_currentAttackData, defenderStats, defender, hitPosition, bodyPartMultiplier: bodyPartMultiplier);
+            float attackBuffMultiplier = _playerCombat != null ? _playerCombat.ConsumeNextAttackDamageMultiplier() : 1f;
+            _attackProcessor.ProcessHit(_currentAttackData, defenderStats, defender, hitPosition, bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier);
             _hitTargets.Add(defender);
         }
 

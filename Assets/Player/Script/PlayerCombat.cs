@@ -108,6 +108,9 @@ public class PlayerCombat : NetworkBehaviour
     private Coroutine _kickHitBoxRoutine;
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
     private double _bowChargeStartedAt = -1d;
+    private float _nextAttackDamageMultiplier = 1f;
+    private float _attackSpeedBonusMultiplier = 1f;
+    private double _attackSpeedBonusUntil;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
@@ -381,6 +384,9 @@ public class PlayerCombat : NetworkBehaviour
                 else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f;
             }
 
+            if (SkillTime < _attackSpeedBonusUntil)
+                baseAs *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
+
             _currentAttackSpeed = baseAs;
             if (animator != null)
                 animator.speed = _currentAttackSpeed;
@@ -463,6 +469,13 @@ public class PlayerCombat : NetworkBehaviour
 
         _hitTargetsThisSwing.Add(target);
         return true;
+    }
+
+    public float ConsumeNextAttackDamageMultiplier()
+    {
+        float multiplier = Mathf.Max(1f, _nextAttackDamageMultiplier);
+        _nextAttackDamageMultiplier = 1f;
+        return multiplier;
     }
 
     private System.Collections.IEnumerator CoComboMonitor(int index)
@@ -948,6 +961,7 @@ public class PlayerCombat : NetworkBehaviour
                 break;
             case JobSkillKind.PolymathWeaponSwap:
                 _isBowEquipped = !_isBowEquipped;
+                ApplyWeaponSwapBonus(data);
                 break;
         }
     }
@@ -992,15 +1006,98 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (_statManager == null || _healthSystem == null)
             return;
+
+        StatKind targetDominantStat = ResolveDominantStat(data.TargetPreset);
         float oldMax = _healthSystem.MaxHp;
         float oldCurrent = _healthSystem.CurrentHp;
         _statManager.ApplyStats(data.TargetPreset, true);
         float newMax = _healthSystem.MaxHp;
-        float shield = newMax > oldMax
-            ? (newMax - oldMax) * data.MaxHealthIncreaseShieldRatio
-            : Mathf.Max(0f, oldCurrent - newMax);
-        _healthSystem.SetCurrentHp(Mathf.Min(oldCurrent, newMax));
+        float newCurrent = Mathf.Min(oldCurrent, newMax);
+        float shield = Mathf.Max(0f, oldCurrent - newCurrent);
+        if (data.SkillKind == JobSkillKind.StrategistPresetChange)
+            shield += ApplyStrategistPresetBonus(data, targetDominantStat, newMax);
+        _healthSystem.SetCurrentHp(newCurrent);
         _healthSystem.GrantDecayingShield(shield, data.ShieldDurationSeconds);
+    }
+
+    private float ApplyStrategistPresetBonus(JobSkillData data, StatKind targetDominantStat, float targetMaxHp)
+    {
+        switch (targetDominantStat)
+        {
+            case StatKind.STR:
+                _nextAttackDamageMultiplier = Mathf.Max(_nextAttackDamageMultiplier, data.StrategistStrNextAttackMultiplier);
+                break;
+            case StatKind.AGI:
+                ApplyAgiPresetBonusLocal(data.StrategistAgiMoveMultiplier, data.StrategistAgiAttackSpeedMultiplier, data.StrategistAgiBonusDurationSeconds);
+                if (NetworkServer.active)
+                    RpcApplyAgiPresetBonus(data.StrategistAgiMoveMultiplier, data.StrategistAgiAttackSpeedMultiplier, data.StrategistAgiBonusDurationSeconds);
+                break;
+            case StatKind.CON:
+                return Mathf.Max(0f, targetMaxHp * data.StrategistConTargetMaxHpShieldRatio);
+            case StatKind.DEF:
+                _healthSystem?.SetSkillInvulnerable(data.StrategistDefInvulnerableSeconds);
+                break;
+        }
+
+        return 0f;
+    }
+
+    private void ApplyWeaponSwapBonus(JobSkillData data)
+    {
+        ApplyMoveBonusLocal(data.WeaponSwapMoveMultiplier, data.WeaponSwapMoveBonusDurationSeconds);
+        if (NetworkServer.active)
+            RpcApplyMoveBonus(data.WeaponSwapMoveMultiplier, data.WeaponSwapMoveBonusDurationSeconds);
+        _nextAttackDamageMultiplier = Mathf.Max(_nextAttackDamageMultiplier, data.WeaponSwapNextAttackMultiplier);
+    }
+
+    [ClientRpc]
+    private void RpcApplyAgiPresetBonus(float moveMultiplier, float attackSpeedMultiplier, float durationSeconds)
+    {
+        ApplyAgiPresetBonusLocal(moveMultiplier, attackSpeedMultiplier, durationSeconds);
+    }
+
+    [ClientRpc]
+    private void RpcApplyMoveBonus(float moveMultiplier, float durationSeconds)
+    {
+        ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
+    }
+
+    private void ApplyAgiPresetBonusLocal(float moveMultiplier, float attackSpeedMultiplier, float durationSeconds)
+    {
+        ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
+        _attackSpeedBonusMultiplier = attackSpeedMultiplier;
+        _attackSpeedBonusUntil = SkillTime + Mathf.Max(0f, durationSeconds);
+    }
+
+    private void ApplyMoveBonusLocal(float moveMultiplier, float durationSeconds)
+    {
+        _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, durationSeconds);
+    }
+
+    private static StatKind ResolveDominantStat(StatContainer stats)
+    {
+        StatKind dominant = StatKind.STR;
+        float best = stats.STR.Invested + stats.STR.Item;
+        float agi = stats.AGI.Invested + stats.AGI.Item;
+        float con = stats.CON.Invested + stats.CON.Item;
+        float def = stats.DEF.Invested + stats.DEF.Item;
+
+        if (agi > best)
+        {
+            dominant = StatKind.AGI;
+            best = agi;
+        }
+
+        if (con > best)
+        {
+            dominant = StatKind.CON;
+            best = con;
+        }
+
+        if (def > best)
+            dominant = StatKind.DEF;
+
+        return dominant;
     }
 
     [ClientRpc]
@@ -1347,8 +1444,8 @@ public class PlayerCombat : NetworkBehaviour
         if (identity.Type == IdentityType.Polymath)
         {
             if (_selectedSkillIndex == 0) return IsSkillDataKind(_polymathRollSkillData, JobSkillKind.PolymathRoll) ? _polymathRollSkillData : null;
-            if (_selectedSkillIndex == 1) return IsSkillDataKind(_polymathPresetSkillData, JobSkillKind.PolymathPresetChange) ? _polymathPresetSkillData : null;
-            return IsSkillDataKind(_polymathWeaponSwapSkillData, JobSkillKind.PolymathWeaponSwap) ? _polymathWeaponSwapSkillData : null;
+            if (_selectedSkillIndex == 1) return IsSkillDataKind(_polymathWeaponSwapSkillData, JobSkillKind.PolymathWeaponSwap) ? _polymathWeaponSwapSkillData : null;
+            return null;
         }
         return null;
     }
@@ -1374,7 +1471,6 @@ public class PlayerCombat : NetworkBehaviour
         if (identity.Type == IdentityType.Polymath)
         {
             if (kind == JobSkillKind.PolymathRoll && IsSkillDataKind(_polymathRollSkillData, kind)) return _polymathRollSkillData;
-            if (kind == JobSkillKind.PolymathPresetChange && IsSkillDataKind(_polymathPresetSkillData, kind)) return _polymathPresetSkillData;
             if (kind == JobSkillKind.PolymathWeaponSwap && IsSkillDataKind(_polymathWeaponSwapSkillData, kind)) return _polymathWeaponSwapSkillData;
         }
         return null;
@@ -1444,7 +1540,7 @@ public class PlayerCombat : NetworkBehaviour
         IDamageReceiver target = hit.collider.GetComponentInParent<IDamageReceiver>();
         StatManager targetStats = hit.collider.GetComponentInParent<StatManager>();
         if (target != null && targetStats != null)
-            _attackProcessor?.ProcessSkillHit(multiplier, targetStats, target, hit.point);
+            _attackProcessor?.ProcessSkillHit(multiplier * ConsumeNextAttackDamageMultiplier(), targetStats, target, hit.point);
     }
 
     private int ResolveAvailableSkillCount()
@@ -1463,7 +1559,7 @@ public class PlayerCombat : NetworkBehaviour
             return 2;
 
         if (identity.Type == IdentityType.Polymath)
-            return 3;
+            return 2;
 
         return 0;
     }
@@ -1490,7 +1586,6 @@ public class PlayerCombat : NetworkBehaviour
         if (identity.Type == IdentityType.Polymath)
         {
             if (_selectedSkillIndex == 0) return "구르기";
-            if (_selectedSkillIndex == 1) return "프리셋";
             return "무기";
         }
 

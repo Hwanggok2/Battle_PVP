@@ -63,6 +63,7 @@ public class PlayerManager : NetworkBehaviour
 
     public bool IsMatchEndLocked => _matchEndLocked;
     public bool IsCrouching => isCrouching;
+    private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
 
     public Vector3 GetSkillMoveDirection()
     {
@@ -80,8 +81,8 @@ public class PlayerManager : NetworkBehaviour
 
     public void ApplySkillMoveMultiplier(float multiplier, float durationSeconds)
     {
-        _skillMoveMultiplier = Mathf.Clamp01(multiplier);
-        _skillMoveMultiplierUntil = NetworkTime.time + Mathf.Max(0f, durationSeconds);
+        _skillMoveMultiplier = Mathf.Max(0f, multiplier);
+        _skillMoveMultiplierUntil = MovementTime + Mathf.Max(0f, durationSeconds);
     }
 
     public void SetSkillMovementLock(bool locked)
@@ -372,7 +373,7 @@ public class PlayerManager : NetworkBehaviour
         float currentMoveSpeed = moveSpeed;
         if (_skillMovementLocked)
             currentMoveSpeed = 0f;
-        if (NetworkTime.time >= _skillMoveMultiplierUntil)
+        if (MovementTime >= _skillMoveMultiplierUntil)
             _skillMoveMultiplier = 1f;
         currentMoveSpeed *= _skillMoveMultiplier;
         if (isAttacking)
