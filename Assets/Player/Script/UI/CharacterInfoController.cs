@@ -253,8 +253,7 @@ namespace BattlePvp.UI
                 return false;
 
             stats = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
-            float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
-            return total > 0.1f;
+            return true;
         }
 
         private void EnsureBattleRecordTexts()

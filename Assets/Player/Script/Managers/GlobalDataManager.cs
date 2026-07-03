@@ -14,6 +14,7 @@ namespace BattlePvp.Managers
     {
         private static GlobalDataManager _instance;
         private static bool _applicationIsQuitting = false;
+        private const int DefaultStatPresetSlotCount = 3;
 
         public static GlobalDataManager Instance
         {
@@ -49,6 +50,9 @@ namespace BattlePvp.Managers
 
         [Header("Persistent Data")]
         [SerializeField] private StatContainer _savedStats;
+        [SerializeField] private int _selectedStatPresetSlot = 0;
+        [SerializeField] private StatContainer[] _statPresetSlots = new StatContainer[DefaultStatPresetSlotCount];
+        [SerializeField] private bool[] _statPresetSlotUsed = new bool[DefaultStatPresetSlotCount];
         [SerializeField] private string _playerNickname = "Unknown";
         [SerializeField] private int _cumulativeKills;
         [SerializeField] private int _cumulativeDeaths;
@@ -70,6 +74,7 @@ namespace BattlePvp.Managers
         }
         
         public event System.Action<StatContainer> OnSavedStatsUpdated;
+        public event System.Action<int, StatContainer, bool> OnStatPresetSlotChanged;
         public event System.Action<int, int> OnCombatRecordUpdated;
 
         public int CumulativeKills => _cumulativeKills;
@@ -83,9 +88,84 @@ namespace BattlePvp.Managers
             {
                 // [추가] 로드된 스탯이 총합 30을 넘지 않도록 강제 보정 (데이터 무결성 확보)
                 _savedStats = ClampStatBudget(value, 30);
+                EnsureStatPresetArrays();
+                float total = _savedStats.STR.Invested + _savedStats.AGI.Invested + _savedStats.CON.Invested + _savedStats.DEF.Invested;
+                if (total > 0.1f && _selectedStatPresetSlot >= 0 && _selectedStatPresetSlot < _statPresetSlots.Length)
+                {
+                    _statPresetSlots[_selectedStatPresetSlot] = _savedStats;
+                    _statPresetSlotUsed[_selectedStatPresetSlot] = true;
+                    OnStatPresetSlotChanged?.Invoke(_selectedStatPresetSlot, _savedStats, true);
+                }
                 OnSavedStatsUpdated?.Invoke(_savedStats);
                 Debug.Log($"[GlobalDataManager] SavedStats Updated (Clamped to 30): {_savedStats.STR.Invested}/{_savedStats.AGI.Invested}/{_savedStats.CON.Invested}/{_savedStats.DEF.Invested}");
             }
+        }
+
+        public int SelectedStatPresetSlot => _selectedStatPresetSlot;
+
+        public bool HasStatPresetSlot(int slotIndex)
+        {
+            return slotIndex >= 0
+                && _statPresetSlotUsed != null
+                && slotIndex < _statPresetSlotUsed.Length
+                && _statPresetSlotUsed[slotIndex];
+        }
+
+        public StatContainer GetStatPresetSlot(int slotIndex)
+        {
+            if (_statPresetSlots == null || slotIndex < 0 || slotIndex >= _statPresetSlots.Length)
+                return default;
+
+            return _statPresetSlots[slotIndex];
+        }
+
+        public void SelectStatPresetSlot(int slotIndex)
+        {
+            EnsureStatPresetArrays();
+            if (slotIndex < 0 || slotIndex >= _statPresetSlots.Length)
+                return;
+
+            _selectedStatPresetSlot = slotIndex;
+            StatContainer selectedStats = _statPresetSlotUsed[slotIndex] ? _statPresetSlots[slotIndex] : default;
+            _savedStats = selectedStats;
+            OnStatPresetSlotChanged?.Invoke(_selectedStatPresetSlot, selectedStats, _statPresetSlotUsed[slotIndex]);
+            OnSavedStatsUpdated?.Invoke(_savedStats);
+            TryInjectToPlayer();
+        }
+
+        public void SaveSelectedStatPresetSlot(StatContainer stats)
+        {
+            SaveStatPresetSlot(_selectedStatPresetSlot, stats, selectAfterSave: true);
+        }
+
+        public void SaveStatPresetSlot(int slotIndex, StatContainer stats, bool selectAfterSave)
+        {
+            EnsureStatPresetArrays();
+            if (slotIndex < 0 || slotIndex >= _statPresetSlots.Length)
+                return;
+
+            StatContainer clamped = ClampStatBudget(stats, 30);
+            _statPresetSlots[slotIndex] = clamped;
+            _statPresetSlotUsed[slotIndex] = true;
+
+            if (selectAfterSave)
+            {
+                _selectedStatPresetSlot = slotIndex;
+                _savedStats = clamped;
+                OnSavedStatsUpdated?.Invoke(_savedStats);
+                TryInjectToPlayer();
+            }
+
+            OnStatPresetSlotChanged?.Invoke(slotIndex, clamped, true);
+        }
+
+        private void EnsureStatPresetArrays()
+        {
+            if (_statPresetSlots == null || _statPresetSlots.Length < DefaultStatPresetSlotCount)
+                System.Array.Resize(ref _statPresetSlots, DefaultStatPresetSlotCount);
+
+            if (_statPresetSlotUsed == null || _statPresetSlotUsed.Length < _statPresetSlots.Length)
+                System.Array.Resize(ref _statPresetSlotUsed, _statPresetSlots.Length);
         }
 
         public void SetCombatRecord(int kills, int deaths)

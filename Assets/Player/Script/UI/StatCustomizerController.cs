@@ -8,6 +8,8 @@ using BattlePvp.Managers;
 using BattlePvp.Combat;
 using BattlePvp.Networking;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine.Events;
 
 namespace BattlePvp.UI
 {
@@ -51,6 +53,7 @@ namespace BattlePvp.UI
 
         [Header("Apply & Restrictions")]
         [SerializeField] private Button _applyButton;
+        [SerializeField] private Button[] _presetButtons;
         [SerializeField] private CanvasGroup _floatingMessageCanvasGroup;
         [SerializeField] private TMP_Text _floatingMessageText;
 
@@ -64,6 +67,7 @@ namespace BattlePvp.UI
 
         private bool _isInitializedFromGlobal = false;
         private Coroutine _syncCoroutine;
+        private UnityAction[] _presetButtonActions;
 
         private void Awake()
         {
@@ -131,6 +135,7 @@ namespace BattlePvp.UI
 
             if (_applyButton != null)
                 _applyButton.onClick.AddListener(Apply);
+            HookPresetButtons();
 
             LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
@@ -147,6 +152,7 @@ namespace BattlePvp.UI
 
             Unhook(_str); Unhook(_agi); Unhook(_con); Unhook(_def);
             if (_applyButton != null) _applyButton.onClick.RemoveListener(Apply);
+            UnhookPresetButtons();
 
             // [추가] 참조 명시적 초기화 및 코루틴 중단으로 안정성 확보
             if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
@@ -215,10 +221,10 @@ namespace BattlePvp.UI
             if (GlobalDataManager.Instance == null)
                 return false;
 
-            StatContainer saved = GlobalDataManager.Instance.SavedStats;
-            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
-            if (total <= 0.1f)
-                return false;
+            int slotIndex = GlobalDataManager.Instance.SelectedStatPresetSlot;
+            StatContainer saved = GlobalDataManager.Instance.HasStatPresetSlot(slotIndex)
+                ? GlobalDataManager.Instance.GetStatPresetSlot(slotIndex)
+                : default;
 
             _baseStats = saved;
             _virtualStats = _baseStats;
@@ -232,6 +238,83 @@ namespace BattlePvp.UI
                 return;
 
             LoadFromTarget();
+        }
+
+        private void HookPresetButtons()
+        {
+            ResolvePresetButtons();
+            if (_presetButtons == null || _presetButtons.Length == 0)
+                return;
+
+            _presetButtonActions = new UnityAction[_presetButtons.Length];
+            for (int i = 0; i < _presetButtons.Length; i++)
+            {
+                Button button = _presetButtons[i];
+                if (button == null)
+                    continue;
+
+                int slotIndex = i;
+                _presetButtonActions[i] = () => SelectPresetSlot(slotIndex);
+                button.onClick.AddListener(_presetButtonActions[i]);
+            }
+        }
+
+        private void UnhookPresetButtons()
+        {
+            if (_presetButtons == null || _presetButtonActions == null)
+                return;
+
+            int count = Mathf.Min(_presetButtons.Length, _presetButtonActions.Length);
+            for (int i = 0; i < count; i++)
+            {
+                if (_presetButtons[i] != null && _presetButtonActions[i] != null)
+                    _presetButtons[i].onClick.RemoveListener(_presetButtonActions[i]);
+            }
+
+            _presetButtonActions = null;
+        }
+
+        private void ResolvePresetButtons()
+        {
+            if (_presetButtons != null && _presetButtons.Length > 0)
+                return;
+
+            Button[] buttons = GetComponentsInChildren<Button>(true);
+            List<Button> presetButtons = new List<Button>();
+            for (int i = 1; i <= 9; i++)
+            {
+                Button button = FindButtonByName(buttons, $"Preset{i}");
+                if (button != null)
+                    presetButtons.Add(button);
+            }
+
+            if (presetButtons.Count > 0)
+                _presetButtons = presetButtons.ToArray();
+        }
+
+        private static Button FindButtonByName(Button[] buttons, string objectName)
+        {
+            if (buttons == null)
+                return null;
+
+            foreach (Button button in buttons)
+            {
+                if (button != null && button.name == objectName)
+                    return button;
+            }
+
+            return null;
+        }
+
+        private void SelectPresetSlot(int slotIndex)
+        {
+            if (GlobalDataManager.Instance == null)
+                return;
+
+            GlobalDataManager.Instance.SelectStatPresetSlot(slotIndex);
+            LoadFromSavedStatsOrTarget();
+            RebuildBudgetAndPreview();
+            TryFindTarget();
         }
 
         private void Hook(StatSlider s) { if (s != null) s.InvestedChanged += OnInvestedChanged; }
@@ -402,7 +485,7 @@ namespace BattlePvp.UI
             if (_playerHealth != null) _playerHealth.RefillHealth();
             PlayerHUD.BindToPlayer(_statManager, _playerHealth);
 
-            GlobalDataManager.Instance.SavedStats = currentStats;
+            GlobalDataManager.Instance.SaveSelectedStatPresetSlot(currentStats);
             if (PlayFabBattleManager.Instance != null)
             {
                 _statManager.CalculatePreviewStats(currentStats, out float atk, out float defP, out float hp, out float pene, out float regen, out float move, out float atkSpd);

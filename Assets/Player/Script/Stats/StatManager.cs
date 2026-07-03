@@ -250,10 +250,15 @@ namespace BattlePvp.Stats
             
             if (total <= 0.1f)
             {
-                saved.STR.Invested = 10;
-                saved.AGI.Invested = 10;
-                saved.CON.Invested = 10;
-                saved.DEF.Invested = 10;
+                var globalData = BattlePvp.Managers.GlobalDataManager.Instance;
+                bool selectedSlotIsEmpty = globalData != null && !globalData.HasStatPresetSlot(globalData.SelectedStatPresetSlot);
+                if (!selectedSlotIsEmpty)
+                {
+                    saved.STR.Invested = 10;
+                    saved.AGI.Invested = 10;
+                    saved.CON.Invested = 10;
+                    saved.DEF.Invested = 10;
+                }
             }
 
             Debug.Log($"[StatManager:{gameObject.name}] Injecting {source}: STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
