@@ -56,6 +56,7 @@ namespace BattlePvp.Combat
         [Range(0f, 1f)] [SerializeField] private float _maxHealthIncreaseShieldRatio = 0.5f;
         [Min(0f)] [SerializeField] private float _shieldDurationSeconds = 20f;
         [Min(0f)] [SerializeField] private float _strategistStrNextAttackMultiplier = 1.2f;
+        [Min(0f)] [SerializeField] private float _strategistStrAttackBonusDurationSeconds = 5f;
         [Min(0f)] [SerializeField] private float _strategistAgiBonusDurationSeconds = 4f;
         [Min(0f)] [SerializeField] private float _strategistAgiMoveMultiplier = 1.15f;
         [Min(0f)] [SerializeField] private float _strategistAgiAttackSpeedMultiplier = 1.2f;
@@ -102,6 +103,7 @@ namespace BattlePvp.Combat
         public float MaxHealthIncreaseShieldRatio => _maxHealthIncreaseShieldRatio;
         public float ShieldDurationSeconds => _shieldDurationSeconds;
         public float StrategistStrNextAttackMultiplier => _strategistStrNextAttackMultiplier;
+        public float StrategistStrAttackBonusDurationSeconds => _strategistStrAttackBonusDurationSeconds;
         public float StrategistAgiBonusDurationSeconds => _strategistAgiBonusDurationSeconds;
         public float StrategistAgiMoveMultiplier => _strategistAgiMoveMultiplier;
         public float StrategistAgiAttackSpeedMultiplier => _strategistAgiAttackSpeedMultiplier;

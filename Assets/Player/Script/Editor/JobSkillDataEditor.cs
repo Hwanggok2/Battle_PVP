@@ -35,6 +35,7 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _maxHealthIncreaseShieldRatio;
     private SerializedProperty _shieldDurationSeconds;
     private SerializedProperty _strategistStrNextAttackMultiplier;
+    private SerializedProperty _strategistStrAttackBonusDurationSeconds;
     private SerializedProperty _strategistAgiBonusDurationSeconds;
     private SerializedProperty _strategistAgiMoveMultiplier;
     private SerializedProperty _strategistAgiAttackSpeedMultiplier;
@@ -81,6 +82,7 @@ public sealed class JobSkillDataEditor : Editor
         _maxHealthIncreaseShieldRatio = serializedObject.FindProperty("_maxHealthIncreaseShieldRatio");
         _shieldDurationSeconds = serializedObject.FindProperty("_shieldDurationSeconds");
         _strategistStrNextAttackMultiplier = serializedObject.FindProperty("_strategistStrNextAttackMultiplier");
+        _strategistStrAttackBonusDurationSeconds = serializedObject.FindProperty("_strategistStrAttackBonusDurationSeconds");
         _strategistAgiBonusDurationSeconds = serializedObject.FindProperty("_strategistAgiBonusDurationSeconds");
         _strategistAgiMoveMultiplier = serializedObject.FindProperty("_strategistAgiMoveMultiplier");
         _strategistAgiAttackSpeedMultiplier = serializedObject.FindProperty("_strategistAgiAttackSpeedMultiplier");
@@ -204,7 +206,8 @@ public sealed class JobSkillDataEditor : Editor
                     (_targetPreset, "Target Preset"),
                     (_maxHealthIncreaseShieldRatio, "Max HP Increase Shield Ratio"),
                     (_shieldDurationSeconds, "Shield Duration Seconds"),
-                    (_strategistStrNextAttackMultiplier, "STR Next Attack Multiplier"),
+                    (_strategistStrNextAttackMultiplier, "STR Attack Multiplier"),
+                    (_strategistStrAttackBonusDurationSeconds, "STR Attack Bonus Duration Seconds"),
                     (_strategistAgiBonusDurationSeconds, "AGI Bonus Duration Seconds"),
                     (_strategistAgiMoveMultiplier, "AGI Move Multiplier"),
                     (_strategistAgiAttackSpeedMultiplier, "AGI Attack Speed Multiplier"),

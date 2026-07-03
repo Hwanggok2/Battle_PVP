@@ -118,6 +118,8 @@ public sealed class AttackProcessor : MonoBehaviour
         // AttackData.damage는 실제 공격의 세기를 곱해주는 계수
         float attackPower = baseAtk * attackData.damage;
         float penetrationPercent = basePene;
+        if (_playerCombat != null)
+            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
 
         if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
         {
@@ -194,6 +196,8 @@ public sealed class AttackProcessor : MonoBehaviour
             return false;
 
         float attackPower = _currentAtk * damageMultiplier;
+        if (_playerCombat != null)
+            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
         float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
         Identity defenderIdentity = defenderStats.CurrentIdentity;
         float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;

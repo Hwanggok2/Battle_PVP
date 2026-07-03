@@ -51,6 +51,11 @@ public class PlayerCombat : NetworkBehaviour
     [Header("Job Skill Hit Boxes")]
     [SerializeField] private KickSkillHitBox _kickHitBox;
 
+    [Header("Strategist STR Aura")]
+    [SerializeField] private Material _strategistStrAuraMaterial;
+    [SerializeField] private Color _strategistStrAuraColor = new Color(1f, 0.18f, 0.08f, 0.52f);
+    [SerializeField] private Vector3 _strategistStrAuraScale = new Vector3(1.45f, 2.15f, 1.45f);
+
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAttackSpeed = 1.0f;
     [SerializeField] private int _selectedSkillIndex;
@@ -110,8 +115,12 @@ public class PlayerCombat : NetworkBehaviour
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
     private double _bowChargeStartedAt = -1d;
     private float _nextAttackDamageMultiplier = 1f;
+    private float _attackPowerBonusMultiplier = 1f;
+    private double _attackPowerBonusUntil;
     private float _attackSpeedBonusMultiplier = 1f;
     private double _attackSpeedBonusUntil;
+    private GameObject _strategistStrAuraObject;
+    private Material _runtimeStrategistStrAuraMaterial;
     private StatContainer _runtimeStrategistTargetPreset;
     private bool _hasRuntimeStrategistTargetPreset;
     private StatContainer _strategistSwapReturnPreset;
@@ -123,6 +132,7 @@ public class PlayerCombat : NetworkBehaviour
     public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
     public bool IsMonostatAgiPoisonCoatingActive => SkillTime < _monostatAgiSkillActiveUntil;
+    public float AttackPowerBonusMultiplier => SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f;
 
     private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
     private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
@@ -232,6 +242,13 @@ public class PlayerCombat : NetworkBehaviour
 
         DisableHitBox();
         ForceDisableKickHitBox();
+        SetStrategistStrAuraVisible(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (_runtimeStrategistStrAuraMaterial != null)
+            Destroy(_runtimeStrategistStrAuraMaterial);
     }
 
     public override void OnStartClient()
@@ -252,6 +269,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private void Update()
     {
+        UpdateStrategistStrAura();
+
         if (isClient && !isLocalPlayer)
             return;
 
@@ -1041,12 +1060,23 @@ public class PlayerCombat : NetworkBehaviour
 
         if (data.SkillKind == JobSkillKind.StrategistPresetChange)
         {
-            StatContainer nextReturnPreset = currentPreset;
-            if (_hasStrategistSwapReturnPreset)
-                targetPreset = _strategistSwapReturnPreset;
+            if (!IsCompletePreset(targetPreset))
+            {
+                Debug.LogWarning("[PlayerCombat] Strategist preset change ignored. Target preset is not complete.", this);
+                return;
+            }
 
-            _strategistSwapReturnPreset = nextReturnPreset;
-            _hasStrategistSwapReturnPreset = true;
+            bool currentlyUsingTargetPreset = AreSamePreset(currentPreset, targetPreset);
+            if (_hasStrategistSwapReturnPreset && currentlyUsingTargetPreset)
+            {
+                targetPreset = _strategistSwapReturnPreset;
+                _hasStrategistSwapReturnPreset = false;
+            }
+            else
+            {
+                _strategistSwapReturnPreset = currentPreset;
+                _hasStrategistSwapReturnPreset = true;
+            }
         }
 
         StatKind targetDominantStat = ResolveDominantStat(targetPreset);
@@ -1056,6 +1086,7 @@ public class PlayerCombat : NetworkBehaviour
         float newMax = _healthSystem.MaxHp;
         float newCurrent = Mathf.Min(oldCurrent, newMax);
         float shield = Mathf.Max(0f, oldCurrent - newCurrent);
+        shield += Mathf.Max(0f, newMax - oldMax) * data.MaxHealthIncreaseShieldRatio;
         if (data.SkillKind == JobSkillKind.StrategistPresetChange)
             shield += ApplyStrategistPresetBonus(data, targetDominantStat, newMax);
         _healthSystem.SetCurrentHp(newCurrent);
@@ -1067,7 +1098,9 @@ public class PlayerCombat : NetworkBehaviour
         switch (targetDominantStat)
         {
             case StatKind.STR:
-                _nextAttackDamageMultiplier = Mathf.Max(_nextAttackDamageMultiplier, data.StrategistStrNextAttackMultiplier);
+                ApplyStrPresetBonusLocal(data.StrategistStrNextAttackMultiplier, data.StrategistStrAttackBonusDurationSeconds);
+                if (NetworkServer.active)
+                    RpcApplyStrPresetBonus(data.StrategistStrNextAttackMultiplier, data.StrategistStrAttackBonusDurationSeconds);
                 break;
             case StatKind.AGI:
                 ApplyAgiPresetBonusLocal(data.StrategistAgiMoveMultiplier, data.StrategistAgiAttackSpeedMultiplier, data.StrategistAgiBonusDurationSeconds);
@@ -1082,6 +1115,19 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         return 0f;
+    }
+
+    [ClientRpc]
+    private void RpcApplyStrPresetBonus(float attackMultiplier, float durationSeconds)
+    {
+        ApplyStrPresetBonusLocal(attackMultiplier, durationSeconds);
+    }
+
+    private void ApplyStrPresetBonusLocal(float attackMultiplier, float durationSeconds)
+    {
+        _attackPowerBonusMultiplier = Mathf.Max(1f, attackMultiplier);
+        _attackPowerBonusUntil = SkillTime + Mathf.Max(0f, durationSeconds);
+        UpdateStrategistStrAura();
     }
 
     private void ApplyWeaponSwapBonus(JobSkillData data)
@@ -1116,6 +1162,75 @@ public class PlayerCombat : NetworkBehaviour
         _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, durationSeconds);
     }
 
+    private void UpdateStrategistStrAura()
+    {
+        bool active = SkillTime < _attackPowerBonusUntil;
+        SetStrategistStrAuraVisible(active);
+        if (!active || _strategistStrAuraObject == null)
+            return;
+
+        _strategistStrAuraObject.transform.localScale = _strategistStrAuraScale;
+        if (_runtimeStrategistStrAuraMaterial != null)
+        {
+            float pulse = 0.78f + (Mathf.Sin(Time.time * 7.5f) * 0.22f);
+            _runtimeStrategistStrAuraMaterial.SetColor("_AuraColor", _strategistStrAuraColor);
+            _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", pulse);
+        }
+    }
+
+    private void SetStrategistStrAuraVisible(bool visible)
+    {
+        if (visible)
+            EnsureStrategistStrAura();
+
+        if (_strategistStrAuraObject != null && _strategistStrAuraObject.activeSelf != visible)
+            _strategistStrAuraObject.SetActive(visible);
+    }
+
+    private void EnsureStrategistStrAura()
+    {
+        if (_strategistStrAuraObject != null)
+            return;
+
+        GameObject aura = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        aura.name = "Strategist_STR_Attack_Aura";
+        aura.transform.SetParent(transform, false);
+        aura.transform.localPosition = Vector3.up;
+        aura.transform.localRotation = Quaternion.identity;
+        aura.transform.localScale = _strategistStrAuraScale;
+
+        Collider auraCollider = aura.GetComponent<Collider>();
+        if (auraCollider != null)
+            Destroy(auraCollider);
+
+        Renderer auraRenderer = aura.GetComponent<Renderer>();
+        if (auraRenderer != null)
+        {
+            Material source = _strategistStrAuraMaterial;
+            if (source == null)
+            {
+                Shader shader = Shader.Find("BattlePVP/FresnelAura");
+                if (shader != null)
+                    _runtimeStrategistStrAuraMaterial = new Material(shader);
+            }
+
+            if (_runtimeStrategistStrAuraMaterial == null && source != null)
+                _runtimeStrategistStrAuraMaterial = new Material(source);
+
+            if (_runtimeStrategistStrAuraMaterial != null)
+            {
+                _runtimeStrategistStrAuraMaterial.SetColor("_AuraColor", _strategistStrAuraColor);
+                auraRenderer.material = _runtimeStrategistStrAuraMaterial;
+            }
+
+            auraRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            auraRenderer.receiveShadows = false;
+        }
+
+        _strategistStrAuraObject = aura;
+        _strategistStrAuraObject.SetActive(false);
+    }
+
     private static StatKind ResolveDominantStat(StatContainer stats)
     {
         StatKind dominant = StatKind.STR;
@@ -1140,6 +1255,20 @@ public class PlayerCombat : NetworkBehaviour
             dominant = StatKind.DEF;
 
         return dominant;
+    }
+
+    private static bool IsCompletePreset(StatContainer stats)
+    {
+        float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
+        return Mathf.RoundToInt(total) == 30;
+    }
+
+    private static bool AreSamePreset(StatContainer a, StatContainer b)
+    {
+        return Mathf.RoundToInt(a.STR.Invested) == Mathf.RoundToInt(b.STR.Invested)
+            && Mathf.RoundToInt(a.AGI.Invested) == Mathf.RoundToInt(b.AGI.Invested)
+            && Mathf.RoundToInt(a.CON.Invested) == Mathf.RoundToInt(b.CON.Invested)
+            && Mathf.RoundToInt(a.DEF.Invested) == Mathf.RoundToInt(b.DEF.Invested);
     }
 
     [ClientRpc]

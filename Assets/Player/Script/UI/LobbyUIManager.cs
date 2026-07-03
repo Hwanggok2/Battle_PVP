@@ -396,7 +396,6 @@ namespace BattlePvp.UI
                 return;
             }
 
-            SetCustomizerActive(true);
             StatCustomizerController.Instance.ShowFloatingMessage(message);
         }
 
