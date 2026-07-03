@@ -17,7 +17,7 @@ MonoBehaviour:
   _iconSprite: {fileID: 21300000, guid: 9e6f3c312786c54428e82b21052cbc9a, type: 3}
   _castSeconds: 1.2
   _durationSeconds: 0
-  _cooldownSeconds: 5
+  _cooldownSeconds: 40
   _castAnimationStateName: Preset
   _castAnimationLayer: 0
   _lifestealRatio: 0
