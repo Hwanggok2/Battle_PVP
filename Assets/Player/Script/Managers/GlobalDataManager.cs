@@ -58,6 +58,7 @@ namespace BattlePvp.Managers
         [SerializeField] private string _playerNickname = "Unknown";
         [SerializeField] private int _cumulativeKills;
         [SerializeField] private int _cumulativeDeaths;
+        private bool _hasLoadedPlayerStats;
         private bool _isPlayerStatsLoadInFlight;
         private bool _isCombatRecordLoadInFlight;
         private bool _hasLoadedCombatRecord;
@@ -83,6 +84,8 @@ namespace BattlePvp.Managers
         public int CumulativeKills => _cumulativeKills;
         public int CumulativeDeaths => _cumulativeDeaths;
         public float CumulativeKillsPerDeath => _cumulativeDeaths <= 0 ? _cumulativeKills : _cumulativeKills / (float)_cumulativeDeaths;
+        public bool HasLoadedPlayerStats => _hasLoadedPlayerStats;
+        public bool IsPlayerStatsLoadInFlight => _isPlayerStatsLoadInFlight;
 
         public StatContainer SavedStats 
         { 
@@ -180,6 +183,13 @@ namespace BattlePvp.Managers
             OnStatPresetSlotChanged?.Invoke(_selectedStatPresetSlot, _savedStats, _statPresetSlotUsed[_selectedStatPresetSlot]);
             OnStrategistTargetPresetChanged?.Invoke(_strategistTargetPreset, _hasStrategistTargetPreset);
             OnSavedStatsUpdated?.Invoke(_savedStats);
+            _hasLoadedPlayerStats = true;
+        }
+
+        public void ApplyLoadedPlayerStats(StatContainer stats)
+        {
+            _hasLoadedPlayerStats = true;
+            SavedStats = stats;
         }
 
         public void SelectStatPresetSlot(int slotIndex)
@@ -295,6 +305,11 @@ namespace BattlePvp.Managers
             TryInjectToPlayer();
         }
 
+        public void EnsurePlayerStatsLoadedForCurrentScene()
+        {
+            EnsurePlayerStatsLoadedForScene(SceneManager.GetActiveScene().name);
+        }
+
         /// <summary>
         /// 새로운 씬에서 Player 오브젝트를 찾아 저장된 데이터를 주입(Dependency Injection)하고 초기화합니다.
         /// </summary>
@@ -318,7 +333,7 @@ namespace BattlePvp.Managers
 
         private void EnsurePlayerStatsLoadedForScene(string sceneName)
         {
-            if (!IsPlayerStatScene(sceneName) || HasUsableSavedStats() || _isPlayerStatsLoadInFlight)
+            if (!IsPlayerStatScene(sceneName) || _hasLoadedPlayerStats || _isPlayerStatsLoadInFlight)
                 return;
 
             if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn())
@@ -338,7 +353,7 @@ namespace BattlePvp.Managers
             battleManager.LoadPlayerStats(stats =>
             {
                 _isPlayerStatsLoadInFlight = false;
-                SavedStats = stats;
+                ApplyLoadedPlayerStats(stats);
                 TryInjectToPlayer();
                 Debug.Log("[GlobalDataManager] Player stats loaded automatically for scene entry.");
             });
@@ -369,11 +384,6 @@ namespace BattlePvp.Managers
                 SetCombatRecord(kills, deaths);
                 Debug.Log("[GlobalDataManager] Combat record loaded automatically for scene entry.");
             });
-        }
-
-        private bool HasUsableSavedStats()
-        {
-            return _savedStats.STR.Invested + _savedStats.AGI.Invested + _savedStats.CON.Invested + _savedStats.DEF.Invested > 0.1f;
         }
 
         private static bool IsPlayerStatScene(string sceneName)

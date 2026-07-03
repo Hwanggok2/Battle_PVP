@@ -323,11 +323,6 @@ namespace BattlePvp.UI
         {
             if (!CanStartRoomFlow())
                 return;
-            if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
-            {
-                StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
-                return;
-            }
             if (_roomSettingPanel != null) { _roomSettingPanel.SetActive(true); if (_roomNameInput != null) _roomNameInput.text = ""; }
         }
 
@@ -348,11 +343,6 @@ namespace BattlePvp.UI
         {
             if (!CanStartRoomFlow())
                 return;
-            if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
-            {
-                StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
-                return;
-            }
             if (PlayFabBattleManager.Instance != null && !string.IsNullOrEmpty(_selectedRoomId))
                 PlayFabBattleManager.Instance.JoinRoom(_selectedRoomId);
         }
@@ -362,6 +352,14 @@ namespace BattlePvp.UI
             GlobalDataManager globalData = GlobalDataManager.Instance;
             if (globalData == null)
                 return true;
+
+            globalData.EnsurePlayerStatsLoadedForCurrentScene();
+
+            if (!globalData.HasLoadedPlayerStats || globalData.IsPlayerStatsLoadInFlight)
+            {
+                ShowRoomValidationMessage("스텟 정보를 불러오는 중입니다. 잠시 후 다시 시도하십시오");
+                return false;
+            }
 
             if (!globalData.HasCompleteSavedStats())
             {

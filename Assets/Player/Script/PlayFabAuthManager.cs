@@ -98,11 +98,12 @@ namespace BattlePvp.Networking
                         battleManager.LoadPlayerStats(stats => {
                             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
                             {
-                                BattlePvp.Managers.GlobalDataManager.Instance.SavedStats = stats;
+                                BattlePvp.Managers.GlobalDataManager.Instance.ApplyLoadedPlayerStats(stats);
                                 // 현재 씬에 캐싱된 플레이어가 있다면 즉시 데이터 주입
                                 BattlePvp.Managers.GlobalDataManager.Instance.TryInjectToPlayer();
                                 Debug.Log("[AuthManager] Stats loaded and synced via BattleManager.");
                             }
+                            OnLoginSuccess?.Invoke();
                         });
 
                         battleManager.LoadCombatRecord((kills, deaths) => {
@@ -116,9 +117,9 @@ namespace BattlePvp.Networking
                     else
                     {
                         Debug.LogWarning("[AuthManager] PlayFabBattleManager not found in scene. Stats will not be loaded automatically.");
+                        OnLoginSuccess?.Invoke();
                     }
 
-                    OnLoginSuccess?.Invoke();
                 }, 
                 error => {
                     Debug.LogError($"로그인 실패: {error.GenerateErrorReport()}");
