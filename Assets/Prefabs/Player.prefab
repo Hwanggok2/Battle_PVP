@@ -4914,7 +4914,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 300
@@ -7628,7 +7628,12 @@ MonoBehaviour:
   _polymathRollSkillData: {fileID: 11400000, guid: a357684c44735964bae03a09b28591e5, type: 2}
   _polymathPresetSkillData: {fileID: 11400000, guid: 5e7f808b5861cc04588096d262a39070, type: 2}
   _polymathWeaponSwapSkillData: {fileID: 11400000, guid: f871b314ec0b80b41b44bdba3b3d2835, type: 2}
-  _kickHitBox: {fileID: 0}
+  _kickHitBox: {fileID: 9134532245816982230}
+  _strategistStrAuraMaterial: {fileID: 2100000, guid: 8ce6b9ec521cbf440bf5c16e18e65e02, type: 2}
+  _strategistStrAuraShape: 0
+  _fitStrategistStrAuraToPlayer: 0
+  _strategistStrAuraScale: {x: 1, y: 1.8, z: 1}
+  _strategistStrAuraOffset: {x: 0, y: 0, z: 0}
   _currentAttackSpeed: 1
   _selectedSkillIndex: 0
   _isCastingMonostatStrSkill: 0

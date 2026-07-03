@@ -11,6 +11,13 @@ using BattlePvp.UI;
 
 public class PlayerCombat : NetworkBehaviour
 {
+    private enum AuraPrimitiveShape
+    {
+        Sphere,
+        Capsule,
+        Cube
+    }
+
     private const float MonostatStrSkillCastSeconds = 0.7f;
     private const float MonostatStrSkillDurationSeconds = 10f;
     private const float MonostatStrSkillCooldownSeconds = 35f;
@@ -53,8 +60,10 @@ public class PlayerCombat : NetworkBehaviour
 
     [Header("Strategist STR Aura")]
     [SerializeField] private Material _strategistStrAuraMaterial;
-    [SerializeField] private Color _strategistStrAuraColor = new Color(1f, 0.18f, 0.08f, 0.52f);
-    [SerializeField] private Vector3 _strategistStrAuraScale = new Vector3(1.45f, 2.15f, 1.45f);
+    [SerializeField] private AuraPrimitiveShape _strategistStrAuraShape = AuraPrimitiveShape.Sphere;
+    [SerializeField] private bool _fitStrategistStrAuraToPlayer = true;
+    [SerializeField] private Vector3 _strategistStrAuraScale = new Vector3(1.25f, 1.15f, 1.25f);
+    [SerializeField] private Vector3 _strategistStrAuraOffset = Vector3.zero;
 
     [Header("Runtime Status (Read Only)")]
     [SerializeField] private float _currentAttackSpeed = 1.0f;
@@ -1169,12 +1178,13 @@ public class PlayerCombat : NetworkBehaviour
         if (!active || _strategistStrAuraObject == null)
             return;
 
-        _strategistStrAuraObject.transform.localScale = _strategistStrAuraScale;
+        _strategistStrAuraObject.transform.localPosition = ResolveStrategistStrAuraLocalPosition();
+        _strategistStrAuraObject.transform.localScale = ResolveStrategistStrAuraLocalScale();
         if (_runtimeStrategistStrAuraMaterial != null)
         {
             float pulse = 0.78f + (Mathf.Sin(Time.time * 7.5f) * 0.22f);
-            _runtimeStrategistStrAuraMaterial.SetColor("_AuraColor", _strategistStrAuraColor);
-            _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", pulse);
+            if (_runtimeStrategistStrAuraMaterial.HasProperty("_Pulse"))
+                _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", pulse);
         }
     }
 
@@ -1192,12 +1202,13 @@ public class PlayerCombat : NetworkBehaviour
         if (_strategistStrAuraObject != null)
             return;
 
-        GameObject aura = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        GameObject aura = GameObject.CreatePrimitive(ToPrimitiveType(_strategistStrAuraShape));
         aura.name = "Strategist_STR_Attack_Aura";
         aura.transform.SetParent(transform, false);
-        aura.transform.localPosition = Vector3.up;
+        _strategistStrAuraObject = aura;
+        aura.transform.localPosition = ResolveStrategistStrAuraLocalPosition();
         aura.transform.localRotation = Quaternion.identity;
-        aura.transform.localScale = _strategistStrAuraScale;
+        aura.transform.localScale = ResolveStrategistStrAuraLocalScale();
 
         Collider auraCollider = aura.GetComponent<Collider>();
         if (auraCollider != null)
@@ -1219,7 +1230,6 @@ public class PlayerCombat : NetworkBehaviour
 
             if (_runtimeStrategistStrAuraMaterial != null)
             {
-                _runtimeStrategistStrAuraMaterial.SetColor("_AuraColor", _strategistStrAuraColor);
                 auraRenderer.material = _runtimeStrategistStrAuraMaterial;
             }
 
@@ -1227,8 +1237,81 @@ public class PlayerCombat : NetworkBehaviour
             auraRenderer.receiveShadows = false;
         }
 
-        _strategistStrAuraObject = aura;
         _strategistStrAuraObject.SetActive(false);
+    }
+
+    private Vector3 ResolveStrategistStrAuraLocalPosition()
+    {
+        if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
+            return Vector3.up + _strategistStrAuraOffset;
+
+        Vector3 worldCenter = bounds.center + transform.TransformVector(_strategistStrAuraOffset);
+        return transform.InverseTransformPoint(worldCenter);
+    }
+
+    private Vector3 ResolveStrategistStrAuraLocalScale()
+    {
+        if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
+            return _strategistStrAuraScale;
+
+        Vector3 size = bounds.size;
+        Vector3 scaledSize = new Vector3(
+            Mathf.Max(0.01f, size.x * Mathf.Max(0.01f, _strategistStrAuraScale.x)),
+            Mathf.Max(0.01f, size.y * Mathf.Max(0.01f, _strategistStrAuraScale.y)),
+            Mathf.Max(0.01f, size.z * Mathf.Max(0.01f, _strategistStrAuraScale.z)));
+
+        Vector3 primitiveSize = GetPrimitiveLocalSize(_strategistStrAuraShape);
+        return new Vector3(
+            scaledSize.x / primitiveSize.x,
+            scaledSize.y / primitiveSize.y,
+            scaledSize.z / primitiveSize.z);
+    }
+
+    private bool TryGetPlayerRenderBounds(out Bounds bounds)
+    {
+        bounds = default;
+        Renderer[] renderers = GetComponentsInChildren<Renderer>();
+        bool found = false;
+
+        foreach (Renderer rendererComponent in renderers)
+        {
+            if (rendererComponent == null || rendererComponent.gameObject == _strategistStrAuraObject)
+                continue;
+
+            if (rendererComponent is ParticleSystemRenderer)
+                continue;
+
+            if (!found)
+            {
+                bounds = rendererComponent.bounds;
+                found = true;
+            }
+            else
+            {
+                bounds.Encapsulate(rendererComponent.bounds);
+            }
+        }
+
+        return found;
+    }
+
+    private static PrimitiveType ToPrimitiveType(AuraPrimitiveShape shape)
+    {
+        return shape switch
+        {
+            AuraPrimitiveShape.Capsule => PrimitiveType.Capsule,
+            AuraPrimitiveShape.Cube => PrimitiveType.Cube,
+            _ => PrimitiveType.Sphere
+        };
+    }
+
+    private static Vector3 GetPrimitiveLocalSize(AuraPrimitiveShape shape)
+    {
+        return shape switch
+        {
+            AuraPrimitiveShape.Capsule => new Vector3(1f, 2f, 1f),
+            _ => Vector3.one
+        };
     }
 
     private static StatKind ResolveDominantStat(StatContainer stats)
