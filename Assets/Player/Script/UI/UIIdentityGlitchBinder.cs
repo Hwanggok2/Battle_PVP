@@ -44,6 +44,7 @@ namespace BattlePvp.UI
         [SerializeField] [Range(0f, 1f)] private float _vignetteMainSoftness = 1.0f;
 
         [Header("Primary Stat Color")]
+        [SerializeField] private bool _applyRuntimeStatColor;
         [SerializeField] private Color _strColor = Color.red;
         [SerializeField] private Color _agiColor = Color.green;
         [SerializeField] private Color _conColor = Color.yellow;
@@ -57,6 +58,15 @@ namespace BattlePvp.UI
         private float _overlapPercent;
         private float _reassembleProgress;
         private float _hpPercent = 1f;
+        private bool _hasAppliedMaterialValues;
+        private float _lastGlitchAmount;
+        private Color _lastStatColor;
+        private float _lastEmissionPulse;
+        private float _lastOverlapPercent;
+        private float _lastReassembleProgress;
+        private float _lastMirrorActive;
+        private float _lastVignetteRadius;
+        private float _lastVignetteSoftness;
 
         private void Awake()
         {
@@ -180,15 +190,43 @@ namespace BattlePvp.UI
 
             float dynamicPulse = Mathf.Lerp(10f, _emissionPulse, _hpPercent); // HP 낮을수록 10에 가까워짐
 
-            _runtimeMaterial.SetFloat(GlitchAmountId, ResolveGlitchAmount(_currentIdentity.Type));
-            _runtimeMaterial.SetColor(StatColorId, ResolveStatColor(_currentIdentity.PrimaryStat));
+            float glitchAmount = ResolveGlitchAmount(_currentIdentity.Type);
+            Color statColor = ResolveStatColor(_currentIdentity.PrimaryStat);
+            float mirrorActive = ResolveMirrorActive(_currentIdentity.Type);
+            bool changed = !_hasAppliedMaterialValues
+                           || !Mathf.Approximately(_lastGlitchAmount, glitchAmount)
+                           || (_applyRuntimeStatColor && _lastStatColor != statColor)
+                           || !Mathf.Approximately(_lastEmissionPulse, dynamicPulse)
+                           || !Mathf.Approximately(_lastOverlapPercent, _overlapPercent)
+                           || !Mathf.Approximately(_lastReassembleProgress, _reassembleProgress)
+                           || !Mathf.Approximately(_lastMirrorActive, mirrorActive)
+                           || !Mathf.Approximately(_lastVignetteRadius, _vignetteMainRadius)
+                           || !Mathf.Approximately(_lastVignetteSoftness, _vignetteMainSoftness);
+
+            if (!changed)
+                return;
+
+            _lastGlitchAmount = glitchAmount;
+            _lastStatColor = statColor;
+            _lastEmissionPulse = dynamicPulse;
+            _lastOverlapPercent = _overlapPercent;
+            _lastReassembleProgress = _reassembleProgress;
+            _lastMirrorActive = mirrorActive;
+            _lastVignetteRadius = _vignetteMainRadius;
+            _lastVignetteSoftness = _vignetteMainSoftness;
+            _hasAppliedMaterialValues = true;
+
+            _runtimeMaterial.SetFloat(GlitchAmountId, glitchAmount);
+            if (_applyRuntimeStatColor)
+                _runtimeMaterial.SetVector(StatColorId, (Vector4)statColor);
             _runtimeMaterial.SetFloat(EmissionPulseId, dynamicPulse);
             _runtimeMaterial.SetFloat(OverlapPercentId, _overlapPercent);
             _runtimeMaterial.SetFloat(ReassembleProgressId, _reassembleProgress);
-            _runtimeMaterial.SetFloat(MirrorActiveId, ResolveMirrorActive(_currentIdentity.Type));
+            _runtimeMaterial.SetFloat(MirrorActiveId, mirrorActive);
             _runtimeMaterial.SetFloat(VignetteRadiusId, _vignetteMainRadius);
             _runtimeMaterial.SetFloat(VignetteSoftnessId, _vignetteMainSoftness);
-            _targetGraphic.SetMaterialDirty();
+            if (_targetGraphic != null)
+                _targetGraphic.SetMaterialDirty();
         }
 
         private float ResolveGlitchAmount(IdentityType type)

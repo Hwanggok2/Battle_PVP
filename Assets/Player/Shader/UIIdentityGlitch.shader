@@ -176,7 +176,7 @@ Shader "UI/IdentityGlitch"
                 baseCol.a *= i.color.a * noiseMask;
 
                 #ifdef UNITY_UI_CLIP_RECT
-                baseCol.a *= UnityGet2DClipping(i.worldPos.xy, _ClipRect);
+                baseCol.a *= UnityGet2DClipping(i.worldPosition.xy, _ClipRect);
                 #endif
 
                 #ifdef UNITY_UI_ALPHACLIP

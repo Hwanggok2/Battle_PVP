@@ -104,6 +104,8 @@ public class PlayerCombat : NetworkBehaviour
     private readonly HashSet<IDamageReceiver> _hitTargetsThisSwing = new HashSet<IDamageReceiver>();
 
     private Animator animator;
+    private Transform _cachedTransform;
+    private CharacterController _characterController;
     private PlayerInput _playerInput;
     private Coroutine _comboRoutine;
     private HealthSystem _healthSystem;
@@ -133,6 +135,7 @@ public class PlayerCombat : NetworkBehaviour
     private float _attackSpeedBonusMultiplier = 1f;
     private double _attackSpeedBonusUntil;
     private GameObject _strategistStrAuraObject;
+    private Transform _strategistStrAuraTransform;
     private Renderer _strategistStrAuraRenderer;
     private Material _runtimeStrategistStrAuraMaterial;
     private Material _activeStrategistAuraMaterialSource;
@@ -183,6 +186,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private void Awake()
     {
+        _cachedTransform = transform;
+        _characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         if (animator == null)
             animator = GetComponentInChildren<Animator>(true);
@@ -1212,13 +1217,10 @@ public class PlayerCombat : NetworkBehaviour
 
         _activeStrategistAuraStat = auraStat;
         ApplyStrategistPresetAuraMaterial();
-        _strategistStrAuraObject.transform.localPosition = ResolveStrategistStrAuraLocalPosition();
-        _strategistStrAuraObject.transform.localScale = ResolveStrategistStrAuraLocalScale();
         if (_runtimeStrategistStrAuraMaterial != null)
         {
-            float pulse = 0.78f + (Mathf.Sin(Time.time * 7.5f) * 0.22f);
             if (_runtimeStrategistStrAuraMaterial.HasProperty("_Pulse"))
-                _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", pulse);
+                _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", 1f);
         }
     }
 
@@ -1256,11 +1258,10 @@ public class PlayerCombat : NetworkBehaviour
 
         GameObject aura = GameObject.CreatePrimitive(ToPrimitiveType(_strategistStrAuraShape));
         aura.name = "Strategist_STR_Attack_Aura";
-        aura.transform.SetParent(transform, false);
         _strategistStrAuraObject = aura;
-        aura.transform.localPosition = ResolveStrategistStrAuraLocalPosition();
-        aura.transform.localRotation = Quaternion.identity;
-        aura.transform.localScale = ResolveStrategistStrAuraLocalScale();
+        _strategistStrAuraTransform = aura.transform;
+        _strategistStrAuraTransform.SetParent(_cachedTransform, false);
+        RefreshStrategistAuraTransform();
 
         Collider auraCollider = aura.GetComponent<Collider>();
         if (auraCollider != null)
@@ -1278,27 +1279,33 @@ public class PlayerCombat : NetworkBehaviour
         _strategistStrAuraObject.SetActive(false);
     }
 
+    private void RefreshStrategistAuraTransform()
+    {
+        if (_strategistStrAuraTransform == null)
+            return;
+
+        _strategistStrAuraTransform.localPosition = ResolveStrategistStrAuraLocalPosition();
+        _strategistStrAuraTransform.localRotation = Quaternion.identity;
+        _strategistStrAuraTransform.localScale = ResolveStrategistStrAuraLocalScale();
+    }
+
     private void ApplyStrategistPresetAuraMaterial()
     {
         if (_strategistStrAuraRenderer == null)
             return;
 
         Material source = ResolveStrategistPresetAuraMaterial(_activeStrategistAuraStat);
-        if (_runtimeStrategistStrAuraMaterial != null && _activeStrategistAuraMaterialSource == source)
+        if (_activeStrategistAuraMaterialSource == source && _strategistStrAuraRenderer.sharedMaterial != null)
             return;
-
-        if (_runtimeStrategistStrAuraMaterial != null)
-        {
-            Destroy(_runtimeStrategistStrAuraMaterial);
-            _runtimeStrategistStrAuraMaterial = null;
-        }
 
         _activeStrategistAuraMaterialSource = source;
         if (source != null)
         {
-            _runtimeStrategistStrAuraMaterial = new Material(source);
+            _strategistStrAuraRenderer.sharedMaterial = source;
+            return;
         }
-        else
+
+        if (_runtimeStrategistStrAuraMaterial == null)
         {
             Shader shader = Shader.Find("BattlePVP/FresnelAura");
             if (shader != null)
@@ -1322,15 +1329,30 @@ public class PlayerCombat : NetworkBehaviour
 
     private Vector3 ResolveStrategistStrAuraLocalPosition()
     {
+        if (_fitStrategistStrAuraToPlayer && _preferCharacterControllerAuraBounds && _characterController != null)
+            return _characterController.center + _strategistStrAuraOffset;
+
         if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
             return Vector3.up + _strategistStrAuraOffset;
 
-        Vector3 worldCenter = bounds.center + transform.TransformVector(_strategistStrAuraOffset);
-        return transform.InverseTransformPoint(worldCenter);
+        Vector3 worldCenter = bounds.center + (_cachedTransform != null ? _cachedTransform.TransformVector(_strategistStrAuraOffset) : _strategistStrAuraOffset);
+        return _cachedTransform != null ? _cachedTransform.InverseTransformPoint(worldCenter) : worldCenter;
     }
 
     private Vector3 ResolveStrategistStrAuraLocalScale()
     {
+        if (_fitStrategistStrAuraToPlayer && _preferCharacterControllerAuraBounds && _characterController != null)
+        {
+            float radius = Mathf.Max(0.01f, _characterController.radius);
+            float height = Mathf.Max(radius * 2f, _characterController.height);
+            Vector3 controllerSize = new Vector3(radius * 2f, height, radius * 2f);
+            Vector3 controllerPrimitiveSize = GetPrimitiveLocalSize(_strategistStrAuraShape);
+            return new Vector3(
+                controllerSize.x * Mathf.Max(0.01f, _strategistStrAuraScale.x) / controllerPrimitiveSize.x,
+                controllerSize.y * Mathf.Max(0.01f, _strategistStrAuraScale.y) / controllerPrimitiveSize.y,
+                controllerSize.z * Mathf.Max(0.01f, _strategistStrAuraScale.z) / controllerPrimitiveSize.z);
+        }
+
         if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
             return _strategistStrAuraScale;
 
@@ -1388,18 +1410,18 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool TryGetCharacterControllerAuraBounds(out Bounds bounds)
     {
-        CharacterController characterController = GetComponent<CharacterController>();
-        if (characterController == null)
+        if (_characterController == null)
         {
             bounds = default;
             return false;
         }
 
-        Vector3 worldCenter = transform.TransformPoint(characterController.center);
-        Vector3 scale = transform.lossyScale;
+        Transform ownerTransform = _cachedTransform != null ? _cachedTransform : transform;
+        Vector3 worldCenter = ownerTransform.TransformPoint(_characterController.center);
+        Vector3 scale = ownerTransform.lossyScale;
         float radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
-        float radius = Mathf.Max(0.01f, characterController.radius * radiusScale);
-        float height = Mathf.Max(radius * 2f, characterController.height * Mathf.Abs(scale.y));
+        float radius = Mathf.Max(0.01f, _characterController.radius * radiusScale);
+        float height = Mathf.Max(radius * 2f, _characterController.height * Mathf.Abs(scale.y));
         bounds = new Bounds(worldCenter, new Vector3(radius * 2f, height, radius * 2f));
         return true;
     }

@@ -63,6 +63,7 @@ namespace BattlePvp.Combat
         [SerializeField] private float _bonusDefenseEff;
         [SyncVar(hook = nameof(OnShieldSynced))] [SerializeField] private float _currentShield;
         [SyncVar] [SerializeField] private double _shieldExpiresAt;
+        [SerializeField] private float _shieldSyncIntervalSeconds = 0.05f;
         [SyncVar] [SerializeField] private double _skillInvulnerableUntil;
         [SyncVar] [SerializeField] private double _tauntDefenseUntil;
         [SyncVar] [SerializeField] private float _tauntIncomingDamageMultiplier = 1f;
@@ -74,6 +75,7 @@ namespace BattlePvp.Combat
         private DamageCalculator _damageCalculator;
         private StrategistRules _strategistRules;
         private Coroutine _overflowRoutine;
+        private bool _overflowRoutineRunning;
         private Coroutine _regenRoutine;
         private Coroutine _shieldRoutine;
 
@@ -232,11 +234,16 @@ namespace BattlePvp.Combat
             if (amount <= 0f || durationSeconds <= 0f || IsDead)
                 return;
 
-            _currentShield = amount;
+            if (_shieldRoutine != null)
+            {
+                StopCoroutine(_shieldRoutine);
+                _shieldRoutine = null;
+            }
+
+            float existingShield = _currentShield > 0.5f ? _currentShield : 0f;
+            _currentShield = existingShield + amount;
             _shieldExpiresAt = NetworkTime.time + durationSeconds;
             RaiseShieldChanged();
-            if (_shieldRoutine != null)
-                StopCoroutine(_shieldRoutine);
             _shieldRoutine = StartCoroutine(CoDecayShield());
         }
 
@@ -258,9 +265,10 @@ namespace BattlePvp.Combat
             while (_currentShield > 0f && NetworkTime.time < _shieldExpiresAt)
             {
                 float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - NetworkTime.time));
-                _currentShield = Mathf.Max(0f, _currentShield - ((_currentShield / remaining) * Time.deltaTime));
+                float deltaSeconds = Mathf.Max(Time.deltaTime, _shieldSyncIntervalSeconds);
+                _currentShield = Mathf.Max(0f, _currentShield - ((_currentShield / remaining) * deltaSeconds));
                 RaiseShieldChanged();
-                yield return null;
+                yield return new WaitForSeconds(Mathf.Max(0.01f, _shieldSyncIntervalSeconds));
             }
 
             _currentShield = 0f;
@@ -454,16 +462,17 @@ namespace BattlePvp.Combat
 
         private void EnsureOverflowRoutine()
         {
-            if (_overflowRoutine != null)
+            if (_overflowRoutineRunning)
                 return;
+            _overflowRoutineRunning = true;
             _overflowRoutine = StartCoroutine(CoOverflowTick());
         }
 
         private void StopOverflowRoutine()
         {
-            if (_overflowRoutine == null)
-                return;
-            StopCoroutine(_overflowRoutine);
+            _overflowRoutineRunning = false;
+            if (_overflowRoutine != null)
+                StopCoroutine(_overflowRoutine);
             _overflowRoutine = null;
         }
 
@@ -475,6 +484,7 @@ namespace BattlePvp.Combat
                 // overflow가 해소되었으면 종료
                 if (_maxHp <= 0f || _currentHp <= _maxHp || !IsStrategist())
                 {
+                    _overflowRoutineRunning = false;
                     _overflowRoutine = null;
                     yield break;
                 }
@@ -555,7 +565,6 @@ namespace BattlePvp.Combat
         private void OnShieldSynced(float oldValue, float newValue)
         {
             ShieldChanged?.Invoke(newValue);
-            RaiseHpChanged();
         }
 
         /// <summary>

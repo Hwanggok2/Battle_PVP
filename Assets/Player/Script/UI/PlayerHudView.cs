@@ -1,4 +1,5 @@
 using BattlePvp.Stats;
+using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -44,6 +45,7 @@ namespace BattlePvp.UI
         private float _currentShield;
         private bool _shieldSliderAutoCreated;
         private bool _usingCustomShieldImage;
+        private readonly StringBuilder _textBuilder = new StringBuilder(32);
 
         private void Awake()
         {
@@ -81,8 +83,17 @@ namespace BattlePvp.UI
         {
             if (_hpText != null)
             {
-                string shield = _currentShield > 0.5f ? $" ({Mathf.CeilToInt(_currentShield)})" : string.Empty;
-                _hpText.text = $"{Mathf.CeilToInt(_lastHpCurrent)} / {Mathf.CeilToInt(_lastHpMax)}{shield}";
+                _textBuilder.Clear();
+                _textBuilder.Append(Mathf.CeilToInt(_lastHpCurrent));
+                _textBuilder.Append(" / ");
+                _textBuilder.Append(Mathf.CeilToInt(_lastHpMax));
+                if (_currentShield > 0.5f)
+                {
+                    _textBuilder.Append(" (");
+                    _textBuilder.Append(Mathf.CeilToInt(_currentShield));
+                    _textBuilder.Append(')');
+                }
+                _hpText.text = _textBuilder.ToString();
             }
         }
 
@@ -108,7 +119,14 @@ namespace BattlePvp.UI
         public void SetIdentity(Identity identity)
         {
             if (_identityText != null)
-                _identityText.text = $"{identity.Type} ({identity.PrimaryStat})";
+            {
+                _textBuilder.Clear();
+                _textBuilder.Append(identity.Type);
+                _textBuilder.Append(" (");
+                _textBuilder.Append(identity.PrimaryStat);
+                _textBuilder.Append(')');
+                _identityText.text = _textBuilder.ToString();
+            }
         }
 
         public void SetSkill(SkillHudState state)

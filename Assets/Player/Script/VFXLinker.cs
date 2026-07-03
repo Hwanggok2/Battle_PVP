@@ -86,7 +86,7 @@ namespace BattlePvp.VFX
             };
 
             _block.SetFloat(GlitchAmountId, glitchAmount);
-            _block.SetColor(StatColorId, statColor);
+            _block.SetVector(StatColorId, (Vector4)statColor);
 
             if (_renderers == null)
                 return;
