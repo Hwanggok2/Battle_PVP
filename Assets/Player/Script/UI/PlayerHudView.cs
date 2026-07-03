@@ -14,6 +14,10 @@ namespace BattlePvp.UI
         [Header("HP")]
         [SerializeField] private Slider _hpSlider;
         [SerializeField] private TextMeshProUGUI _hpText;
+        [SerializeField] private Slider _shieldSlider;
+        [SerializeField] private RectTransform _shieldRoot;
+        [SerializeField] private Image _shieldFillImage;
+        [SerializeField] private Vector2 _shieldStartOffset;
         [SerializeField] private Image _overflowEffect;
 
         [Header("Identity")]
@@ -35,6 +39,11 @@ namespace BattlePvp.UI
         [SerializeField] private GameObject _loadingDimObject;
 
         private Color _defaultDeathTextColor = Color.white;
+        private float _lastHpCurrent;
+        private float _lastHpMax;
+        private float _currentShield;
+        private bool _shieldSliderAutoCreated;
+        private bool _usingCustomShieldImage;
 
         private void Awake()
         {
@@ -54,8 +63,46 @@ namespace BattlePvp.UI
             if (_hpSlider != null)
                 _hpSlider.value = max > 0f ? Mathf.Clamp01(current / max) : 0f;
 
+            _lastHpCurrent = current;
+            _lastHpMax = max;
+            UpdateShieldDisplay();
+            UpdateHpText();
+        }
+
+        public void SetShield(float shield)
+        {
+            ResolveReferences();
+            _currentShield = Mathf.Max(0f, shield);
+            UpdateShieldDisplay();
+            UpdateHpText();
+        }
+
+        private void UpdateHpText()
+        {
             if (_hpText != null)
-                _hpText.text = $"{Mathf.CeilToInt(current)} / {Mathf.CeilToInt(max)}";
+            {
+                string shield = _currentShield > 0.5f ? $" ({Mathf.CeilToInt(_currentShield)})" : string.Empty;
+                _hpText.text = $"{Mathf.CeilToInt(_lastHpCurrent)} / {Mathf.CeilToInt(_lastHpMax)}{shield}";
+            }
+        }
+
+        private void UpdateShieldDisplay()
+        {
+            if (_shieldSlider == null && _shieldFillImage == null)
+                return;
+
+            bool visible = _currentShield > 0.5f;
+            SetShieldObjectActive(visible);
+            if (!visible)
+                return;
+
+            if (_hpSlider != null && (_shieldSliderAutoCreated || _usingCustomShieldImage))
+                PositionShieldSegment();
+            else if (_shieldSlider != null)
+                _shieldSlider.value = Mathf.Clamp01(_currentShield / Mathf.Max(1f, _lastHpMax));
+
+            if (_shieldFillImage != null && _shieldFillImage.type == Image.Type.Filled)
+                _shieldFillImage.fillAmount = 1f;
         }
 
         public void SetIdentity(Identity identity)
@@ -153,7 +200,148 @@ namespace BattlePvp.UI
                 _overflowEffect = FindNamed(images, "overflow");
             }
 
+            ResolveShieldReferences();
+
+            if (_shieldSlider == null && _shieldFillImage == null)
+            {
+                if (_hpSlider != null)
+                {
+                    _shieldSlider = CreateShieldSlider(_hpSlider);
+                    _shieldRoot = _shieldSlider.transform as RectTransform;
+                    _shieldFillImage = _shieldSlider.fillRect != null ? _shieldSlider.fillRect.GetComponent<Image>() : null;
+                    _shieldSliderAutoCreated = true;
+                }
+            }
+
             ResolveSkillUI();
+        }
+
+        private void ResolveShieldReferences()
+        {
+            if (_shieldFillImage != null)
+            {
+                _usingCustomShieldImage = !_shieldSliderAutoCreated;
+                if (_shieldRoot == null)
+                    _shieldRoot = _shieldFillImage.transform as RectTransform;
+                return;
+            }
+
+            if (_shieldSlider == null)
+            {
+                Slider[] sliders = GetComponentsInChildren<Slider>(true);
+                _shieldSlider = FindNamed(sliders, "shield");
+            }
+
+            if (_shieldSlider != null)
+            {
+                _shieldRoot = _shieldSlider.transform as RectTransform;
+                _shieldFillImage = _shieldSlider.fillRect != null ? _shieldSlider.fillRect.GetComponent<Image>() : _shieldSlider.GetComponentInChildren<Image>(true);
+                _usingCustomShieldImage = !_shieldSliderAutoCreated;
+                return;
+            }
+
+            Image[] images = GetComponentsInChildren<Image>(true);
+            _shieldFillImage = FindNamed(images, "shield");
+            if (_shieldFillImage != null)
+            {
+                _shieldRoot = _shieldFillImage.transform as RectTransform;
+                _usingCustomShieldImage = true;
+            }
+        }
+
+        private void SetShieldObjectActive(bool active)
+        {
+            if (_shieldRoot != null)
+                _shieldRoot.gameObject.SetActive(active);
+            else if (_shieldSlider != null)
+                _shieldSlider.gameObject.SetActive(active);
+            else if (_shieldFillImage != null)
+                _shieldFillImage.gameObject.SetActive(active);
+        }
+
+        private static Slider CreateShieldSlider(Slider hpSlider)
+        {
+            RectTransform hpRect = hpSlider.transform as RectTransform;
+            Transform parent = hpSlider.transform.parent != null ? hpSlider.transform.parent : hpSlider.transform;
+
+            GameObject root = new GameObject("Shield Slider", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            RectTransform rootRect = root.GetComponent<RectTransform>();
+            if (hpRect != null)
+            {
+                rootRect.anchorMin = hpRect.anchorMin;
+                rootRect.anchorMax = hpRect.anchorMax;
+                rootRect.pivot = hpRect.pivot;
+                rootRect.sizeDelta = new Vector2(0f, hpRect.sizeDelta.y);
+                rootRect.anchoredPosition = hpRect.anchoredPosition;
+            }
+
+            Image sourceFill = hpSlider.fillRect != null ? hpSlider.fillRect.GetComponent<Image>() : null;
+
+            GameObject fillObject = new GameObject("Fill", typeof(RectTransform));
+            fillObject.transform.SetParent(root.transform, false);
+            RectTransform fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = Vector2.one;
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = Vector2.zero;
+
+            Image fill = fillObject.AddComponent<Image>();
+            fill.color = new Color(1f, 0.82f, 0.08f, 0.9f);
+            if (sourceFill != null)
+            {
+                fill.sprite = sourceFill.sprite;
+                fill.material = sourceFill.material;
+                fill.type = sourceFill.type;
+                fill.pixelsPerUnitMultiplier = sourceFill.pixelsPerUnitMultiplier;
+                fill.preserveAspect = sourceFill.preserveAspect;
+                fill.fillCenter = sourceFill.fillCenter;
+                fill.fillMethod = sourceFill.fillMethod;
+                fill.fillOrigin = sourceFill.fillOrigin;
+                fill.fillClockwise = sourceFill.fillClockwise;
+            }
+
+            Slider slider = root.AddComponent<Slider>();
+            slider.transition = Selectable.Transition.None;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = 1f;
+            slider.fillRect = fillRect;
+            slider.targetGraphic = fill;
+            root.SetActive(false);
+            return slider;
+        }
+
+        private void PositionShieldSegment()
+        {
+            RectTransform hpRect = _hpSlider.transform as RectTransform;
+            RectTransform shieldRect = _shieldRoot != null ? _shieldRoot : (_shieldSlider != null ? _shieldSlider.transform as RectTransform : _shieldFillImage.transform as RectTransform);
+            if (hpRect == null || shieldRect == null)
+                return;
+
+            float hpWidth = hpRect.rect.width;
+            if (hpWidth <= 0.01f)
+                hpWidth = Mathf.Abs(hpRect.sizeDelta.x);
+            if (hpWidth <= 0.01f)
+                hpWidth = 1f;
+
+            float hpHeight = hpRect.rect.height;
+            if (hpHeight <= 0.01f)
+                hpHeight = Mathf.Abs(hpRect.sizeDelta.y);
+
+            float hpRatio = Mathf.Clamp01(_lastHpCurrent / Mathf.Max(1f, _lastHpMax));
+            float shieldRatio = Mathf.Clamp(_currentShield / Mathf.Max(1f, _lastHpMax), 0f, 1.5f);
+            float shieldWidth = hpWidth * shieldRatio;
+            float hpLeft = hpRect.anchoredPosition.x - (hpRect.pivot.x * hpWidth);
+            float shieldLeft = hpLeft + (hpWidth * hpRatio) + _shieldStartOffset.x;
+
+            shieldRect.anchorMin = hpRect.anchorMin;
+            shieldRect.anchorMax = hpRect.anchorMax;
+            shieldRect.pivot = hpRect.pivot;
+            shieldRect.sizeDelta = new Vector2(shieldWidth, hpHeight);
+            shieldRect.anchoredPosition = new Vector2(shieldLeft + (shieldRect.pivot.x * shieldWidth), hpRect.anchoredPosition.y + _shieldStartOffset.y);
+            if (_shieldSlider != null)
+                _shieldSlider.value = 1f;
         }
 
         private static T FindNamed<T>(T[] components, params string[] keywords) where T : Component

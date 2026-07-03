@@ -6,6 +6,7 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using BattlePvp.Managers;
 using BattlePvp.UI;
 
 public class PlayerCombat : NetworkBehaviour
@@ -111,6 +112,10 @@ public class PlayerCombat : NetworkBehaviour
     private float _nextAttackDamageMultiplier = 1f;
     private float _attackSpeedBonusMultiplier = 1f;
     private double _attackSpeedBonusUntil;
+    private StatContainer _runtimeStrategistTargetPreset;
+    private bool _hasRuntimeStrategistTargetPreset;
+    private StatContainer _strategistSwapReturnPreset;
+    private bool _hasStrategistSwapReturnPreset;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
@@ -643,8 +648,9 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     [Command]
-    private void CmdUseAdvancedSkill(int skillKey, Vector3 direction)
+    private void CmdUseAdvancedSkill(int skillKey, Vector3 direction, StatContainer strategistTargetPreset, bool hasStrategistTargetPreset)
     {
+        SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
         BeginAdvancedSkill(skillKey, direction);
     }
 
@@ -655,6 +661,10 @@ public class PlayerCombat : NetworkBehaviour
 
         int key = (int)data.SkillKind;
         Vector3 direction = ResolveAdvancedSkillDirection(data);
+        StatContainer strategistTargetPreset = default;
+        bool hasStrategistTargetPreset = GlobalDataManager.Instance != null && GlobalDataManager.Instance.HasStrategistTargetPreset;
+        if (hasStrategistTargetPreset)
+            strategistTargetPreset = GlobalDataManager.Instance.StrategistTargetPreset;
         _localAdvancedAttackLockUntil = SkillTime + data.CastSeconds;
         _pendingAdvancedSkillHitKey = key;
         _pendingAdvancedSkillDirection = direction;
@@ -662,9 +672,18 @@ public class PlayerCombat : NetworkBehaviour
         LockLocalSkillAnimationAttack(data);
         LockLocalAdvancedMovement(data);
         if (isClient && isLocalPlayer && !isServer)
-            CmdUseAdvancedSkill(key, direction);
+            CmdUseAdvancedSkill(key, direction, strategistTargetPreset, hasStrategistTargetPreset);
         else
+        {
+            SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
             BeginAdvancedSkill(key, direction);
+        }
+    }
+
+    private void SetRuntimeStrategistTargetPreset(StatContainer targetPreset, bool hasTargetPreset)
+    {
+        _runtimeStrategistTargetPreset = targetPreset;
+        _hasRuntimeStrategistTargetPreset = hasTargetPreset;
     }
 
     private Vector3 ResolveAdvancedSkillDirection(JobSkillData data)
@@ -1007,10 +1026,33 @@ public class PlayerCombat : NetworkBehaviour
         if (_statManager == null || _healthSystem == null)
             return;
 
-        StatKind targetDominantStat = ResolveDominantStat(data.TargetPreset);
+        StatContainer currentPreset = _statManager.GetStatsCopy();
+        StatContainer targetPreset = data.TargetPreset;
+        if (data.SkillKind == JobSkillKind.StrategistPresetChange && _hasRuntimeStrategistTargetPreset)
+        {
+            targetPreset = _runtimeStrategistTargetPreset;
+        }
+        else if (data.SkillKind == JobSkillKind.StrategistPresetChange &&
+                 GlobalDataManager.Instance != null &&
+                 GlobalDataManager.Instance.HasStrategistTargetPreset)
+        {
+            targetPreset = GlobalDataManager.Instance.StrategistTargetPreset;
+        }
+
+        if (data.SkillKind == JobSkillKind.StrategistPresetChange)
+        {
+            StatContainer nextReturnPreset = currentPreset;
+            if (_hasStrategistSwapReturnPreset)
+                targetPreset = _strategistSwapReturnPreset;
+
+            _strategistSwapReturnPreset = nextReturnPreset;
+            _hasStrategistSwapReturnPreset = true;
+        }
+
+        StatKind targetDominantStat = ResolveDominantStat(targetPreset);
         float oldMax = _healthSystem.MaxHp;
         float oldCurrent = _healthSystem.CurrentHp;
-        _statManager.ApplyStats(data.TargetPreset, true);
+        _statManager.ApplyStats(targetPreset, true);
         float newMax = _healthSystem.MaxHp;
         float newCurrent = Mathf.Min(oldCurrent, newMax);
         float shield = Mathf.Max(0f, oldCurrent - newCurrent);

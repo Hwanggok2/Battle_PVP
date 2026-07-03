@@ -53,6 +53,8 @@ namespace BattlePvp.Managers
         [SerializeField] private int _selectedStatPresetSlot = 0;
         [SerializeField] private StatContainer[] _statPresetSlots = new StatContainer[DefaultStatPresetSlotCount];
         [SerializeField] private bool[] _statPresetSlotUsed = new bool[DefaultStatPresetSlotCount];
+        [SerializeField] private StatContainer _strategistTargetPreset;
+        [SerializeField] private bool _hasStrategistTargetPreset;
         [SerializeField] private string _playerNickname = "Unknown";
         [SerializeField] private int _cumulativeKills;
         [SerializeField] private int _cumulativeDeaths;
@@ -75,6 +77,7 @@ namespace BattlePvp.Managers
         
         public event System.Action<StatContainer> OnSavedStatsUpdated;
         public event System.Action<int, StatContainer, bool> OnStatPresetSlotChanged;
+        public event System.Action<StatContainer, bool> OnStrategistTargetPresetChanged;
         public event System.Action<int, int> OnCombatRecordUpdated;
 
         public int CumulativeKills => _cumulativeKills;
@@ -102,6 +105,40 @@ namespace BattlePvp.Managers
         }
 
         public int SelectedStatPresetSlot => _selectedStatPresetSlot;
+        public bool HasStrategistTargetPreset => _hasStrategistTargetPreset;
+        public StatContainer StrategistTargetPreset => _strategistTargetPreset;
+        public int StatPresetSlotCount
+        {
+            get
+            {
+                EnsureStatPresetArrays();
+                return _statPresetSlots.Length;
+            }
+        }
+
+        public bool HasCompleteSavedStats()
+        {
+            return IsCompleteStatPreset(_savedStats);
+        }
+
+        public bool HasValidStrategistTargetPreset()
+        {
+            return _hasStrategistTargetPreset
+                && IsCompleteStatPreset(_strategistTargetPreset)
+                && IsStrategistPreset(_strategistTargetPreset);
+        }
+
+        public static bool IsCompleteStatPreset(StatContainer stats)
+        {
+            float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
+            return Mathf.RoundToInt(total) == 30;
+        }
+
+        public static bool IsStrategistPreset(StatContainer stats)
+        {
+            Identity identity = new IdentityCalculator().ResolveIdentity(stats, out _);
+            return identity.Type == IdentityType.Strategist;
+        }
 
         public bool HasStatPresetSlot(int slotIndex)
         {
@@ -117,6 +154,32 @@ namespace BattlePvp.Managers
                 return default;
 
             return _statPresetSlots[slotIndex];
+        }
+
+        public void ApplyLoadedStatPresetData(
+            StatContainer[] slots,
+            bool[] slotUsed,
+            int selectedSlot,
+            StatContainer strategistTargetPreset,
+            bool hasStrategistTargetPreset)
+        {
+            EnsureStatPresetArrays();
+
+            int copyCount = slots != null ? Mathf.Min(slots.Length, _statPresetSlots.Length) : 0;
+            for (int i = 0; i < copyCount; i++)
+            {
+                _statPresetSlots[i] = ClampStatBudget(slots[i], 30);
+                _statPresetSlotUsed[i] = slotUsed != null && i < slotUsed.Length && slotUsed[i];
+            }
+
+            _selectedStatPresetSlot = Mathf.Clamp(selectedSlot, 0, _statPresetSlots.Length - 1);
+            _savedStats = _statPresetSlotUsed[_selectedStatPresetSlot] ? _statPresetSlots[_selectedStatPresetSlot] : default;
+            _strategistTargetPreset = ClampStatBudget(strategistTargetPreset, 30);
+            _hasStrategistTargetPreset = hasStrategistTargetPreset;
+
+            OnStatPresetSlotChanged?.Invoke(_selectedStatPresetSlot, _savedStats, _statPresetSlotUsed[_selectedStatPresetSlot]);
+            OnStrategistTargetPresetChanged?.Invoke(_strategistTargetPreset, _hasStrategistTargetPreset);
+            OnSavedStatsUpdated?.Invoke(_savedStats);
         }
 
         public void SelectStatPresetSlot(int slotIndex)
@@ -157,6 +220,13 @@ namespace BattlePvp.Managers
             }
 
             OnStatPresetSlotChanged?.Invoke(slotIndex, clamped, true);
+        }
+
+        public void SaveStrategistTargetPreset(StatContainer stats)
+        {
+            _strategistTargetPreset = ClampStatBudget(stats, 30);
+            _hasStrategistTargetPreset = true;
+            OnStrategistTargetPresetChanged?.Invoke(_strategistTargetPreset, true);
         }
 
         private void EnsureStatPresetArrays()

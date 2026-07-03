@@ -1465,12 +1465,80 @@ namespace BattlePvp.Networking
                     };
 
                     PlayFabClientAPI.UpdateUserData(secondaryRequest, 
-                        res => Debug.Log("<color=green>[PlayFab] Secondary stats saved.</color>"),
+                        res => {
+                            Debug.Log("<color=green>[PlayFab] Secondary stats saved.</color>");
+                            SavePlayerStatPresetData();
+                        },
                         err => Debug.LogError($"[PlayFab] Secondary stats save FAILED: {err.GenerateErrorReport()}")
                     );
                 },
                 error => Debug.LogError($"[PlayFab] Primary stats save FAILED: {error.GenerateErrorReport()}")
             );
+        }
+
+        public void SavePlayerStatPresetData()
+        {
+            GlobalDataManager globalData = GlobalDataManager.Instance;
+            if (globalData == null)
+                return;
+
+            var data = new Dictionary<string, string>
+            {
+                { "SelectedStatPresetSlot", globalData.SelectedStatPresetSlot.ToString() },
+                { "StrategistPresetUsed", globalData.HasStrategistTargetPreset ? "1" : "0" }
+            };
+
+            for (int i = 0; i < globalData.StatPresetSlotCount; i++)
+            {
+                int number = i + 1;
+                bool used = globalData.HasStatPresetSlot(i);
+                StatContainer slot = globalData.GetStatPresetSlot(i);
+                data[$"Preset{number}_Used"] = used ? "1" : "0";
+                AddStatPresetFields(data, $"Preset{number}", slot);
+            }
+
+            AddStatPresetFields(data, "StrategistPreset", globalData.StrategistTargetPreset);
+            SaveUserDataChunks(data, "Stat preset data");
+        }
+
+        private static void AddStatPresetFields(Dictionary<string, string> data, string prefix, StatContainer stats)
+        {
+            data[$"{prefix}_STR"] = Mathf.RoundToInt(stats.STR.Invested).ToString();
+            data[$"{prefix}_CON"] = Mathf.RoundToInt(stats.CON.Invested).ToString();
+            data[$"{prefix}_AGI"] = Mathf.RoundToInt(stats.AGI.Invested).ToString();
+            data[$"{prefix}_DEF"] = Mathf.RoundToInt(stats.DEF.Invested).ToString();
+        }
+
+        private void SaveUserDataChunks(Dictionary<string, string> data, string label)
+        {
+            const int chunkSize = 10;
+            var chunk = new Dictionary<string, string>(chunkSize);
+            int index = 0;
+            foreach (var pair in data)
+            {
+                chunk[pair.Key] = pair.Value;
+                if (chunk.Count >= chunkSize)
+                {
+                    SaveUserDataChunk(new Dictionary<string, string>(chunk), label, index++);
+                    chunk.Clear();
+                }
+            }
+
+            if (chunk.Count > 0)
+                SaveUserDataChunk(chunk, label, index);
+        }
+
+        private void SaveUserDataChunk(Dictionary<string, string> data, string label, int index)
+        {
+            var request = new UpdateUserDataRequest
+            {
+                Data = data,
+                Permission = UserDataPermission.Public
+            };
+
+            PlayFabClientAPI.UpdateUserData(request,
+                _ => Debug.Log($"<color=green>[PlayFab] {label} saved. chunk={index}</color>"),
+                error => Debug.LogError($"[PlayFab] {label} save FAILED: {error.GenerateErrorReport()}"));
         }
 
         /// <summary>
@@ -1490,6 +1558,8 @@ namespace BattlePvp.Networking
                         if (result.Data.ContainsKey("CON")) stats.CON.Invested = (float)ParseValue(result.Data["CON"].Value);
                         if (result.Data.ContainsKey("AGI")) stats.AGI.Invested = (float)ParseValue(result.Data["AGI"].Value);
                         if (result.Data.ContainsKey("DEF")) stats.DEF.Invested = (float)ParseValue(result.Data["DEF"].Value);
+
+                        TryApplyLoadedStatPresetData(result.Data, ref stats);
                         
                         Debug.Log($"<color=cyan>[PlayFab] Stats loaded: STR={stats.STR.Invested}, AGI={stats.AGI.Invested}, CON={stats.CON.Invested}, DEF={stats.DEF.Invested}</color>");
                     }
@@ -1504,6 +1574,65 @@ namespace BattlePvp.Networking
                     onLoaded?.Invoke(new StatContainer());
                 }
             );
+        }
+
+        private void TryApplyLoadedStatPresetData(Dictionary<string, UserDataRecord> data, ref StatContainer selectedStats)
+        {
+            if (data == null || GlobalDataManager.Instance == null)
+                return;
+
+            bool hasPresetData = data.ContainsKey("SelectedStatPresetSlot") || data.ContainsKey("Preset1_Used");
+            if (!hasPresetData)
+                return;
+
+            int slotCount = GlobalDataManager.Instance.StatPresetSlotCount;
+            var slots = new StatContainer[slotCount];
+            var used = new bool[slotCount];
+            for (int i = 0; i < slotCount; i++)
+            {
+                int number = i + 1;
+                string prefix = $"Preset{number}";
+                slots[i] = ReadStatPreset(data, prefix);
+                used[i] = ReadBool(data, $"{prefix}_Used");
+            }
+
+            int selectedSlot = Mathf.Clamp(ReadInt(data, "SelectedStatPresetSlot", 0), 0, slotCount - 1);
+            StatContainer strategistPreset = ReadStatPreset(data, "StrategistPreset");
+            bool hasStrategistPreset = ReadBool(data, "StrategistPresetUsed");
+
+            GlobalDataManager.Instance.ApplyLoadedStatPresetData(slots, used, selectedSlot, strategistPreset, hasStrategistPreset);
+            selectedStats = used[selectedSlot] ? slots[selectedSlot] : default;
+        }
+
+        private StatContainer ReadStatPreset(Dictionary<string, UserDataRecord> data, string prefix)
+        {
+            var stats = new StatContainer();
+            stats.STR.Invested = ReadFloat(data, $"{prefix}_STR");
+            stats.CON.Invested = ReadFloat(data, $"{prefix}_CON");
+            stats.AGI.Invested = ReadFloat(data, $"{prefix}_AGI");
+            stats.DEF.Invested = ReadFloat(data, $"{prefix}_DEF");
+            return stats;
+        }
+
+        private static bool ReadBool(Dictionary<string, UserDataRecord> data, string key)
+        {
+            return data.TryGetValue(key, out UserDataRecord record) && record != null && record.Value == "1";
+        }
+
+        private static int ReadInt(Dictionary<string, UserDataRecord> data, string key, int fallback)
+        {
+            if (!data.TryGetValue(key, out UserDataRecord record) || record == null)
+                return fallback;
+
+            return int.TryParse(record.Value, out int value) ? value : fallback;
+        }
+
+        private float ReadFloat(Dictionary<string, UserDataRecord> data, string key)
+        {
+            if (!data.TryGetValue(key, out UserDataRecord record) || record == null)
+                return 0f;
+
+            return (float)ParseValue(record.Value);
         }
 
         public void LoadCombatRecord(Action<int, int> onLoaded)

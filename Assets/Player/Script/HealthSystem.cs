@@ -51,6 +51,7 @@ namespace BattlePvp.Combat
         public bool IsDead { get; private set; }
 
         public event Action<float, float> HpChanged;
+        public event Action<float> ShieldChanged;
         public event Action<bool, float> OverflowChanged;
         public event Action OnDied;
         public event Action OnRevived;
@@ -60,7 +61,7 @@ namespace BattlePvp.Combat
         [SerializeField] private float _currentRegen;
         [SerializeField] private float _defenseRate;
         [SerializeField] private float _bonusDefenseEff;
-        [SyncVar] [SerializeField] private float _currentShield;
+        [SyncVar(hook = nameof(OnShieldSynced))] [SerializeField] private float _currentShield;
         [SyncVar] [SerializeField] private double _shieldExpiresAt;
         [SyncVar] [SerializeField] private double _skillInvulnerableUntil;
         [SyncVar] [SerializeField] private double _tauntDefenseUntil;
@@ -233,6 +234,7 @@ namespace BattlePvp.Combat
 
             _currentShield = amount;
             _shieldExpiresAt = NetworkTime.time + durationSeconds;
+            RaiseShieldChanged();
             if (_shieldRoutine != null)
                 StopCoroutine(_shieldRoutine);
             _shieldRoutine = StartCoroutine(CoDecayShield());
@@ -257,11 +259,13 @@ namespace BattlePvp.Combat
             {
                 float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - NetworkTime.time));
                 _currentShield = Mathf.Max(0f, _currentShield - ((_currentShield / remaining) * Time.deltaTime));
+                RaiseShieldChanged();
                 yield return null;
             }
 
             _currentShield = 0f;
             _shieldExpiresAt = 0d;
+            RaiseShieldChanged();
             _shieldRoutine = null;
         }
 
@@ -289,6 +293,8 @@ namespace BattlePvp.Combat
 
             float absorbedByShield = Mathf.Min(_currentShield, amount);
             _currentShield -= absorbedByShield;
+            if (absorbedByShield > 0f)
+                RaiseShieldChanged();
             float hpDamage = amount - absorbedByShield;
             float next = _currentHp - hpDamage;
             
@@ -539,6 +545,17 @@ namespace BattlePvp.Combat
         private void RaiseHpChanged()
         {
             HpChanged?.Invoke(_currentHp, _maxHp);
+        }
+
+        private void RaiseShieldChanged()
+        {
+            ShieldChanged?.Invoke(_currentShield);
+        }
+
+        private void OnShieldSynced(float oldValue, float newValue)
+        {
+            ShieldChanged?.Invoke(newValue);
+            RaiseHpChanged();
         }
 
         /// <summary>

@@ -54,6 +54,7 @@ namespace BattlePvp.UI
         [Header("Apply & Restrictions")]
         [SerializeField] private Button _applyButton;
         [SerializeField] private Button[] _presetButtons;
+        [SerializeField] private Button _strategistPresetButton;
         [SerializeField] private CanvasGroup _floatingMessageCanvasGroup;
         [SerializeField] private TMP_Text _floatingMessageText;
 
@@ -64,10 +65,13 @@ namespace BattlePvp.UI
         private StatContainer _virtualStats;  
 
         private readonly StringBuilder _sb = new StringBuilder(64);
+        private readonly Dictionary<Graphic, Color> _presetGraphicDefaultColors = new Dictionary<Graphic, Color>();
 
         private bool _isInitializedFromGlobal = false;
         private Coroutine _syncCoroutine;
         private UnityAction[] _presetButtonActions;
+        private UnityAction _strategistPresetButtonAction;
+        private bool _editingStrategistTargetPreset;
 
         private void Awake()
         {
@@ -77,6 +81,7 @@ namespace BattlePvp.UI
             _identityCalculator = new IdentityCalculator();
             if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
             if (_playerHealth == null) _playerHealth = GetComponentInParent<HealthSystem>();
+            ResolveIdentityPreviewReferences();
             if (_floatingMessageCanvasGroup != null) _floatingMessageCanvasGroup.alpha = 0f;
         }
 
@@ -93,7 +98,7 @@ namespace BattlePvp.UI
                     float totalDB = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
 
                     // DB 데이터가 아직 채워지지 않았다면 대기
-                    if (totalDB > 0.1f)
+                    if (totalDB > 0.1f && !_editingStrategistTargetPreset)
                     {
                         if (IsUISyncedWithSavedData(saved))
                         {
@@ -129,6 +134,7 @@ namespace BattlePvp.UI
                 GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
 
             TryFindTarget();
+            ResolveIdentityPreviewReferences();
             _isInitializedFromGlobal = false;
 
             Hook(_str); Hook(_agi); Hook(_con); Hook(_def);
@@ -136,6 +142,8 @@ namespace BattlePvp.UI
             if (_applyButton != null)
                 _applyButton.onClick.AddListener(Apply);
             HookPresetButtons();
+            HookStrategistPresetButton();
+            RefreshPresetSelectionVisuals();
 
             LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
@@ -153,6 +161,7 @@ namespace BattlePvp.UI
             Unhook(_str); Unhook(_agi); Unhook(_con); Unhook(_def);
             if (_applyButton != null) _applyButton.onClick.RemoveListener(Apply);
             UnhookPresetButtons();
+            UnhookStrategistPresetButton();
 
             // [추가] 참조 명시적 초기화 및 코루틴 중단으로 안정성 확보
             if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
@@ -167,12 +176,13 @@ namespace BattlePvp.UI
             _isInitializedFromGlobal = false;
 
             // [핵심 해결] 전역 데이터가 로드되면 동기화용 루틴을 다시 구동하여 UI를 강제 갱신합니다.
-            if (gameObject.activeInHierarchy)
+            if (gameObject.activeInHierarchy && !_editingStrategistTargetPreset)
             {
                 _baseStats = updatedStats;
                 _virtualStats = _baseStats;
                 RefreshSliderVisuals();
                 RebuildBudgetAndPreview();
+                RefreshPresetSelectionVisuals();
             }
         }
 
@@ -256,6 +266,7 @@ namespace BattlePvp.UI
                 int slotIndex = i;
                 _presetButtonActions[i] = () => SelectPresetSlot(slotIndex);
                 button.onClick.AddListener(_presetButtonActions[i]);
+                CapturePresetButtonColors(button);
             }
         }
 
@@ -292,6 +303,27 @@ namespace BattlePvp.UI
                 _presetButtons = presetButtons.ToArray();
         }
 
+        private void HookStrategistPresetButton()
+        {
+            if (_strategistPresetButton == null)
+                _strategistPresetButton = FindButtonByName(GetComponentsInChildren<Button>(true), "Strategist_Preset");
+
+            if (_strategistPresetButton == null)
+                return;
+
+            _strategistPresetButtonAction = SelectStrategistTargetPreset;
+            _strategistPresetButton.onClick.AddListener(_strategistPresetButtonAction);
+            CapturePresetButtonColors(_strategistPresetButton);
+        }
+
+        private void UnhookStrategistPresetButton()
+        {
+            if (_strategistPresetButton != null && _strategistPresetButtonAction != null)
+                _strategistPresetButton.onClick.RemoveListener(_strategistPresetButtonAction);
+
+            _strategistPresetButtonAction = null;
+        }
+
         private static Button FindButtonByName(Button[] buttons, string objectName)
         {
             if (buttons == null)
@@ -311,10 +343,74 @@ namespace BattlePvp.UI
             if (GlobalDataManager.Instance == null)
                 return;
 
+            _editingStrategistTargetPreset = false;
             GlobalDataManager.Instance.SelectStatPresetSlot(slotIndex);
             LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
             TryFindTarget();
+            RefreshPresetSelectionVisuals();
+        }
+
+        private void SelectStrategistTargetPreset()
+        {
+            _editingStrategistTargetPreset = true;
+
+            if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.HasStrategistTargetPreset)
+                _baseStats = GlobalDataManager.Instance.StrategistTargetPreset;
+            else
+                _baseStats = default;
+
+            _virtualStats = _baseStats;
+            RefreshSliderVisuals();
+            RebuildBudgetAndPreview();
+            RefreshPresetSelectionVisuals();
+        }
+
+        private void CapturePresetButtonColors(Button button)
+        {
+            if (button == null)
+                return;
+
+            Graphic[] graphics = button.GetComponentsInChildren<Graphic>(true);
+            foreach (Graphic graphic in graphics)
+            {
+                if (graphic != null && !_presetGraphicDefaultColors.ContainsKey(graphic))
+                    _presetGraphicDefaultColors.Add(graphic, graphic.color);
+            }
+        }
+
+        private void RefreshPresetSelectionVisuals()
+        {
+            if (_presetButtons != null)
+            {
+                for (int i = 0; i < _presetButtons.Length; i++)
+                    SetPresetButtonSelected(_presetButtons[i], !_editingStrategistTargetPreset && GlobalDataManager.Instance != null && GlobalDataManager.Instance.SelectedStatPresetSlot == i);
+            }
+
+            SetPresetButtonSelected(_strategistPresetButton, _editingStrategistTargetPreset);
+        }
+
+        private void SetPresetButtonSelected(Button button, bool selected)
+        {
+            if (button == null)
+                return;
+
+            Graphic[] graphics = button.GetComponentsInChildren<Graphic>(true);
+            foreach (Graphic graphic in graphics)
+            {
+                if (graphic == null)
+                    continue;
+
+                if (!_presetGraphicDefaultColors.TryGetValue(graphic, out Color original))
+                {
+                    original = graphic.color;
+                    _presetGraphicDefaultColors.Add(graphic, original);
+                }
+
+                graphic.color = selected
+                    ? new Color(original.r * 0.45f, original.g * 0.45f, original.b * 0.45f, original.a)
+                    : original;
+            }
         }
 
         private void Hook(StatSlider s) { if (s != null) s.InvestedChanged += OnInvestedChanged; }
@@ -362,7 +458,7 @@ namespace BattlePvp.UI
             return s + a + c + d;
         }
 
-        public int GetRemainPoints() => TotalInvestedBudget - GetTotalInvested();
+        public int GetRemainPoints() => gameObject.activeInHierarchy ? TotalInvestedBudget - GetTotalInvested() : 0;
 
         private void SyncVirtualFromSliders()
         {
@@ -375,6 +471,7 @@ namespace BattlePvp.UI
 
         private void RebuildBudgetAndPreview()
         {
+            ResolveIdentityPreviewReferences();
             int used = GetTotalInvested();
             int remain = TotalInvestedBudget - used;
             if (_pointsText != null) _pointsText.text = $"{used} / {TotalInvestedBudget}";
@@ -386,7 +483,18 @@ namespace BattlePvp.UI
                 _sb.Append(id.PrimaryStat); _sb.Append(' '); _sb.Append(id.Type.ToString().ToUpperInvariant());
                 _identityName.text = _sb.ToString();
             }
-            if (_identityIcon != null && _spriteSet != null) _identityIcon.sprite = _spriteSet.Resolve(id);
+            if (_identityIcon != null && _spriteSet != null)
+            {
+                Sprite sprite = _spriteSet.Resolve(id);
+                _identityIcon.sprite = sprite;
+                _identityIcon.enabled = sprite != null;
+                Color color = _identityIcon.color;
+                if (color.a <= 0.01f)
+                {
+                    color.a = 1f;
+                    _identityIcon.color = color;
+                }
+            }
 
             if (_statManager != null)
             {
@@ -410,6 +518,51 @@ namespace BattlePvp.UI
                 textRef.text = newValue;
                 StartCoroutine(JuiceTextEffect(textRef.transform));
             }
+        }
+
+        private void ResolveIdentityPreviewReferences()
+        {
+            if (_identityIcon != null && _identityName != null)
+            {
+                if (!_identityIcon.gameObject.activeSelf)
+                    _identityIcon.gameObject.SetActive(true);
+                if (!_identityName.gameObject.activeSelf)
+                    _identityName.gameObject.SetActive(true);
+                return;
+            }
+
+            Transform preview = FindChildRecursive(transform, "Identity_Preview");
+            if (preview != null && !preview.gameObject.activeSelf)
+                preview.gameObject.SetActive(true);
+
+            Transform root = preview != null ? preview : transform;
+            if (_identityIcon == null)
+                _identityIcon = root.GetComponentInChildren<Image>(true);
+            if (_identityName == null)
+                _identityName = root.GetComponentInChildren<TMP_Text>(true);
+
+            if (_identityIcon != null && !_identityIcon.gameObject.activeSelf)
+                _identityIcon.gameObject.SetActive(true);
+            if (_identityName != null && !_identityName.gameObject.activeSelf)
+                _identityName.gameObject.SetActive(true);
+        }
+
+        private static Transform FindChildRecursive(Transform root, string targetName)
+        {
+            if (root == null)
+                return null;
+
+            if (root.name == targetName)
+                return root;
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindChildRecursive(root.GetChild(i), targetName);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
         }
 
         private IEnumerator JuiceTextEffect(Transform t)
@@ -452,6 +605,34 @@ namespace BattlePvp.UI
         private void Apply()
         {
             // [추가] 적용 순간에 한 번 더 타겟 유효성을 검사하고 시도합니다.
+            if (_editingStrategistTargetPreset)
+            {
+                if (GetRemainPoints() != 0)
+                {
+                    ShowFloatingMessage("모든 스텟을 투자하십시오");
+                    return;
+                }
+
+                if (!GlobalDataManager.IsStrategistPreset(_virtualStats))
+                {
+                    ShowFloatingMessage("전략가 전환 프리셋은 전략가형만 설정할 수 있습니다.");
+                    return;
+                }
+
+                GlobalDataManager.Instance?.SaveStrategistTargetPreset(_virtualStats);
+                PlayFabBattleManager.Instance?.SavePlayerStatPresetData();
+                _baseStats = _virtualStats;
+                RefreshSliderVisuals();
+                RebuildBudgetAndPreview();
+
+                if (LobbyUIManager.Instance != null)
+                    LobbyUIManager.Instance.SetCustomizerActive(false);
+                else
+                    gameObject.SetActive(false);
+
+                return;
+            }
+
             if (_statManager == null) TryFindTarget();
             if (_statManager == null) 
             {

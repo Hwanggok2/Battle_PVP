@@ -11,6 +11,7 @@ namespace BattlePvp.UI
     public interface IPlayerHudView
     {
         void SetHp(float current, float max);
+        void SetShield(float shield);
         void SetIdentity(Identity identity);
         void SetSkill(SkillHudState state);
         void SetOverflow(bool isOverflow, float overlapPercent);
@@ -78,6 +79,7 @@ namespace BattlePvp.UI
         private IPlayerStatusSource _status;
         private IDamageReceiver _damageReceiver;
         private PlayerCombat _combatSource;
+        private HealthSystem _shieldSource;
         private IPlayerHudView _hudView;
         private NetworkIdentity _ownerIdentity;
         private bool _isSubscribed;
@@ -162,7 +164,10 @@ namespace BattlePvp.UI
         {
             TryBindLocalPlayerImmediate();
             if (IsBoundToLocalPlayer() && _hudView != null && _damageReceiver != null)
+            {
                 _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+                _hudView.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
+            }
         }
 
         private void OnDisable()
@@ -310,6 +315,7 @@ namespace BattlePvp.UI
             _healthSource = hs;
             _status = hs as IPlayerStatusSource;
             _damageReceiver = hs as IDamageReceiver;
+            _shieldSource = hs as HealthSystem;
             _combatSource = combat != null ? combat : ResolveCombatSource(sm, hs);
             _hasExplicitTarget = sm != null || hs != null;
 
@@ -323,6 +329,7 @@ namespace BattlePvp.UI
 
             if (_damageReceiver != null)
                 _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+            _hudView?.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
 
             _hudView?.SetOverflow(false, 0f);
             if (_combatSource != null)
@@ -348,6 +355,9 @@ namespace BattlePvp.UI
                 _status.OverflowChanged += OnOverflowChanged;
             }
 
+            if (_shieldSource != null)
+                _shieldSource.ShieldChanged += OnShieldChanged;
+
             if (_combatSource != null)
                 _combatSource.SkillHudChanged += OnSkillHudChanged;
 
@@ -370,6 +380,9 @@ namespace BattlePvp.UI
                 _status.HpChanged -= OnHpChanged;
                 _status.OverflowChanged -= OnOverflowChanged;
             }
+
+            if (_shieldSource != null)
+                _shieldSource.ShieldChanged -= OnShieldChanged;
 
             if (_combatSource != null)
                 _combatSource.SkillHudChanged -= OnSkillHudChanged;
@@ -505,6 +518,15 @@ namespace BattlePvp.UI
                 return;
 
             _hudView.SetHp(current, max);
+            _hudView.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
+        }
+
+        private void OnShieldChanged(float shield)
+        {
+            if (this == null || _hudView == null || !IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
+                return;
+
+            _hudView.SetShield(shield);
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
@@ -521,7 +543,10 @@ namespace BattlePvp.UI
                 return;
 
             if (_damageReceiver != null)
+            {
                 _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+                _hudView.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
+            }
 
             if (_statManager != null)
                 _hudView.SetIdentity(_statManager.CurrentIdentity);
@@ -540,7 +565,10 @@ namespace BattlePvp.UI
             _hudView.SetIdentity(identity);
 
             if (_damageReceiver != null)
+            {
                 _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
+                _hudView.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
+            }
 
             PlayerCombat combat = ResolveCurrentCombatSource();
 

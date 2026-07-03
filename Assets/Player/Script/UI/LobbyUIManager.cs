@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using BattlePvp.Networking;
 using BattlePvp.Stats;
+using BattlePvp.Managers;
 using Mirror;
 using System.Text.RegularExpressions;
 using System.Collections;
@@ -320,6 +321,8 @@ namespace BattlePvp.UI
 
         private void OnCreateRoomButtonClicked()
         {
+            if (!CanStartRoomFlow())
+                return;
             if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
             {
                 StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
@@ -343,6 +346,8 @@ namespace BattlePvp.UI
 
         private void OnJoinRoomButtonClicked()
         {
+            if (!CanStartRoomFlow())
+                return;
             if (StatCustomizerController.Instance != null && StatCustomizerController.Instance.GetRemainPoints() != 0)
             {
                 StatCustomizerController.Instance.ShowFloatingMessage("모든 스텟을 투자하십시오");
@@ -350,6 +355,51 @@ namespace BattlePvp.UI
             }
             if (PlayFabBattleManager.Instance != null && !string.IsNullOrEmpty(_selectedRoomId))
                 PlayFabBattleManager.Instance.JoinRoom(_selectedRoomId);
+        }
+
+        private bool CanStartRoomFlow()
+        {
+            GlobalDataManager globalData = GlobalDataManager.Instance;
+            if (globalData == null)
+                return true;
+
+            if (!globalData.HasCompleteSavedStats())
+            {
+                ShowRoomValidationMessage("모든 스텟을 투자하십시오");
+                return false;
+            }
+
+            if (!globalData.HasStrategistTargetPreset)
+            {
+                ShowRoomValidationMessage("전략가 전환 프리셋을 설정하십시오");
+                return false;
+            }
+
+            if (!GlobalDataManager.IsCompleteStatPreset(globalData.StrategistTargetPreset))
+            {
+                ShowRoomValidationMessage("전략가 전환 프리셋의 모든 스텟을 투자하십시오");
+                return false;
+            }
+
+            if (!GlobalDataManager.IsStrategistPreset(globalData.StrategistTargetPreset))
+            {
+                ShowRoomValidationMessage("전략가 전환 프리셋은 전략가형만 설정할 수 있습니다.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void ShowRoomValidationMessage(string message)
+        {
+            if (StatCustomizerController.Instance == null)
+            {
+                Debug.LogWarning(message);
+                return;
+            }
+
+            SetCustomizerActive(true);
+            StatCustomizerController.Instance.ShowFloatingMessage(message);
         }
 
         public void SetSelectedRoom(string roomId) => _selectedRoomId = roomId;
