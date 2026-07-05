@@ -15,6 +15,8 @@ namespace BattlePvp.Combat
         private const float BaseAttackPower = 22f;
         private const float BaseStatTotal = 5f;
         private const float AttackPowerPerStr = 3f;
+        private static readonly Color PoisonPopupColor = new Color(0.25f, 1f, 0.25f, 1f);
+        private const float PoisonPopupFontSizeDelta = -16f;
 
         [Header("Stat Configuration")]
         [SerializeField] private DummyStatData _statData;
@@ -152,7 +154,10 @@ namespace BattlePvp.Combat
             Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
             if (DamagePopupManager.Instance != null)
             {
-                DamagePopupManager.Instance.CreatePopup(popupPosition, amount);
+                if (source == DamageSource.Poison)
+                    DamagePopupManager.Instance.CreatePopupWithFontDelta(popupPosition, amount, false, PoisonPopupColor, PoisonPopupFontSizeDelta);
+                else
+                    DamagePopupManager.Instance.CreatePopup(popupPosition, amount);
             }
 
             Debug.Log($"[Dummy] Received {amount} damage from {source} at {hitPosition}. Current HP: {_currentHp}/{_maxHp}");

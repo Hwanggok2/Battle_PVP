@@ -170,6 +170,8 @@ public sealed class AttackProcessor : MonoBehaviour
         // 5) 물리 피해 적용 (+ 컨텍스트 전달 가능하면 전달)
         // Thorns 반사는 HealthSystem이 "Physical 피해 수신 시" 처리한다.
         float defenderHpBefore = defender.CurrentHp;
+        if (_playerCombat == null)
+            _playerCombat = GetComponent<PlayerCombat>();
 
         if (defender is IDamageReceiverWithContext ctx)
         {
@@ -183,8 +185,6 @@ public sealed class AttackProcessor : MonoBehaviour
         }
 
         float actualDamage = Mathf.Max(0f, defenderHpBefore - defender.CurrentHp);
-        if (_playerCombat == null)
-            _playerCombat = GetComponent<PlayerCombat>();
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
     }
 
@@ -194,6 +194,8 @@ public sealed class AttackProcessor : MonoBehaviour
             return false;
         if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
             return false;
+        if (_playerCombat == null)
+            _playerCombat = GetComponent<PlayerCombat>();
 
         float attackPower = _currentAtk * damageMultiplier;
         if (_playerCombat != null)
@@ -209,9 +211,13 @@ public sealed class AttackProcessor : MonoBehaviour
 
         float hpBefore = defender.CurrentHp;
         if (defender is IDamageReceiverWithContext context)
+        {
             context.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver, hitPosition);
+        }
         else
+        {
             defender.ApplyDamage(finalDamage, DamageSource.Physical, hitPosition);
+        }
 
         float actualDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);

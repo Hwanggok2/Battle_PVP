@@ -2,21 +2,18 @@ using UnityEngine;
 
 namespace BattlePvp.UI
 {
-    /// <summary>
-    /// 데미지 팝업 프리팹을 생성하는 매니저입니다.
-    /// </summary>
     public class DamagePopupManager : MonoBehaviour
     {
         public static DamagePopupManager Instance { get; private set; }
- 
+
         [SerializeField] private DamagePopup _popupPrefab;
- 
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
             else if (Instance != this) Destroy(gameObject);
         }
- 
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
@@ -32,21 +29,75 @@ namespace BattlePvp.UI
             CreatePopup(position, damage, isCritical, true, color);
         }
 
+        public void CreatePopup(Vector3 position, float damage, bool isCritical, Color color, float fontSize)
+        {
+            CreatePopup(position, damage, isCritical, true, color, fontSize, true);
+        }
+
+        public void CreatePopupWithFontDelta(Vector3 position, float damage, bool isCritical, Color color, float fontSizeDelta)
+        {
+            CreatePopup(position, damage, isCritical, true, color, -1f, true, fontSizeDelta);
+        }
+
+        public void CreateReceivedDamagePopup(float damage, Color color, float fontSize, Vector3 fallbackPosition)
+        {
+            if (PlayerHUD.ShowLocalReceivedDamage(damage, color))
+                return;
+
+            if (TryShowReceivedDamageOnSceneHud(damage, color))
+                return;
+
+            CreatePopup(fallbackPosition, -Mathf.Abs(damage), false, color, fontSize);
+        }
+
+        private static bool TryShowReceivedDamageOnSceneHud(float damage, Color color)
+        {
+            PlayerHudView[] views = Resources.FindObjectsOfTypeAll<PlayerHudView>();
+            foreach (PlayerHudView view in views)
+            {
+                if (view == null || !view.gameObject.scene.isLoaded)
+                    continue;
+
+                if (view.ShowReceivedDamage(damage, color))
+                    return true;
+            }
+
+            return false;
+        }
+
         private void CreatePopup(Vector3 position, float damage, bool isCritical, bool useColorOverride, Color colorOverride)
+        {
+            CreatePopup(position, damage, isCritical, useColorOverride, colorOverride, -1f, true, 0f);
+        }
+
+        private void CreatePopup(Vector3 position, float damage, bool isCritical, bool useColorOverride, Color colorOverride, float fontSizeOverride, bool applyWorldOffset)
+        {
+            CreatePopup(position, damage, isCritical, useColorOverride, colorOverride, fontSizeOverride, applyWorldOffset, 0f);
+        }
+
+        private void CreatePopup(Vector3 position, float damage, bool isCritical, bool useColorOverride, Color colorOverride, float fontSizeOverride, bool applyWorldOffset, float fontSizeDelta)
         {
             if (_popupPrefab == null)
             {
-                Debug.LogError("[DamagePopupManager] Popup Prefab이 할당되지 않았습니다!");
+                Debug.LogError("[DamagePopupManager] Popup Prefab is not assigned.");
                 return;
             }
 
-            // [수정] 랜덤 오프셋을 최소화하고 위쪽(Y축)으로만 살짝 띄웁니다.
-            Vector3 spawnPos = position + new Vector3(0, 0.5f, 0); 
+            Vector3 spawnPos = applyWorldOffset ? position + new Vector3(0, 0.5f, 0) : position;
             DamagePopup popup = Instantiate(_popupPrefab, spawnPos, Quaternion.identity);
             if (useColorOverride)
-                popup.Setup(damage, isCritical, colorOverride);
+            {
+                if (fontSizeOverride > 0f)
+                    popup.Setup(damage, isCritical, colorOverride, fontSizeOverride);
+                else if (!Mathf.Approximately(fontSizeDelta, 0f))
+                    popup.SetupWithFontDelta(damage, isCritical, colorOverride, fontSizeDelta);
+                else
+                    popup.Setup(damage, isCritical, colorOverride);
+            }
             else
+            {
                 popup.Setup(damage, isCritical);
+            }
 
             Debug.Log($"[DamagePopupManager] Popup spawned at {spawnPos} with damage {damage}");
         }

@@ -199,7 +199,7 @@ namespace BattlePvp.UI
             else if (isBattleWaiting)
             {
                 if (_battleButton != null) { _battleButton.gameObject.SetActive(true); _battleButton.interactable = true; }
-                if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(!isMonostat); _statSettingButton.interactable = true; }
+                if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(true); _statSettingButton.interactable = true; }
                 return;
             }
 
@@ -275,8 +275,7 @@ namespace BattlePvp.UI
                 if (this == null) yield break;
 
                 RefreshVisibility();
-                bool isMonostat = IsCurrentlyMonostat();
-                if (_canvas_Customizer != null) _canvas_Customizer.SetActive(!isMonostat);
+                if (_canvas_Customizer != null) _canvas_Customizer.SetActive(true);
             }
             else
             {

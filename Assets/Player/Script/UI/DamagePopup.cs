@@ -45,7 +45,23 @@ namespace BattlePvp.UI
             Setup(damageAmount, isCritical, true, color);
         }
 
+        public void Setup(float damageAmount, bool isCritical, Color color, float fontSize)
+        {
+            Setup(damageAmount, isCritical, true, color, fontSize);
+        }
+
+        public void SetupWithFontDelta(float damageAmount, bool isCritical, Color color, float fontSizeDelta)
+        {
+            float fontSize = Mathf.Max(1f, _defaultFontSize + fontSizeDelta);
+            Setup(damageAmount, isCritical, true, color, fontSize);
+        }
+
         private void Setup(float damageAmount, bool isCritical, bool useColorOverride, Color colorOverride)
+        {
+            Setup(damageAmount, isCritical, useColorOverride, colorOverride, -1f);
+        }
+
+        private void Setup(float damageAmount, bool isCritical, bool useColorOverride, Color colorOverride, float fontSizeOverride)
         {
             if (_textMesh == null)
             {
@@ -62,7 +78,7 @@ namespace BattlePvp.UI
             }
             else
             {
-                _textMesh.fontSize = _defaultFontSize;
+                _textMesh.fontSize = fontSizeOverride > 0f ? fontSizeOverride : _defaultFontSize;
                 _textColor = useColorOverride ? colorOverride : _defaultColor;
             }
 

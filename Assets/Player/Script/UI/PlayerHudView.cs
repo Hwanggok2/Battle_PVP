@@ -20,6 +20,8 @@ namespace BattlePvp.UI
         [SerializeField] private Image _shieldFillImage;
         [SerializeField] private Vector2 _shieldStartOffset;
         [SerializeField] private Image _overflowEffect;
+        [SerializeField] private TextMeshProUGUI _receivedDamageText;
+        [SerializeField] private float _receivedDamageTextLifetime = 0.7f;
 
         [Header("Identity")]
         [SerializeField] private TextMeshProUGUI _identityText;
@@ -45,6 +47,7 @@ namespace BattlePvp.UI
         private float _currentShield;
         private bool _shieldSliderAutoCreated;
         private bool _usingCustomShieldImage;
+        private Coroutine _receivedDamageTextRoutine;
         private readonly StringBuilder _textBuilder = new StringBuilder(32);
 
         private void Awake()
@@ -56,6 +59,8 @@ namespace BattlePvp.UI
         {
             if (_deathCountdownText != null)
                 _defaultDeathTextColor = _deathCountdownText.color;
+
+            HideReceivedDamageText();
         }
 
         public void SetHp(float current, float max)
@@ -69,6 +74,53 @@ namespace BattlePvp.UI
             _lastHpMax = max;
             UpdateShieldDisplay();
             UpdateHpText();
+        }
+
+        public bool ShowReceivedDamage(float damage, Color color)
+        {
+            ResolveReferences();
+            if (_receivedDamageText == null)
+                return false;
+
+            if (_receivedDamageTextRoutine != null)
+                StopCoroutine(_receivedDamageTextRoutine);
+
+            _receivedDamageText.gameObject.SetActive(true);
+            _receivedDamageText.text = $"-{Mathf.RoundToInt(damage)}";
+            color.a = 1f;
+            _receivedDamageText.color = color;
+            _receivedDamageTextRoutine = StartCoroutine(CoHideReceivedDamageText());
+            return true;
+        }
+
+        private System.Collections.IEnumerator CoHideReceivedDamageText()
+        {
+            float timer = Mathf.Max(0.01f, _receivedDamageTextLifetime);
+            Color color = _receivedDamageText.color;
+
+            while (timer > 0f && _receivedDamageText != null)
+            {
+                timer -= Time.deltaTime;
+                float t = 1f - Mathf.Clamp01(timer / Mathf.Max(0.01f, _receivedDamageTextLifetime));
+                color.a = 1f - t;
+                _receivedDamageText.color = color;
+                yield return null;
+            }
+
+            HideReceivedDamageText();
+            _receivedDamageTextRoutine = null;
+        }
+
+        private void HideReceivedDamageText()
+        {
+            if (_receivedDamageText == null)
+                return;
+
+            _receivedDamageText.gameObject.SetActive(true);
+            _receivedDamageText.text = string.Empty;
+            Color color = _receivedDamageText.color;
+            color.a = 0f;
+            _receivedDamageText.color = color;
         }
 
         public void SetShield(float shield)
@@ -216,6 +268,12 @@ namespace BattlePvp.UI
             {
                 Image[] images = GetComponentsInChildren<Image>(true);
                 _overflowEffect = FindNamed(images, "overflow");
+            }
+
+            if (_receivedDamageText == null)
+            {
+                TextMeshProUGUI[] texts = GetComponentsInChildren<TextMeshProUGUI>(true);
+                _receivedDamageText = FindNamed(texts, "received", "hit", "damage");
             }
 
             ResolveShieldReferences();

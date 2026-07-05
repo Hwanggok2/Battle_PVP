@@ -80,7 +80,13 @@ namespace BattlePvp.Combat
         private Coroutine _shieldRoutine;
 
         private IDamageReceiver _lastAttacker;
+        private static readonly Color DealtDamagePopupColor = new Color(1f, 0.12f, 0.12f, 1f);
+        private static readonly Color PoisonPopupColor = new Color(0.25f, 1f, 0.25f, 1f);
         private static readonly Color ThornsPopupColor = new Color(0.25f, 0.65f, 1f, 1f);
+        private const float ReceivedDamagePopupFontSize = 5f;
+        private const float PoisonDealtPopupFontSizeDelta = -16f;
+        private const float AroundCharacterPopupRadius = 0.65f;
+        private const float AroundCharacterPopupHeight = 1.35f;
         private static readonly Vector3 ThornsPopupOffset = new Vector3(0.65f, 1.25f, 0f);
 
         private void Awake()
@@ -284,6 +290,11 @@ namespace BattlePvp.Combat
 
         public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition)
         {
+            ApplyDamageWithPopupSource(amount, source, attackerAttackPower, attacker, hitPosition, source);
+        }
+
+        public void ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource)
+        {
             if (NetworkClient.active && !NetworkServer.active)
                 return;
 
@@ -312,7 +323,7 @@ namespace BattlePvp.Combat
             }
 
             _currentHp = next < 0f ? 0f : next;
-            ShowDamagePopup(hitPosition, amount, source);
+            ShowDamagePopup(hitPosition, amount, popupSource, attacker);
 
             EvaluateDeath(); // [공통 로직으로 교체]
 
@@ -347,36 +358,99 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
         }
 
-        private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source)
+        private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source, IDamageReceiver attacker)
         {
-            Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
-            bool useCustomColor = source == DamageSource.Thorns;
-            Color popupColor = useCustomColor ? ThornsPopupColor : Color.white;
+            Vector3 popupPosition = ResolveDamagePopupPosition(hitPosition, source);
+            uint attackerNetId = GetDamageReceiverNetId(attacker);
+            uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
 
             if (isServer)
             {
-                RpcShowDamagePopup(popupPosition, amount, useCustomColor, popupColor);
+                RpcShowDamagePopup(popupPosition, amount, source, attackerNetId, victimNetId);
                 return;
             }
 
-            CreateDamagePopupLocal(popupPosition, amount, useCustomColor, popupColor);
+            CreateDamagePopupLocal(popupPosition, amount, source, attackerNetId, victimNetId);
         }
 
         [ClientRpc]
-        private void RpcShowDamagePopup(Vector3 position, float amount, bool useCustomColor, Color popupColor)
+        private void RpcShowDamagePopup(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId)
         {
-            CreateDamagePopupLocal(position, amount, useCustomColor, popupColor);
+            CreateDamagePopupLocal(position, amount, source, attackerNetId, victimNetId);
         }
 
-        private void CreateDamagePopupLocal(Vector3 position, float amount, bool useCustomColor, Color popupColor)
+        private void CreateDamagePopupLocal(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId)
         {
-            if (DamagePopupManager.Instance != null)
+            DamagePopupManager popupManager = DamagePopupManager.Instance;
+            if (popupManager == null)
+                return;
+
+            Color popupColor = GetDamagePopupColor(source);
+            bool localVictim = IsLocalPlayerNetId(victimNetId) || isLocalPlayer;
+            bool localAttacker = attackerNetId != 0
+                && IsLocalPlayerNetId(attackerNetId);
+
+            if (localVictim)
             {
-                if (useCustomColor)
-                    DamagePopupManager.Instance.CreatePopup(position, amount, false, popupColor);
+                if (source == DamageSource.Physical)
+                    popupManager.CreateReceivedDamagePopup(amount, popupColor, ReceivedDamagePopupFontSize, transform.position + Vector3.up);
                 else
-                    DamagePopupManager.Instance.CreatePopup(position, amount);
+                    popupManager.CreatePopup(GetAroundCharacterPopupPosition(), amount, false, popupColor, ReceivedDamagePopupFontSize);
+                return;
             }
+
+            if (localAttacker)
+            {
+                if (source == DamageSource.Poison)
+                    popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
+                else
+                    popupManager.CreatePopup(position, amount, false, popupColor);
+                return;
+            }
+
+            if (source == DamageSource.Poison)
+                popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
+            else
+                popupManager.CreatePopup(position, amount, false, popupColor);
+        }
+
+        private Vector3 ResolveDamagePopupPosition(Vector3 hitPosition, DamageSource source)
+        {
+            if (source == DamageSource.Poison || source == DamageSource.Thorns)
+                return GetAroundCharacterPopupPosition();
+
+            return hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
+        }
+
+        private Vector3 GetAroundCharacterPopupPosition()
+        {
+            Vector2 random = UnityEngine.Random.insideUnitCircle * AroundCharacterPopupRadius;
+            return transform.position + transform.right * random.x + transform.forward * random.y + Vector3.up * AroundCharacterPopupHeight;
+        }
+
+        private static Color GetDamagePopupColor(DamageSource source)
+        {
+            return source switch
+            {
+                DamageSource.Poison => PoisonPopupColor,
+                DamageSource.Thorns => ThornsPopupColor,
+                _ => DealtDamagePopupColor
+            };
+        }
+
+        private static uint GetDamageReceiverNetId(IDamageReceiver receiver)
+        {
+            if (receiver is MonoBehaviour mb && mb != null && mb.TryGetComponent(out NetworkIdentity identity))
+                return identity.netId;
+
+            return 0;
+        }
+
+        private static bool IsLocalPlayerNetId(uint netId)
+        {
+            return netId != 0
+                && NetworkClient.localPlayer != null
+                && NetworkClient.localPlayer.netId == netId;
         }
 
         private static Vector3 GetThornsPopupPosition(MonoBehaviour attackerMb)

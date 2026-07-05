@@ -201,6 +201,19 @@ namespace BattlePvp.UI
             return _hudView != null;
         }
 
+        public static bool ShowLocalReceivedDamage(float damage, Color color)
+        {
+            PlayerHUD hud = null;
+            if (Instance != null && Instance.HasResolvedView())
+                hud = Instance;
+            else if (_globalHud != null && _globalHud.HasResolvedView())
+                hud = _globalHud;
+
+            return hud != null
+                && hud._hudView is PlayerHudView view
+                && view.ShowReceivedDamage(damage, color);
+        }
+
         private static PlayerHUD FindBindableHud()
         {
             if (Instance != null && Instance.HasResolvedView())
