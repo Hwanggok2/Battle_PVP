@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 35ff7e9de13c6ff439dd34f050c60e0c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 207404
+  packageName: Crusader Weapon
+  packageVersion: 1.0
+  assetPath: Assets/Crusader_Castle/Materials/Gate_Lift_01.mat
+  uploadId: 464489

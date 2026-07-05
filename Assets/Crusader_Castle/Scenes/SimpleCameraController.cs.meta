@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 6f1908c26a4f9c3408542c2749e6b3f9
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 207404
+  packageName: Crusader Weapon
+  packageVersion: 1.0
+  assetPath: Assets/Crusader_Castle/Scenes/SimpleCameraController.cs
+  uploadId: 464489
