@@ -377,6 +377,59 @@ MonoBehaviour:
     DEF:
       Invested: 0
       Item: 0
+  _selectedStatPresetSlot: 0
+  _statPresetSlots:
+  - STR:
+      Invested: 0
+      Item: 0
+    CON:
+      Invested: 0
+      Item: 0
+    AGI:
+      Invested: 0
+      Item: 0
+    DEF:
+      Invested: 0
+      Item: 0
+  - STR:
+      Invested: 0
+      Item: 0
+    CON:
+      Invested: 0
+      Item: 0
+    AGI:
+      Invested: 0
+      Item: 0
+    DEF:
+      Invested: 0
+      Item: 0
+  - STR:
+      Invested: 0
+      Item: 0
+    CON:
+      Invested: 0
+      Item: 0
+    AGI:
+      Invested: 0
+      Item: 0
+    DEF:
+      Invested: 0
+      Item: 0
+  _statPresetSlotUsed: 000000
+  _strategistTargetPreset:
+    STR:
+      Invested: 0
+      Item: 0
+    CON:
+      Invested: 0
+      Item: 0
+    AGI:
+      Invested: 0
+      Item: 0
+    DEF:
+      Invested: 0
+      Item: 0
+  _hasStrategistTargetPreset: 0
   _playerNickname: Unknown
   _cumulativeKills: 0
   _cumulativeDeaths: 0

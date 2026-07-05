@@ -17,16 +17,14 @@ MonoBehaviour:
   _iconSprite: {fileID: 21300000, guid: e53a4520fe2bf5a4696b476e9537241d, type: 3}
   _castSeconds: 1
   _durationSeconds: 7
-  _cooldownSeconds: 40
+  _cooldownSeconds: 30
   _castAnimationStateName: Poison
   _castAnimationLayer: 1
   _lifestealRatio: 0
   _poisonMaxStacks: 5
-  _poisonDamagePerStackPerSecond: 2
+  _poisonDamagePerStackPerSecond: 6
   _poisonStackDurationSeconds: 6
   _kickDamageMultiplier: 1.5
-  _kickRange: 2.5
-  _kickRadius: 0.8
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65
@@ -52,11 +50,21 @@ MonoBehaviour:
       Item: 0
   _maxHealthIncreaseShieldRatio: 0.5
   _shieldDurationSeconds: 20
+  _strategistStrNextAttackMultiplier: 1.2
+  _strategistStrAttackBonusDurationSeconds: 5
+  _strategistAgiBonusDurationSeconds: 4
+  _strategistAgiMoveMultiplier: 1.15
+  _strategistAgiAttackSpeedMultiplier: 1.35
+  _strategistConTargetMaxHpShieldRatio: 0.2
+  _strategistDefInvulnerableSeconds: 5
   _minimumBowChargeSeconds: 0.25
   _maximumBowDamageChargeSeconds: 1
   _minimumBowDamageMultiplier: 0.4
   _maximumBowDamageMultiplier: 0.75
   _bowChargeMoveMultiplier: 0.25
   _bowRange: 30
+  _weaponSwapMoveBonusDurationSeconds: 3
+  _weaponSwapMoveMultiplier: 1.2
+  _weaponSwapNextAttackMultiplier: 1.3
   _useSfx: {fileID: 0}
   _sfxVolume: 0.9

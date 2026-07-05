@@ -196,13 +196,13 @@ namespace BattlePvp.UI
 
             StatContainer displayStats;
             
-            if (TryGetSavedStats(out StatContainer savedStats))
-            {
-                displayStats = savedStats;
-            }
-            else if (_statManager != null)
+            if (_statManager != null)
             {
                 displayStats = _statManager.GetStatsCopy();
+            }
+            else if (TryGetSavedStats(out StatContainer savedStats))
+            {
+                displayStats = savedStats;
             }
             else if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {

@@ -22,16 +22,12 @@ namespace BattlePvp.UI
     {
         private const int MaxNameLength = 24;
         private const int MaxMessageLength = 120;
-        private static bool _clientHandlerRegistered;
-        private static bool _serverHandlerRegistered;
 
         public static event System.Action<string, string, double> MessageReceived;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            _clientHandlerRegistered = false;
-            _serverHandlerRegistered = false;
             MessageReceived = null;
         }
 
@@ -55,13 +51,26 @@ namespace BattlePvp.UI
 
             sender = Sanitize(sender, MaxNameLength);
 
-            if (NetworkClient.active && NetworkClient.isConnected)
+            if (NetworkClient.active && NetworkClient.isConnected && NetworkClient.ready)
             {
-                NetworkClient.Send(new BattleChatSubmitMessage
+                try
                 {
-                    SenderName = sender,
-                    Text = cleanedText
-                });
+                    NetworkClient.Send(new BattleChatSubmitMessage
+                    {
+                        SenderName = sender,
+                        Text = cleanedText
+                    });
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[BattleChat] Chat send skipped because the network connection is not ready: {ex.Message}");
+                }
+                return;
+            }
+
+            if (NetworkClient.active || NetworkServer.active)
+            {
+                Debug.LogWarning("[BattleChat] Chat send skipped because the room connection is not ready yet.");
                 return;
             }
 
@@ -70,37 +79,36 @@ namespace BattlePvp.UI
 
         private static void RegisterClientHandler()
         {
-            if (_clientHandlerRegistered)
-                return;
-
-            NetworkClient.RegisterHandler<BattleChatBroadcastMessage>(OnClientChatMessage, false);
-            _clientHandlerRegistered = true;
+            NetworkClient.ReplaceHandler<BattleChatBroadcastMessage>(OnClientChatMessage, false);
         }
 
         private static void RegisterServerHandler()
         {
-            if (_serverHandlerRegistered)
-                return;
-
-            NetworkServer.RegisterHandler<BattleChatSubmitMessage>(OnServerChatMessage, false);
-            _serverHandlerRegistered = true;
+            NetworkServer.ReplaceHandler<BattleChatSubmitMessage>(OnServerChatMessage, false);
         }
 
         private static void OnServerChatMessage(NetworkConnectionToClient conn, BattleChatSubmitMessage message)
         {
-            string text = Sanitize(message.Text, MaxMessageLength);
-            if (string.IsNullOrWhiteSpace(text))
-                return;
-
-            string sender = ResolveServerPlayerName(conn, message.SenderName);
-            var broadcast = new BattleChatBroadcastMessage
+            try
             {
-                SenderName = sender,
-                Text = text,
-                ServerTime = NetworkTime.time
-            };
+                string text = Sanitize(message.Text, MaxMessageLength);
+                if (string.IsNullOrWhiteSpace(text))
+                    return;
 
-            NetworkServer.SendToAll(broadcast);
+                string sender = ResolveServerPlayerName(conn, message.SenderName);
+                var broadcast = new BattleChatBroadcastMessage
+                {
+                    SenderName = sender,
+                    Text = text,
+                    ServerTime = NetworkTime.time
+                };
+
+                NetworkServer.SendToAll(broadcast, Channels.Reliable, true);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[BattleChat] Ignored chat message because server handling failed: {ex.Message}");
+            }
         }
 
         private static void OnClientChatMessage(BattleChatBroadcastMessage message)

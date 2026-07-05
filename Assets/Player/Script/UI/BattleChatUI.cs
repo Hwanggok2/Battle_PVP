@@ -32,7 +32,7 @@ namespace BattlePvp.UI
         private int _lastSubmitFrame = -1;
         private Coroutine _submitRoutine;
         private Coroutine _scrollRoutine;
-        private string _queuedSubmitText;
+        private bool _inputSubmitHooked;
 
         private void Awake()
         {
@@ -51,12 +51,17 @@ namespace BattlePvp.UI
         private void OnDisable()
         {
             BattleChatNetwork.MessageReceived -= AddMessage;
-            if (_isTyping)
-                GameInputController.SetTextInputActive(false);
+            UnhookInputSubmit();
+            _isTyping = false;
+            GameInputController.SetTextInputActive(false);
+            ClearInputField();
+            ClearUiSelection();
         }
 
         private void Update()
         {
+            BattleChatNetwork.EnsureRegistered();
+
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard == null)
                 return;
@@ -77,11 +82,12 @@ namespace BattlePvp.UI
 
             if (!_isTyping)
             {
+                ClearUiSelection();
                 SetTyping(true);
                 return;
             }
 
-            QueueSubmitCurrentText(BuildCurrentInputText());
+            QueueSubmitCurrentText();
         }
 
         private void Reset()
@@ -102,12 +108,11 @@ namespace BattlePvp.UI
 
             string text = string.IsNullOrEmpty(submittedText) ? BuildCurrentInputText() : submittedText;
 
-            _input.text = string.Empty;
-
             if (!string.IsNullOrWhiteSpace(text))
                 BattleChatNetwork.Send(text);
 
             SetTyping(false);
+            ClearInputField();
         }
 
         private string BuildCurrentInputText()
@@ -115,26 +120,55 @@ namespace BattlePvp.UI
             if (_input == null)
                 return string.Empty;
 
-            return _input.text + Input.compositionString;
+            string text = _input.text ?? string.Empty;
+            string composition = Input.compositionString;
+            if (!string.IsNullOrEmpty(composition) && !text.EndsWith(composition))
+                text += composition;
+
+            return text;
         }
 
-        private void QueueSubmitCurrentText(string text)
+        private void QueueSubmitCurrentText()
         {
-            _queuedSubmitText = text;
-
             if (_submitRoutine != null)
                 return;
 
-            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles());
+            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(null));
         }
 
-        private IEnumerator CoSubmitAfterInputSettles()
+        private void QueueSubmittedText(string submittedText)
+        {
+            if (!_isTyping)
+                return;
+
+            if (_submitRoutine != null)
+                StopCoroutine(_submitRoutine);
+
+            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(submittedText));
+        }
+
+        private IEnumerator CoSubmitAfterInputSettles(string submittedText)
         {
             yield return new WaitForEndOfFrame();
             _submitRoutine = null;
-            string text = _queuedSubmitText;
-            _queuedSubmitText = null;
+            string settledText = BuildCurrentInputText();
+            string text = ChooseSubmittedText(submittedText, settledText);
             SubmitCurrentText(text);
+
+            yield return null;
+            if (!_isTyping)
+                ClearInputField();
+        }
+
+        private static string ChooseSubmittedText(string submittedText, string settledText)
+        {
+            if (string.IsNullOrEmpty(submittedText))
+                return settledText;
+
+            if (string.IsNullOrEmpty(settledText))
+                return submittedText;
+
+            return submittedText.Length >= settledText.Length ? submittedText : settledText;
         }
 
         private void SetTyping(bool isTyping)
@@ -147,14 +181,29 @@ namespace BattlePvp.UI
 
             if (isTyping)
             {
+                HookInputSubmit();
                 _input.interactable = true;
                 _input.ActivateInputField();
                 _input.Select();
             }
             else
             {
+                UnhookInputSubmit();
                 _input.DeactivateInputField();
+                ClearInputField();
+                ClearUiSelection();
             }
+        }
+
+        private void ClearInputField()
+        {
+            if (_input == null)
+                return;
+
+            _input.SetTextWithoutNotify(string.Empty);
+            _input.text = string.Empty;
+            _input.caretPosition = 0;
+            _input.stringPosition = 0;
         }
 
         private void AddMessage(string sender, string text, double serverTime)
@@ -256,6 +305,7 @@ namespace BattlePvp.UI
             if (_input != null)
             {
                 _input.lineType = TMP_InputField.LineType.SingleLine;
+                HookInputSubmit();
             }
 
             if (_resizeHandle != null)
@@ -282,9 +332,30 @@ namespace BattlePvp.UI
                 });
                 AddDragTrigger(trigger, EventTriggerType.EndDrag, data =>
                 {
+                    if (!_isTyping)
+                        GameInputController.SetTextInputActive(false);
+                    ClearUiSelection();
                     QueueScrollToBottom();
                 });
             }
+        }
+
+        private void HookInputSubmit()
+        {
+            if (_input == null || _inputSubmitHooked)
+                return;
+
+            _input.onSubmit.AddListener(QueueSubmittedText);
+            _inputSubmitHooked = true;
+        }
+
+        private void UnhookInputSubmit()
+        {
+            if (_input == null || !_inputSubmitHooked)
+                return;
+
+            _input.onSubmit.RemoveListener(QueueSubmittedText);
+            _inputSubmitHooked = false;
         }
 
         private static void AddDragTrigger(EventTrigger trigger, EventTriggerType type, System.Action<BaseEventData> callback)
@@ -310,6 +381,12 @@ namespace BattlePvp.UI
                 return;
 
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        }
+
+        private static void ClearUiSelection()
+        {
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(null);
         }
     }
 }

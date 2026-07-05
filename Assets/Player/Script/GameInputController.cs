@@ -1,6 +1,7 @@
 using UnityEngine;
 using BattlePvp.CameraLogic;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
@@ -39,12 +40,16 @@ namespace BattlePvp.Logic
             IsTextInputActive = false;
             _isCursorUnlocked = false;
             IsPaused = false;
+            ClearSelectedUiIfNotTextInput();
             ApplyCursorState();
         }
 
         public static void SetTextInputActive(bool isActive)
         {
             IsTextInputActive = isActive;
+
+            if (!isActive)
+                ClearSelectedUiIfNotTextInput();
 
             if (Instance != null)
                 Instance.ApplyCursorState();
@@ -70,7 +75,19 @@ namespace BattlePvp.Logic
 
         private void Update()
         {
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            var keyboard = Keyboard.current;
+            if (!IsTextInputActive && keyboard != null &&
+                (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
+            {
+                ClearSelectedUiIfNotTextInput();
+            }
+
+            if (!IsTextInputActive && Mouse.current != null &&
+                (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame))
+            {
+                ClearSelectedUiIfNotTextInput();
+            }
+
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
             {
                 if (IsTextInputActive)
@@ -172,6 +189,22 @@ namespace BattlePvp.Logic
                     Debug.Log($"[GameInput] '{canvas.name}' 에 GraphicRaycaster 를 추가했습니다.");
                 }
             }
+        }
+
+        private static void ClearSelectedUiIfNotTextInput()
+        {
+            EventSystem eventSystem = EventSystem.current;
+            if (eventSystem == null || eventSystem.currentSelectedGameObject == null)
+                return;
+
+            GameObject selected = eventSystem.currentSelectedGameObject;
+            if (selected.GetComponent<TMPro.TMP_InputField>() != null ||
+                selected.GetComponent<InputField>() != null)
+            {
+                return;
+            }
+
+            eventSystem.SetSelectedGameObject(null);
         }
     }
 }
