@@ -18,6 +18,8 @@ MonoBehaviour:
   _castSeconds: 1
   _durationSeconds: 7
   _cooldownSeconds: 30
+  _inputLockFlags: 2
+  _inputLockSeconds: 0
   _castAnimationStateName: Poison
   _castAnimationLayer: 1
   _lifestealRatio: 0

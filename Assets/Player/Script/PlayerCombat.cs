@@ -315,7 +315,7 @@ public class PlayerCombat : NetworkBehaviour
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
             return;
 
-        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
             return;
 
         if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
@@ -333,7 +333,7 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack) return;
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)) return;
 
         TryUseSelectedSkill();
     }
@@ -367,7 +367,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_healthSystem != null && _healthSystem.IsDead) return;
 
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
-        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack) return;
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)) return;
 
         if (IsSkillCastingOrAttackLocked()) return;
 
@@ -409,7 +409,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
             return;
 
         if (IsSkillCastingOrAttackLocked())
@@ -723,7 +723,7 @@ public class PlayerCombat : NetworkBehaviour
         _pendingAdvancedSkillDirection = direction;
         PlaySkillAnimationLocal(data);
         LockLocalSkillAnimationAttack(data);
-        LockLocalAdvancedMovement(data);
+        _playerManager?.ApplySkillInputLock(data.InputLockFlags, data.ResolveInputLockSeconds());
         if (isClient && isLocalPlayer && !isServer)
             CmdUseAdvancedSkill(key, direction, strategistTargetPreset, hasStrategistTargetPreset);
         else
@@ -1891,7 +1891,7 @@ public class PlayerCombat : NetworkBehaviour
         JobSkillData bow = _polymathWeaponSwapSkillData;
         if (bow == null)
             return;
-        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
             return;
         if (pressed)
         {

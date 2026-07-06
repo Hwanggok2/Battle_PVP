@@ -15,9 +15,11 @@ MonoBehaviour:
   _skillKind: 2
   _displayName: "\uBC1C\uCC28\uAE30"
   _iconSprite: {fileID: 21300000, guid: 38af8e0b27e810b4191f2fc251a432c3, type: 3}
-  _castSeconds: 0
+  _castSeconds: 0.3
   _durationSeconds: 0
   _cooldownSeconds: 10
+  _inputLockFlags: 15
+  _inputLockSeconds: 0
   _castAnimationStateName: Kick
   _castAnimationLayer: 0
   _lifestealRatio: 0
@@ -25,8 +27,6 @@ MonoBehaviour:
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0
   _kickDamageMultiplier: 1.5
-  _kickRange: 1.2
-  _kickRadius: 0.8
   _kickKnockbackDistance: 1.5
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65
@@ -52,11 +52,21 @@ MonoBehaviour:
       Item: 0
   _maxHealthIncreaseShieldRatio: 0.5
   _shieldDurationSeconds: 20
+  _strategistStrNextAttackMultiplier: 1.2
+  _strategistStrAttackBonusDurationSeconds: 5
+  _strategistAgiBonusDurationSeconds: 4
+  _strategistAgiMoveMultiplier: 1.15
+  _strategistAgiAttackSpeedMultiplier: 1.35
+  _strategistConTargetMaxHpShieldRatio: 0.2
+  _strategistDefInvulnerableSeconds: 5
   _minimumBowChargeSeconds: 0.25
   _maximumBowDamageChargeSeconds: 1
   _minimumBowDamageMultiplier: 0.4
   _maximumBowDamageMultiplier: 0.75
   _bowChargeMoveMultiplier: 0.25
   _bowRange: 30
+  _weaponSwapMoveBonusDurationSeconds: 3
+  _weaponSwapMoveMultiplier: 1.2
+  _weaponSwapNextAttackMultiplier: 1.3
   _useSfx: {fileID: 0}
   _sfxVolume: 0.9

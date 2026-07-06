@@ -11,10 +11,8 @@ public sealed class EmoteDataEditor : Editor
     private SerializedProperty _animationStateName;
     private SerializedProperty _animationLayer;
     private SerializedProperty _fallbackStateName;
+    private SerializedProperty _inputLockFlags;
     private SerializedProperty _lockSeconds;
-    private SerializedProperty _lockMovement;
-    private SerializedProperty _lockAttack;
-    private SerializedProperty _lockJump;
     private SerializedProperty _useSfx;
     private SerializedProperty _sfxVolume;
 
@@ -25,10 +23,8 @@ public sealed class EmoteDataEditor : Editor
         _animationStateName = serializedObject.FindProperty("_animationStateName");
         _animationLayer = serializedObject.FindProperty("_animationLayer");
         _fallbackStateName = serializedObject.FindProperty("_fallbackStateName");
+        _inputLockFlags = serializedObject.FindProperty("_inputLockFlags");
         _lockSeconds = serializedObject.FindProperty("_lockSeconds");
-        _lockMovement = serializedObject.FindProperty("_lockMovement");
-        _lockAttack = serializedObject.FindProperty("_lockAttack");
-        _lockJump = serializedObject.FindProperty("_lockJump");
         _useSfx = serializedObject.FindProperty("_useSfx");
         _sfxVolume = serializedObject.FindProperty("_sfxVolume");
     }
@@ -53,9 +49,7 @@ public sealed class EmoteDataEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Lock", EditorStyles.boldLabel);
         EditorGUILayout.PropertyField(_lockSeconds, new GUIContent("Lock Seconds"));
-        EditorGUILayout.PropertyField(_lockMovement);
-        EditorGUILayout.PropertyField(_lockAttack);
-        EditorGUILayout.PropertyField(_lockJump);
+        DrawInputLockButtons();
 
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Audio", EditorStyles.boldLabel);
@@ -63,5 +57,38 @@ public sealed class EmoteDataEditor : Editor
         EditorGUILayout.PropertyField(_sfxVolume);
 
         serializedObject.ApplyModifiedProperties();
+    }
+
+    private void DrawInputLockButtons()
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Input Lock Flags", EditorStyles.boldLabel);
+
+        if (_inputLockFlags == null)
+            return;
+
+        SkillInputLockFlags flags = (SkillInputLockFlags)_inputLockFlags.intValue;
+        SkillInputLockFlags next = DrawFlagCheckboxes(flags);
+        if (next != flags)
+            _inputLockFlags.intValue = (int)next;
+    }
+
+    private static SkillInputLockFlags DrawFlagCheckboxes(SkillInputLockFlags flags)
+    {
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Move, "Move");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Attack, "Attack");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Jump, "Jump");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Crouch, "Crouch");
+        return flags;
+    }
+
+    private static SkillInputLockFlags DrawFlagCheckbox(SkillInputLockFlags flags, SkillInputLockFlags flag, string label)
+    {
+        bool enabled = (flags & flag) != 0;
+        bool nextEnabled = EditorGUILayout.ToggleLeft(label, enabled);
+        if (nextEnabled == enabled)
+            return flags;
+
+        return nextEnabled ? flags | flag : flags & ~flag;
     }
 }

@@ -67,6 +67,8 @@ public class PlayerManager : NetworkBehaviour
     private double _skillMoveMultiplierUntil;
     private Coroutine _forcedMoveRoutine;
     private bool _skillMovementLocked;
+    private SkillInputLockFlags _skillInputLockFlags;
+    private double _skillInputLockUntil;
     private EmoteData _activeEmote;
     private Coroutine _emoteRoutine;
 
@@ -75,6 +77,10 @@ public class PlayerManager : NetworkBehaviour
     public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
     public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
     public bool IsEmoteBlockingJump => _activeEmote != null && _activeEmote.LockJump;
+    public bool IsSkillMoveLocked => IsSkillInputLocked(SkillInputLockFlags.Move);
+    public bool IsSkillAttackLocked => IsSkillInputLocked(SkillInputLockFlags.Attack);
+    public bool IsSkillJumpLocked => IsSkillInputLocked(SkillInputLockFlags.Jump);
+    public bool IsSkillCrouchLocked => IsSkillInputLocked(SkillInputLockFlags.Crouch);
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
 
     public Vector3 GetSkillMoveDirection()
@@ -109,6 +115,26 @@ public class PlayerManager : NetworkBehaviour
         {
             RefreshMoveInputFromCurrentAction();
         }
+    }
+
+    public void ApplySkillInputLock(SkillInputLockFlags flags, float durationSeconds)
+    {
+        _skillInputLockFlags = flags;
+        _skillInputLockUntil = MovementTime + Mathf.Max(0f, durationSeconds);
+
+        if ((flags & SkillInputLockFlags.Move) != 0)
+            inputVector = Vector2.zero;
+    }
+
+    public void ClearSkillInputLock()
+    {
+        _skillInputLockFlags = SkillInputLockFlags.None;
+        _skillInputLockUntil = 0d;
+    }
+
+    public bool IsSkillInputLocked(SkillInputLockFlags flag)
+    {
+        return (_skillInputLockFlags & flag) != 0 && MovementTime < _skillInputLockUntil;
     }
 
     private void LoadEmotesFromResourcesIfNeeded()
@@ -163,8 +189,7 @@ public class PlayerManager : NetworkBehaviour
         }
 
         _activeEmote = emote;
-        if (emote.LockMovement)
-            SetSkillMovementLock(true);
+        ApplySkillInputLock(emote.InputLockFlags, emote.ResolveDurationSeconds());
 
         PlayEmoteVisual(emote);
 
@@ -199,9 +224,7 @@ public class PlayerManager : NetworkBehaviour
         _activeEmote = null;
 
         ResetEmoteVisual(active);
-
-        if (active.LockMovement)
-            SetSkillMovementLock(false);
+        ClearSkillInputLock();
 
         _emoteRoutine = null;
     }
@@ -272,7 +295,7 @@ public class PlayerManager : NetworkBehaviour
         if (isClient && !isLocalPlayer)
             return;
 
-        if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive || _skillMovementLocked)
+        if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive || _skillMovementLocked || IsSkillMoveLocked || IsEmoteBlockingMovement)
         {
             inputVector = Vector2.zero;
             return;
@@ -393,6 +416,7 @@ public class PlayerManager : NetworkBehaviour
             StopCoroutine(_emoteRoutine);
         _emoteRoutine = null;
         _activeEmote = null;
+        ClearSkillInputLock();
     }
 
     private void OnStatsChanged(StatContainer _)
@@ -421,7 +445,7 @@ public class PlayerManager : NetworkBehaviour
     public void OnMove(InputValue value)
     {
         if (isClient && !isLocalPlayer) return;
-        if (isDead || _matchEndLocked || _skillMovementLocked) { inputVector = Vector2.zero; return; }
+        if (isDead || _matchEndLocked || _skillMovementLocked || IsSkillMoveLocked || IsEmoteBlockingMovement) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
 
@@ -429,7 +453,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsEmoteBlockingJump) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillCrouchLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
         if (controller == null || !controller.enabled || !controller.isGrounded) return;
 
@@ -440,7 +464,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsEmoteBlockingJump) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillJumpLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
 
         SetCrouchState(!isCrouching, true);
@@ -763,6 +787,7 @@ public class PlayerManager : NetworkBehaviour
         inputVector = Vector2.zero;
         isAttacking = false;
         StopEmote(_activeEmote);
+        ClearSkillInputLock();
         SetCrouchState(false, true);
 
         PlayDeathVisual();
@@ -851,6 +876,7 @@ public class PlayerManager : NetworkBehaviour
         isAttacking = false;
         isDead = false;
         StopEmote(_activeEmote);
+        ClearSkillInputLock();
         SetCrouchState(false, true);
 
         if (_respawnRoutine != null)

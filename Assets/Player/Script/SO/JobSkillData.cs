@@ -3,6 +3,16 @@ using UnityEngine.Serialization;
 
 namespace BattlePvp.Combat
 {
+    [System.Flags]
+    public enum SkillInputLockFlags
+    {
+        None = 0,
+        Move = 1 << 0,
+        Attack = 1 << 1,
+        Jump = 1 << 2,
+        Crouch = 1 << 3
+    }
+
     public enum JobSkillKind
     {
         MonostatStrLifesteal = 0,
@@ -27,6 +37,8 @@ namespace BattlePvp.Combat
         [Min(0f)] [SerializeField] private float _castSeconds = 0f;
         [Min(0f)] [SerializeField] private float _durationSeconds = 0f;
         [Min(0f)] [SerializeField] private float _cooldownSeconds = 0f;
+        [SerializeField] private SkillInputLockFlags _inputLockFlags = SkillInputLockFlags.None;
+        [Min(0f)] [SerializeField] private float _inputLockSeconds = 0f;
         [FormerlySerializedAs("_strCastAnimationStateName")]
         [SerializeField] private string _castAnimationStateName = string.Empty;
         [FormerlySerializedAs("_strCastAnimationLayer")]
@@ -82,6 +94,15 @@ namespace BattlePvp.Combat
         public float CastSeconds => _castSeconds;
         public float DurationSeconds => _durationSeconds;
         public float CooldownSeconds => _cooldownSeconds;
+        public SkillInputLockFlags InputLockFlags => _inputLockFlags != SkillInputLockFlags.None ? _inputLockFlags : GetDefaultInputLockFlags();
+        public float InputLockSeconds => _inputLockSeconds;
+        public float ResolveInputLockSeconds()
+        {
+            if (_inputLockSeconds > 0f)
+                return _inputLockSeconds;
+
+            return GetDefaultInputLockSeconds();
+        }
         public string CastAnimationStateName => _castAnimationStateName;
         public int CastAnimationLayer => _castAnimationLayer;
         public float LifestealRatio => _lifestealRatio;
@@ -120,5 +141,31 @@ namespace BattlePvp.Combat
         public float WeaponSwapNextAttackMultiplier => _weaponSwapNextAttackMultiplier;
         public AudioClip UseSfx => _useSfx;
         public float SfxVolume => _sfxVolume;
+
+        private SkillInputLockFlags GetDefaultInputLockFlags()
+        {
+            return _skillKind switch
+            {
+                JobSkillKind.PolymathWeaponSwap => SkillInputLockFlags.Move,
+                _ => SkillInputLockFlags.Move | SkillInputLockFlags.Attack | SkillInputLockFlags.Jump
+            };
+        }
+
+        private float GetDefaultInputLockSeconds()
+        {
+            return _skillKind switch
+            {
+                JobSkillKind.MonostatConKick => 0.75f,
+                JobSkillKind.MonostatDefTaunt => 1.2f,
+                JobSkillKind.MonostatStrLifesteal => Mathf.Max(0.7f, _castSeconds),
+                JobSkillKind.MonostatAgiPoison => Mathf.Max(1f, _castSeconds),
+                JobSkillKind.StrategistRoll => Mathf.Max(0.35f, _rollDurationSeconds),
+                JobSkillKind.StrategistPresetChange => Mathf.Max(0.35f, _castSeconds),
+                JobSkillKind.PolymathRoll => Mathf.Max(0.35f, _rollDurationSeconds),
+                JobSkillKind.PolymathPresetChange => Mathf.Max(0.35f, _castSeconds),
+                JobSkillKind.PolymathWeaponSwap => Mathf.Max(0.15f, _castSeconds),
+                _ => Mathf.Max(0.35f, _castSeconds)
+            };
+        }
     }
 }

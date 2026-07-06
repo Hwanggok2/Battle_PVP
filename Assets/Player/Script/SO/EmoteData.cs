@@ -10,10 +10,8 @@ namespace BattlePvp.Combat
         [SerializeField] private string _animationStateName = "Taunt Gesture";
         [Min(0)] [SerializeField] private int _animationLayer = 1;
         [SerializeField] private string _fallbackStateName = "New State";
+        [SerializeField] private SkillInputLockFlags _inputLockFlags = SkillInputLockFlags.Move | SkillInputLockFlags.Attack | SkillInputLockFlags.Jump;
         [Min(0f)] [SerializeField] private float _lockSeconds = 0f;
-        [SerializeField] private bool _lockMovement = true;
-        [SerializeField] private bool _lockAttack = true;
-        [SerializeField] private bool _lockJump = false;
         [SerializeField] private AudioClip _useSfx;
         [Range(0f, 1f)] [SerializeField] private float _sfxVolume = 0.9f;
 
@@ -22,10 +20,11 @@ namespace BattlePvp.Combat
         public string AnimationStateName => _animationStateName;
         public int AnimationLayer => _animationLayer;
         public string FallbackStateName => _fallbackStateName;
+        public SkillInputLockFlags InputLockFlags => _inputLockFlags;
         public float LockSeconds => _lockSeconds;
-        public bool LockMovement => _lockMovement;
-        public bool LockAttack => _lockAttack;
-        public bool LockJump => _lockJump;
+        public bool LockMovement => (_inputLockFlags & SkillInputLockFlags.Move) != 0;
+        public bool LockAttack => (_inputLockFlags & SkillInputLockFlags.Attack) != 0;
+        public bool LockJump => (_inputLockFlags & SkillInputLockFlags.Jump) != 0;
         public AudioClip UseSfx => _useSfx;
         public float SfxVolume => _sfxVolume;
 

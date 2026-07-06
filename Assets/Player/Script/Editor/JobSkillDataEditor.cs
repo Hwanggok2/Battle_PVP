@@ -12,6 +12,8 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _castSeconds;
     private SerializedProperty _durationSeconds;
     private SerializedProperty _cooldownSeconds;
+    private SerializedProperty _inputLockFlags;
+    private SerializedProperty _inputLockSeconds;
     private SerializedProperty _castAnimationStateName;
     private SerializedProperty _castAnimationLayer;
     private SerializedProperty _useSfx;
@@ -59,6 +61,8 @@ public sealed class JobSkillDataEditor : Editor
         _castSeconds = serializedObject.FindProperty("_castSeconds");
         _durationSeconds = serializedObject.FindProperty("_durationSeconds");
         _cooldownSeconds = serializedObject.FindProperty("_cooldownSeconds");
+        _inputLockFlags = serializedObject.FindProperty("_inputLockFlags");
+        _inputLockSeconds = serializedObject.FindProperty("_inputLockSeconds");
         _castAnimationStateName = serializedObject.FindProperty("_castAnimationStateName");
         _castAnimationLayer = serializedObject.FindProperty("_castAnimationLayer");
         _useSfx = serializedObject.FindProperty("_useSfx");
@@ -111,6 +115,8 @@ public sealed class JobSkillDataEditor : Editor
 
         DrawSection("Common", _displayName, _iconSprite);
         DrawSection("Timing", _castSeconds, _durationSeconds, _cooldownSeconds);
+        DrawSection("Input Lock", _inputLockSeconds);
+        DrawInputLockButtons();
         DrawSectionWithLabels(
             "Animation",
             (_castAnimationStateName, "Cast Animation State Name"),
@@ -242,5 +248,38 @@ public sealed class JobSkillDataEditor : Editor
                 EditorGUILayout.HelpBox("This skill kind does not have additional values yet.", MessageType.Info);
                 break;
         }
+    }
+
+    private void DrawInputLockButtons()
+    {
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("Input Lock Flags", EditorStyles.boldLabel);
+
+        if (_inputLockFlags == null)
+            return;
+
+        SkillInputLockFlags flags = (SkillInputLockFlags)_inputLockFlags.intValue;
+        SkillInputLockFlags next = DrawFlagCheckboxes(flags);
+        if (next != flags)
+            _inputLockFlags.intValue = (int)next;
+    }
+
+    private static SkillInputLockFlags DrawFlagCheckboxes(SkillInputLockFlags flags)
+    {
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Move, "Move");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Attack, "Attack");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Jump, "Jump");
+        flags = DrawFlagCheckbox(flags, SkillInputLockFlags.Crouch, "Crouch");
+        return flags;
+    }
+
+    private static SkillInputLockFlags DrawFlagCheckbox(SkillInputLockFlags flags, SkillInputLockFlags flag, string label)
+    {
+        bool enabled = (flags & flag) != 0;
+        bool nextEnabled = EditorGUILayout.ToggleLeft(label, enabled);
+        if (nextEnabled == enabled)
+            return flags;
+
+        return nextEnabled ? flags | flag : flags & ~flag;
     }
 }

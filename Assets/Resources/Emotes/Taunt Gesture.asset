@@ -17,9 +17,7 @@ MonoBehaviour:
   _animationStateName: Taunt Gesture
   _animationLayer: 1
   _fallbackStateName: New State
+  _inputLockFlags: 7
   _lockSeconds: 0
-  _lockMovement: 1
-  _lockAttack: 1
-  _lockJump: 1
   _useSfx: {fileID: 0}
   _sfxVolume: 0.9

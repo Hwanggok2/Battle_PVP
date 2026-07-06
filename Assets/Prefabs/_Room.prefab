@@ -204,8 +204,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Name
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b6ba224e29ba0954c8620cf966439c25, type: 2}
+  m_sharedMaterial: {fileID: 2650887370580843292, guid: b6ba224e29ba0954c8620cf966439c25, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -507,6 +507,7 @@ MonoBehaviour:
   _masterNameText: {fileID: 4916169872202986766}
   _playerCountText: {fileID: 5835091543624155880}
   _selectButton: {fileID: 4331741942953613764}
+  _deleteButton: {fileID: 0}
   _selectionOutline: {fileID: 0}
 --- !u!1 &6149111896213026456
 GameObject:

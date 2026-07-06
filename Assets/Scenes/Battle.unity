@@ -251,7 +251,7 @@ MonoBehaviour:
   _itemPrefab: {fileID: 7131208780862028300, guid: e1c7d66f95412aa43a031bf2e9637838, type: 3}
   _defaultKillIcon: {fileID: 0}
   _duration: 5
-  _spacing: 4
+  _spacing: 30
   _battleSceneOnly: 1
 --- !u!1 &170233325
 GameObject:
