@@ -421,7 +421,7 @@ namespace BattlePvp.UI
             if (changed != null)
             {
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                bool isBattleScene = sceneName.Contains("Battle") || sceneName.Contains("wait");
+                bool isBattleScene = sceneName == "Battle";
                 
                 if (isBattleScene)
                 {
@@ -641,11 +641,11 @@ namespace BattlePvp.UI
             }
 
             string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            bool isPreMatchScene = sceneName.Contains("wait") || sceneName.Contains("waiting");
+            bool isBattleScene = sceneName == "Battle";
             bool isDead = _playerHealth != null && _playerHealth.IsDead;
 
-            // [강화] 대기 씬(PreMatch) 또는 실제 전투 중 사망 시 몰빵형으로의 전환을 금지합니다.
-            if (isPreMatchScene || isDead)
+            // [강화] 실제 전투 씬에서만 몰빵형 전환을 금지합니다.
+            if (isBattleScene || isDead)
             {
                 if (StatManager.IsMonostat(_virtualStats))
                 {

@@ -8866,6 +8866,10 @@ PrefabInstance:
       value: 0.39215687
       objectReference: {fileID: 0}
     - target: {fileID: 7596280188992237572, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _lifetime
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7596280188992237572, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: _disappearSpeed
       value: 3
       objectReference: {fileID: 0}

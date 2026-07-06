@@ -28,12 +28,17 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float crouchSpeedMultiplier = 0.7f;
     [SerializeField] private float crouchControllerHeightMultiplier = 0.55f;
 
+    [Header("Emotes")]
+    [SerializeField] private EmoteData[] _emotes;
+    [SerializeField] private int _defaultEmoteIndex = 0;
+
     [Header("Death Overlay Text")]
     [SerializeField] private string _respawnPromptText = "Press Space to Respawn";
     [SerializeField] private Color _deathOverlayTextColor = new Color(0.75f, 0.2f, 1f, 1f);
 
     private CharacterController controller;
     private Animator animator;
+    private AudioSource _audioSource;
     private Rigidbody rb; // Rigidbody 참조 추가 (요청사항 반영)
     private BattlePvp.CameraLogic.FollowCamera followCamera; // 카메라 참조 추가
 
@@ -62,9 +67,14 @@ public class PlayerManager : NetworkBehaviour
     private double _skillMoveMultiplierUntil;
     private Coroutine _forcedMoveRoutine;
     private bool _skillMovementLocked;
+    private EmoteData _activeEmote;
+    private Coroutine _emoteRoutine;
 
     public bool IsMatchEndLocked => _matchEndLocked;
     public bool IsCrouching => isCrouching;
+    public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
+    public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
+    public bool IsEmoteBlockingJump => _activeEmote != null && _activeEmote.LockJump;
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
 
     public Vector3 GetSkillMoveDirection()
@@ -101,12 +111,168 @@ public class PlayerManager : NetworkBehaviour
         }
     }
 
+    private void LoadEmotesFromResourcesIfNeeded()
+    {
+        if (_emotes != null && _emotes.Length > 0)
+            return;
+
+        _emotes = Resources.LoadAll<EmoteData>("Emotes");
+    }
+
+    private EmoteData ResolveEmote(int index)
+    {
+        if (_emotes == null || _emotes.Length == 0)
+            return null;
+
+        if (index < 0 || index >= _emotes.Length)
+            index = Mathf.Clamp(_defaultEmoteIndex, 0, _emotes.Length - 1);
+
+        return _emotes[index];
+    }
+
+    public void OnEmote(InputValue value)
+    {
+        if (isClient && !isLocalPlayer) return;
+        if (!value.isPressed) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted()) return;
+        if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
+
+        var combat = GetComponent<PlayerCombat>();
+        if (combat != null && combat.IsBusyForEmote)
+            return;
+
+        TryPlayEmote(_defaultEmoteIndex);
+    }
+
+    public void TryPlayEmote(int emoteIndex)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        if (_activeEmote != null)
+            return;
+
+        EmoteData emote = ResolveEmote(emoteIndex);
+        if (emote == null || animator == null)
+            return;
+
+        if (_emoteRoutine != null)
+        {
+            StopCoroutine(_emoteRoutine);
+            _emoteRoutine = null;
+        }
+
+        _activeEmote = emote;
+        if (emote.LockMovement)
+            SetSkillMovementLock(true);
+
+        PlayEmoteVisual(emote);
+
+        float duration = emote.ResolveDurationSeconds();
+        _emoteRoutine = StartCoroutine(CoEmote(duration, emote));
+
+        if (isClient && isLocalPlayer)
+        {
+            if (isServer)
+                RpcPlayEmote(emoteIndex);
+            else
+                CmdPlayEmote(emoteIndex);
+        }
+    }
+
+    private IEnumerator CoEmote(float durationSeconds, EmoteData emote)
+    {
+        yield return new WaitForSeconds(Mathf.Max(0.1f, durationSeconds));
+        if (_activeEmote == emote)
+            StopEmote(emote);
+    }
+
+    private void StopEmote(EmoteData emote)
+    {
+        if (_activeEmote == null || emote == null)
+            return;
+
+        if (_emoteRoutine != null)
+            StopCoroutine(_emoteRoutine);
+
+        EmoteData active = _activeEmote;
+        _activeEmote = null;
+
+        ResetEmoteVisual(active);
+
+        if (active.LockMovement)
+            SetSkillMovementLock(false);
+
+        _emoteRoutine = null;
+    }
+
+    private void PlayEmoteVisual(EmoteData emote)
+    {
+        if (animator == null || emote == null)
+            return;
+
+        int stateHash = string.IsNullOrWhiteSpace(emote.AnimationStateName)
+            ? 0
+            : Animator.StringToHash(emote.AnimationStateName);
+
+        if (stateHash != 0 && animator.HasState(emote.AnimationLayer, stateHash))
+            animator.Play(stateHash, emote.AnimationLayer, 0f);
+        else if (!string.IsNullOrWhiteSpace(emote.FallbackStateName))
+            animator.Play(emote.FallbackStateName, emote.AnimationLayer, 0f);
+        else
+            animator.Play(0, emote.AnimationLayer, 0f);
+
+        animator.Update(0f);
+
+        if (emote.UseSfx != null && _audioSource != null)
+            _audioSource.PlayOneShot(emote.UseSfx, Mathf.Clamp01(emote.SfxVolume));
+    }
+
+    private void ResetEmoteVisual(EmoteData emote)
+    {
+        if (animator == null || emote == null)
+            return;
+
+        if (!string.IsNullOrWhiteSpace(emote.FallbackStateName))
+        {
+            int fallbackHash = Animator.StringToHash(emote.FallbackStateName);
+            if (animator.HasState(emote.AnimationLayer, fallbackHash))
+            {
+                animator.Play(fallbackHash, emote.AnimationLayer, 0f);
+                animator.Update(0f);
+                return;
+            }
+        }
+
+        animator.Play(0, emote.AnimationLayer, 0f);
+        animator.Update(0f);
+    }
+
+    [Command]
+    private void CmdPlayEmote(int emoteIndex)
+    {
+        RpcPlayEmote(emoteIndex);
+    }
+
+    [ClientRpc(includeOwner = false)]
+    private void RpcPlayEmote(int emoteIndex)
+    {
+        if (isLocalPlayer)
+            return;
+
+        EmoteData emote = ResolveEmote(emoteIndex);
+        if (emote == null)
+            return;
+
+        PlayEmoteVisual(emote);
+    }
+
     public void RefreshMoveInputFromCurrentAction()
     {
         if (isClient && !isLocalPlayer)
             return;
 
-        if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive)
+        if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive || _skillMovementLocked)
         {
             inputVector = Vector2.zero;
             return;
@@ -154,6 +320,7 @@ public class PlayerManager : NetworkBehaviour
     {
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        _audioSource = GetComponent<AudioSource>();
         rb = GetComponent<Rigidbody>();
         _playerInput = GetComponent<PlayerInput>();
         _healthSystem = GetComponent<HealthSystem>();
@@ -163,6 +330,7 @@ public class PlayerManager : NetworkBehaviour
             _standingControllerCenter = controller.center;
         }
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+        LoadEmotesFromResourcesIfNeeded();
         DisableBuiltInNetworkTransforms();
         ConfigureRigidbodyForCharacterController();
     }
@@ -220,6 +388,11 @@ public class PlayerManager : NetworkBehaviour
         {
             _healthSystem.OnDied -= HandleDeath;
         }
+
+        if (_emoteRoutine != null)
+            StopCoroutine(_emoteRoutine);
+        _emoteRoutine = null;
+        _activeEmote = null;
     }
 
     private void OnStatsChanged(StatContainer _)
@@ -248,7 +421,7 @@ public class PlayerManager : NetworkBehaviour
     public void OnMove(InputValue value)
     {
         if (isClient && !isLocalPlayer) return;
-        if (isDead || _matchEndLocked) { inputVector = Vector2.zero; return; }
+        if (isDead || _matchEndLocked || _skillMovementLocked) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
 
@@ -256,7 +429,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted()) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
         if (controller == null || !controller.enabled || !controller.isGrounded) return;
 
@@ -267,7 +440,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted()) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
 
         SetCrouchState(!isCrouching, true);
@@ -589,6 +762,7 @@ public class PlayerManager : NetworkBehaviour
         isDead = true;
         inputVector = Vector2.zero;
         isAttacking = false;
+        StopEmote(_activeEmote);
         SetCrouchState(false, true);
 
         PlayDeathVisual();
@@ -676,6 +850,7 @@ public class PlayerManager : NetworkBehaviour
         inputVector = Vector2.zero;
         isAttacking = false;
         isDead = false;
+        StopEmote(_activeEmote);
         SetCrouchState(false, true);
 
         if (_respawnRoutine != null)

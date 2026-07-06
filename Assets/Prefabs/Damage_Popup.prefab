@@ -197,6 +197,6 @@ MonoBehaviour:
   _textMesh: {fileID: 7438015981358957355}
   _moveYSpeed: 1
   _disappearSpeed: 3
-  _lifetime: 3
+  _lifetime: 1
   _criticalFontScale: 1.6
   _criticalColor: {r: 1, g: 0, b: 0, a: 1}

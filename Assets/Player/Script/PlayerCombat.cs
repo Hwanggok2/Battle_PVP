@@ -151,6 +151,7 @@ public class PlayerCombat : NetworkBehaviour
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
 
     public event Action<SkillHudState> SkillHudChanged;
+    public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || _bowChargeStartedAt >= 0d;
     private double SkillTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
@@ -314,6 +315,9 @@ public class PlayerCombat : NetworkBehaviour
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
             return;
 
+        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
+            return;
+
         if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
             return;
 
@@ -329,6 +333,7 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
+        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack) return;
 
         TryUseSelectedSkill();
     }
@@ -362,6 +367,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_healthSystem != null && _healthSystem.IsDead) return;
 
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
+        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack) return;
 
         if (IsSkillCastingOrAttackLocked()) return;
 
@@ -401,6 +407,9 @@ public class PlayerCombat : NetworkBehaviour
     private void StartAttack(int index, bool notifyServer, Vector3 aimDirection)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
+        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
             return;
 
         if (IsSkillCastingOrAttackLocked())
@@ -1881,6 +1890,8 @@ public class PlayerCombat : NetworkBehaviour
     {
         JobSkillData bow = _polymathWeaponSwapSkillData;
         if (bow == null)
+            return;
+        if (_playerManager != null && _playerManager.IsEmoteBlockingAttack)
             return;
         if (pressed)
         {
