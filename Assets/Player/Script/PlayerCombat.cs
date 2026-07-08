@@ -34,6 +34,9 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private StatManager _statManager;
     [SerializeField] private MeleeHitBox[] _hitboxes;
 
+    [Header("Identity Visuals")]
+    [SerializeField] private string[] _polymathOnlyVisualNames = { "Bow_01", "Quiver_Arrows_01" };
+
     [Header("Job Skill - Monostat STR")]
     [SerializeField] private JobSkillData _monostatStrSkillData;
 
@@ -149,6 +152,7 @@ public class PlayerCombat : NetworkBehaviour
     private StatContainer _strategistSwapReturnPreset;
     private bool _hasStrategistSwapReturnPreset;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
+    private readonly List<GameObject> _polymathOnlyVisuals = new List<GameObject>();
 
     public event Action<SkillHudState> SkillHudChanged;
     public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || _bowChargeStartedAt >= 0d;
@@ -201,6 +205,8 @@ public class PlayerCombat : NetworkBehaviour
         }
         _playerInput = GetComponent<PlayerInput>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
+        CachePolymathOnlyVisuals();
+        ApplyIdentityVisuals();
         _healthSystem = GetComponent<HealthSystem>();
         _playerManager = GetComponent<PlayerManager>();
         _attackProcessor = GetComponent<AttackProcessor>();
@@ -250,7 +256,13 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (_statManager != null)
+        {
             _statManager.StatsChanged += OnStatsChanged;
+            _statManager.IdentityChanged += OnIdentityChanged;
+        }
+
+        CachePolymathOnlyVisuals();
+        ApplyIdentityVisuals();
 
         PublishSkillHudState();
     }
@@ -264,7 +276,10 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (_statManager != null)
+        {
             _statManager.StatsChanged -= OnStatsChanged;
+            _statManager.IdentityChanged -= OnIdentityChanged;
+        }
 
         DisableHitBox();
         ForceDisableKickHitBox();
@@ -342,7 +357,51 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (this == null) return;
         ClampSelectedSkillIndex();
+        ApplyIdentityVisuals();
         PublishSkillHudState();
+    }
+
+    private void OnIdentityChanged(Identity _)
+    {
+        ApplyIdentityVisuals();
+    }
+
+    private void CachePolymathOnlyVisuals()
+    {
+        if (_polymathOnlyVisuals.Count > 0 || _polymathOnlyVisualNames == null || _polymathOnlyVisualNames.Length == 0)
+            return;
+
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        foreach (string visualName in _polymathOnlyVisualNames)
+        {
+            if (string.IsNullOrWhiteSpace(visualName))
+                continue;
+
+            for (int i = 0; i < children.Length; i++)
+            {
+                Transform child = children[i];
+                if (child == null || child == transform || child.name != visualName)
+                    continue;
+
+                GameObject visual = child.gameObject;
+                if (!_polymathOnlyVisuals.Contains(visual))
+                    _polymathOnlyVisuals.Add(visual);
+            }
+        }
+    }
+
+    private void ApplyIdentityVisuals()
+    {
+        if (_statManager == null)
+            _statManager = GetComponentInParent<StatManager>();
+
+        bool showPolymathVisuals = _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Polymath;
+        for (int i = 0; i < _polymathOnlyVisuals.Count; i++)
+        {
+            GameObject visual = _polymathOnlyVisuals[i];
+            if (visual != null && visual.activeSelf != showPolymathVisuals)
+                visual.SetActive(showPolymathVisuals);
+        }
     }
 
     public void OnAttack(InputValue value)
@@ -451,7 +510,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (animator != null)
-            animator.Play(comboList[index].animationName, 1, 0f);
+            PlayAttackAnimation(index);
 
         if (_comboRoutine != null)
             StopCoroutine(_comboRoutine);
@@ -491,7 +550,67 @@ public class PlayerCombat : NetworkBehaviour
         if (isServer)
             return;
 
-        StartAttack(index, false, aimDirection);
+        StartRemoteAttackVisual(index, aimDirection);
+    }
+
+    private void StartRemoteAttackVisual(int index, Vector3 aimDirection)
+    {
+        if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
+        if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
+            return;
+
+        isAttacking = true;
+        hasComboReserved = false;
+        currentComboIndex = index;
+        aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
+
+        if (_statManager != null)
+        {
+            float agi = _statManager.GetFinalTotal(StatKind.AGI);
+            float baseAs = 0.6f + (agi * 0.02f);
+
+            Identity id = _statManager.CurrentIdentity;
+            if (id.Type == IdentityType.Monostat)
+            {
+                if (id.PrimaryStat == StatKind.AGI) baseAs *= 3f;
+                else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f;
+            }
+
+            if (SkillTime < _attackSpeedBonusUntil)
+                baseAs *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
+
+            _currentAttackSpeed = baseAs;
+        }
+
+        if (animator != null)
+            PlayAttackAnimation(index);
+
+        if (_comboRoutine != null)
+            StopCoroutine(_comboRoutine);
+        _comboRoutine = StartCoroutine(CoComboMonitor(index));
+
+        var pm = _playerManager != null ? _playerManager : GetComponent<PlayerManager>();
+        foreach (var hb in _hitboxes)
+        {
+            if (hb != null)
+            {
+                hb.SetAttackData(comboList[index]);
+                hb.SetAttackContext(aimDirection, pm != null && pm.IsCrouching);
+            }
+        }
+    }
+
+    private void PlayAttackAnimation(int index)
+    {
+        if (animator == null || comboList == null || index < 0 || index >= comboList.Length || comboList[index] == null)
+            return;
+
+        animator.applyRootMotion = false;
+        animator.speed = Mathf.Max(0.01f, _currentAttackSpeed);
+        animator.Play(comboList[index].animationName, 1, 0f);
+        animator.Update(0f);
     }
 
     public void EnableHitBox()
@@ -2268,6 +2387,8 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = false;
         currentComboIndex = 0;
         hasComboReserved = false;
+        if (animator != null)
+            animator.speed = 1.0f;
 
         var pm = GetComponent<PlayerManager>();
         if (pm != null)

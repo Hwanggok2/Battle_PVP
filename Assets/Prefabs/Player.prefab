@@ -7717,6 +7717,8 @@ MonoBehaviour:
   _remoteSnapDistance: 3
   crouchSpeedMultiplier: 0.7
   crouchControllerHeightMultiplier: 0.55
+  _emotes: []
+  _defaultEmoteIndex: 0
   _respawnPromptText: Press Space to Respawn
   _deathOverlayTextColor: {r: 0, g: 0, b: 0, a: 1}
   inputVector: {x: 0, y: 0}
@@ -7765,6 +7767,9 @@ MonoBehaviour:
   _statManager: {fileID: 4931861078861440238}
   _hitboxes:
   - {fileID: 572502645874766807}
+  _polymathOnlyVisualNames:
+  - Bow_01
+  - Quiver_Arrows_01
   _monostatStrSkillData: {fileID: 11400000, guid: 5a50ed52fa85e0841b0c8ee1f9d1c5ab, type: 2}
   _monostatAgiSkillData: {fileID: 11400000, guid: 05f8cf419408da6469ce258e8c1f7cf6, type: 2}
   _monostatConSkillData: {fileID: 11400000, guid: 69ac0f1c56b300346a90d492ebfb63af, type: 2}
