@@ -34,8 +34,13 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private StatManager _statManager;
     [SerializeField] private MeleeHitBox[] _hitboxes;
 
-    [Header("Identity Visuals")]
-    [SerializeField] private string[] _polymathOnlyVisualNames = { "Bow_01", "Quiver_Arrows_01" };
+    [Header("Identity / Weapon Visuals")]
+    [SerializeField] private GameObject _backBowVisual;
+    [SerializeField] private GameObject _backQuiverVisual;
+    [SerializeField] private GameObject _handBowVisual;
+    [SerializeField] private GameObject _handSwordVisual;
+    [SerializeField] private GameObject _hipSwordVisual;
+    [SerializeField] private BowAttackController _bowAttackController;
 
     [Header("Job Skill - Monostat STR")]
     [SerializeField] private JobSkillData _monostatStrSkillData;
@@ -95,7 +100,7 @@ public class PlayerCombat : NetworkBehaviour
     [SyncVar] [SerializeField] private double _advancedCastCompleteAt;
     [SyncVar] [SerializeField] private int _advancedActiveSkillKey = -1;
     [SyncVar] [SerializeField] private double _advancedActiveUntil;
-    [SyncVar] [SerializeField] private bool _isBowEquipped;
+    [SyncVar(hook = nameof(OnBowEquippedChanged))] [SerializeField] private bool _isBowEquipped;
     [SyncVar] [SerializeField] private uint _tauntedByNetId;
     [SyncVar] [SerializeField] private double _tauntedUntil;
     private readonly SyncDictionary<int, double> _advancedCooldownUntil = new SyncDictionary<int, double>();
@@ -131,7 +136,6 @@ public class PlayerCombat : NetworkBehaviour
     private bool _isKickHitBoxEnabled;
     private Coroutine _kickHitBoxRoutine;
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
-    private double _bowChargeStartedAt = -1d;
     private float _nextAttackDamageMultiplier = 1f;
     private float _attackPowerBonusMultiplier = 1f;
     private double _attackPowerBonusUntil;
@@ -152,10 +156,9 @@ public class PlayerCombat : NetworkBehaviour
     private StatContainer _strategistSwapReturnPreset;
     private bool _hasStrategistSwapReturnPreset;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
-    private readonly List<GameObject> _polymathOnlyVisuals = new List<GameObject>();
 
     public event Action<SkillHudState> SkillHudChanged;
-    public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || _bowChargeStartedAt >= 0d;
+    public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || (_bowAttackController != null && _bowAttackController.IsBusy);
     private double SkillTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
@@ -205,7 +208,8 @@ public class PlayerCombat : NetworkBehaviour
         }
         _playerInput = GetComponent<PlayerInput>();
         if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
-        CachePolymathOnlyVisuals();
+        ResolveBowAttackController();
+        ResolveWeaponVisualReferences();
         ApplyIdentityVisuals();
         _healthSystem = GetComponent<HealthSystem>();
         _playerManager = GetComponent<PlayerManager>();
@@ -261,7 +265,8 @@ public class PlayerCombat : NetworkBehaviour
             _statManager.IdentityChanged += OnIdentityChanged;
         }
 
-        CachePolymathOnlyVisuals();
+        ResolveBowAttackController();
+        ResolveWeaponVisualReferences();
         ApplyIdentityVisuals();
 
         PublishSkillHudState();
@@ -283,6 +288,7 @@ public class PlayerCombat : NetworkBehaviour
 
         DisableHitBox();
         ForceDisableKickHitBox();
+        _bowAttackController?.CancelCharge();
         SetStrategistStrAuraVisible(false);
     }
 
@@ -318,8 +324,22 @@ public class PlayerCombat : NetworkBehaviour
         _isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
+        HandleBowReleaseFallback();
         HandleSkillMouseInput();
         PublishSkillHudState();
+    }
+
+    private void HandleBowReleaseFallback()
+    {
+        if (Mouse.current == null || !IsPolymath() || !_isBowEquipped)
+            return;
+
+        ResolveBowAttackController();
+        if (_bowAttackController == null || !_bowAttackController.IsCharging)
+            return;
+
+        if (Mouse.current.leftButton.wasReleasedThisFrame)
+            HandleBowAttackInput(false);
     }
 
     private void HandleSkillMouseInput()
@@ -366,42 +386,70 @@ public class PlayerCombat : NetworkBehaviour
         ApplyIdentityVisuals();
     }
 
-    private void CachePolymathOnlyVisuals()
-    {
-        if (_polymathOnlyVisuals.Count > 0 || _polymathOnlyVisualNames == null || _polymathOnlyVisualNames.Length == 0)
-            return;
-
-        Transform[] children = GetComponentsInChildren<Transform>(true);
-        foreach (string visualName in _polymathOnlyVisualNames)
-        {
-            if (string.IsNullOrWhiteSpace(visualName))
-                continue;
-
-            for (int i = 0; i < children.Length; i++)
-            {
-                Transform child = children[i];
-                if (child == null || child == transform || child.name != visualName)
-                    continue;
-
-                GameObject visual = child.gameObject;
-                if (!_polymathOnlyVisuals.Contains(visual))
-                    _polymathOnlyVisuals.Add(visual);
-            }
-        }
-    }
-
     private void ApplyIdentityVisuals()
     {
         if (_statManager == null)
             _statManager = GetComponentInParent<StatManager>();
 
-        bool showPolymathVisuals = _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Polymath;
-        for (int i = 0; i < _polymathOnlyVisuals.Count; i++)
+        bool isPolymath = _statManager != null && _statManager.CurrentIdentity.Type == IdentityType.Polymath;
+        bool bowEquipped = isPolymath && _isBowEquipped;
+
+        SetVisualActive(_backBowVisual, isPolymath && !bowEquipped);
+        SetVisualActive(_backQuiverVisual, isPolymath);
+        SetVisualActive(_handBowVisual, bowEquipped);
+        SetVisualActive(_handSwordVisual, !bowEquipped);
+        SetVisualActive(_hipSwordVisual, bowEquipped);
+    }
+
+    private void OnBowEquippedChanged(bool oldValue, bool newValue)
+    {
+        if (!newValue)
+            _bowAttackController?.CancelCharge();
+
+        ApplyIdentityVisuals();
+    }
+
+    private void ResolveBowAttackController()
+    {
+        if (_bowAttackController == null)
+            _bowAttackController = GetComponent<BowAttackController>();
+    }
+
+    private void ResolveWeaponVisualReferences()
+    {
+        _backBowVisual ??= FindChildGameObject("Bow_01");
+        _backQuiverVisual ??= FindChildGameObject("Quiver_Arrows_01");
+        _handBowVisual ??= FindChildGameObject("Bow_hand");
+        _handSwordVisual ??= FindChildGameObject("Sword");
+        _hipSwordVisual ??= FindChildGameObject("Sword_Hip");
+    }
+
+    private GameObject FindChildGameObject(string childName)
+    {
+        Transform child = FindChildTransform(childName);
+        return child != null ? child.gameObject : null;
+    }
+
+    private Transform FindChildTransform(string childName)
+    {
+        if (string.IsNullOrWhiteSpace(childName))
+            return null;
+
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < children.Length; i++)
         {
-            GameObject visual = _polymathOnlyVisuals[i];
-            if (visual != null && visual.activeSelf != showPolymathVisuals)
-                visual.SetActive(showPolymathVisuals);
+            Transform child = children[i];
+            if (child != null && child != transform && child.name == childName)
+                return child;
         }
+
+        return null;
+    }
+
+    private static void SetVisualActive(GameObject visual, bool active)
+    {
+        if (visual != null && visual.activeSelf != active)
+            visual.SetActive(active);
     }
 
     public void OnAttack(InputValue value)
@@ -1152,6 +1200,7 @@ public class PlayerCombat : NetworkBehaviour
                 break;
             case JobSkillKind.PolymathWeaponSwap:
                 _isBowEquipped = !_isBowEquipped;
+                ApplyIdentityVisuals();
                 ApplyWeaponSwapBonus(data);
                 break;
         }
@@ -2010,52 +2059,58 @@ public class PlayerCombat : NetworkBehaviour
         JobSkillData bow = _polymathWeaponSwapSkillData;
         if (bow == null)
             return;
-        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
-            return;
-        if (pressed)
+
+        ResolveBowAttackController();
+        if (_bowAttackController == null)
         {
-            if (IsSkillCastingOrAttackLocked() || _bowChargeStartedAt >= 0d)
-                return;
-            _bowChargeStartedAt = SkillTime;
-            _playerManager?.ApplySkillMoveMultiplier(bow.BowChargeMoveMultiplier, 86400f);
+            Debug.LogWarning("[PlayerCombat] BowAttackController is missing. Add it to the player prefab.", this);
             return;
         }
-        if (_bowChargeStartedAt < 0d)
+
+        if (IsBattleLoadingOrNotStarted())
             return;
-        float chargeSeconds = Mathf.Max(0f, (float)(SkillTime - _bowChargeStartedAt));
-        _bowChargeStartedAt = -1d;
-        _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
-        Vector3 direction = GetCurrentAimDirection();
-        if (isClient && isLocalPlayer && !isServer)
-            CmdFireBow(chargeSeconds, direction);
-        else
-            FireBow(chargeSeconds, direction);
+        if (_healthSystem != null && _healthSystem.IsDead)
+            return;
+
+        if (pressed)
+        {
+            if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
+                return;
+            if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
+                return;
+            if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
+                return;
+            if (IsSkillCastingOrAttackLocked())
+                return;
+        }
+
+        _bowAttackController.HandleAttackInput(pressed, bow, GetCurrentAimDirection());
     }
 
-    [Command]
-    private void CmdFireBow(float chargeSeconds, Vector3 direction)
+    public void OnBowDrawReady()
     {
-        FireBow(chargeSeconds, direction);
+        ResolveBowAttackController();
+        _bowAttackController?.OnBowDrawReady();
     }
 
-    private void FireBow(float chargeSeconds, Vector3 direction)
+    public void OnBowNockArrow()
     {
-        JobSkillData bow = _polymathWeaponSwapSkillData;
-        if (!IsPolymath() || !_isBowEquipped || bow == null || chargeSeconds < bow.MinimumBowChargeSeconds)
-            return;
-        float denominator = Mathf.Max(0.001f, bow.MaximumBowDamageChargeSeconds - bow.MinimumBowChargeSeconds);
-        float t = Mathf.Clamp01((chargeSeconds - bow.MinimumBowChargeSeconds) / denominator);
-        float multiplier = Mathf.Lerp(bow.MinimumBowDamageMultiplier, bow.MaximumBowDamageMultiplier, t);
-        Vector3 origin = transform.position + Vector3.up;
-        direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
-        if (!Physics.Raycast(origin, direction, out RaycastHit hit, bow.BowRange, ~0, QueryTriggerInteraction.Collide))
-            return;
-        if (hit.transform.root == transform.root)
-            return;
-        IDamageReceiver target = hit.collider.GetComponentInParent<IDamageReceiver>();
-        StatManager targetStats = hit.collider.GetComponentInParent<StatManager>();
-        if (target != null && targetStats != null)
-            _attackProcessor?.ProcessSkillHit(multiplier * ConsumeNextAttackDamageMultiplier(), targetStats, target, hit.point);
+        ResolveBowAttackController();
+        _bowAttackController?.OnBowNockArrow();
+    }
+
+    public void OnBowReleaseArrow()
+    {
+        ResolveBowAttackController();
+        _bowAttackController?.OnBowReleaseArrow();
+    }
+
+    public bool ProcessBowProjectileHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition)
+    {
+        if (_attackProcessor == null)
+            _attackProcessor = GetComponent<AttackProcessor>();
+
+        return _attackProcessor != null && _attackProcessor.ProcessSkillHit(damageMultiplier, defenderStats, defender, hitPosition);
     }
 
     private int ResolveAvailableSkillCount()

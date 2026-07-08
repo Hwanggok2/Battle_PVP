@@ -15,11 +15,13 @@ MonoBehaviour:
   _skillKind: 22
   _displayName: "\uBB34\uAE30 \uC2A4\uC651"
   _iconSprite: {fileID: 0}
-  _castSeconds: 1
+  _castSeconds: 0.75
   _durationSeconds: 0
-  _cooldownSeconds: 0
-  _castAnimationStateName: 
-  _castAnimationLayer: 0
+  _cooldownSeconds: 10
+  _inputLockFlags: 6
+  _inputLockSeconds: 0
+  _castAnimationStateName: Sheath Sword
+  _castAnimationLayer: 1
   _lifestealRatio: 0
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0

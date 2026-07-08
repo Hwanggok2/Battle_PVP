@@ -50,4 +50,19 @@ public sealed class SkillAnimationEventRelay : MonoBehaviour
     {
         Combat?.EnableKickHitBox();
     }
+
+    public void OnBowDrawReady()
+    {
+        Combat?.OnBowDrawReady();
+    }
+
+    public void OnBowNockArrow()
+    {
+        Combat?.OnBowNockArrow();
+    }
+
+    public void OnBowReleaseArrow()
+    {
+        Combat?.OnBowReleaseArrow();
+    }
 }
