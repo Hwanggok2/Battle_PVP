@@ -1,8 +1,10 @@
 using BattlePvp.Combat;
 using System.Collections;
 using System.Reflection;
+using BattlePvp.CameraLogic;
 using Mirror;
 using UnityEngine;
+using UnityEngine.UI;
 
 public sealed class BowAttackController : NetworkBehaviour
 {
@@ -26,11 +28,26 @@ public sealed class BowAttackController : NetworkBehaviour
     [SerializeField] private float _projectileLifeSecondsOverride = -1f;
     [SerializeField] private float _releaseInputLockFallbackSecondsOverride = -1f;
 
+    [Header("Aim")]
+    [SerializeField] private float _aimDistance = 1000f;
+    [SerializeField] private LayerMask _aimHitMask = ~0;
+    [SerializeField] private bool _applyBowCameraOffset = true;
+    [SerializeField] private Vector3 _bowCameraOffset = new Vector3(0.35f, 0.3f, -0.7f);
+    [SerializeField] private Vector3 _bowCameraRotationOffset;
+    [SerializeField] private bool _showCrosshair = true;
+    [SerializeField] private Sprite _crosshairSprite;
+    [SerializeField] private Color _crosshairColor = Color.white;
+    [SerializeField] private Vector2 _crosshairSize = new Vector2(26f, 26f);
+    [SerializeField] private float _crosshairThickness = 3f;
+    [SerializeField] private float _crosshairGap = 5f;
+
     private PlayerCombat _playerCombat;
     private PlayerManager _playerManager;
     private Animator _animator;
+    private FollowCamera _followCamera;
     private Component _bowRigComponent;
     private PropertyInfo _bowRigWeightProperty;
+    private GameObject _crosshairRoot;
     private double _chargeStartedAt = -1d;
     private Vector3 _pendingDirection;
     private float _pendingDamageMultiplier;
@@ -56,6 +73,28 @@ public sealed class BowAttackController : NetworkBehaviour
     private void OnDisable()
     {
         CancelCharge();
+        SetCrosshairVisible(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (_crosshairRoot != null)
+            Destroy(_crosshairRoot.transform.root.gameObject);
+    }
+
+    public void SetCrosshairVisible(bool visible)
+    {
+        if (!isLocalPlayer)
+            visible = false;
+
+        if (!_showCrosshair)
+            visible = false;
+
+        if (visible)
+            EnsureCrosshair();
+
+        if (_crosshairRoot != null && _crosshairRoot.activeSelf != visible)
+            _crosshairRoot.SetActive(visible);
     }
 
     public void HandleAttackInput(bool pressed, JobSkillData bowData, Vector3 aimDirection)
@@ -138,6 +177,7 @@ public sealed class BowAttackController : NetworkBehaviour
             return;
 
         Vector3 direction = _pendingDirection.sqrMagnitude > 0.001f ? _pendingDirection.normalized : transform.forward;
+        direction = ResolveCenterScreenDirection(direction);
         float damageMultiplier = _pendingDamageMultiplier;
         _hasPendingShot = false;
 
@@ -298,6 +338,61 @@ public sealed class BowAttackController : NetworkBehaviour
             _bowAimRigTarget = GetComponent<BowAimRigTarget>();
     }
 
+    private Vector3 ResolveCenterScreenDirection(Vector3 fallback)
+    {
+        if (isLocalPlayer)
+        {
+            if (_followCamera == null)
+                _followCamera = FindFirstObjectByType<FollowCamera>();
+
+            if (_followCamera != null)
+            {
+                Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
+                Ray aimRay = _followCamera.GetAimRay();
+                Vector3 aimPoint = ResolveAimPoint(aimRay);
+                Vector3 direction = aimPoint - spawnPoint.position;
+                if (direction.sqrMagnitude > 0.001f)
+                    return direction.normalized;
+            }
+        }
+
+        return fallback.sqrMagnitude > 0.001f ? fallback.normalized : transform.forward;
+    }
+
+    private Vector3 ResolveAimPoint(Ray aimRay)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(aimRay, Mathf.Max(1f, _aimDistance), _aimHitMask, QueryTriggerInteraction.Ignore);
+        float closestDistance = float.PositiveInfinity;
+        Vector3 aimPoint = aimRay.origin + aimRay.direction * Mathf.Max(1f, _aimDistance);
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            RaycastHit hit = hits[i];
+            if (hit.collider == null || hit.collider.transform.IsChildOf(transform))
+                continue;
+
+            if (hit.distance >= closestDistance)
+                continue;
+
+            closestDistance = hit.distance;
+            aimPoint = hit.point;
+        }
+
+        return aimPoint;
+    }
+
+    private void SetBowCameraOffsetActive(bool active)
+    {
+        if (!_applyBowCameraOffset)
+            active = false;
+
+        if (_followCamera == null && isLocalPlayer)
+            _followCamera = FindFirstObjectByType<FollowCamera>();
+
+        if (_followCamera != null)
+            _followCamera.SetTemporaryOffset(active, _bowCameraOffset, _bowCameraRotationOffset);
+    }
+
     private void ResolveBowRigComponent()
     {
         Component[] components = _bowAimRigObject.GetComponents<Component>();
@@ -347,6 +442,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void SetBowAimRigActive(bool active)
     {
+        SetBowCameraOffsetActive(active);
         if (_bowAimRigTarget != null)
             _bowAimRigTarget.SetYawOffsetActive(active);
         SetBowRigWeight(active ? 1f : 0f);
@@ -363,6 +459,57 @@ public sealed class BowAttackController : NetworkBehaviour
             return;
 
         _bowRigWeightProperty.SetValue(_bowRigComponent, Mathf.Clamp01(weight));
+    }
+
+    private void EnsureCrosshair()
+    {
+        if (_crosshairRoot != null)
+            return;
+
+        GameObject canvasObject = new GameObject("BowCrosshairCanvas");
+        Canvas canvas = canvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 1000;
+        canvasObject.AddComponent<CanvasScaler>();
+
+        _crosshairRoot = new GameObject("BowCrosshair");
+        RectTransform rootRect = _crosshairRoot.AddComponent<RectTransform>();
+        _crosshairRoot.transform.SetParent(canvas.transform, false);
+        rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+        rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+        rootRect.pivot = new Vector2(0.5f, 0.5f);
+        rootRect.anchoredPosition = Vector2.zero;
+        rootRect.sizeDelta = _crosshairSize;
+
+        if (_crosshairSprite != null)
+        {
+            Image icon = _crosshairRoot.AddComponent<Image>();
+            icon.sprite = _crosshairSprite;
+            icon.color = _crosshairColor;
+            icon.raycastTarget = false;
+            return;
+        }
+
+        AddCrosshairLine("Left", new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-_crosshairGap, 0f), new Vector2((_crosshairSize.x * 0.5f) - _crosshairGap, _crosshairThickness));
+        AddCrosshairLine("Right", new Vector2(0.5f, 0.5f), new Vector2(1f, 0.5f), new Vector2(_crosshairGap, 0f), new Vector2((_crosshairSize.x * 0.5f) - _crosshairGap, _crosshairThickness));
+        AddCrosshairLine("Top", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0f, _crosshairGap), new Vector2(_crosshairThickness, (_crosshairSize.y * 0.5f) - _crosshairGap));
+        AddCrosshairLine("Bottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, -_crosshairGap), new Vector2(_crosshairThickness, (_crosshairSize.y * 0.5f) - _crosshairGap));
+    }
+
+    private void AddCrosshairLine(string lineName, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta)
+    {
+        GameObject line = new GameObject(lineName);
+        RectTransform rect = line.AddComponent<RectTransform>();
+        line.transform.SetParent(_crosshairRoot.transform, false);
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = new Vector2(Mathf.Max(1f, sizeDelta.x), Mathf.Max(1f, sizeDelta.y));
+
+        Image image = line.AddComponent<Image>();
+        image.color = _crosshairColor;
+        image.raycastTarget = false;
     }
 
     private void RestartReleaseLockFallback()

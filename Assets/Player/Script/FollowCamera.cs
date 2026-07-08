@@ -27,6 +27,9 @@ namespace BattlePvp.CameraLogic
         private float _yaw;   // 수평 회전
         private float _pitch; // 수직 회전
         private Vector2 _lookInput;
+        private bool _useTemporaryOffset;
+        private Vector3 _temporaryOffset;
+        private Vector3 _temporaryRotationOffset;
 
         /// <summary>
         /// ESC 토글 등에 의해 카메라 회전만 막아야 할 때 설정합니다.
@@ -60,12 +63,17 @@ namespace BattlePvp.CameraLogic
             }
 
             // 2. 회전 쿼터니언 계산
-            Quaternion targetRotation = Quaternion.Euler(_pitch, _yaw, 0);
+            Vector3 activeRotationOffset = _useTemporaryOffset ? _temporaryRotationOffset : Vector3.zero;
+            Quaternion targetRotation = Quaternion.Euler(
+                _pitch + activeRotationOffset.x,
+                _yaw + activeRotationOffset.y,
+                activeRotationOffset.z);
             transform.rotation = targetRotation;
 
             // 3. 카메라 위치 계산 (대상 위치 + 회전된 오프셋)
             Vector3 pivotPosition = _target.position + Vector3.up * 1.5f; 
-            Vector3 targetPosition = pivotPosition + (targetRotation * new Vector3(0, 0, Offset.z)) + (Vector3.up * Offset.y);
+            Vector3 activeOffset = _useTemporaryOffset ? _temporaryOffset : Offset;
+            Vector3 targetPosition = pivotPosition + (targetRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y);
 
             // 4. 위치 적용 (즉시 이동)
             transform.position = targetPosition;
@@ -79,13 +87,36 @@ namespace BattlePvp.CameraLogic
             _target = target;
         }
 
+        public void SetTemporaryOffset(bool active, Vector3 offset)
+        {
+            _useTemporaryOffset = active;
+            _temporaryOffset = offset;
+            _temporaryRotationOffset = Vector3.zero;
+        }
+
+        public void SetTemporaryOffset(bool active, Vector3 offset, Vector3 rotationOffset)
+        {
+            _useTemporaryOffset = active;
+            _temporaryOffset = offset;
+            _temporaryRotationOffset = rotationOffset;
+        }
+
         // 플레이어 매니저에서 참조할 현재 수평 회전값
         public float GetYaw() => _yaw;
         public float GetPitch() => _pitch;
 
         public Vector3 GetAimDirection()
         {
-            return Quaternion.Euler(_pitch, _yaw, 0f) * Vector3.forward;
+            Vector3 activeRotationOffset = _useTemporaryOffset ? _temporaryRotationOffset : Vector3.zero;
+            return Quaternion.Euler(
+                _pitch + activeRotationOffset.x,
+                _yaw + activeRotationOffset.y,
+                activeRotationOffset.z) * Vector3.forward;
+        }
+
+        public Ray GetAimRay()
+        {
+            return new Ray(transform.position, GetAimDirection());
         }
     }
 }

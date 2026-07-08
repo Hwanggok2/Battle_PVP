@@ -289,6 +289,7 @@ public class PlayerCombat : NetworkBehaviour
         DisableHitBox();
         ForceDisableKickHitBox();
         _bowAttackController?.CancelCharge();
+        _bowAttackController?.SetCrosshairVisible(false);
         SetStrategistStrAuraVisible(false);
     }
 
@@ -399,6 +400,8 @@ public class PlayerCombat : NetworkBehaviour
         SetVisualActive(_handBowVisual, bowEquipped);
         SetVisualActive(_handSwordVisual, !bowEquipped);
         SetVisualActive(_hipSwordVisual, bowEquipped);
+        ResolveBowAttackController();
+        _bowAttackController?.SetCrosshairVisible(bowEquipped);
     }
 
     private void OnBowEquippedChanged(bool oldValue, bool newValue)
