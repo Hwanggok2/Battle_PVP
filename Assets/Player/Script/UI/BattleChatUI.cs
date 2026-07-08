@@ -33,6 +33,7 @@ namespace BattlePvp.UI
         private Coroutine _submitRoutine;
         private Coroutine _scrollRoutine;
         private bool _inputSubmitHooked;
+        private bool _isSubmitting;
 
         private void Awake()
         {
@@ -113,6 +114,7 @@ namespace BattlePvp.UI
 
             SetTyping(false);
             ClearInputField();
+            StartCoroutine(CoClearInputAfterImeSettles());
         }
 
         private string BuildCurrentInputText()
@@ -122,7 +124,7 @@ namespace BattlePvp.UI
 
             string text = _input.text ?? string.Empty;
             string composition = Input.compositionString;
-            if (!string.IsNullOrEmpty(composition) && !text.EndsWith(composition))
+            if (!string.IsNullOrEmpty(composition))
                 text += composition;
 
             return text;
@@ -130,10 +132,10 @@ namespace BattlePvp.UI
 
         private void QueueSubmitCurrentText()
         {
-            if (_submitRoutine != null)
+            if (_submitRoutine != null || _isSubmitting)
                 return;
 
-            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(null));
+            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(BuildCurrentInputText()));
         }
 
         private void QueueSubmittedText(string submittedText)
@@ -141,19 +143,35 @@ namespace BattlePvp.UI
             if (!_isTyping)
                 return;
 
+            if (_isSubmitting)
+                return;
+
             if (_submitRoutine != null)
                 StopCoroutine(_submitRoutine);
 
-            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(submittedText));
+            string currentText = BuildCurrentInputText();
+            string preSubmitText = ChooseSubmittedText(submittedText, currentText);
+            _submitRoutine = StartCoroutine(CoSubmitAfterInputSettles(preSubmitText));
         }
 
-        private IEnumerator CoSubmitAfterInputSettles(string submittedText)
+        private IEnumerator CoSubmitAfterInputSettles(string preSubmitText)
         {
+            _isSubmitting = true;
+
+            if (_input != null)
+            {
+                _input.DeactivateInputField();
+                Canvas.ForceUpdateCanvases();
+            }
+
+            yield return null;
             yield return new WaitForEndOfFrame();
+
             _submitRoutine = null;
             string settledText = BuildCurrentInputText();
-            string text = ChooseSubmittedText(submittedText, settledText);
+            string text = ChooseSubmittedText(preSubmitText, settledText);
             SubmitCurrentText(text);
+            _isSubmitting = false;
 
             yield return null;
             if (!_isTyping)
@@ -181,6 +199,7 @@ namespace BattlePvp.UI
 
             if (isTyping)
             {
+                Input.imeCompositionMode = IMECompositionMode.On;
                 HookInputSubmit();
                 _input.interactable = true;
                 _input.ActivateInputField();
@@ -190,6 +209,8 @@ namespace BattlePvp.UI
             {
                 UnhookInputSubmit();
                 _input.DeactivateInputField();
+                _input.interactable = false;
+                Input.imeCompositionMode = IMECompositionMode.Off;
                 ClearInputField();
                 ClearUiSelection();
             }
@@ -201,9 +222,22 @@ namespace BattlePvp.UI
                 return;
 
             _input.SetTextWithoutNotify(string.Empty);
-            _input.text = string.Empty;
             _input.caretPosition = 0;
             _input.stringPosition = 0;
+            _input.ForceLabelUpdate();
+        }
+
+        private IEnumerator CoClearInputAfterImeSettles()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                yield return null;
+                if (!_isTyping)
+                {
+                    Input.imeCompositionMode = IMECompositionMode.Off;
+                    ClearInputField();
+                }
+            }
         }
 
         private void AddMessage(string sender, string text, double serverTime)
