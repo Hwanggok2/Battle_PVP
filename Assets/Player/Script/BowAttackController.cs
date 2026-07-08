@@ -1,5 +1,6 @@
 using BattlePvp.Combat;
 using System.Collections;
+using System.Reflection;
 using Mirror;
 using UnityEngine;
 
@@ -11,11 +12,14 @@ public sealed class BowAttackController : NetworkBehaviour
     [Header("Scene References")]
     [SerializeField] private Transform _arrowSpawnPoint;
     [SerializeField] private GameObject _handArrowVisual;
+    [SerializeField] private GameObject _bowAimRigObject;
+    [SerializeField] private BowAimRigTarget _bowAimRigTarget;
 
     [Header("Overrides")]
     [SerializeField] private BowArrowProjectile _projectilePrefabOverride;
     [SerializeField] private string _drawAnimationStateNameOverride;
     [SerializeField] private string _aimHoldAnimationStateNameOverride;
+    [SerializeField] private string _resetAnimationStateNameOverride;
     [SerializeField] private string _releaseTriggerNameOverride;
     [SerializeField] private int _animationLayerOverride = -1;
     [SerializeField] private float _projectileSpeedOverride = -1f;
@@ -25,6 +29,8 @@ public sealed class BowAttackController : NetworkBehaviour
     private PlayerCombat _playerCombat;
     private PlayerManager _playerManager;
     private Animator _animator;
+    private Component _bowRigComponent;
+    private PropertyInfo _bowRigWeightProperty;
     private double _chargeStartedAt = -1d;
     private Vector3 _pendingDirection;
     private float _pendingDamageMultiplier;
@@ -44,6 +50,7 @@ public sealed class BowAttackController : NetworkBehaviour
     {
         ResolveReferences();
         SetHandArrowVisible(false);
+        SetBowAimRigActive(false);
     }
 
     private void OnDisable()
@@ -70,6 +77,7 @@ public sealed class BowAttackController : NetworkBehaviour
             _isVisuallyCharging = true;
             _playerManager?.ApplySkillMoveMultiplier(bowData.BowChargeMoveMultiplier, 86400f);
             SetHandArrowVisible(false);
+            SetBowAimRigActive(true);
             PlayBowAnimationNetworked(DrawAnimationStateName);
             return;
         }
@@ -96,6 +104,8 @@ public sealed class BowAttackController : NetworkBehaviour
         _isVisuallyCharging = false;
         StopReleaseLockFallback();
         SetHandArrowVisible(false);
+        SetBowAimRigActive(false);
+        ClearBowAnimationLayer();
     }
 
     public void OnBowDrawReady()
@@ -232,6 +242,7 @@ public sealed class BowAttackController : NetworkBehaviour
         {
             _isVisuallyCharging = true;
             SetHandArrowVisible(false);
+            SetBowAimRigActive(true);
         }
         int safeLayer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
         int stateHash = Animator.StringToHash(stateName);
@@ -277,6 +288,33 @@ public sealed class BowAttackController : NetworkBehaviour
             _arrowSpawnPoint = FindChildTransform("ArrowSpawnPoint");
         if (_handArrowVisual == null)
             _handArrowVisual = FindChildGameObject("Arrow_hand");
+        if (_bowAimRigObject == null)
+            _bowAimRigObject = FindChildGameObject("BowRig");
+        if (_bowAimRigObject != null && !_bowAimRigObject.activeSelf)
+            _bowAimRigObject.SetActive(true);
+        if (_bowRigComponent == null && _bowAimRigObject != null)
+            ResolveBowRigComponent();
+        if (_bowAimRigTarget == null)
+            _bowAimRigTarget = GetComponent<BowAimRigTarget>();
+    }
+
+    private void ResolveBowRigComponent()
+    {
+        Component[] components = _bowAimRigObject.GetComponents<Component>();
+        for (int i = 0; i < components.Length; i++)
+        {
+            Component component = components[i];
+            if (component == null || component.GetType().Name != "Rig")
+                continue;
+
+            PropertyInfo weightProperty = component.GetType().GetProperty("weight", BindingFlags.Instance | BindingFlags.Public);
+            if (weightProperty == null || !weightProperty.CanWrite)
+                continue;
+
+            _bowRigComponent = component;
+            _bowRigWeightProperty = weightProperty;
+            return;
+        }
     }
 
     private GameObject FindChildGameObject(string childName)
@@ -307,6 +345,26 @@ public sealed class BowAttackController : NetworkBehaviour
             _handArrowVisual.SetActive(visible);
     }
 
+    private void SetBowAimRigActive(bool active)
+    {
+        if (_bowAimRigTarget != null)
+            _bowAimRigTarget.SetYawOffsetActive(active);
+        SetBowRigWeight(active ? 1f : 0f);
+        if (_bowAimRigTarget != null && _bowAimRigTarget.enabled != active)
+            _bowAimRigTarget.enabled = active;
+    }
+
+    private void SetBowRigWeight(float weight)
+    {
+        if (_bowRigComponent == null || _bowRigWeightProperty == null)
+            ResolveBowRigComponent();
+
+        if (_bowRigComponent == null || _bowRigWeightProperty == null)
+            return;
+
+        _bowRigWeightProperty.SetValue(_bowRigComponent, Mathf.Clamp01(weight));
+    }
+
     private void RestartReleaseLockFallback()
     {
         StopReleaseLockFallback();
@@ -334,7 +392,28 @@ public sealed class BowAttackController : NetworkBehaviour
     private void UnlockReleaseInput()
     {
         _isReleaseLocked = false;
+        SetBowAimRigActive(false);
+        ClearBowAnimationLayer();
         StopReleaseLockFallback();
+    }
+
+    private void ClearBowAnimationLayer()
+    {
+        if (_animator == null || string.IsNullOrWhiteSpace(ResetAnimationStateName))
+            return;
+
+        int safeLayer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
+        int stateHash = Animator.StringToHash(ResetAnimationStateName);
+        if (!_animator.HasState(safeLayer, stateHash))
+        {
+            Debug.LogWarning($"[BowAttackController] Animator reset state '{ResetAnimationStateName}' was not found on layer {safeLayer}.", this);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(ReleaseTriggerName))
+            _animator.ResetTrigger(ReleaseTriggerName);
+
+        _animator.Play(stateHash, safeLayer, 0f);
     }
 
     private BowArrowProjectile ProjectilePrefab
@@ -355,6 +434,10 @@ public sealed class BowAttackController : NetworkBehaviour
     private string AimHoldAnimationStateName => !string.IsNullOrWhiteSpace(_aimHoldAnimationStateNameOverride)
         ? _aimHoldAnimationStateNameOverride
         : _settings != null ? _settings.AimHoldAnimationStateName : "Bow_AimHold";
+
+    private string ResetAnimationStateName => !string.IsNullOrWhiteSpace(_resetAnimationStateNameOverride)
+        ? _resetAnimationStateNameOverride
+        : _settings != null ? _settings.ResetAnimationStateName : "New State";
 
     private string ReleaseTriggerName => !string.IsNullOrWhiteSpace(_releaseTriggerNameOverride)
         ? _releaseTriggerNameOverride

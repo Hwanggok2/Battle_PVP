@@ -6,6 +6,7 @@ public sealed class BowAttackSettings : ScriptableObject
     [SerializeField] private BowArrowProjectile _projectilePrefab;
     [SerializeField] private string _drawAnimationStateName = "Bow_Draw";
     [SerializeField] private string _aimHoldAnimationStateName = "Bow_AimHold";
+    [SerializeField] private string _resetAnimationStateName = "New State";
     [SerializeField] private string _releaseTriggerName = "BowRelease";
     [SerializeField] private int _animationLayer = 1;
     [SerializeField] private float _projectileSpeed = 28f;
@@ -15,6 +16,7 @@ public sealed class BowAttackSettings : ScriptableObject
     public BowArrowProjectile ProjectilePrefab => _projectilePrefab;
     public string DrawAnimationStateName => _drawAnimationStateName;
     public string AimHoldAnimationStateName => _aimHoldAnimationStateName;
+    public string ResetAnimationStateName => _resetAnimationStateName;
     public string ReleaseTriggerName => _releaseTriggerName;
     public int AnimationLayer => _animationLayer;
     public float ProjectileSpeed => _projectileSpeed;
