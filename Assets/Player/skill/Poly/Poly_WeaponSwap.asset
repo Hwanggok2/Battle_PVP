@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
   _skillKind: 22
   _displayName: "\uBB34\uAE30 \uC2A4\uC651"
-  _iconSprite: {fileID: 0}
+  _iconSprite: {fileID: 21300000, guid: a7210d66aad2c48459e5bb20dc10e302, type: 3}
   _castSeconds: 0.75
   _durationSeconds: 0
   _cooldownSeconds: 10
