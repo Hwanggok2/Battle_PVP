@@ -13,7 +13,7 @@ namespace BattlePvp.CameraLogic
         /// <summary>
         /// 외부(CharacterScaler 등)에서 실시간으로 카메라 거리를 조절할 수 있도록 노출합니다.
         /// </summary>
-        public Vector3 Offset = new Vector3(0, 1.8f, -3f); 
+        public Vector3 Offset = new Vector3(0.4f, 0.2f, -1.4f); 
 
         [Header("Mouse Settings")]
         [SerializeField] private float _mouseSensitivity = 2.0f; // Input System에서는 델타가 작으므로 약간 크게 설정

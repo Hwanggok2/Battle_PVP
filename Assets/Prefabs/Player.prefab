@@ -8087,7 +8087,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   _applyBowCameraOffset: 1
-  _bowCameraOffset: {x: 0.5, y: 0.3, z: -0.7}
+  _bowCameraOffset: {x: 0.4, y: 0.2, z: -1.2}
   _bowCameraRotationOffset: {x: 0, y: 0, z: 0}
   _showCrosshair: 1
   _crosshairSprite: {fileID: 0}

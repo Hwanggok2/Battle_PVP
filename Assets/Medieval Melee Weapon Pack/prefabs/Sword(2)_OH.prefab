@@ -111,8 +111,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.0655462, y: 0.013823887, z: 0.9781001}
-  m_Center: {x: -0.0033601953, y: 0.006273579, z: 0.5926345}
+  m_Size: {x: 0.0655462, y: 0.013823887, z: 1.1258028}
+  m_Center: {x: -0.0033601946, y: 0.0062736673, z: 0.6022232}
 --- !u!114 &3594752087180375350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127,3 +127,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.MeleeHitBox
   _attackProcessor: {fileID: 0}
   _currentAttackData: {fileID: 0}
+  _useSweptHitDetection: 1
+  _sweepSampleSpacing: 0.15
+  _maxSweepSamples: 8
+  _sweepPadding: 0.02
+  _aimForwardOffset: 0.8
+  _crouchVerticalOffset: -0.45
+  _drawDebugHitPath: 1
+  _drawDebugHitPathInGame: 1
+  _debugHitPathDuration: 3
+  _debugHitPathColor: {r: 1, g: 0.2, b: 0.05, a: 0.35}
+  _debugHitPathLineWidth: 0.025

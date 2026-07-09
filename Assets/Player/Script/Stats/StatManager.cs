@@ -182,7 +182,8 @@ namespace BattlePvp.Stats
         }
 
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
-        private Vector3 _originalCameraOffset;
+        private static readonly Vector3 DefaultCameraOffset = new Vector3(0.3f, 0.2f, -1.0f);
+        private static readonly Vector3 MonostatCameraOffset = new Vector3(0.35f, 0.4f, -1.0f);
         private bool _cameraInitialized = false;
 
         private void OnEnable()
@@ -313,7 +314,7 @@ namespace BattlePvp.Stats
                 _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
                 if (_followCamera != null && !_cameraInitialized)
                 {
-                    _originalCameraOffset = _followCamera.Offset;
+                    _followCamera.Offset = DefaultCameraOffset;
                     _cameraInitialized = true;
                 }
             }
@@ -336,7 +337,7 @@ namespace BattlePvp.Stats
             // 카메라 오프셋 비례 조정 (Task 5)
             if (_cameraInitialized && _followCamera != null)
             {
-                _followCamera.Offset = _originalCameraOffset * targetScale;
+                _followCamera.Offset = isGiant ? MonostatCameraOffset : DefaultCameraOffset;
                 Debug.Log($"[StatManager] Scale applied: {targetScale}, Camera Offset: {_followCamera.Offset}");
             }
         }

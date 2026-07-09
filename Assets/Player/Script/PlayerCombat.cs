@@ -156,6 +156,10 @@ public class PlayerCombat : NetworkBehaviour
     private StatContainer _strategistSwapReturnPreset;
     private bool _hasStrategistSwapReturnPreset;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
+    private const float SkillHudUpdateIntervalSeconds = 0.1f;
+    private SkillHudState _lastPublishedSkillHudState;
+    private bool _hasPublishedSkillHudState;
+    private float _nextSkillHudPublishTime;
 
     public event Action<SkillHudState> SkillHudChanged;
     public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || (_bowAttackController != null && _bowAttackController.IsBusy);
@@ -313,6 +317,7 @@ public class PlayerCombat : NetworkBehaviour
             _playerInput.enabled = true;
 
         _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        ApplyIdentityVisuals();
     }
 
     private void Update()
@@ -327,7 +332,7 @@ public class PlayerCombat : NetworkBehaviour
 
         HandleBowReleaseFallback();
         HandleSkillMouseInput();
-        PublishSkillHudState();
+        PublishSkillHudState(false);
     }
 
     private void HandleBowReleaseFallback()
@@ -401,7 +406,7 @@ public class PlayerCombat : NetworkBehaviour
         SetVisualActive(_handSwordVisual, !bowEquipped);
         SetVisualActive(_hipSwordVisual, bowEquipped);
         ResolveBowAttackController();
-        _bowAttackController?.SetCrosshairVisible(bowEquipped);
+        _bowAttackController?.SetCrosshairVisible(isLocalPlayer);
     }
 
     private void OnBowEquippedChanged(bool oldValue, bool newValue)
@@ -2294,9 +2299,38 @@ public class PlayerCombat : NetworkBehaviour
         return new SkillHudState(true, ResolveSelectedSkillName(), _selectedSkillIndex, count, phase, fill, remaining, iconSprite);
     }
 
-    private void PublishSkillHudState()
+    private void PublishSkillHudState(bool force = true)
     {
-        SkillHudChanged?.Invoke(GetSkillHudState());
+        SkillHudState state = GetSkillHudState();
+
+        if (!force)
+        {
+            float now = Time.unscaledTime;
+            if (_hasPublishedSkillHudState &&
+                now < _nextSkillHudPublishTime &&
+                IsEquivalentSkillHudState(_lastPublishedSkillHudState, state))
+            {
+                return;
+            }
+
+            _nextSkillHudPublishTime = now + SkillHudUpdateIntervalSeconds;
+        }
+
+        _lastPublishedSkillHudState = state;
+        _hasPublishedSkillHudState = true;
+        SkillHudChanged?.Invoke(state);
+    }
+
+    private static bool IsEquivalentSkillHudState(SkillHudState a, SkillHudState b)
+    {
+        return a.Visible == b.Visible &&
+               a.Name == b.Name &&
+               a.SelectedIndex == b.SelectedIndex &&
+               a.SkillCount == b.SkillCount &&
+               a.Phase == b.Phase &&
+               a.IconSprite == b.IconSprite &&
+               Mathf.Abs(a.NormalizedFill - b.NormalizedFill) < 0.02f &&
+               Mathf.CeilToInt(a.RemainingSeconds) == Mathf.CeilToInt(b.RemainingSeconds);
     }
 
     private void PlaySkillSfx(int skillId)
