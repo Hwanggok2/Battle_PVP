@@ -88,6 +88,7 @@ public class PlayerManager : NetworkBehaviour
     public bool IsSkillJumpLocked => IsSkillInputLocked(SkillInputLockFlags.Jump);
     public bool IsSkillCrouchLocked => IsSkillInputLocked(SkillInputLockFlags.Crouch);
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
+    private double LocalInputTime => Time.timeAsDouble;
 
     public Vector3 GetSkillMoveDirection()
     {
@@ -314,6 +315,45 @@ public class PlayerManager : NetworkBehaviour
         inputVector = moveAction != null && moveAction.enabled ? moveAction.ReadValue<Vector2>() : Vector2.zero;
     }
 
+    private void ResetLocalInputForPlayMode()
+    {
+        if (!isLocalPlayer)
+            return;
+
+        if (_playerInput == null)
+            _playerInput = GetComponent<PlayerInput>();
+
+        if (_playerInput != null)
+        {
+            if (!_playerInput.enabled)
+                _playerInput.enabled = true;
+
+            _playerInput.ActivateInput();
+
+            var playerActionMap = _playerInput.actions != null
+                ? _playerInput.actions.FindActionMap("Player", false)
+                : null;
+
+            if (playerActionMap != null)
+            {
+                if (_playerInput.currentActionMap != playerActionMap)
+                    _playerInput.SwitchCurrentActionMap(playerActionMap.name);
+                else if (!playerActionMap.enabled)
+                    playerActionMap.Enable();
+            }
+        }
+
+        if (GameInputController.Instance != null)
+            GameInputController.Instance.ResetToPlayMode();
+
+        _jumpRequestedUntil = 0d;
+        _lastGroundedAt = controller != null && controller.isGrounded
+            ? LocalInputTime
+            : double.NegativeInfinity;
+
+        RefreshMoveInputFromCurrentAction();
+    }
+
     public void MoveBySkill(Vector3 direction, float distance, float durationSeconds)
     {
         if (_forcedMoveRoutine != null)
@@ -393,6 +433,8 @@ public class PlayerManager : NetworkBehaviour
         {
             followCamera.SetTarget(this.transform);
         }
+
+        ResetLocalInputForPlayMode();
     }
 
     private void OnEnable()
@@ -510,30 +552,35 @@ public class PlayerManager : NetworkBehaviour
 
     private void QueueJumpRequest()
     {
-        if (!CanAcceptJumpRequest())
+        if (!CanQueueJumpRequest())
             return;
 
-        _jumpRequestedUntil = MovementTime + Mathf.Max(0.01f, _jumpBufferSeconds);
+        _jumpRequestedUntil = LocalInputTime + Mathf.Max(0.01f, _jumpBufferSeconds);
     }
 
-    private bool CanAcceptJumpRequest()
+    private bool CanQueueJumpRequest()
     {
         return !isDead
                && !_matchEndLocked
                && !IsBattleLoadingOrNotStarted()
-               && !_skillMovementLocked
-               && !IsSkillJumpLocked
-               && !IsEmoteBlockingJump
                && !GameInputController.IsPaused
                && !GameInputController.IsTextInputActive
                && controller != null
                && controller.enabled;
     }
 
+    private bool CanConsumeJumpRequest()
+    {
+        return CanQueueJumpRequest()
+               && !_skillMovementLocked
+               && !IsSkillJumpLocked
+               && !IsEmoteBlockingJump;
+    }
+
     private bool TryConsumeJumpRequest()
     {
-        double now = MovementTime;
-        if (_jumpRequestedUntil < now || !CanAcceptJumpRequest())
+        double now = LocalInputTime;
+        if (_jumpRequestedUntil < now || !CanConsumeJumpRequest())
             return false;
 
         bool canUseCoyoteTime = now - _lastGroundedAt <= Mathf.Max(0f, _coyoteTimeSeconds);
@@ -637,7 +684,7 @@ public class PlayerManager : NetworkBehaviour
 
         // 3. 중력 처리
         if (controller.isGrounded)
-            _lastGroundedAt = MovementTime;
+            _lastGroundedAt = LocalInputTime;
 
         if (!TryConsumeJumpRequest())
         {
@@ -917,10 +964,7 @@ public class PlayerManager : NetworkBehaviour
         }
         
         // [추가] 부활 시 강제로 게임 플레이 모드(커서 잠금 등)로 전환
-        if (GameInputController.Instance != null)
-        {
-            GameInputController.Instance.ResetToPlayMode();
-        }
+        ResetLocalInputForPlayMode();
         
         if (_healthSystem != null)
         {
