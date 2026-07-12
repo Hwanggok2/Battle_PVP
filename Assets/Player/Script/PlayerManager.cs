@@ -21,6 +21,7 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float _rotationOnlyTransformSyncInterval = 0.1f;
     [SerializeField] private float _jumpBufferSeconds = 0.15f;
     [SerializeField] private float _coyoteTimeSeconds = 0.08f;
+    [SerializeField] private float _groundSnapDistance = 0.2f;
 
     [Header("Remote Movement Smoothing")]
     [SerializeField] private float _remotePositionLerpSpeed = 18f;
@@ -347,7 +348,8 @@ public class PlayerManager : NetworkBehaviour
             GameInputController.Instance.ResetToPlayMode();
 
         _jumpRequestedUntil = 0d;
-        _lastGroundedAt = controller != null && controller.isGrounded
+        SnapToGroundIfClose();
+        _lastGroundedAt = IsGroundedForJump()
             ? LocalInputTime
             : double.NegativeInfinity;
 
@@ -577,6 +579,50 @@ public class PlayerManager : NetworkBehaviour
                && !IsEmoteBlockingJump;
     }
 
+    private bool IsGroundedForJump()
+    {
+        return controller != null && controller.enabled &&
+               (controller.isGrounded || TryGetGroundDistance(out _));
+    }
+
+    private bool TryGetGroundDistance(out float distanceToGround)
+    {
+        distanceToGround = float.PositiveInfinity;
+        if (controller == null || !controller.enabled)
+            return false;
+
+        float halfHeight = Mathf.Max(controller.radius, controller.height * 0.5f);
+        Vector3 origin = transform.position + controller.center + Vector3.up * 0.02f;
+        float maxDistance = halfHeight + Mathf.Max(0.01f, _groundSnapDistance);
+
+        if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, maxDistance, ~0, QueryTriggerInteraction.Ignore))
+            return false;
+
+        if (hit.transform != null && hit.transform.IsChildOf(transform))
+            return false;
+
+        if (hit.normal.y < 0.5f)
+            return false;
+
+        distanceToGround = Mathf.Max(0f, hit.distance - halfHeight);
+        return distanceToGround <= Mathf.Max(0.01f, _groundSnapDistance);
+    }
+
+    private void SnapToGroundIfClose()
+    {
+        if (controller == null || !controller.enabled || controller.isGrounded || velocityY > 0f)
+            return;
+
+        if (!TryGetGroundDistance(out float distanceToGround))
+            return;
+
+        if (distanceToGround > 0.001f)
+            controller.Move(Vector3.down * (distanceToGround + 0.01f));
+
+        if (velocityY < 0f)
+            velocityY = -0.5f;
+    }
+
     private bool TryConsumeJumpRequest()
     {
         double now = LocalInputTime;
@@ -584,7 +630,7 @@ public class PlayerManager : NetworkBehaviour
             return false;
 
         bool canUseCoyoteTime = now - _lastGroundedAt <= Mathf.Max(0f, _coyoteTimeSeconds);
-        if (!controller.isGrounded && !canUseCoyoteTime)
+        if (!IsGroundedForJump() && !canUseCoyoteTime)
             return false;
 
         _jumpRequestedUntil = 0d;
@@ -658,6 +704,7 @@ public class PlayerManager : NetworkBehaviour
     private void ApplyMovement()
     {
         // 1. 카메라 방향 기준 이동 벡터 계산
+        SnapToGroundIfClose();
         Vector3 moveDirection = Vector3.zero;
         if (followCamera != null)
         {
@@ -683,12 +730,13 @@ public class PlayerManager : NetworkBehaviour
         }
 
         // 3. 중력 처리
-        if (controller.isGrounded)
+        bool groundedForJump = IsGroundedForJump();
+        if (groundedForJump)
             _lastGroundedAt = LocalInputTime;
 
         if (!TryConsumeJumpRequest())
         {
-            if (controller.isGrounded && velocityY < 0f)
+            if (groundedForJump && velocityY < 0f)
                 velocityY = -0.5f;
             else
                 velocityY -= gravity * Time.deltaTime;
