@@ -7,6 +7,7 @@ namespace BattlePvp.UI
         public static DamagePopupManager Instance { get; private set; }
 
         [SerializeField] private DamagePopup _popupPrefab;
+        [SerializeField] private bool _logPopupSpawns;
 
         private void Awake()
         {
@@ -99,7 +100,8 @@ namespace BattlePvp.UI
                 popup.Setup(damage, isCritical);
             }
 
-            Debug.Log($"[DamagePopupManager] Popup spawned at {spawnPos} with damage {damage}");
+            if (_logPopupSpawns)
+                Debug.Log($"[DamagePopupManager] Popup spawned at {spawnPos} with damage {damage}");
         }
     }
 }

@@ -184,7 +184,6 @@ namespace BattlePvp.Stats
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
         private static readonly Vector3 DefaultCameraOffset = new Vector3(0.3f, 0.2f, -1.0f);
         private static readonly Vector3 MonostatCameraOffset = new Vector3(0.35f, 0.4f, -1.0f);
-        private bool _cameraInitialized = false;
 
         private void OnEnable()
         {
@@ -310,14 +309,7 @@ namespace BattlePvp.Stats
         private void InitializeCameraReference()
         {
             if (_followCamera == null)
-            {
                 _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
-                if (_followCamera != null && !_cameraInitialized)
-                {
-                    _followCamera.Offset = DefaultCameraOffset;
-                    _cameraInitialized = true;
-                }
-            }
         }
 
         private void ApplyVisualScaling()
@@ -327,7 +319,6 @@ namespace BattlePvp.Stats
             // 조건: STR 또는 CON 몰빵(Monostat) 상태일 때만 1.2배 (Task 3 수정)
             // 전에는 AGI/DEF가 0이기만 하면 커졌으나, 이제는 확실히 한 스탯에 몰빵된 경우만 체크.
             // 0. 네트워크 컴포넌트 안전망 (netIdentity가 없으면 로컬 전력이 아님)
-            bool giantLocal = (netIdentity != null && isLocalPlayer);
             bool isGiant = (CurrentIdentity.Type == IdentityType.Monostat) && 
                            (CurrentIdentity.PrimaryStat == StatKind.STR || CurrentIdentity.PrimaryStat == StatKind.CON);
             
@@ -335,7 +326,7 @@ namespace BattlePvp.Stats
             transform.localScale = new Vector3(targetScale, targetScale, targetScale);
 
             // 카메라 오프셋 비례 조정 (Task 5)
-            if (_cameraInitialized && _followCamera != null)
+            if (_followCamera != null)
             {
                 _followCamera.Offset = isGiant ? MonostatCameraOffset : DefaultCameraOffset;
                 Debug.Log($"[StatManager] Scale applied: {targetScale}, Camera Offset: {_followCamera.Offset}");

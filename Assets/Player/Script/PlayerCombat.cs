@@ -147,6 +147,7 @@ public class PlayerCombat : NetworkBehaviour
     private Material _runtimeStrategistStrAuraMaterial;
     private Material _activeStrategistAuraMaterialSource;
     private StatKind _activeStrategistAuraStat = StatKind.STR;
+    private bool _strategistStrAuraVisible;
     private StatKind _timedStrategistAuraStat = StatKind.STR;
     private double _strategistPresetAuraUntil;
     private Bounds _cachedStrategistAuraBounds;
@@ -1396,8 +1397,18 @@ public class PlayerCombat : NetworkBehaviour
     private void UpdateStrategistStrAura()
     {
         bool active = TryResolveStrategistAuraStat(out StatKind auraStat);
-        SetStrategistStrAuraVisible(active);
-        if (!active || _strategistStrAuraObject == null)
+        if (!active)
+        {
+            SetStrategistStrAuraVisible(false);
+            return;
+        }
+
+        bool wasVisible = _strategistStrAuraVisible;
+        SetStrategistStrAuraVisible(true);
+        if (_strategistStrAuraObject == null)
+            return;
+
+        if (wasVisible && _activeStrategistAuraStat == auraStat)
             return;
 
         _activeStrategistAuraStat = auraStat;
@@ -1434,6 +1445,8 @@ public class PlayerCombat : NetworkBehaviour
 
         if (_strategistStrAuraObject != null && _strategistStrAuraObject.activeSelf != visible)
             _strategistStrAuraObject.SetActive(visible);
+
+        _strategistStrAuraVisible = visible && _strategistStrAuraObject != null;
     }
 
     private void EnsureStrategistStrAura()

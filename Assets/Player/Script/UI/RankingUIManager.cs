@@ -1,7 +1,7 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
 using BattlePvp.Combat;
-using System.Linq;
+using UnityEngine;
 
 namespace BattlePvp.UI
 {
@@ -11,12 +11,15 @@ namespace BattlePvp.UI
         public Transform rankingContainer;
         public GameObject rankingEntryPrefab;
 
-        private List<RankingEntryUI> _activeEntries = new List<RankingEntryUI>();
+        private readonly List<RankingEntryUI> _activeEntries = new List<RankingEntryUI>();
+        private readonly List<ScoreSystem> _sortedScores = new List<ScoreSystem>();
+        private readonly HashSet<uint> _seenNetIds = new HashSet<uint>();
+        private static readonly Comparison<ScoreSystem> ScoreComparison = CompareScores;
 
         private void OnEnable()
         {
             ScoreSystem.OnScoreUpdated += UpdateRanking;
-            UpdateRanking(null); // Initial update
+            UpdateRanking(null);
         }
 
         private void OnDisable()
@@ -26,49 +29,70 @@ namespace BattlePvp.UI
 
         private void UpdateRanking(ScoreSystem _ = null)
         {
-            if (rankingContainer == null || rankingEntryPrefab == null) return;
+            if (rankingContainer == null || rankingEntryPrefab == null)
+                return;
 
-            // 정렬: 점수 내림차순, 점수가 같다면 이름 오름차순 (안정적 정렬)
-            var sortedScores = ScoreSystem.ActiveScores
-                .Where(s => s != null && s.netId != 0 && s.GetComponent("PlayerManager") != null)
-                .GroupBy(s => s.netId)
-                .Select(g => g.First())
-                .OrderByDescending(s => s.CurrentPoints)
-                .ThenBy(s => s.PlayerName)
-                .ToList();
+            BuildSortedScores();
+            ResizeEntries(_sortedScores.Count);
 
-            // 필요에 따라 UI 엔트리 개수 맞추기
-            while (_activeEntries.Count < sortedScores.Count)
+            for (int i = 0; i < _sortedScores.Count; i++)
             {
-                var go = Instantiate(rankingEntryPrefab, rankingContainer);
-                var entry = go.GetComponent<RankingEntryUI>();
+                ScoreSystem score = _sortedScores[i];
+                _activeEntries[i].SetData(i + 1, score.PlayerName, score.CurrentPoints, score.CurrentDeaths);
+                _activeEntries[i].transform.SetSiblingIndex(i);
+            }
+        }
+
+        private void BuildSortedScores()
+        {
+            _sortedScores.Clear();
+            _seenNetIds.Clear();
+
+            for (int i = 0; i < ScoreSystem.ActiveScores.Count; i++)
+            {
+                ScoreSystem score = ScoreSystem.ActiveScores[i];
+                if (score == null || score.netId == 0 || score.GetComponent("PlayerManager") == null)
+                    continue;
+
+                if (_seenNetIds.Add(score.netId))
+                    _sortedScores.Add(score);
+            }
+
+            _sortedScores.Sort(ScoreComparison);
+        }
+
+        private void ResizeEntries(int targetCount)
+        {
+            while (_activeEntries.Count < targetCount)
+            {
+                GameObject go = Instantiate(rankingEntryPrefab, rankingContainer);
+                RankingEntryUI entry = go.GetComponent<RankingEntryUI>();
                 if (entry != null)
                 {
                     _activeEntries.Add(entry);
+                    continue;
                 }
-                else
-                {
-                    Debug.LogError("RankingEntryUI component missing on prefab.");
-                    break;
-                }
+
+                Debug.LogError("RankingEntryUI component missing on prefab.");
+                Destroy(go);
+                break;
             }
 
-            while (_activeEntries.Count > sortedScores.Count)
+            while (_activeEntries.Count > targetCount)
             {
-                var entry = _activeEntries[_activeEntries.Count - 1];
+                RankingEntryUI entry = _activeEntries[_activeEntries.Count - 1];
                 _activeEntries.RemoveAt(_activeEntries.Count - 1);
                 Destroy(entry.gameObject);
             }
+        }
 
-            // 데이터 바인딩
-            for (int i = 0; i < sortedScores.Count; i++)
-            {
-                int rank = i + 1;
-                _activeEntries[i].SetData(rank, sortedScores[i].PlayerName, sortedScores[i].CurrentPoints, sortedScores[i].CurrentDeaths);
-                
-                // 순서 보장 (Hierarchy)
-                _activeEntries[i].transform.SetSiblingIndex(i);
-            }
+        private static int CompareScores(ScoreSystem left, ScoreSystem right)
+        {
+            int pointCompare = right.CurrentPoints.CompareTo(left.CurrentPoints);
+            if (pointCompare != 0)
+                return pointCompare;
+
+            return string.CompareOrdinal(left.PlayerName, right.PlayerName);
         }
     }
 }

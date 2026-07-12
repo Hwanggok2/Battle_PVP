@@ -63,17 +63,11 @@ namespace BattlePvp.CameraLogic
             }
 
             // 2. 회전 쿼터니언 계산
-            Vector3 activeRotationOffset = _useTemporaryOffset ? _temporaryRotationOffset : Vector3.zero;
-            Quaternion targetRotation = Quaternion.Euler(
-                _pitch + activeRotationOffset.x,
-                _yaw + activeRotationOffset.y,
-                activeRotationOffset.z);
+            Quaternion targetRotation = GetActiveRotation();
             transform.rotation = targetRotation;
 
             // 3. 카메라 위치 계산 (대상 위치 + 회전된 오프셋)
-            Vector3 pivotPosition = _target.position + Vector3.up * 1.5f; 
-            Vector3 activeOffset = _useTemporaryOffset ? _temporaryOffset : Offset;
-            Vector3 targetPosition = pivotPosition + (targetRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y);
+            Vector3 targetPosition = GetActiveCameraPosition(targetRotation);
 
             // 4. 위치 적용 (즉시 이동)
             transform.position = targetPosition;
@@ -107,16 +101,33 @@ namespace BattlePvp.CameraLogic
 
         public Vector3 GetAimDirection()
         {
-            Vector3 activeRotationOffset = _useTemporaryOffset ? _temporaryRotationOffset : Vector3.zero;
-            return Quaternion.Euler(
-                _pitch + activeRotationOffset.x,
-                _yaw + activeRotationOffset.y,
-                activeRotationOffset.z) * Vector3.forward;
+            return GetActiveRotation() * Vector3.forward;
         }
 
         public Ray GetAimRay()
         {
-            return new Ray(transform.position, GetAimDirection());
+            Quaternion activeRotation = GetActiveRotation();
+            Vector3 origin = _target != null ? GetActiveCameraPosition(activeRotation) : transform.position;
+            return new Ray(origin, activeRotation * Vector3.forward);
+        }
+
+        private Quaternion GetActiveRotation()
+        {
+            Vector3 activeRotationOffset = _useTemporaryOffset ? _temporaryRotationOffset : Vector3.zero;
+            return Quaternion.Euler(
+                _pitch + activeRotationOffset.x,
+                _yaw + activeRotationOffset.y,
+                activeRotationOffset.z);
+        }
+
+        private Vector3 GetActiveCameraPosition(Quaternion activeRotation)
+        {
+            if (_target == null)
+                return transform.position;
+
+            Vector3 pivotPosition = _target.position + Vector3.up * 1.5f;
+            Vector3 activeOffset = _useTemporaryOffset ? _temporaryOffset : Offset;
+            return pivotPosition + (activeRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y);
         }
     }
 }

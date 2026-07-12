@@ -84,6 +84,10 @@ namespace BattlePvp.UI
         private NetworkIdentity _ownerIdentity;
         private bool _isSubscribed;
         private bool _hasExplicitTarget;
+        private bool _hasLoadingOverlayState;
+        private bool _lastLoadingOverlayActive;
+        private float _nextLoadingOverlaySyncTime;
+        private const float LoadingOverlaySyncInterval = 0.25f;
 
         public static void UpdateLocalDeathOverlay(bool active, string text = "", Color? textColor = null)
         {
@@ -180,7 +184,11 @@ namespace BattlePvp.UI
             if (IsBoundToLocalPlayer() && ShouldDisplayThisHud())
                 Instance = this;
 
-            SyncLoadingOverlayFromBattleState();
+            if (Time.unscaledTime >= _nextLoadingOverlaySyncTime)
+            {
+                _nextLoadingOverlaySyncTime = Time.unscaledTime + LoadingOverlaySyncInterval;
+                SyncLoadingOverlayFromBattleState();
+            }
         }
 
         private void ResolveView()
@@ -500,19 +508,23 @@ namespace BattlePvp.UI
         {
             if (_view != null)
             {
-                _view.gameObject.SetActive(active);
+                if (_view.gameObject.activeSelf != active)
+                    _view.gameObject.SetActive(active);
                 return;
             }
 
             if (_hudView is Component component)
-                component.gameObject.SetActive(active);
+            {
+                if (component.gameObject.activeSelf != active)
+                    component.gameObject.SetActive(active);
+            }
         }
 
         private void SyncLoadingOverlayFromBattleState()
         {
             if (!IsBoundToLocalPlayer())
             {
-                _hudView?.SetLoadingOverlay(false);
+                SetLoadingOverlayCached(false);
                 return;
             }
 
@@ -638,7 +650,17 @@ namespace BattlePvp.UI
 
             string sceneName = SceneManager.GetActiveScene().name;
             bool canShowLoading = sceneName == "Battle";
-            _hudView?.SetLoadingOverlay(active && canShowLoading);
+            SetLoadingOverlayCached(active && canShowLoading);
+        }
+
+        private void SetLoadingOverlayCached(bool active)
+        {
+            if (_hasLoadingOverlayState && _lastLoadingOverlayActive == active)
+                return;
+
+            _hasLoadingOverlayState = true;
+            _lastLoadingOverlayActive = active;
+            _hudView?.SetLoadingOverlay(active);
         }
     }
 }

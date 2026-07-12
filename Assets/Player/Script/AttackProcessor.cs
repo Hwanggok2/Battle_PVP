@@ -21,6 +21,9 @@ public sealed class AttackProcessor : MonoBehaviour
     [Tooltip("IDamageReceiver를 구현한 컴포넌트 (Unity에서는 인터페이스를 바로 드래그할 수 없어 MonoBehaviour로 받습니다).")]
     [SerializeField] private MonoBehaviour _attackerHealth;
 
+    [Header("Debug")]
+    [SerializeField] private bool _logHits;
+
     private DamageCalculator _damageCalculator;
 
     private IDamageReceiver _attackerDamageReceiver;
@@ -159,7 +162,10 @@ public sealed class AttackProcessor : MonoBehaviour
         finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
 
         // [디버그] 최종 계산 데미지 로그
-        Debug.Log($"[AttackProcessor] Hit! Power:{attackPower:F1}, Pene:{penetrationPercent:F1}%, DefEff:{defenderCurrentDefNormalized:F2}, BodyPartMul:{bodyPartMultiplier:F2}, FinalDamage:{finalDamage:F1}");
+        if (_logHits)
+        {
+            Debug.Log($"[AttackProcessor] Hit! Power:{attackPower:F1}, Pene:{penetrationPercent:F1}%, DefEff:{defenderCurrentDefNormalized:F2}, BodyPartMul:{bodyPartMultiplier:F2}, FinalDamage:{finalDamage:F1}");
+        }
 
         if (finalDamage <= 0f)
             return;

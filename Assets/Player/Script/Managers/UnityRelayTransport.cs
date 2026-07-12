@@ -19,6 +19,9 @@ namespace BattlePvp.Networking
         [SerializeField] private int _maxConnections = 8;
         [SerializeField] private string _connectionType = "udp";
 
+        private const int RelayApiMaxAttempts = 3;
+        private const int RelayApiBackoffMilliseconds = 500;
+
         private NetworkDriver _serverDriver;
         private NetworkDriver _clientDriver;
         private UtpNetworkConnection _clientConnection;
@@ -42,8 +45,12 @@ namespace BattlePvp.Networking
             await EnsureUnityServicesAsync();
 
             int relayConnections = Mathf.Max(1, maxConnections - 1);
-            Allocation allocation = await RelayService.Instance.CreateAllocationAsync(relayConnections);
-            LastJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+            Allocation allocation = await RunRelayApiWithRetryAsync(
+                "CreateAllocationAsync",
+                () => RelayService.Instance.CreateAllocationAsync(relayConnections));
+            LastJoinCode = await RunRelayApiWithRetryAsync(
+                "GetJoinCodeAsync",
+                () => RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId));
 
             _serverRelayData = allocation.ToRelayServerData(_connectionType);
             _hasPreparedServerRelay = true;
@@ -57,7 +64,9 @@ namespace BattlePvp.Networking
 
             await EnsureUnityServicesAsync();
 
-            JoinAllocation allocation = await RelayService.Instance.JoinAllocationAsync(joinCode.Trim());
+            JoinAllocation allocation = await RunRelayApiWithRetryAsync(
+                "JoinAllocationAsync",
+                () => RelayService.Instance.JoinAllocationAsync(joinCode.Trim()));
             _clientRelayData = allocation.ToRelayServerData(_connectionType);
             _hasPreparedClientRelay = true;
         }
@@ -69,6 +78,33 @@ namespace BattlePvp.Networking
 
             if (!AuthenticationService.Instance.IsSignedIn)
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+
+        private static async Task<T> RunRelayApiWithRetryAsync<T>(string operationName, Func<Task<T>> operation)
+        {
+            Exception lastException = null;
+
+            for (int attempt = 1; attempt <= RelayApiMaxAttempts; attempt++)
+            {
+                try
+                {
+                    return await operation();
+                }
+                catch (Exception ex) when (attempt < RelayApiMaxAttempts)
+                {
+                    lastException = ex;
+                    int delayMilliseconds = RelayApiBackoffMilliseconds * attempt;
+                    Debug.LogWarning(
+                        $"[UnityRelayTransport] {operationName} failed on attempt {attempt}/{RelayApiMaxAttempts}. Retrying in {delayMilliseconds}ms. {ex.GetType().Name}: {ex.Message}");
+                    await Task.Delay(delayMilliseconds);
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                }
+            }
+
+            throw lastException ?? new InvalidOperationException($"{operationName} failed.");
         }
 
         public override bool ClientConnected() => _clientConnected;
