@@ -18,7 +18,7 @@ MonoBehaviour:
   _castSeconds: 0.75
   _durationSeconds: 0
   _cooldownSeconds: 10
-  _inputLockFlags: 6
+  _inputLockFlags: 2
   _inputLockSeconds: 0
   _castAnimationStateName: Sheath Sword
   _castAnimationLayer: 1

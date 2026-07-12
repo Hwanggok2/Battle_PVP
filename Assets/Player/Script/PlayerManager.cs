@@ -18,6 +18,9 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float jumpHeight = 1.4f;
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
+    [SerializeField] private float _rotationOnlyTransformSyncInterval = 0.1f;
+    [SerializeField] private float _jumpBufferSeconds = 0.15f;
+    [SerializeField] private float _coyoteTimeSeconds = 0.08f;
 
     [Header("Remote Movement Smoothing")]
     [SerializeField] private float _remotePositionLerpSpeed = 18f;
@@ -56,6 +59,7 @@ public class PlayerManager : NetworkBehaviour
     private HealthSystem _healthSystem;
     private Coroutine _respawnRoutine;
     private float _nextTransformSyncTime;
+    private float _nextRotationOnlySyncTime;
     private Vector3 _lastSentPosition;
     private Quaternion _lastSentRotation;
     private Vector3 _remoteTargetPosition;
@@ -69,6 +73,8 @@ public class PlayerManager : NetworkBehaviour
     private bool _skillMovementLocked;
     private SkillInputLockFlags _skillInputLockFlags;
     private double _skillInputLockUntil;
+    private double _jumpRequestedUntil;
+    private double _lastGroundedAt = double.NegativeInfinity;
     private EmoteData _activeEmote;
     private Coroutine _emoteRoutine;
 
@@ -453,18 +459,14 @@ public class PlayerManager : NetworkBehaviour
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillCrouchLocked || IsEmoteBlockingJump) return;
-        if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
-        if (controller == null || !controller.enabled || !controller.isGrounded) return;
-
-        velocityY = Mathf.Sqrt(jumpHeight * 2f * gravity);
+        QueueJumpRequest();
     }
 
     public void OnCrouch(InputValue value)
     {
         if (isClient && !isLocalPlayer) return;
         if (!value.isPressed) return;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillJumpLocked || IsEmoteBlockingJump) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillCrouchLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
 
         SetCrouchState(!isCrouching, true);
@@ -480,6 +482,7 @@ public class PlayerManager : NetworkBehaviour
 
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
         if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
+        PollJumpInputFallback();
         ApplyMovement();
     }
 
@@ -499,6 +502,50 @@ public class PlayerManager : NetworkBehaviour
     }
 
     // Animator의 Animation Event 등에서 호출하여 공격 상태를 알립니다.
+    private void PollJumpInputFallback()
+    {
+        if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            QueueJumpRequest();
+    }
+
+    private void QueueJumpRequest()
+    {
+        if (!CanAcceptJumpRequest())
+            return;
+
+        _jumpRequestedUntil = MovementTime + Mathf.Max(0.01f, _jumpBufferSeconds);
+    }
+
+    private bool CanAcceptJumpRequest()
+    {
+        return !isDead
+               && !_matchEndLocked
+               && !IsBattleLoadingOrNotStarted()
+               && !_skillMovementLocked
+               && !IsSkillJumpLocked
+               && !IsEmoteBlockingJump
+               && !GameInputController.IsPaused
+               && !GameInputController.IsTextInputActive
+               && controller != null
+               && controller.enabled;
+    }
+
+    private bool TryConsumeJumpRequest()
+    {
+        double now = MovementTime;
+        if (_jumpRequestedUntil < now || !CanAcceptJumpRequest())
+            return false;
+
+        bool canUseCoyoteTime = now - _lastGroundedAt <= Mathf.Max(0f, _coyoteTimeSeconds);
+        if (!controller.isGrounded && !canUseCoyoteTime)
+            return false;
+
+        _jumpRequestedUntil = 0d;
+        _lastGroundedAt = double.NegativeInfinity;
+        velocityY = Mathf.Sqrt(jumpHeight * 2f * gravity);
+        return true;
+    }
+
     public void SetMovementLock(bool isLocked)
     {
         isAttacking = isLocked;
@@ -589,10 +636,16 @@ public class PlayerManager : NetworkBehaviour
         }
 
         // 3. 중력 처리
-        if (controller.isGrounded && velocityY < 0f)
-            velocityY = -0.5f;
-        else
-            velocityY -= gravity * Time.deltaTime;
+        if (controller.isGrounded)
+            _lastGroundedAt = MovementTime;
+
+        if (!TryConsumeJumpRequest())
+        {
+            if (controller.isGrounded && velocityY < 0f)
+                velocityY = -0.5f;
+            else
+                velocityY -= gravity * Time.deltaTime;
+        }
 
         // 4. 최종 이동
         float currentMoveSpeed = moveSpeed;
@@ -629,11 +682,20 @@ public class PlayerManager : NetworkBehaviour
         if (!isLocalPlayer || !isClient || Time.time < _nextTransformSyncTime)
             return;
 
-        if ((_lastSentPosition - transform.position).sqrMagnitude < 0.0001f &&
-            Quaternion.Angle(_lastSentRotation, transform.rotation) < 0.5f)
+        float positionDeltaSqr = (_lastSentPosition - transform.position).sqrMagnitude;
+        float rotationDelta = Quaternion.Angle(_lastSentRotation, transform.rotation);
+        bool positionChanged = positionDeltaSqr >= 0.0001f;
+        bool rotationChanged = rotationDelta >= 0.5f;
+
+        if (!positionChanged && !rotationChanged)
+            return;
+
+        if (!positionChanged && Time.time < _nextRotationOnlySyncTime)
             return;
 
         _nextTransformSyncTime = Time.time + _transformSyncInterval;
+        if (!positionChanged)
+            _nextRotationOnlySyncTime = Time.time + Mathf.Max(_transformSyncInterval, _rotationOnlyTransformSyncInterval);
         _lastSentPosition = transform.position;
         _lastSentRotation = transform.rotation;
         CmdSyncTransform(transform.position, transform.rotation);
