@@ -13,6 +13,8 @@ public sealed class BowAimRigTarget : NetworkBehaviour
 
     private FollowCamera _followCamera;
     private bool _useYawOffset;
+    private bool _hasNetworkAimDirection;
+    private Vector3 _networkAimDirection;
 
     private void LateUpdate()
     {
@@ -23,6 +25,24 @@ public sealed class BowAimRigTarget : NetworkBehaviour
     {
         _useYawOffset = active;
         UpdateTarget();
+    }
+
+    public void SetNetworkAimDirection(Vector3 direction)
+    {
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            _hasNetworkAimDirection = false;
+            return;
+        }
+
+        _networkAimDirection = direction.normalized;
+        _hasNetworkAimDirection = true;
+        UpdateTarget();
+    }
+
+    public void ClearNetworkAimDirection()
+    {
+        _hasNetworkAimDirection = false;
     }
 
     private void UpdateTarget()
@@ -53,6 +73,9 @@ public sealed class BowAimRigTarget : NetworkBehaviour
             if (_followCamera != null)
                 aimDirection = _followCamera.GetAimDirection();
         }
+
+        if (aimDirection.sqrMagnitude <= 0.001f && _hasNetworkAimDirection)
+            aimDirection = _networkAimDirection;
 
         if (aimDirection.sqrMagnitude <= 0.001f)
             aimDirection = _origin != null ? _origin.forward : transform.forward;

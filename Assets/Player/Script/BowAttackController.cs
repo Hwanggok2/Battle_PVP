@@ -116,8 +116,9 @@ public sealed class BowAttackController : NetworkBehaviour
             _isVisuallyCharging = true;
             _playerManager?.ApplySkillMoveMultiplier(bowData.BowChargeMoveMultiplier, 86400f);
             SetHandArrowVisible(false);
+            ApplyBowAimDirection(aimDirection);
             SetBowAimRigActive(true);
-            PlayBowAnimationNetworked(DrawAnimationStateName);
+            PlayBowAnimationNetworked(DrawAnimationStateName, aimDirection);
             return;
         }
 
@@ -152,7 +153,7 @@ public sealed class BowAttackController : NetworkBehaviour
         if (!_isVisuallyCharging)
             return;
 
-        PlayBowAnimationLocal(AimHoldAnimationStateName);
+        PlayBowAnimationLocal(AimHoldAnimationStateName, Vector3.zero);
         _isAimHoldReady = true;
 
         if (_releaseQueued)
@@ -213,28 +214,28 @@ public sealed class BowAttackController : NetworkBehaviour
     }
 
     [Command]
-    private void CmdPlayBowAnimation(string stateName)
+    private void CmdPlayBowAnimation(string stateName, Vector3 aimDirection)
     {
-        RpcPlayBowAnimation(stateName);
+        RpcPlayBowAnimation(stateName, aimDirection);
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcPlayBowAnimation(string stateName)
+    private void RpcPlayBowAnimation(string stateName, Vector3 aimDirection)
     {
-        PlayBowAnimationLocal(stateName);
+        PlayBowAnimationLocal(stateName, aimDirection);
     }
 
-    private void PlayBowAnimationNetworked(string stateName)
+    private void PlayBowAnimationNetworked(string stateName, Vector3 aimDirection)
     {
         if (string.IsNullOrWhiteSpace(stateName))
             return;
 
-        PlayBowAnimationLocal(stateName);
+        PlayBowAnimationLocal(stateName, aimDirection);
 
         if (isClient && isLocalPlayer && !isServer)
-            CmdPlayBowAnimation(stateName);
+            CmdPlayBowAnimation(stateName, aimDirection);
         else if (NetworkServer.active)
-            RpcPlayBowAnimation(stateName);
+            RpcPlayBowAnimation(stateName, aimDirection);
     }
 
     [Command]
@@ -273,7 +274,7 @@ public sealed class BowAttackController : NetworkBehaviour
         _animator.SetTrigger(ReleaseTriggerName);
     }
 
-    private void PlayBowAnimationLocal(string stateName)
+    private void PlayBowAnimationLocal(string stateName, Vector3 aimDirection)
     {
         if (_animator == null || string.IsNullOrWhiteSpace(stateName))
             return;
@@ -282,6 +283,7 @@ public sealed class BowAttackController : NetworkBehaviour
         {
             _isVisuallyCharging = true;
             SetHandArrowVisible(false);
+            ApplyBowAimDirection(aimDirection);
             SetBowAimRigActive(true);
         }
         int safeLayer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
@@ -448,6 +450,20 @@ public sealed class BowAttackController : NetworkBehaviour
         SetBowRigWeight(active ? 1f : 0f);
         if (_bowAimRigTarget != null && _bowAimRigTarget.enabled != active)
             _bowAimRigTarget.enabled = active;
+    }
+
+    private void ApplyBowAimDirection(Vector3 aimDirection)
+    {
+        if (_bowAimRigTarget == null)
+            return;
+
+        if (isLocalPlayer)
+        {
+            _bowAimRigTarget.ClearNetworkAimDirection();
+            return;
+        }
+
+        _bowAimRigTarget.SetNetworkAimDirection(aimDirection);
     }
 
     private void SetBowRigWeight(float weight)
