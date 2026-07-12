@@ -7953,9 +7953,13 @@ MonoBehaviour:
   _statManager: {fileID: 4931861078861440238}
   moveSpeed: 5
   gravity: 9.81
-  jumpHeight: 1.4
+  jumpHeight: 0.8
   rotationSpeed: 720
   _transformSyncInterval: 0.033
+  _rotationOnlyTransformSyncInterval: 0.1
+  _jumpBufferSeconds: 0.15
+  _coyoteTimeSeconds: 0.08
+  _groundSnapDistance: 0.2
   _remotePositionLerpSpeed: 18
   _remoteRotationLerpSpeed: 18
   _remoteSnapDistance: 3
@@ -7985,6 +7989,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AttackProcessor
   _attackerStats: {fileID: 4931861078861440238}
   _attackerHealth: {fileID: 7634747940501167914}
+  _logHits: 0
   _currentAtk: 0
   _currentPene: 0
   _lastHitPower: 0
