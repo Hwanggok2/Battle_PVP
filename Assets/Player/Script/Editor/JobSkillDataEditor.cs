@@ -22,6 +22,7 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _poisonMaxStacks;
     private SerializedProperty _poisonDamagePerStackPerSecond;
     private SerializedProperty _poisonStackDurationSeconds;
+    private SerializedProperty _swordMaterial;
     private SerializedProperty _kickDamageMultiplier;
     private SerializedProperty _kickKnockbackDistance;
     private SerializedProperty _kickSlowMoveMultiplier;
@@ -71,6 +72,7 @@ public sealed class JobSkillDataEditor : Editor
         _poisonMaxStacks = serializedObject.FindProperty("_poisonMaxStacks");
         _poisonDamagePerStackPerSecond = serializedObject.FindProperty("_poisonDamagePerStackPerSecond");
         _poisonStackDurationSeconds = serializedObject.FindProperty("_poisonStackDurationSeconds");
+        _swordMaterial = serializedObject.FindProperty("_swordMaterial");
         _kickDamageMultiplier = serializedObject.FindProperty("_kickDamageMultiplier");
         _kickKnockbackDistance = serializedObject.FindProperty("_kickKnockbackDistance");
         _kickSlowMoveMultiplier = serializedObject.FindProperty("_kickSlowMoveMultiplier");
@@ -168,7 +170,8 @@ public sealed class JobSkillDataEditor : Editor
             case JobSkillKind.MonostatStrLifesteal:
                 DrawSectionWithLabels(
                     "STR Lifesteal",
-                    (_lifestealRatio, "Lifesteal Ratio"));
+                    (_lifestealRatio, "Lifesteal Ratio"),
+                    (_swordMaterial, "Sword Material"));
                 break;
 
             case JobSkillKind.MonostatAgiPoison:
@@ -176,7 +179,8 @@ public sealed class JobSkillDataEditor : Editor
                     "AGI Poison",
                     (_poisonMaxStacks, "Max Stacks"),
                     (_poisonDamagePerStackPerSecond, "Damage Per Stack Per Second"),
-                    (_poisonStackDurationSeconds, "Stack Duration Seconds"));
+                    (_poisonStackDurationSeconds, "Stack Duration Seconds"),
+                    (_swordMaterial, "Sword Material"));
                 break;
 
             case JobSkillKind.MonostatConKick:
@@ -195,7 +199,8 @@ public sealed class JobSkillDataEditor : Editor
                     (_tauntDurationSeconds, "Taunt Duration Seconds"),
                     (_tauntIncomingDamageMultiplier, "Incoming Damage Multiplier"),
                     (_tauntReflectMultiplier, "Reflect Damage Multiplier"),
-                    (_tauntReflectHealthCapRatio, "Reflect Max HP Cap Ratio"));
+                    (_tauntReflectHealthCapRatio, "Reflect Max HP Cap Ratio"),
+                    (_swordMaterial, "Sword Material"));
                 break;
 
             case JobSkillKind.StrategistRoll:

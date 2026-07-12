@@ -49,6 +49,7 @@ namespace BattlePvp.Combat
         [Min(0)] [SerializeField] private int _poisonMaxStacks = 0;
         [Min(0f)] [SerializeField] private float _poisonDamagePerStackPerSecond = 0f;
         [Min(0f)] [SerializeField] private float _poisonStackDurationSeconds = 0f;
+        [SerializeField] private Material _swordMaterial;
 
         [Min(0f)] [SerializeField] private float _kickDamageMultiplier = 1.5f;
         [Min(0f)] [SerializeField] private float _kickKnockbackDistance = 3f;
@@ -109,6 +110,7 @@ namespace BattlePvp.Combat
         public int PoisonMaxStacks => _poisonMaxStacks;
         public float PoisonDamagePerStackPerSecond => _poisonDamagePerStackPerSecond;
         public float PoisonStackDurationSeconds => _poisonStackDurationSeconds;
+        public Material SwordMaterial => _swordMaterial;
         public float KickDamageMultiplier => _kickDamageMultiplier;
         public float KickKnockbackDistance => _kickKnockbackDistance;
         public float KickSlowMoveMultiplier => _kickSlowMoveMultiplier;

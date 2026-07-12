@@ -18,12 +18,15 @@ MonoBehaviour:
   _castSeconds: 0.35
   _durationSeconds: 0
   _cooldownSeconds: 10
+  _inputLockFlags: 0
+  _inputLockSeconds: 0
   _castAnimationStateName: Roll_Str
   _castAnimationLayer: 0
   _lifestealRatio: 0
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0
+  _swordMaterial: {fileID: 0}
   _kickDamageMultiplier: 1.5
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
@@ -33,7 +36,7 @@ MonoBehaviour:
   _tauntIncomingDamageMultiplier: 0.7
   _tauntReflectMultiplier: 2
   _tauntReflectHealthCapRatio: 0.14
-  _rollDistance: 1.5
+  _rollDistance: 3
   _rollDurationSeconds: 0.35
   _targetPreset:
     STR:

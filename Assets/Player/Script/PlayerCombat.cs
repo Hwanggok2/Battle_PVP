@@ -84,7 +84,7 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private bool _isCastingMonostatStrSkill;
     [SyncVar]
     [SerializeField] private double _monostatStrSkillCastCompleteAt;
-    [SyncVar]
+    [SyncVar(hook = nameof(OnSkillSwordVisualStateChanged))]
     [SerializeField] private double _monostatStrSkillActiveUntil;
     [SyncVar]
     [SerializeField] private double _monostatStrSkillCooldownUntil;
@@ -92,14 +92,14 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField] private bool _isCastingMonostatAgiSkill;
     [SyncVar]
     [SerializeField] private double _monostatAgiSkillCastCompleteAt;
-    [SyncVar]
+    [SyncVar(hook = nameof(OnSkillSwordVisualStateChanged))]
     [SerializeField] private double _monostatAgiSkillActiveUntil;
     [SyncVar]
     [SerializeField] private double _monostatAgiSkillCooldownUntil;
     [SyncVar] [SerializeField] private int _advancedCastingSkillKey = -1;
     [SyncVar] [SerializeField] private double _advancedCastCompleteAt;
-    [SyncVar] [SerializeField] private int _advancedActiveSkillKey = -1;
-    [SyncVar] [SerializeField] private double _advancedActiveUntil;
+    [SyncVar(hook = nameof(OnAdvancedActiveSkillKeyChanged))] [SerializeField] private int _advancedActiveSkillKey = -1;
+    [SyncVar(hook = nameof(OnSkillSwordVisualStateChanged))] [SerializeField] private double _advancedActiveUntil;
     [SyncVar(hook = nameof(OnBowEquippedChanged))] [SerializeField] private bool _isBowEquipped;
     [SyncVar] [SerializeField] private uint _tauntedByNetId;
     [SyncVar] [SerializeField] private double _tauntedUntil;
@@ -157,6 +157,10 @@ public class PlayerCombat : NetworkBehaviour
     private StatContainer _strategistSwapReturnPreset;
     private bool _hasStrategistSwapReturnPreset;
     private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
+    private Renderer[] _skillSwordRenderers;
+    private Material[][] _skillSwordOriginalMaterials;
+    private Material _activeSkillSwordMaterial;
+    private bool _isSkillSwordVisualActive;
     private const float SkillHudUpdateIntervalSeconds = 0.1f;
     private SkillHudState _lastPublishedSkillHudState;
     private bool _hasPublishedSkillHudState;
@@ -260,7 +264,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (_healthSystem != null)
         {
-            _healthSystem.OnDied += CancelCurrentAttack;
+            _healthSystem.OnDied += HandleDied;
             _healthSystem.OnRevived += HandleRevived;
         }
 
@@ -281,7 +285,7 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (_healthSystem != null)
         {
-            _healthSystem.OnDied -= CancelCurrentAttack;
+            _healthSystem.OnDied -= HandleDied;
             _healthSystem.OnRevived -= HandleRevived;
         }
 
@@ -296,10 +300,12 @@ public class PlayerCombat : NetworkBehaviour
         _bowAttackController?.CancelCharge();
         _bowAttackController?.SetCrosshairVisible(false);
         SetStrategistStrAuraVisible(false);
+        SetSkillSwordVisual(null);
     }
 
     private void OnDestroy()
     {
+        SetSkillSwordVisual(null);
         if (_runtimeStrategistStrAuraMaterial != null)
             Destroy(_runtimeStrategistStrAuraMaterial);
     }
@@ -324,6 +330,7 @@ public class PlayerCombat : NetworkBehaviour
     private void Update()
     {
         UpdateStrategistStrAura();
+        RefreshSkillSwordVisualFromState();
 
         if (isClient && !isLocalPlayer)
             return;
@@ -792,6 +799,7 @@ public class PlayerCombat : NetworkBehaviour
             JobSkillData taunt = MonostatDefSkillData;
             _advancedActiveSkillKey = -1;
             _advancedActiveUntil = 0d;
+            SetSkillSwordVisual(null);
             if (_healthSystem != null && taunt != null)
                 _healthSystem.SetTauntDefense(taunt.TauntDurationSeconds, taunt.TauntIncomingDamageMultiplier,
                     taunt.TauntReflectMultiplier, taunt.TauntReflectHealthCapRatio);
@@ -1195,6 +1203,7 @@ public class PlayerCombat : NetworkBehaviour
             case JobSkillKind.MonostatDefTaunt:
                 _advancedActiveSkillKey = (int)data.SkillKind;
                 _advancedActiveUntil = SkillTime + data.TauntReadyDurationSeconds;
+                SetSkillSwordVisual(data);
                 break;
             case JobSkillKind.StrategistRoll:
             case JobSkillKind.PolymathRoll:
@@ -1788,12 +1797,14 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         _monostatStrSkillActiveUntil = SkillTime + MonostatStrDurationSeconds;
+        SetSkillSwordVisual(MonostatStrSkillData);
         PublishSkillHudState();
 
         while (SkillTime < _monostatStrSkillActiveUntil)
             yield return null;
 
         _monostatStrSkillActiveUntil = 0d;
+        SetSkillSwordVisual(null);
         _monostatStrSkillRoutine = null;
         PublishSkillHudState();
     }
@@ -1844,6 +1855,117 @@ public class PlayerCombat : NetworkBehaviour
         return !animator.IsInTransition(layer) && stateInfo.normalizedTime >= 1f;
     }
 
+    private void SetSkillSwordVisual(JobSkillData data)
+    {
+        Material swordMaterial = data != null ? data.SwordMaterial : null;
+        bool active = swordMaterial != null;
+
+        if (!active && !_isSkillSwordVisualActive)
+            return;
+
+        if (active && _isSkillSwordVisualActive && _activeSkillSwordMaterial == swordMaterial)
+            return;
+
+        ResolveSkillSwordRenderers();
+
+        if (_skillSwordRenderers == null || _skillSwordRenderers.Length == 0)
+            return;
+
+        if (_isSkillSwordVisualActive)
+            RestoreSkillSwordMaterials();
+
+        if (active)
+        {
+            _skillSwordOriginalMaterials = new Material[_skillSwordRenderers.Length][];
+            for (int i = 0; i < _skillSwordRenderers.Length; i++)
+            {
+                Renderer rendererComponent = _skillSwordRenderers[i];
+                if (rendererComponent == null)
+                    continue;
+
+                Material[] originalMaterials = rendererComponent.sharedMaterials;
+                _skillSwordOriginalMaterials[i] = originalMaterials;
+
+                int count = Mathf.Max(1, originalMaterials != null ? originalMaterials.Length : 0);
+                Material[] skillMaterials = new Material[count];
+                for (int j = 0; j < count; j++)
+                    skillMaterials[j] = swordMaterial;
+
+                rendererComponent.sharedMaterials = skillMaterials;
+            }
+
+            _isSkillSwordVisualActive = true;
+            _activeSkillSwordMaterial = swordMaterial;
+            return;
+        }
+
+        RestoreSkillSwordMaterials();
+    }
+
+    private void RestoreSkillSwordMaterials()
+    {
+        if (_skillSwordOriginalMaterials != null)
+        {
+            for (int i = 0; i < _skillSwordRenderers.Length; i++)
+            {
+                Renderer rendererComponent = _skillSwordRenderers[i];
+                if (rendererComponent != null && i < _skillSwordOriginalMaterials.Length && _skillSwordOriginalMaterials[i] != null)
+                    rendererComponent.sharedMaterials = _skillSwordOriginalMaterials[i];
+            }
+        }
+
+        _skillSwordOriginalMaterials = null;
+        _activeSkillSwordMaterial = null;
+        _isSkillSwordVisualActive = false;
+    }
+
+    private void RefreshSkillSwordVisualFromState()
+    {
+        double now = SkillTime;
+        if (now < _monostatStrSkillActiveUntil)
+        {
+            SetSkillSwordVisual(MonostatStrSkillData);
+            return;
+        }
+
+        if (now < _monostatAgiSkillActiveUntil)
+        {
+            SetSkillSwordVisual(MonostatAgiSkillData);
+            return;
+        }
+
+        if (_advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && now < _advancedActiveUntil)
+        {
+            SetSkillSwordVisual(MonostatDefSkillData);
+            return;
+        }
+
+        SetSkillSwordVisual(null);
+    }
+
+    private void OnSkillSwordVisualStateChanged(double oldValue, double newValue)
+    {
+        RefreshSkillSwordVisualFromState();
+    }
+
+    private void OnAdvancedActiveSkillKeyChanged(int oldValue, int newValue)
+    {
+        RefreshSkillSwordVisualFromState();
+    }
+
+    private void ResolveSkillSwordRenderers()
+    {
+        if (_skillSwordRenderers != null && _skillSwordRenderers.Length > 0)
+            return;
+
+        if (_handSwordVisual == null)
+            ResolveWeaponVisualReferences();
+
+        _skillSwordRenderers = _handSwordVisual != null
+            ? _handSwordVisual.GetComponentsInChildren<Renderer>(true)
+            : Array.Empty<Renderer>();
+    }
+
     private void PlaySkillAnimationNetworked(JobSkillData data)
     {
         if (!HasSkillCastAnimation(data))
@@ -1887,12 +2009,14 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         _monostatAgiSkillActiveUntil = SkillTime + MonostatAgiDurationSeconds;
+        SetSkillSwordVisual(MonostatAgiSkillData);
         PublishSkillHudState();
 
         while (SkillTime < _monostatAgiSkillActiveUntil)
             yield return null;
 
         _monostatAgiSkillActiveUntil = 0d;
+        SetSkillSwordVisual(null);
         _monostatAgiSkillRoutine = null;
         PublishSkillHudState();
     }
@@ -2476,12 +2600,19 @@ public class PlayerCombat : NetworkBehaviour
         return true;
     }
 
+    private void HandleDied()
+    {
+        CancelCurrentAttack();
+        SetSkillSwordVisual(null);
+    }
+
     private void HandleRevived()
     {
         if (animator != null)
             animator.speed = 1.0f;
 
         DisableHitBox();
+        SetSkillSwordVisual(null);
         isAttacking = false;
         hasComboReserved = false;
         currentComboIndex = 0;

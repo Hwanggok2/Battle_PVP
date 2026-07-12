@@ -26,6 +26,7 @@ MonoBehaviour:
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0
+  _swordMaterial: {fileID: 2100000, guid: 0ff489c9d16940d48a7ad54d49d894b2, type: 2}
   _kickDamageMultiplier: 1.5
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
