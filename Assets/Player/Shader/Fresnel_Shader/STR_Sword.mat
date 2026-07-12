@@ -38,13 +38,13 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Aura_Alpha: 0.5
-    - _Aura_Alpha_1: 0.7
+    - _Aura_Alpha: 1
+    - _Aura_Alpha_1: 0.146
     - _Fresnel_Power: 2
     - _QueueControl: 0
     - _QueueOffset: 0
     m_Colors:
-    - _Aura_Color: {r: 0.5031446, g: 0, b: 0, a: 1}
+    - _Aura_Color: {r: 8.031373, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &5604975052958294899
