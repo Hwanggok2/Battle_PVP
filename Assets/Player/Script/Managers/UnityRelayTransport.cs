@@ -52,7 +52,7 @@ namespace BattlePvp.Networking
                 "GetJoinCodeAsync",
                 () => RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId));
 
-            _serverRelayData = allocation.ToRelayServerData(_connectionType);
+            _serverRelayData = allocation.ToRelayServerData(GetRelayConnectionType());
             _hasPreparedServerRelay = true;
             return LastJoinCode;
         }
@@ -67,7 +67,7 @@ namespace BattlePvp.Networking
             JoinAllocation allocation = await RunRelayApiWithRetryAsync(
                 "JoinAllocationAsync",
                 () => RelayService.Instance.JoinAllocationAsync(joinCode.Trim()));
-            _clientRelayData = allocation.ToRelayServerData(_connectionType);
+            _clientRelayData = allocation.ToRelayServerData(GetRelayConnectionType());
             _hasPreparedClientRelay = true;
         }
 
@@ -78,6 +78,19 @@ namespace BattlePvp.Networking
 
             if (!AuthenticationService.Instance.IsSignedIn)
                 await AuthenticationService.Instance.SignInAnonymouslyAsync();
+        }
+
+        private string GetRelayConnectionType()
+        {
+#if UNITY_WEBGL
+            // Relay only permits WebSocket Secure while compiling for WebGL.
+            // This also applies to Editor Play Mode with WebGL selected as the build target.
+            return "wss";
+#else
+            // Recover safely from legacy serialized values such as "UDP".
+            string connectionType = _connectionType?.Trim().ToLowerInvariant();
+            return connectionType == "wss" ? "wss" : "udp";
+#endif
         }
 
         private static async Task<T> RunRelayApiWithRetryAsync<T>(string operationName, Func<Task<T>> operation)
@@ -120,7 +133,7 @@ namespace BattlePvp.Networking
 
             var settings = new NetworkSettings();
             settings.WithRelayParameters(serverData: ref _clientRelayData);
-            _clientDriver = NetworkDriver.Create(settings);
+            _clientDriver = CreateRelayDriver(settings);
             _clientReliablePipeline = _clientDriver.CreatePipeline(
                 typeof(FragmentationPipelineStage),
                 typeof(ReliableSequencedPipelineStage));
@@ -159,7 +172,7 @@ namespace BattlePvp.Networking
 
             var settings = new NetworkSettings();
             settings.WithRelayParameters(serverData: ref _serverRelayData);
-            _serverDriver = NetworkDriver.Create(settings);
+            _serverDriver = CreateRelayDriver(settings);
             _serverReliablePipeline = _serverDriver.CreatePipeline(
                 typeof(FragmentationPipelineStage),
                 typeof(ReliableSequencedPipelineStage));
@@ -295,6 +308,15 @@ namespace BattlePvp.Networking
         private NetworkPipeline GetClientPipeline(int channelId)
         {
             return channelId == Channels.Reliable ? _clientReliablePipeline : NetworkPipeline.Null;
+        }
+
+        private static NetworkDriver CreateRelayDriver(NetworkSettings settings)
+        {
+#if UNITY_WEBGL
+            return NetworkDriver.Create(new WebSocketNetworkInterface(), settings);
+#else
+            return NetworkDriver.Create(settings);
+#endif
         }
 
         private NetworkPipeline GetServerPipeline(int channelId)
