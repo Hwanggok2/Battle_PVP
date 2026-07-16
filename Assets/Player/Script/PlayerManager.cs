@@ -76,6 +76,9 @@ public class PlayerManager : NetworkBehaviour
     private double _skillInputLockUntil;
     private double _jumpRequestedUntil;
     private double _lastGroundedAt = double.NegativeInfinity;
+    private bool _forcedTauntActive;
+    private Vector3 _forcedTauntTargetPosition;
+    private float _forcedTauntStopDistance;
     private EmoteData _activeEmote;
     private Coroutine _emoteRoutine;
 
@@ -84,10 +87,10 @@ public class PlayerManager : NetworkBehaviour
     public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
     public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
     public bool IsEmoteBlockingJump => _activeEmote != null && _activeEmote.LockJump;
-    public bool IsSkillMoveLocked => IsSkillInputLocked(SkillInputLockFlags.Move);
-    public bool IsSkillAttackLocked => IsSkillInputLocked(SkillInputLockFlags.Attack);
-    public bool IsSkillJumpLocked => IsSkillInputLocked(SkillInputLockFlags.Jump);
-    public bool IsSkillCrouchLocked => IsSkillInputLocked(SkillInputLockFlags.Crouch);
+    public bool IsSkillMoveLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Move);
+    public bool IsSkillAttackLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Attack);
+    public bool IsSkillJumpLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Jump);
+    public bool IsSkillCrouchLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Crouch);
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     private double LocalInputTime => Time.timeAsDouble;
 
@@ -143,6 +146,26 @@ public class PlayerManager : NetworkBehaviour
     public bool IsSkillInputLocked(SkillInputLockFlags flag)
     {
         return (_skillInputLockFlags & flag) != 0 && MovementTime < _skillInputLockUntil;
+    }
+
+    public void SetForcedTauntControl(bool active, Vector3 targetPosition, float stopDistance)
+    {
+        bool wasActive = _forcedTauntActive;
+        _forcedTauntActive = active;
+        _forcedTauntTargetPosition = targetPosition;
+        _forcedTauntStopDistance = Mathf.Max(0f, stopDistance);
+
+        if (active)
+        {
+            inputVector = Vector2.zero;
+            _jumpRequestedUntil = 0d;
+            if (isCrouching)
+                SetCrouchState(false, true);
+        }
+        else if (wasActive)
+        {
+            RefreshMoveInputFromCurrentAction();
+        }
     }
 
     private void LoadEmotesFromResourcesIfNeeded()
@@ -466,6 +489,7 @@ public class PlayerManager : NetworkBehaviour
             StopCoroutine(_emoteRoutine);
         _emoteRoutine = null;
         _activeEmote = null;
+        SetForcedTauntControl(false, Vector3.zero, 0f);
         ClearSkillInputLock();
     }
 
@@ -487,7 +511,7 @@ public class PlayerManager : NetworkBehaviour
         {
             if (id.PrimaryStat == StatKind.AGI) moveSpeed *= 1.2f; // 민첩 몰빵: 이속 +20%
             else if (id.PrimaryStat == StatKind.STR) moveSpeed *= 0.75f; // 힘 몰빵: 이속 -25%
-            else if (id.PrimaryStat == StatKind.DEF) moveSpeed *= 0.7f; // 방어 몰빵: 이속 -30%
+            else if (id.PrimaryStat == StatKind.DEF) moveSpeed *= 0.8f; // 방어 몰빵: 이속 -20%
         }
     }
 
@@ -706,7 +730,23 @@ public class PlayerManager : NetworkBehaviour
         // 1. 카메라 방향 기준 이동 벡터 계산
         SnapToGroundIfClose();
         Vector3 moveDirection = Vector3.zero;
-        if (followCamera != null)
+        bool forcedTauntMoving = false;
+        if (_forcedTauntActive)
+        {
+            Vector3 toTarget = _forcedTauntTargetPosition - transform.position;
+            toTarget.y = 0f;
+            float stopDistance = Mathf.Max(0f, _forcedTauntStopDistance);
+            forcedTauntMoving = toTarget.sqrMagnitude > stopDistance * stopDistance;
+
+            if (toTarget.sqrMagnitude > 0.001f)
+            {
+                Vector3 targetDirection = toTarget.normalized;
+                moveDirection = forcedTauntMoving ? targetDirection : Vector3.zero;
+                Quaternion targetRotation = Quaternion.LookRotation(targetDirection, Vector3.up);
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+            }
+        }
+        else if (followCamera != null)
         {
             // 카메라의 수평 정면 및 우측 방향 가져오기
             float cameraYaw = followCamera.GetYaw();
@@ -755,7 +795,7 @@ public class PlayerManager : NetworkBehaviour
             currentMoveSpeed *= crouchSpeedMultiplier;
         
         // Anti-Gliding: 입력이 없을 때는 0으로 고정
-        if (isAttacking && inputVector.sqrMagnitude < 0.001f)
+        if (isAttacking && inputVector.sqrMagnitude < 0.001f && !forcedTauntMoving)
         {
             currentMoveSpeed = 0f;
             if (rb != null) rb.linearVelocity = Vector3.zero; // Rigidbody가 있다면 명시적으로 0
@@ -768,7 +808,7 @@ public class PlayerManager : NetworkBehaviour
         // 5. 애니메이션 (사망 시 업데이트 중지)
         if (!isDead)
         {
-            animator.SetFloat(speedHash, inputVector.magnitude);
+            animator.SetFloat(speedHash, forcedTauntMoving ? 1f : inputVector.magnitude);
         }
     }
 

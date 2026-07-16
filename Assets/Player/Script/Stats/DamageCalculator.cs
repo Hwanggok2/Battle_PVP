@@ -47,14 +47,14 @@ namespace BattlePvp.Stats
 
         /// <summary>
         /// 가시(Thorns) 반사 데미지:
-        /// - 공격자 ATK * 0.15
-        /// - 나의 MaxHP * 0.07 상한
+        /// - 공격자 ATK * 0.15 + 5
+        /// - 공격자 MaxHP * 0.07 상한
         /// </summary>
         public float PredictThornsReflectDamage(float attackerAtkPower, float attackerMaxHp)
         {
-            float reflect = attackerAtkPower * 0.15f;
+            float reflect = (attackerAtkPower * 0.15f) + ThornsFixedDamage;
             float cap = attackerMaxHp * 0.07f;
-            return Math.Max(0f, Math.Min(reflect, cap) + ThornsFixedDamage);
+            return Math.Max(0f, Math.Min(reflect, cap));
         }
 
         private static float Clamp01(float v)

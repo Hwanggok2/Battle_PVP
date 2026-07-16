@@ -130,8 +130,8 @@ namespace BattlePvp.Stats
             previewAtk = baseAtk;
             previewPene = Mathf.Clamp(basePene, 0f, 100f);
 
-            // 2) MaxHP & Regen (BaseMaxHp 100, MaxHpPerCon 15, RegenPerCon 0.15)
-            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 4f);
+            // 2) MaxHP & Regen (Base 100, CON * 15, STR * 4, DEF * 2)
+            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 4f) + (vDef * 2f);
             float baseRegen = vCon * 0.15f;
             if (vId.Type == IdentityType.Monostat)
             {
@@ -174,7 +174,7 @@ namespace BattlePvp.Stats
                 }
                 else if (vId.PrimaryStat == StatKind.DEF)
                 {
-                    baseMs *= 0.7f;
+                    baseMs *= 0.8f;
                 }
             }
             previewMoveSpd = baseMs;

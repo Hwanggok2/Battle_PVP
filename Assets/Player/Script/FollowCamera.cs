@@ -30,6 +30,7 @@ namespace BattlePvp.CameraLogic
         private bool _useTemporaryOffset;
         private Vector3 _temporaryOffset;
         private Vector3 _temporaryRotationOffset;
+        private Transform _forcedLookTarget;
 
         /// <summary>
         /// ESC 토글 등에 의해 카메라 회전만 막아야 할 때 설정합니다.
@@ -50,7 +51,7 @@ namespace BattlePvp.CameraLogic
             if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
 
             // 1. 마우스 입력 직접 가져오기 (Input System 사용)
-            if (!IsLocked)
+            if (!IsLocked && _forcedLookTarget == null)
             {
                 var mouse = UnityEngine.InputSystem.Mouse.current;
                 if (mouse != null)
@@ -63,13 +64,21 @@ namespace BattlePvp.CameraLogic
             }
 
             // 2. 회전 쿼터니언 계산
+            UpdateForcedLookYaw();
             Quaternion targetRotation = GetActiveRotation();
-            transform.rotation = targetRotation;
 
             // 3. 카메라 위치 계산 (대상 위치 + 회전된 오프셋)
             Vector3 targetPosition = GetActiveCameraPosition(targetRotation);
 
+            if (_forcedLookTarget != null)
+            {
+                Vector3 lookDirection = GetForcedLookPoint() - targetPosition;
+                if (lookDirection.sqrMagnitude > 0.001f)
+                    targetRotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+            }
+
             // 4. 위치 적용 (즉시 이동)
+            transform.rotation = targetRotation;
             transform.position = targetPosition;
         }
 
@@ -79,6 +88,11 @@ namespace BattlePvp.CameraLogic
         public void SetTarget(Transform target)
         {
             _target = target;
+        }
+
+        public void SetForcedLookTarget(Transform target)
+        {
+            _forcedLookTarget = target;
         }
 
         public void SetTemporaryOffset(bool active, Vector3 offset)
@@ -118,6 +132,22 @@ namespace BattlePvp.CameraLogic
                 _pitch + activeRotationOffset.x,
                 _yaw + activeRotationOffset.y,
                 activeRotationOffset.z);
+        }
+
+        private void UpdateForcedLookYaw()
+        {
+            if (_forcedLookTarget == null || _target == null)
+                return;
+
+            Vector3 direction = _forcedLookTarget.position - _target.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude > 0.001f)
+                _yaw = Quaternion.LookRotation(direction.normalized, Vector3.up).eulerAngles.y;
+        }
+
+        private Vector3 GetForcedLookPoint()
+        {
+            return _forcedLookTarget.position + Vector3.up * 1.2f;
         }
 
         private Vector3 GetActiveCameraPosition(Quaternion activeRotation)

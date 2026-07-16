@@ -161,6 +161,7 @@ public class PlayerCombat : NetworkBehaviour
     private Material[][] _skillSwordOriginalMaterials;
     private Material _activeSkillSwordMaterial;
     private bool _isSkillSwordVisualActive;
+    private bool _localTauntControlActive;
     private const float SkillHudUpdateIntervalSeconds = 0.1f;
     private SkillHudState _lastPublishedSkillHudState;
     private bool _hasPublishedSkillHudState;
@@ -301,6 +302,7 @@ public class PlayerCombat : NetworkBehaviour
         _bowAttackController?.SetCrosshairVisible(false);
         SetStrategistStrAuraVisible(false);
         SetSkillSwordVisual(null);
+        ClearLocalTauntControl();
     }
 
     private void OnDestroy()
@@ -334,6 +336,9 @@ public class PlayerCombat : NetworkBehaviour
 
         if (isClient && !isLocalPlayer)
             return;
+
+        if (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active))
+            UpdateLocalTauntControl();
 
         _isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
@@ -471,6 +476,7 @@ public class PlayerCombat : NetworkBehaviour
     public void OnAttack(InputValue value)
     {
         if (isClient && !isLocalPlayer) return;
+        if (_playerManager != null && _playerManager.IsSkillAttackLocked) return;
         if (IsPolymath() && _isBowEquipped)
         {
             HandleBowAttackInput(value.isPressed);
@@ -527,15 +533,15 @@ public class PlayerCombat : NetworkBehaviour
         return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 
-    private void StartAttack(int index, bool notifyServer, Vector3 aimDirection)
+    private void StartAttack(int index, bool notifyServer, Vector3 aimDirection, bool ignoreControlLocks = false)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
+        if (!ignoreControlLocks && _playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
             return;
 
-        if (IsSkillCastingOrAttackLocked())
+        if (!ignoreControlLocks && IsSkillCastingOrAttackLocked())
             return;
 
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
@@ -594,17 +600,18 @@ public class PlayerCombat : NetworkBehaviour
             if (isServer)
                 RpcStartAttack(index, aimDirection);
             else
-                CmdStartAttack(index, aimDirection);
+                CmdStartAttack(index, aimDirection, ignoreControlLocks);
         }
     }
 
     [Command]
-    private void CmdStartAttack(int index, Vector3 aimDirection)
+    private void CmdStartAttack(int index, Vector3 aimDirection, bool forcedTauntAttack)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        StartAttack(index, false, aimDirection);
+        bool allowForcedTauntAttack = forcedTauntAttack && _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
+        StartAttack(index, false, aimDirection, allowForcedTauntAttack);
         RpcStartAttack(index, aimDirection);
     }
 
@@ -2602,6 +2609,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void HandleDied()
     {
+        ClearLocalTauntControl();
         CancelCurrentAttack();
         SetSkillSwordVisual(null);
     }
@@ -2655,20 +2663,75 @@ public class PlayerCombat : NetworkBehaviour
         _tauntedUntil = SkillTime + durationSeconds;
     }
 
-    private Vector3 ResolveTauntAimDirection(Vector3 fallback)
+    private void UpdateLocalTauntControl()
     {
-        if (_tauntedByNetId == 0 || SkillTime >= _tauntedUntil)
-            return fallback;
+        if (_healthSystem != null && _healthSystem.IsDead)
+        {
+            ClearLocalTauntControl();
+            return;
+        }
 
+        if (_tauntedByNetId == 0 || SkillTime >= _tauntedUntil || !TryResolveTauntTarget(out Transform taunter))
+        {
+            ClearLocalTauntControl();
+            return;
+        }
+
+        if (_playerManager == null)
+            _playerManager = GetComponent<PlayerManager>();
+        if (_followCamera == null)
+            _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+
+        float stopDistance = MonostatDefSkillData != null ? MonostatDefSkillData.TauntStopDistance : 1.8f;
+        if (!_localTauntControlActive)
+            _bowAttackController?.CancelCharge();
+        _playerManager?.SetForcedTauntControl(true, taunter.position, stopDistance);
+        _followCamera?.SetForcedLookTarget(taunter);
+        _localTauntControlActive = true;
+
+        if (!isAttacking)
+        {
+            Vector3 direction = taunter.position - transform.position;
+            direction.y = 0f;
+            StartAttack(0, true, direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward, true);
+        }
+    }
+
+    private void ClearLocalTauntControl()
+    {
+        if (!_localTauntControlActive)
+            return;
+
+        _playerManager?.SetForcedTauntControl(false, Vector3.zero, 0f);
+        _followCamera?.SetForcedLookTarget(null);
+        _localTauntControlActive = false;
+    }
+
+    private bool TryResolveTauntTarget(out Transform target)
+    {
+        target = null;
         NetworkIdentity targetIdentity = null;
         if (NetworkServer.active)
             NetworkServer.spawned.TryGetValue(_tauntedByNetId, out targetIdentity);
         if (targetIdentity == null && NetworkClient.active)
             NetworkClient.spawned.TryGetValue(_tauntedByNetId, out targetIdentity);
+
         if (targetIdentity == null)
+            return false;
+
+        target = targetIdentity.transform;
+        return target != null;
+    }
+
+    private Vector3 ResolveTauntAimDirection(Vector3 fallback)
+    {
+        if (_tauntedByNetId == 0 || SkillTime >= _tauntedUntil)
             return fallback;
 
-        Vector3 direction = targetIdentity.transform.position - transform.position;
+        if (!TryResolveTauntTarget(out Transform target))
+            return fallback;
+
+        Vector3 direction = target.position - transform.position;
         direction.y = 0f;
         return direction.sqrMagnitude > 0.001f ? direction.normalized : fallback;
     }

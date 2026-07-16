@@ -518,7 +518,8 @@ namespace BattlePvp.Combat
 
             float conFinal = _statManager.GetFinalTotal(StatKind.CON);
             float strFinal = _statManager.GetFinalTotal(StatKind.STR);
-            float max = _baseMaxHp + (conFinal * _maxHpPerCon) + (strFinal * 4f);
+            float defFinal = _statManager.GetFinalTotal(StatKind.DEF);
+            float max = _baseMaxHp + (conFinal * _maxHpPerCon) + (strFinal * 4f) + (defFinal * 2f);
 
             // Monostat CON: 최대 체력 +60% (스펙 반영)
             Identity id = _statManager.CurrentIdentity;

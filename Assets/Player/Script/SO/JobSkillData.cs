@@ -58,9 +58,10 @@ namespace BattlePvp.Combat
 
         [Min(0f)] [SerializeField] private float _tauntReadyDurationSeconds = 30f;
         [Min(0f)] [SerializeField] private float _tauntDurationSeconds = 1.2f;
+        [Min(0f)] [SerializeField] private float _tauntStopDistance = 1.8f;
         [Range(0f, 1f)] [SerializeField] private float _tauntIncomingDamageMultiplier = 0.7f;
-        [Min(0f)] [SerializeField] private float _tauntReflectMultiplier = 2f;
-        [Range(0f, 1f)] [SerializeField] private float _tauntReflectHealthCapRatio = 0.14f;
+        [Min(0f)] [SerializeField] private float _tauntReflectMultiplier = 1f;
+        [Range(0f, 1f)] [SerializeField] private float _tauntReflectHealthCapRatio = 0.07f;
 
         [Min(0f)] [SerializeField] private float _rollDistance = 3.5f;
         [Min(0f)] [SerializeField] private float _rollDurationSeconds = 0.35f;
@@ -117,6 +118,7 @@ namespace BattlePvp.Combat
         public float KickSlowDurationSeconds => _kickSlowDurationSeconds;
         public float TauntReadyDurationSeconds => _tauntReadyDurationSeconds;
         public float TauntDurationSeconds => _tauntDurationSeconds;
+        public float TauntStopDistance => _tauntStopDistance;
         public float TauntIncomingDamageMultiplier => _tauntIncomingDamageMultiplier;
         public float TauntReflectMultiplier => _tauntReflectMultiplier;
         public float TauntReflectHealthCapRatio => _tauntReflectHealthCapRatio;

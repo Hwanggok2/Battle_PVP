@@ -93,8 +93,8 @@ namespace BattlePvp.Combat
             
             Identity id = _statManager.CurrentIdentity;
 
-            // 1. HP 공식 (Base 100 + CON * 15)
-            float baseMax = 100f + (con * 15f);
+            // 1. HP 공식 (Base 100 + CON * 15 + DEF * 2)
+            float baseMax = 100f + (con * 15f) + (def * 2f);
             if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON) baseMax *= 1.6f;
             else if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.AGI) baseMax *= 0.7f;
             _maxHp = baseMax;
@@ -117,7 +117,7 @@ namespace BattlePvp.Combat
             {
                 if (id.PrimaryStat == StatKind.AGI) _moveSpeed *= 1.2f;
                 else if (id.PrimaryStat == StatKind.STR) _moveSpeed *= 0.75f;
-                else if (id.PrimaryStat == StatKind.DEF) _moveSpeed *= 0.7f;
+                else if (id.PrimaryStat == StatKind.DEF) _moveSpeed *= 0.8f;
             }
 
             // 6. Attack Speed 공식 (Base 0.6 + AGI * 0.02)

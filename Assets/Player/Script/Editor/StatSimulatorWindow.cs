@@ -214,7 +214,7 @@ namespace BattlePvp.EditorTools
                 float thornsDamage = _damageCalculator.PredictThornsReflectDamage(attackerAtkPower, _attackerMaxHp);
                 sb.AppendLine();
                 sb.AppendLine("[StatSimulator] === Thorns Preview ===");
-                sb.AppendLine($"ThornsReflectDamage = {thornsDamage:0.##} (min(ATK * 0.15, AttackerMaxHP * 0.07) + 5, cap = {_attackerMaxHp * 0.07f:0.##})");
+                sb.AppendLine($"ThornsReflectDamage = {thornsDamage:0.##} (min(ATK * 0.15 + 5, AttackerMaxHP * 0.07), cap = {_attackerMaxHp * 0.07f:0.##})");
             }
 
             sb.AppendLine("[StatSimulator] =====================");

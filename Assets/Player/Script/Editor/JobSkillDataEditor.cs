@@ -29,6 +29,7 @@ public sealed class JobSkillDataEditor : Editor
     private SerializedProperty _kickSlowDurationSeconds;
     private SerializedProperty _tauntReadyDurationSeconds;
     private SerializedProperty _tauntDurationSeconds;
+    private SerializedProperty _tauntStopDistance;
     private SerializedProperty _tauntIncomingDamageMultiplier;
     private SerializedProperty _tauntReflectMultiplier;
     private SerializedProperty _tauntReflectHealthCapRatio;
@@ -79,6 +80,7 @@ public sealed class JobSkillDataEditor : Editor
         _kickSlowDurationSeconds = serializedObject.FindProperty("_kickSlowDurationSeconds");
         _tauntReadyDurationSeconds = serializedObject.FindProperty("_tauntReadyDurationSeconds");
         _tauntDurationSeconds = serializedObject.FindProperty("_tauntDurationSeconds");
+        _tauntStopDistance = serializedObject.FindProperty("_tauntStopDistance");
         _tauntIncomingDamageMultiplier = serializedObject.FindProperty("_tauntIncomingDamageMultiplier");
         _tauntReflectMultiplier = serializedObject.FindProperty("_tauntReflectMultiplier");
         _tauntReflectHealthCapRatio = serializedObject.FindProperty("_tauntReflectHealthCapRatio");
@@ -197,6 +199,7 @@ public sealed class JobSkillDataEditor : Editor
                     "DEF Taunt",
                     (_tauntReadyDurationSeconds, "Ready Window Seconds"),
                     (_tauntDurationSeconds, "Taunt Duration Seconds"),
+                    (_tauntStopDistance, "Stop Distance"),
                     (_tauntIncomingDamageMultiplier, "Incoming Damage Multiplier"),
                     (_tauntReflectMultiplier, "Reflect Damage Multiplier"),
                     (_tauntReflectHealthCapRatio, "Reflect Max HP Cap Ratio"),

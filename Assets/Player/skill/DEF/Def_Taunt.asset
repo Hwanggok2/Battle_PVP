@@ -33,9 +33,10 @@ MonoBehaviour:
   _kickSlowDurationSeconds: 0.65
   _tauntReadyDurationSeconds: 30
   _tauntDurationSeconds: 1.2
+  _tauntStopDistance: 1.8
   _tauntIncomingDamageMultiplier: 0.7
-  _tauntReflectMultiplier: 2
-  _tauntReflectHealthCapRatio: 0.14
+  _tauntReflectMultiplier: 1
+  _tauntReflectHealthCapRatio: 0.07
   _rollDistance: 3.5
   _rollDurationSeconds: 0.35
   _targetPreset:
