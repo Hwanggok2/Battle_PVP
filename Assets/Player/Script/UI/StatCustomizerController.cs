@@ -483,7 +483,7 @@ namespace BattlePvp.UI
             if (_remainPointsText != null) _remainPointsText.text = $"잔여 스탯: {remain}";
 
             Identity id = _identityCalculator.ResolveIdentity(_virtualStats, out _);
-            ApplyIdentityPreviewGlitch(id);
+            ApplyIdentityPreviewGlitch(id, _virtualStats);
             if (_identityName != null) {
                 _sb.Clear();
                 _sb.Append(id.PrimaryStat); _sb.Append(' '); _sb.Append(id.Type.ToString().ToUpperInvariant());
@@ -567,7 +567,7 @@ namespace BattlePvp.UI
                 _identityPreviewGlitchBinders = preview.GetComponentsInChildren<UIIdentityGlitchBinder>(true);
         }
 
-        private void ApplyIdentityPreviewGlitch(Identity identity)
+        private void ApplyIdentityPreviewGlitch(Identity identity, StatContainer stats)
         {
             if (_identityPreviewGlitchBinders == null || _identityPreviewGlitchBinders.Length == 0)
                 return;
@@ -575,7 +575,7 @@ namespace BattlePvp.UI
             foreach (UIIdentityGlitchBinder binder in _identityPreviewGlitchBinders)
             {
                 if (binder != null)
-                    binder.SetIdentity(identity);
+                    binder.SetIdentity(identity, stats);
             }
         }
 

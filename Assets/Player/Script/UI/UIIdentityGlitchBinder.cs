@@ -53,8 +53,11 @@ namespace BattlePvp.UI
         private IIdentitySource _identitySource;
         private IPlayerStatusSource _statusSource;
         private IDamageReceiver _hpReader;
+        private StatManager _statManagerSource;
         private Material _runtimeMaterial;
         private Identity _currentIdentity;
+        private StatContainer _currentStats;
+        private bool _hasCurrentStats;
         private float _overlapPercent;
         private float _reassembleProgress;
         private float _hpPercent = 1f;
@@ -125,6 +128,16 @@ namespace BattlePvp.UI
         public void SetIdentity(Identity identity)
         {
             _currentIdentity = identity;
+            EnsureRuntimeMaterial();
+            ApplyAll();
+        }
+
+        public void SetIdentity(Identity identity, StatContainer stats)
+        {
+            _currentIdentity = identity;
+            _currentStats = stats;
+            _hasCurrentStats = true;
+            EnsureRuntimeMaterial();
             ApplyAll();
         }
 
@@ -132,6 +145,7 @@ namespace BattlePvp.UI
         {
             if (this == null) return;
             _currentIdentity = identity;
+            PullCurrentStatsFromStatManager();
             ApplyAll();
         }
 
@@ -160,6 +174,8 @@ namespace BattlePvp.UI
             _identitySource = _identitySourceBehaviour as IIdentitySource;
             _statusSource = _statusSourceBehaviour as IPlayerStatusSource;
             _hpReader = _statusSourceBehaviour as IDamageReceiver;
+            _statManagerSource = _identitySourceBehaviour as StatManager;
+            PullCurrentStatsFromStatManager();
         }
 
         private bool TryAutoResolveSources()
@@ -212,6 +228,9 @@ namespace BattlePvp.UI
                 _currentIdentity = _identitySource.CurrentIdentity;
             }
 
+            if (_statManagerSource != null)
+                _statManagerSource.StatsChanged += OnStatsChanged;
+
             if (_statusSource != null)
             {
                 _statusSource.OverflowChanged += OnOverflowChanged;
@@ -229,6 +248,9 @@ namespace BattlePvp.UI
             if (_identitySource != null)
                 _identitySource.IdentityChanged -= OnIdentityChanged;
 
+            if (_statManagerSource != null)
+                _statManagerSource.StatsChanged -= OnStatsChanged;
+
             if (_statusSource != null)
             {
                 _statusSource.OverflowChanged -= OnOverflowChanged;
@@ -236,6 +258,25 @@ namespace BattlePvp.UI
             }
 
             _isSubscribed = false;
+        }
+
+        private void OnStatsChanged(StatContainer stats)
+        {
+            if (this == null) return;
+            _currentStats = stats;
+            _hasCurrentStats = true;
+            if (_statManagerSource != null)
+                _currentIdentity = _statManagerSource.CurrentIdentity;
+            ApplyAll();
+        }
+
+        private void PullCurrentStatsFromStatManager()
+        {
+            if (_statManagerSource == null)
+                return;
+
+            _currentStats = _statManagerSource.GetStatsCopy();
+            _hasCurrentStats = true;
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
@@ -288,7 +329,7 @@ namespace BattlePvp.UI
             float dynamicPulse = Mathf.Lerp(10f, _emissionPulse, _hpPercent); // HP 낮을수록 10에 가까워짐
 
             float glitchAmount = ResolveGlitchAmount(_currentIdentity.Type);
-            Color statColor = ResolveStatColor(_currentIdentity.PrimaryStat);
+            Color statColor = ResolveIdentityColor(_currentIdentity);
             float mirrorActive = ResolveMirrorActive(_currentIdentity.Type);
             bool changed = !_hasAppliedMaterialValues
                            || !Mathf.Approximately(_lastGlitchAmount, glitchAmount)
@@ -344,6 +385,98 @@ namespace BattlePvp.UI
                 StatKind.CON => _conColor,
                 _ => _defColor,
             };
+        }
+
+        private Color ResolveIdentityColor(Identity identity)
+        {
+            if (!_hasCurrentStats)
+                return ResolveStatColor(identity.PrimaryStat);
+
+            return identity.Type switch
+            {
+                IdentityType.Strategist => ResolveStrategistColor(),
+                IdentityType.Polymath => ResolvePolymathColor(),
+                _ => ResolveStatColor(identity.PrimaryStat),
+            };
+        }
+
+        private Color ResolveStrategistColor()
+        {
+            float str = Mathf.Max(0f, _currentStats.STR.Invested);
+            float agi = Mathf.Max(0f, _currentStats.AGI.Invested);
+            float con = Mathf.Max(0f, _currentStats.CON.Invested);
+            float def = Mathf.Max(0f, _currentStats.DEF.Invested);
+
+            StatKind firstKind = StatKind.STR;
+            float firstValue = str;
+            StatKind secondKind = StatKind.STR;
+            float secondValue = -1f;
+
+            ConsiderTopTwo(StatKind.AGI, agi, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
+            ConsiderTopTwo(StatKind.CON, con, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
+            ConsiderTopTwo(StatKind.DEF, def, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
+
+            float total = firstValue + secondValue;
+            if (total <= 0.0001f)
+                return ResolveStatColor(_currentIdentity.PrimaryStat);
+
+            Color color = ResolveStatColor(firstKind) * (firstValue / total);
+            color += ResolveStatColor(secondKind) * (secondValue / total);
+            return NormalizeMixedColor(color);
+        }
+
+        private static void ConsiderTopTwo(
+            StatKind kind,
+            float value,
+            ref StatKind firstKind,
+            ref float firstValue,
+            ref StatKind secondKind,
+            ref float secondValue)
+        {
+            if (value > firstValue)
+            {
+                secondKind = firstKind;
+                secondValue = firstValue;
+                firstKind = kind;
+                firstValue = value;
+            }
+            else if (value > secondValue)
+            {
+                secondKind = kind;
+                secondValue = value;
+            }
+        }
+
+        private Color ResolvePolymathColor()
+        {
+            float str = Mathf.Max(0f, _currentStats.STR.Invested);
+            float agi = Mathf.Max(0f, _currentStats.AGI.Invested);
+            float con = Mathf.Max(0f, _currentStats.CON.Invested);
+            float def = Mathf.Max(0f, _currentStats.DEF.Invested);
+            float total = str + agi + con + def;
+
+            if (total <= 0.0001f)
+                return ResolveStatColor(_currentIdentity.PrimaryStat);
+
+            Color color = ResolveStatColor(StatKind.STR) * (str / total);
+            color += ResolveStatColor(StatKind.AGI) * (agi / total);
+            color += ResolveStatColor(StatKind.CON) * (con / total);
+            color += ResolveStatColor(StatKind.DEF) * (def / total);
+            return NormalizeMixedColor(color);
+        }
+
+        private static Color NormalizeMixedColor(Color color)
+        {
+            float maxChannel = Mathf.Max(color.r, Mathf.Max(color.g, color.b));
+            if (maxChannel > 0.0001f && maxChannel < 1f)
+            {
+                color.r /= maxChannel;
+                color.g /= maxChannel;
+                color.b /= maxChannel;
+            }
+
+            color.a = 1f;
+            return color;
         }
 
         private float ResolveMirrorActive(IdentityType type)
