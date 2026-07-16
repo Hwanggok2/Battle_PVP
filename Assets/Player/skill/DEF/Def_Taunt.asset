@@ -18,7 +18,7 @@ MonoBehaviour:
   _castSeconds: 0.8
   _durationSeconds: 0
   _cooldownSeconds: 30
-  _inputLockFlags: 0
+  _inputLockFlags: 9
   _inputLockSeconds: 0
   _castAnimationStateName: Taunt Gesture
   _castAnimationLayer: 1
@@ -32,8 +32,8 @@ MonoBehaviour:
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65
   _tauntReadyDurationSeconds: 30
-  _tauntDurationSeconds: 1.2
-  _tauntStopDistance: 1.5
+  _tauntDurationSeconds: 2.5
+  _tauntStopDistance: 1.2
   _tauntIncomingDamageMultiplier: 0.7
   _tauntReflectMultiplier: 2
   _tauntReflectHealthCapRatio: 0.14

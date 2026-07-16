@@ -66,12 +66,17 @@ public sealed class BowArrowProjectile : NetworkBehaviour
 
         IDamageReceiver target = other.GetComponentInParent<IDamageReceiver>();
         StatManager targetStats = other.GetComponentInParent<StatManager>();
+        HitBodyPart bodyPart = ResolveBodyPart(other);
         if (target == null || targetStats == null)
+            return;
+        if (target is HealthSystem && bodyPart == null)
             return;
 
         _hasHit = true;
         Vector3 hitPoint = other.ClosestPoint(transform.position);
-        ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, targetStats, target, hitPoint);
+        float bodyPartMultiplier = bodyPart != null ? bodyPart.DamageMultiplier : 1f;
+        BodyPart part = bodyPart != null ? bodyPart.Part : BodyPart.Body;
+        ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, targetStats, target, hitPoint, bodyPartMultiplier, part);
         NetworkServer.Destroy(gameObject);
     }
 
@@ -97,12 +102,21 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         HealthSystem targetHealth = other.GetComponentInParent<HealthSystem>();
         StatManager targetStats = other.GetComponentInParent<StatManager>();
         AttackProcessor attackProcessor = ownerIdentity.GetComponent<AttackProcessor>();
+        HitBodyPart bodyPart = ResolveBodyPart(other);
         if (targetHealth == null || targetStats == null || attackProcessor == null)
             return;
+        if (bodyPart == null)
+            return;
 
-        float predictedDamage = attackProcessor.PredictSkillHitDamage(_damageMultiplier, targetStats);
+        float predictedDamage = attackProcessor.PredictSkillHitDamage(_damageMultiplier, targetStats, bodyPart.DamageMultiplier);
         Vector3 hitPoint = other.ClosestPoint(transform.position);
         targetHealth.ShowPredictedPhysicalDamagePopup(hitPoint, predictedDamage, _ownerNetId);
         _hasPredictedHit = true;
+    }
+
+    private static HitBodyPart ResolveBodyPart(Collider other)
+    {
+        HitBodyPart bodyPart = other.GetComponent<HitBodyPart>();
+        return bodyPart != null ? bodyPart : other.GetComponentInParent<HitBodyPart>();
     }
 }

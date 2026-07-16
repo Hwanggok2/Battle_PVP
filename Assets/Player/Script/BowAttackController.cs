@@ -2,9 +2,9 @@ using BattlePvp.Combat;
 using System.Collections;
 using System.Reflection;
 using BattlePvp.CameraLogic;
+using BattlePvp.UI;
 using Mirror;
 using UnityEngine;
-using UnityEngine.UI;
 
 [DefaultExecutionOrder(100)]
 public sealed class BowAttackController : NetworkBehaviour
@@ -36,11 +36,8 @@ public sealed class BowAttackController : NetworkBehaviour
     [SerializeField] private Vector3 _bowCameraOffset = new Vector3(0.35f, 0.3f, -0.7f);
     [SerializeField] private Vector3 _bowCameraRotationOffset;
     [SerializeField] private bool _showCrosshair = true;
-    [SerializeField] private Sprite _crosshairSprite;
-    [SerializeField] private Color _crosshairColor = Color.white;
-    [SerializeField] private Vector2 _crosshairSize = new Vector2(26f, 26f);
-    [SerializeField] private float _crosshairThickness = 3f;
-    [SerializeField] private float _crosshairGap = 5f;
+    [SerializeField] private Color _chargeRingColor = new Color(1f, 1f, 1f, 0.75f);
+    [Min(1f)] [SerializeField] private float _chargeRingMaximumScale = 2.2f;
 
     private PlayerCombat _playerCombat;
     private PlayerManager _playerManager;
@@ -48,8 +45,9 @@ public sealed class BowAttackController : NetworkBehaviour
     private FollowCamera _followCamera;
     private Component _bowRigComponent;
     private PropertyInfo _bowRigWeightProperty;
-    private GameObject _crosshairRoot;
+    private CombatReticleView _reticleView;
     private double _chargeStartedAt = -1d;
+    private JobSkillData _activeChargeData;
     private Vector3 _pendingDirection;
     private Vector3 _pendingAimPoint;
     private float _pendingDamageMultiplier;
@@ -62,6 +60,7 @@ public sealed class BowAttackController : NetworkBehaviour
     private bool _isAimHoldReady;
     private bool _releaseQueued;
     private bool _isReleaseLocked;
+    private bool _chargeRingVisible;
     private Coroutine _releaseLockFallbackRoutine;
 
     public bool IsCharging => _chargeStartedAt >= 0d;
@@ -74,6 +73,20 @@ public sealed class BowAttackController : NetworkBehaviour
         ResolveReferences();
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
+        if (!NetworkClient.active && !NetworkServer.active)
+            SetCrosshairVisible(true);
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        base.OnStartLocalPlayer();
+        SetCrosshairVisible(true);
+    }
+
+    private void OnEnable()
+    {
+        if (ShouldShowLocalCrosshair)
+            SetCrosshairVisible(true);
     }
 
     private void OnDisable()
@@ -84,6 +97,8 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void LateUpdate()
     {
+        UpdateChargeReticle();
+
         if (_captureAimPointPending)
         {
             _captureAimPointPending = false;
@@ -100,26 +115,19 @@ public sealed class BowAttackController : NetworkBehaviour
         }
     }
 
-    private void OnDestroy()
-    {
-        if (_crosshairRoot != null)
-            Destroy(_crosshairRoot.transform.root.gameObject);
-    }
-
     public void SetCrosshairVisible(bool visible)
     {
-        if (!isLocalPlayer)
-            visible = false;
+        if (!ShouldShowLocalCrosshair)
+            return;
 
-        if (!_showCrosshair)
-            visible = false;
-
-        if (visible)
-            EnsureCrosshair();
-
-        if (_crosshairRoot != null && _crosshairRoot.activeSelf != visible)
-            _crosshairRoot.SetActive(visible);
+        ResolveReticleView();
+        _reticleView?.SetBaseVisible(visible);
+        if (!visible)
+            SetChargeRingVisible(false);
     }
+
+    private bool ShouldShowLocalCrosshair =>
+        _showCrosshair && (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active));
 
     public void HandleAttackInput(bool pressed, JobSkillData bowData, Vector3 aimDirection)
     {
@@ -134,6 +142,7 @@ public sealed class BowAttackController : NetworkBehaviour
                 return;
 
             _chargeStartedAt = SkillTime;
+            _activeChargeData = bowData;
             _hasPendingShot = false;
             _releaseQueued = false;
             _isAimHoldReady = false;
@@ -151,6 +160,8 @@ public sealed class BowAttackController : NetworkBehaviour
 
         float chargeSeconds = Mathf.Max(0f, (float)(SkillTime - _chargeStartedAt));
         _chargeStartedAt = -1d;
+        _activeChargeData = null;
+        SetChargeRingVisible(false);
         _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
         QueueShot(bowData, chargeSeconds, aimDirection);
     }
@@ -161,6 +172,7 @@ public sealed class BowAttackController : NetworkBehaviour
             _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
 
         _chargeStartedAt = -1d;
+        _activeChargeData = null;
         _hasPendingShot = false;
         _hasPendingAimPoint = false;
         _captureAimPointPending = false;
@@ -173,6 +185,7 @@ public sealed class BowAttackController : NetworkBehaviour
         StopReleaseLockFallback();
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
+        SetChargeRingVisible(false);
         ClearBowAnimationLayer();
     }
 
@@ -538,55 +551,44 @@ public sealed class BowAttackController : NetworkBehaviour
         _bowRigWeightProperty.SetValue(_bowRigComponent, Mathf.Clamp01(weight));
     }
 
-    private void EnsureCrosshair()
+    private void ResolveReticleView()
     {
-        if (_crosshairRoot != null)
-            return;
+        if (_reticleView == null)
+            _reticleView = GetComponent<CombatReticleView>();
+        if (_reticleView != null && ShouldShowLocalCrosshair)
+            _reticleView.InitializeForLocalPlayer(transform);
+    }
 
-        GameObject canvasObject = new GameObject("BowCrosshairCanvas");
-        Canvas canvas = canvasObject.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 1000;
-        canvasObject.AddComponent<CanvasScaler>();
-
-        _crosshairRoot = new GameObject("BowCrosshair");
-        RectTransform rootRect = _crosshairRoot.AddComponent<RectTransform>();
-        _crosshairRoot.transform.SetParent(canvas.transform, false);
-        rootRect.anchorMin = new Vector2(0.5f, 0.5f);
-        rootRect.anchorMax = new Vector2(0.5f, 0.5f);
-        rootRect.pivot = new Vector2(0.5f, 0.5f);
-        rootRect.anchoredPosition = Vector2.zero;
-        rootRect.sizeDelta = _crosshairSize;
-
-        if (_crosshairSprite != null)
+    private void UpdateChargeReticle()
+    {
+        if (!IsCharging || _activeChargeData == null || !isLocalPlayer)
         {
-            Image icon = _crosshairRoot.AddComponent<Image>();
-            icon.sprite = _crosshairSprite;
-            icon.color = _crosshairColor;
-            icon.raycastTarget = false;
+            SetChargeRingVisible(false);
             return;
         }
 
-        AddCrosshairLine("Left", new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-_crosshairGap, 0f), new Vector2((_crosshairSize.x * 0.5f) - _crosshairGap, _crosshairThickness));
-        AddCrosshairLine("Right", new Vector2(0.5f, 0.5f), new Vector2(1f, 0.5f), new Vector2(_crosshairGap, 0f), new Vector2((_crosshairSize.x * 0.5f) - _crosshairGap, _crosshairThickness));
-        AddCrosshairLine("Top", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0f, _crosshairGap), new Vector2(_crosshairThickness, (_crosshairSize.y * 0.5f) - _crosshairGap));
-        AddCrosshairLine("Bottom", new Vector2(0.5f, 0f), new Vector2(0.5f, 0.5f), new Vector2(0f, -_crosshairGap), new Vector2(_crosshairThickness, (_crosshairSize.y * 0.5f) - _crosshairGap));
+        ResolveReticleView();
+        if (_reticleView == null)
+            return;
+
+        float elapsed = Mathf.Max(0f, (float)(SkillTime - _chargeStartedAt));
+        float denominator = Mathf.Max(0.001f,
+            _activeChargeData.MaximumBowDamageChargeSeconds - _activeChargeData.MinimumBowChargeSeconds);
+        float damageProgress = elapsed < _activeChargeData.MinimumBowChargeSeconds
+            ? 0f
+            : Mathf.Clamp01((elapsed - _activeChargeData.MinimumBowChargeSeconds) / denominator);
+        _reticleView.SetCharge(damageProgress, _chargeRingMaximumScale, _chargeRingColor);
+        _chargeRingVisible = true;
     }
 
-    private void AddCrosshairLine(string lineName, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta)
+    private void SetChargeRingVisible(bool visible)
     {
-        GameObject line = new GameObject(lineName);
-        RectTransform rect = line.AddComponent<RectTransform>();
-        line.transform.SetParent(_crosshairRoot.transform, false);
-        rect.anchorMin = anchorMin;
-        rect.anchorMax = anchorMax;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = anchoredPosition;
-        rect.sizeDelta = new Vector2(Mathf.Max(1f, sizeDelta.x), Mathf.Max(1f, sizeDelta.y));
+        if (_chargeRingVisible == visible)
+            return;
 
-        Image image = line.AddComponent<Image>();
-        image.color = _crosshairColor;
-        image.raycastTarget = false;
+        _chargeRingVisible = visible;
+        ResolveReticleView();
+        _reticleView?.SetChargeVisible(visible);
     }
 
     private void RestartReleaseLockFallback()

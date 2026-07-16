@@ -88,7 +88,7 @@ public sealed class AttackProcessor : MonoBehaviour
     /// <param name="defenderStats">피격자 StatManager</param>
     /// <param name="defender">피격자 HP 수신자</param>
     /// <param name="defenderGuard">선택적 가드 컴포넌트 (없으면 null)</param>
-    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null, float bodyPartMultiplier = 1f)
+    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body)
     {
         if (attackData == null)
             return;
@@ -167,6 +167,7 @@ public sealed class AttackProcessor : MonoBehaviour
         }
 
         float actualDamage = Mathf.Max(0f, defenderHpBefore - defender.CurrentHp);
+        _playerCombat?.NotifyConfirmedHit(bodyPart == BodyPart.Head);
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
     }
 
@@ -195,7 +196,7 @@ public sealed class AttackProcessor : MonoBehaviour
         return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
     }
 
-    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition)
+    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body)
     {
         if (damageMultiplier <= 0f || defenderStats == null || defender == null)
             return false;
@@ -212,6 +213,7 @@ public sealed class AttackProcessor : MonoBehaviour
         float bonusDefense = defenderDerived.DefenseBonusNormalized;
         float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, bonusDefense, Mathf.Clamp(_currentPene, 0f, 100f));
         finalDamage *= defenderDerived.IncomingDamageMultiplier;
+        finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
         if (finalDamage <= 0f)
             return false;
 
@@ -226,11 +228,12 @@ public sealed class AttackProcessor : MonoBehaviour
         }
 
         float actualDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
+        _playerCombat?.NotifyConfirmedHit(bodyPart == BodyPart.Head);
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
         return true;
     }
 
-    public float PredictSkillHitDamage(float damageMultiplier, StatManager defenderStats)
+    public float PredictSkillHitDamage(float damageMultiplier, StatManager defenderStats, float bodyPartMultiplier = 1f)
     {
         if (damageMultiplier <= 0f || defenderStats == null)
             return 0f;
@@ -250,7 +253,7 @@ public sealed class AttackProcessor : MonoBehaviour
 
         finalDamage *= defenderDerived.IncomingDamageMultiplier;
 
-        return Mathf.Max(0f, finalDamage);
+        return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
     }
 
     private static float Clamp(float v, float min, float max)

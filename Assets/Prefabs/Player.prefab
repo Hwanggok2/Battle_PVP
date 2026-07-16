@@ -7870,6 +7870,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5930940508941741572}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6114079827364519024}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6114079827364519025}
   m_SourcePrefab: {fileID: 100100000, guid: 06971eb51a256cc40bfb279440136224, type: 3}
 --- !u!4 &1197372836843505602 stripped
 Transform:
@@ -7919,14 +7925,10 @@ MonoBehaviour:
   isInvincible: 0
   _statManager: {fileID: 4931861078861440238}
   _animator: {fileID: 0}
-  _baseMaxHp: 100
-  _maxHpPerCon: 5
-  _regenPerCon: 0.15
   _currentHp: 100
   _maxHp: 0
   _currentRegen: 0
   _defenseRate: 0
-  _bonusDefenseEff: 0
   _currentShield: 0
   _shieldExpiresAt: 0
   _shieldSyncIntervalSeconds: 0.05
@@ -8095,11 +8097,8 @@ MonoBehaviour:
   _bowCameraOffset: {x: 0.4, y: 0.2, z: -1.2}
   _bowCameraRotationOffset: {x: 0, y: 0, z: 0}
   _showCrosshair: 1
-  _crosshairSprite: {fileID: 0}
-  _crosshairColor: {r: 1, g: 0, b: 0, a: 1}
-  _crosshairSize: {x: 15, y: 15}
-  _crosshairThickness: 3
-  _crosshairGap: 5
+  _chargeRingColor: {r: 1, g: 1, b: 1, a: 0.75}
+  _chargeRingMaximumScale: 2.2
 --- !u!114 &1361630273049683799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8377,6 +8376,41 @@ MonoBehaviour:
   - m_Rig: {fileID: 5938662011028852695}
     m_Active: 1
   m_Effectors: []
+--- !u!114 &6114079827364519024
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e4d9937ca9444f79f19b24c2fb74a24, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.CombatHitFeedback
+  _normalHitColor: {r: 1, g: 1, b: 1, a: 1}
+  _headshotColor: {r: 1, g: 0.08, b: 0.08, a: 1}
+  _startOpacity: 0.9
+  _endOpacity: 0
+  _duration: 0.22
+  _growPortion: 0.35
+  _centerGap: 7
+  _maximumSpikeLength: 18
+  _spikeWidth: 4
+--- !u!114 &6114079827364519025
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a8d374c722a446ab27bd16644422947, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.CombatReticleView
+  _baseColor: {r: 1, g: 0, b: 0, a: 1}
+  _baseSize: 15
 --- !u!4 &2873757302630405629 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3803884676806522701, guid: 06971eb51a256cc40bfb279440136224, type: 3}

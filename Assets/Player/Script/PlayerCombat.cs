@@ -126,6 +126,7 @@ public class PlayerCombat : NetworkBehaviour
     private double _localMonostatAgiSkillAttackLockUntil;
     private AudioSource _audioSource;
     private AttackProcessor _attackProcessor;
+    private CombatHitFeedback _hitFeedback;
     private Coroutine _advancedSkillRoutine;
     private Coroutine _localAdvancedMoveLockRoutine;
     private Coroutine _localSkillAnimationAttackLockRoutine;
@@ -224,6 +225,7 @@ public class PlayerCombat : NetworkBehaviour
         _healthSystem = GetComponent<HealthSystem>();
         _playerManager = GetComponent<PlayerManager>();
         _attackProcessor = GetComponent<AttackProcessor>();
+        _hitFeedback = GetComponent<CombatHitFeedback>();
         _audioSource = GetComponent<AudioSource>();
         if (_kickHitBox == null)
             _kickHitBox = GetComponentInChildren<KickSkillHitBox>(true);
@@ -2239,12 +2241,18 @@ public class PlayerCombat : NetworkBehaviour
         _bowAttackController?.OnBowReleaseArrow();
     }
 
-    public bool ProcessBowProjectileHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition)
+    public bool ProcessBowProjectileHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier, BodyPart bodyPart)
     {
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
 
-        return _attackProcessor != null && _attackProcessor.ProcessSkillHit(damageMultiplier, defenderStats, defender, hitPosition);
+        return _attackProcessor != null && _attackProcessor.ProcessSkillHit(
+            damageMultiplier,
+            defenderStats,
+            defender,
+            hitPosition,
+            bodyPartMultiplier,
+            bodyPart);
     }
 
     private int ResolveAvailableSkillCount()
@@ -2677,6 +2685,37 @@ public class PlayerCombat : NetworkBehaviour
             direction.y = 0f;
             StartAttack(0, true, direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward, true);
         }
+    }
+
+    public void NotifyConfirmedHit(bool isHeadshot)
+    {
+        if (NetworkServer.active)
+        {
+            if (connectionToClient != null)
+                TargetShowHitFeedback(connectionToClient, isHeadshot);
+            else if (isLocalPlayer)
+                PlayHitFeedbackLocal(isHeadshot);
+            return;
+        }
+
+        if (!NetworkClient.active || isLocalPlayer)
+            PlayHitFeedbackLocal(isHeadshot);
+    }
+
+    [TargetRpc]
+    private void TargetShowHitFeedback(NetworkConnectionToClient target, bool isHeadshot)
+    {
+        PlayHitFeedbackLocal(isHeadshot);
+    }
+
+    private void PlayHitFeedbackLocal(bool isHeadshot)
+    {
+        if (_hitFeedback == null)
+            _hitFeedback = GetComponent<CombatHitFeedback>();
+        if (_hitFeedback == null)
+            _hitFeedback = gameObject.AddComponent<CombatHitFeedback>();
+
+        _hitFeedback.Play(isHeadshot);
     }
 
     private void ClearLocalTauntControl()
