@@ -184,9 +184,7 @@ namespace BattlePvp.UI
 
             if (_identitySourceBehaviour == null || _identitySourceBehaviour is not IIdentitySource)
             {
-                StatManager localStats = StatManager.Local != null
-                    ? StatManager.Local
-                    : FindFirstObjectByType<StatManager>();
+                StatManager localStats = ResolveScopedStatManager();
 
                 if (localStats != null)
                 {
@@ -202,10 +200,8 @@ namespace BattlePvp.UI
                 HealthSystem localHealth = null;
                 if (_identitySourceBehaviour is Component identityComponent)
                     localHealth = identityComponent.GetComponent<HealthSystem>();
-                if (localHealth == null && StatManager.Local != null)
-                    localHealth = StatManager.Local.GetComponent<HealthSystem>();
                 if (localHealth == null)
-                    localHealth = FindFirstObjectByType<HealthSystem>();
+                    localHealth = ResolveScopedHealthSystem();
 
                 if (localHealth != null)
                 {
@@ -215,6 +211,44 @@ namespace BattlePvp.UI
             }
 
             return changed;
+        }
+
+        private StatManager ResolveScopedStatManager()
+        {
+            StatManager parentStats = GetComponentInParent<StatManager>(true);
+            if (parentStats != null)
+                return parentStats;
+
+            if (!IsSceneGlobalUi())
+                return null;
+
+            return StatManager.Local != null
+                ? StatManager.Local
+                : FindFirstObjectByType<StatManager>();
+        }
+
+        private HealthSystem ResolveScopedHealthSystem()
+        {
+            HealthSystem parentHealth = GetComponentInParent<HealthSystem>(true);
+            if (parentHealth != null)
+                return parentHealth;
+
+            if (!IsSceneGlobalUi())
+                return null;
+
+            if (StatManager.Local != null)
+            {
+                HealthSystem localHealth = StatManager.Local.GetComponent<HealthSystem>();
+                if (localHealth != null)
+                    return localHealth;
+            }
+
+            return FindFirstObjectByType<HealthSystem>();
+        }
+
+        private bool IsSceneGlobalUi()
+        {
+            return GetComponentInParent<StatManager>(true) == null;
         }
 
         private void SubscribeSources()
