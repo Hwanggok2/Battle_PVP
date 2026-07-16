@@ -20,7 +20,7 @@ namespace BattlePvp.UI
         [Header("Sprites")]
         [Tooltip("Base reticle sprite. Uses the default Resources sprite when empty.")]
         [SerializeField] private Sprite _baseReticleSprite;
-        [Tooltip("Charge reticle sprite. Uses the generated ring and thickness setting when empty.")]
+        [Tooltip("Charge reticle sprite. Empty or the same as the base sprite uses a constant-thickness ring.")]
         [SerializeField] private Sprite _chargeReticleSprite;
         [Tooltip("Hit feedback spike sprite. Uses the default Resources sprite when empty.")]
         [SerializeField] private Sprite _hitSpikeSprite;
@@ -30,13 +30,11 @@ namespace BattlePvp.UI
         [Range(4f, 80f)] [SerializeField] private float _baseSize = 15f;
 
         private Image _baseImage;
-        private Image _chargeImage;
+        private Graphic _chargeGraphic;
+        private ReticleRingGraphic _chargeRingGraphic;
         private readonly Image[] _hitSpikes = new Image[4];
         private Coroutine _hitRoutine;
         private bool _initialized;
-        private Texture2D _chargeRingTexture;
-        private Sprite _chargeRingSprite;
-        private float _chargeRingSpriteThickness = -1f;
 
         public void InitializeForLocalPlayer(Transform playerRoot)
         {
@@ -60,34 +58,24 @@ namespace BattlePvp.UI
                 _baseImage.gameObject.SetActive(visible);
         }
 
-        private void OnDestroy()
-        {
-            if (_chargeRingSprite != null)
-                Destroy(_chargeRingSprite);
-            if (_chargeRingTexture != null)
-                Destroy(_chargeRingTexture);
-        }
-
         public void SetCharge(float damageProgress, float maximumScale, Color color, float thickness)
         {
-            if (_chargeImage == null)
+            if (_chargeGraphic == null)
                 return;
 
-            if (_chargeReticleSprite != null)
-                _chargeImage.sprite = _chargeReticleSprite;
-            else
-                EnsureChargeRingSprite(thickness);
+            if (_chargeRingGraphic != null)
+                _chargeRingGraphic.Thickness = thickness;
 
             float scale = Mathf.Lerp(Mathf.Max(1f, maximumScale), 1f, Mathf.Clamp01(damageProgress));
-            _chargeImage.rectTransform.sizeDelta = Vector2.one * (_baseSize * scale);
-            _chargeImage.color = color;
+            _chargeGraphic.rectTransform.sizeDelta = Vector2.one * (_baseSize * scale);
+            _chargeGraphic.color = color;
             SetChargeVisible(true);
         }
 
         public void SetChargeVisible(bool visible)
         {
-            if (_chargeImage != null && _chargeImage.gameObject.activeSelf != visible)
-                _chargeImage.gameObject.SetActive(visible);
+            if (_chargeGraphic != null && _chargeGraphic.gameObject.activeSelf != visible)
+                _chargeGraphic.gameObject.SetActive(visible);
         }
 
         public void PlayHit(
@@ -125,7 +113,23 @@ namespace BattlePvp.UI
                 ? _hitSpikeSprite
                 : Resources.Load<Sprite>(SpikeResourcePath);
             _baseImage = CreateImage(parent, "BaseReticle", ringSprite, _baseSize, _baseSize, _baseColor, true);
-            _chargeImage = CreateImage(parent, "ChargeReticle", _chargeReticleSprite, _baseSize, _baseSize, Color.white, true);
+
+            if (_chargeReticleSprite == null || _chargeReticleSprite == ringSprite)
+            {
+                _chargeRingGraphic = CreateRingGraphic(parent, "ChargeReticle", _baseSize, Color.white);
+                _chargeGraphic = _chargeRingGraphic;
+            }
+            else
+            {
+                _chargeGraphic = CreateImage(
+                    parent,
+                    "ChargeReticle",
+                    _chargeReticleSprite,
+                    _baseSize,
+                    _baseSize,
+                    Color.white,
+                    true);
+            }
 
             for (int i = 0; i < _hitSpikes.Length; i++)
             {
@@ -167,50 +171,26 @@ namespace BattlePvp.UI
             return image;
         }
 
-        private void EnsureChargeRingSprite(float thickness)
+        private static ReticleRingGraphic CreateRingGraphic(Transform parent, string objectName, float size, Color color)
         {
-            thickness = Mathf.Clamp(thickness, 0.5f, 8f);
-            if (_chargeRingSprite != null && Mathf.Approximately(_chargeRingSpriteThickness, thickness))
-                return;
+            GameObject ringObject = new GameObject(
+                objectName,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(ReticleRingGraphic));
+            ringObject.transform.SetParent(parent, false);
 
-            if (_chargeRingSprite != null)
-                Destroy(_chargeRingSprite);
-            if (_chargeRingTexture != null)
-                Destroy(_chargeRingTexture);
+            RectTransform rect = ringObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = Vector2.one * size;
 
-            const int resolution = 64;
-            const float radius = 27f;
-            float center = (resolution - 1) * 0.5f;
-            Color32[] pixels = new Color32[resolution * resolution];
-            for (int y = 0; y < resolution; y++)
-            {
-                for (int x = 0; x < resolution; x++)
-                {
-                    float distance = Vector2.Distance(new Vector2(x, y), new Vector2(center, center));
-                    float edgeDistance = Mathf.Abs(distance - radius);
-                    byte alpha = (byte)Mathf.RoundToInt(Mathf.Clamp01((thickness * 0.5f + 0.75f) - edgeDistance) * 255f);
-                    pixels[y * resolution + x] = new Color32(255, 255, 255, alpha);
-                }
-            }
-
-            _chargeRingTexture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false)
-            {
-                name = "RuntimeChargeRing",
-                filterMode = FilterMode.Bilinear,
-                wrapMode = TextureWrapMode.Clamp
-            };
-            _chargeRingTexture.SetPixels32(pixels);
-            _chargeRingTexture.Apply(false, true);
-            _chargeRingSprite = Sprite.Create(
-                _chargeRingTexture,
-                new Rect(0f, 0f, resolution, resolution),
-                new Vector2(0.5f, 0.5f),
-                100f,
-                0u,
-                SpriteMeshType.FullRect);
-            _chargeRingSprite.name = "RuntimeChargeRingSprite";
-            _chargeRingSpriteThickness = thickness;
-            _chargeImage.sprite = _chargeRingSprite;
+            ReticleRingGraphic ring = ringObject.GetComponent<ReticleRingGraphic>();
+            ring.color = color;
+            ring.raycastTarget = false;
+            return ring;
         }
 
         private IEnumerator AnimateHit(
@@ -278,6 +258,58 @@ namespace BattlePvp.UI
             {
                 if (spike != null)
                     spike.color = color;
+            }
+        }
+    }
+
+    internal sealed class ReticleRingGraphic : MaskableGraphic
+    {
+        private const int SegmentCount = 64;
+        private float _thickness = 1f;
+
+        public float Thickness
+        {
+            get => _thickness;
+            set
+            {
+                float clamped = Mathf.Max(0.5f, value);
+                if (Mathf.Approximately(_thickness, clamped))
+                    return;
+
+                _thickness = clamped;
+                SetVerticesDirty();
+            }
+        }
+
+        protected override void OnPopulateMesh(VertexHelper vertexHelper)
+        {
+            vertexHelper.Clear();
+
+            Rect rect = rectTransform.rect;
+            float outerRadius = Mathf.Min(rect.width, rect.height) * 0.5f;
+            if (outerRadius <= 0f)
+                return;
+
+            float innerRadius = Mathf.Max(0f, outerRadius - Mathf.Min(_thickness, outerRadius));
+            Vector2 center = rect.center;
+            Color32 vertexColor = color;
+
+            for (int i = 0; i < SegmentCount; i++)
+            {
+                float radians = i * Mathf.PI * 2f / SegmentCount;
+                Vector2 direction = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians));
+                vertexHelper.AddVert(center + direction * outerRadius, vertexColor, Vector2.zero);
+                vertexHelper.AddVert(center + direction * innerRadius, vertexColor, Vector2.zero);
+            }
+
+            for (int i = 0; i < SegmentCount; i++)
+            {
+                int currentOuter = i * 2;
+                int currentInner = currentOuter + 1;
+                int nextOuter = ((i + 1) % SegmentCount) * 2;
+                int nextInner = nextOuter + 1;
+                vertexHelper.AddTriangle(currentOuter, nextOuter, nextInner);
+                vertexHelper.AddTriangle(currentOuter, nextInner, currentInner);
             }
         }
     }

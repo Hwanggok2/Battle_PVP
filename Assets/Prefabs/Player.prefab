@@ -5812,12 +5812,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.CanvasScaler
-  m_UiScaleMode: 0
+  m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -8099,7 +8099,7 @@ MonoBehaviour:
   _showCrosshair: 1
   _chargeRingColor: {r: 1, g: 1, b: 1, a: 0.75}
   _chargeRingMaximumScale: 5
-  _chargeRingThickness: 8
+  _chargeRingThickness: 2
 --- !u!114 &1361630273049683799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9106,6 +9106,22 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4397279502102798791, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_UiScaleMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4397279502102798791, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_MatchWidthOrHeight
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4397279502102798791, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_ReferenceResolution.x
+      value: 1920
+      objectReference: {fileID: 0}
+    - target: {fileID: 4397279502102798791, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_ReferenceResolution.y
+      value: 1080
+      objectReference: {fileID: 0}
     - target: {fileID: 4572168925968666011, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_Color.r
       value: 0.49019608
@@ -9258,6 +9274,10 @@ PrefabInstance:
       propertyPath: m_Color.a
       value: 0.39215687
       objectReference: {fileID: 0}
+    - target: {fileID: 5594241187974386166, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -3.4542236
+      objectReference: {fileID: 0}
     - target: {fileID: 5626259383516595008, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -9273,6 +9293,10 @@ PrefabInstance:
     - target: {fileID: 6235278107687585373, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: m_IsActive
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6322081830949451544, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+      propertyPath: _view
+      value: 
       objectReference: {fileID: 0}
     - target: {fileID: 6322081830949451544, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
       propertyPath: _statManager
@@ -9560,6 +9584,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 5163276669149715742, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+    - {fileID: 4871193084259619536, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+    - {fileID: 3537290535849062763, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+    - {fileID: 8432135289071612881, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
+    - {fileID: 656459588477300183, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
     m_RemovedGameObjects:
     - {fileID: 2801038233324049453, guid: 73bf38a48e6c6944f80e17a5e3fd239e, type: 3}
     m_AddedGameObjects:
