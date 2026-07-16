@@ -333,7 +333,7 @@ namespace BattlePvp.Combat
                     {
                         // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
                         if (attacker is IDamageReceiverWithContext ctx)
-                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: null, GetThornsPopupPosition(attackerMb));
+                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: this, GetThornsPopupPosition(attackerMb));
                         else
                             attacker.ApplyDamage(thorns, DamageSource.Thorns, GetThornsPopupPosition(attackerMb));
                     }
@@ -389,6 +389,8 @@ namespace BattlePvp.Combat
 
             if (localAttacker)
             {
+                TryPlayLocalStatusDamageFeedback(source);
+
                 if (source == DamageSource.Poison)
                     popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
                 else
@@ -400,6 +402,11 @@ namespace BattlePvp.Combat
                 popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
             else
                 popupManager.CreatePopup(position, amount, false, popupColor);
+        }
+
+        private static void TryPlayLocalStatusDamageFeedback(DamageSource source)
+        {
+            CombatHitFeedback.PlayStatusDamageForLocalPlayer(source);
         }
 
         public void ShowPredictedPhysicalDamagePopup(Vector3 position, float amount, uint attackerNetId)

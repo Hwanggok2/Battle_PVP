@@ -33,7 +33,9 @@ namespace BattlePvp.UI
         private Graphic _chargeGraphic;
         private ReticleRingGraphic _chargeRingGraphic;
         private readonly Image[] _hitSpikes = new Image[4];
+        private readonly Image[] _statusDamageSpikes = new Image[4];
         private Coroutine _hitRoutine;
+        private Coroutine _statusDamageRoutine;
         private bool _initialized;
 
         public void InitializeForLocalPlayer(Transform playerRoot)
@@ -104,6 +106,34 @@ namespace BattlePvp.UI
                 Mathf.Max(0.5f, spikeWidth)));
         }
 
+        public void PlayStatusDamage(
+            Color color,
+            float startOpacity,
+            float endOpacity,
+            float duration,
+            float growPortion,
+            float centerGap,
+            float maximumLength,
+            float spikeWidth)
+        {
+            if (_statusDamageSpikes[0] == null)
+                return;
+
+            if (_statusDamageRoutine != null)
+                StopCoroutine(_statusDamageRoutine);
+            _statusDamageRoutine = StartCoroutine(AnimateSpikes(
+                _statusDamageSpikes,
+                color,
+                Mathf.Clamp01(startOpacity),
+                Mathf.Clamp01(endOpacity),
+                Mathf.Max(0.01f, duration),
+                Mathf.Clamp(growPortion, 0.05f, 0.95f),
+                Mathf.Max(0f, centerGap),
+                Mathf.Max(1f, maximumLength),
+                Mathf.Max(0.5f, spikeWidth),
+                () => _statusDamageRoutine = null));
+        }
+
         private void CreateImages(Transform parent)
         {
             Sprite ringSprite = _baseReticleSprite != null
@@ -137,6 +167,14 @@ namespace BattlePvp.UI
                 float angle = Mathf.Atan2(SpikeDirections[i].y, SpikeDirections[i].x) * Mathf.Rad2Deg - 90f;
                 spike.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
                 _hitSpikes[i] = spike;
+            }
+
+            for (int i = 0; i < _statusDamageSpikes.Length; i++)
+            {
+                Image spike = CreateImage(parent, $"StatusDamageSpike_{i + 1}", spikeSprite, 1f, 1f, Color.clear, false);
+                float angle = Mathf.Atan2(SpikeDirections[i].y, SpikeDirections[i].x) * Mathf.Rad2Deg - 90f;
+                spike.rectTransform.localRotation = Quaternion.Euler(0f, 0f, angle);
+                _statusDamageSpikes[i] = spike;
             }
         }
 
@@ -203,7 +241,32 @@ namespace BattlePvp.UI
             float maximumLength,
             float spikeWidth)
         {
-            SetHitVisible(true);
+            yield return AnimateSpikes(
+                _hitSpikes,
+                color,
+                startOpacity,
+                endOpacity,
+                duration,
+                growPortion,
+                centerGap,
+                maximumLength,
+                spikeWidth,
+                () => _hitRoutine = null);
+        }
+
+        private IEnumerator AnimateSpikes(
+            Image[] spikes,
+            Color color,
+            float startOpacity,
+            float endOpacity,
+            float duration,
+            float growPortion,
+            float centerGap,
+            float maximumLength,
+            float spikeWidth,
+            System.Action onComplete)
+        {
+            SetSpikeVisible(spikes, true);
             float elapsed = 0f;
             while (elapsed < duration)
             {
@@ -221,40 +284,46 @@ namespace BattlePvp.UI
                 }
 
                 float visibleProgress = Mathf.Max(0f, sizeProgress);
-                SetSpikeLayout(centerGap, maximumLength * visibleProgress, spikeWidth * visibleProgress);
+                SetSpikeLayout(spikes, centerGap, maximumLength * visibleProgress, spikeWidth * visibleProgress);
                 Color frameColor = color;
                 frameColor.a *= Mathf.Lerp(startOpacity, endOpacity, normalized);
-                SetSpikeColor(frameColor);
+                SetSpikeColor(spikes, frameColor);
                 elapsed += Time.unscaledDeltaTime;
                 yield return null;
             }
 
-            SetHitVisible(false);
-            _hitRoutine = null;
+            SetSpikeVisible(spikes, false);
+            onComplete?.Invoke();
         }
 
         private void SetHitVisible(bool visible)
         {
-            foreach (Image spike in _hitSpikes)
+            SetSpikeVisible(_hitSpikes, visible);
+            SetSpikeVisible(_statusDamageSpikes, visible);
+        }
+
+        private static void SetSpikeVisible(Image[] spikes, bool visible)
+        {
+            foreach (Image spike in spikes)
             {
                 if (spike != null && spike.gameObject.activeSelf != visible)
                     spike.gameObject.SetActive(visible);
             }
         }
 
-        private void SetSpikeLayout(float centerGap, float length, float width)
+        private static void SetSpikeLayout(Image[] spikes, float centerGap, float length, float width)
         {
-            for (int i = 0; i < _hitSpikes.Length; i++)
+            for (int i = 0; i < spikes.Length; i++)
             {
-                RectTransform rect = _hitSpikes[i].rectTransform;
+                RectTransform rect = spikes[i].rectTransform;
                 rect.sizeDelta = new Vector2(Mathf.Max(0f, width), Mathf.Max(0f, length));
                 rect.anchoredPosition = SpikeDirections[i] * (centerGap + length * 0.5f);
             }
         }
 
-        private void SetSpikeColor(Color color)
+        private static void SetSpikeColor(Image[] spikes, Color color)
         {
-            foreach (Image spike in _hitSpikes)
+            foreach (Image spike in spikes)
             {
                 if (spike != null)
                     spike.color = color;

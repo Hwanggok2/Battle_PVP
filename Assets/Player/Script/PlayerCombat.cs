@@ -2514,7 +2514,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void ApplyMonostatAgiPoisonStack(IDamageReceiver target, Vector3 hitPosition)
     {
-        if (!NetworkServer.active)
+        if (NetworkClient.active && !NetworkServer.active)
             return;
 
         if (!IsValidPoisonTarget(target))

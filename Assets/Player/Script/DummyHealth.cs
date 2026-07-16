@@ -121,6 +121,7 @@ namespace BattlePvp.Combat
                 else
                     DamagePopupManager.Instance.CreatePopup(popupPosition, amount);
             }
+            CombatHitFeedback.PlayStatusDamageForAttacker(source, attacker);
 
             Debug.Log($"[Dummy] Received {amount} damage from {source} at {hitPosition}. Current HP: {_currentHp}/{_maxHp}");
 
