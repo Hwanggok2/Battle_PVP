@@ -8662,6 +8662,22 @@ PrefabInstance:
       propertyPath: _debugSlashTrailMaterial
       value: 
       objectReference: {fileID: 2100000, guid: d1aa3bc5d7a43ff468799b44e57a50a3, type: 2}
+    - target: {fileID: 3911252096833979102, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: m_Size.z
+      value: 1.0917732
+      objectReference: {fileID: 0}
+    - target: {fileID: 3911252096833979102, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: m_Center.x
+      value: -0.003360195
+      objectReference: {fileID: 0}
+    - target: {fileID: 3911252096833979102, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: m_Center.y
+      value: 0.0062736683
+      objectReference: {fileID: 0}
+    - target: {fileID: 3911252096833979102, guid: c6e8168680efd6a4e93f168af725722b, type: 3}
+      propertyPath: m_Center.z
+      value: 0.5852086
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

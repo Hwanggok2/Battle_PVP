@@ -178,7 +178,6 @@ public sealed class BowAttackController : NetworkBehaviour
             return;
 
         Vector3 direction = _pendingDirection.sqrMagnitude > 0.001f ? _pendingDirection.normalized : transform.forward;
-        direction = ResolveCenterScreenDirection(direction);
         float damageMultiplier = _pendingDamageMultiplier;
         _hasPendingShot = false;
 
@@ -195,7 +194,9 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void QueueShot(JobSkillData bowData, float chargeSeconds, Vector3 direction)
     {
-        _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        // Capture the local camera ray when the player releases the input. Animation events can
+        // reach a remote client several frames later, where recalculating this ray is unreliable.
+        _pendingDirection = ResolveCenterScreenDirection(direction);
         float denominator = Mathf.Max(0.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds);
         float t = chargeSeconds < bowData.MinimumBowChargeSeconds
             ? 0f

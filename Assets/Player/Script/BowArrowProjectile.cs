@@ -13,6 +13,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     [SyncVar] private double _spawnedAt;
 
     private bool _hasHit;
+    private bool _hasPredictedHit;
 
     public void Initialize(uint ownerNetId, Vector3 direction, float speed, float lifeSeconds, float damageMultiplier)
     {
@@ -35,16 +36,22 @@ public sealed class BowArrowProjectile : NetworkBehaviour
             NetworkServer.Destroy(gameObject);
     }
 
-    [ServerCallback]
     private void OnTriggerEnter(Collider other)
     {
-        TryHit(other);
+        HandleCollision(other);
     }
 
-    [ServerCallback]
     private void OnCollisionEnter(Collision collision)
     {
-        TryHit(collision.collider);
+        HandleCollision(collision.collider);
+    }
+
+    private void HandleCollision(Collider other)
+    {
+        if (isServer)
+            TryHit(other);
+        else if (isClient)
+            TryPredictHit(other);
     }
 
     [Server]
@@ -75,5 +82,27 @@ public sealed class BowArrowProjectile : NetworkBehaviour
             return null;
 
         return ownerIdentity.GetComponent<PlayerCombat>();
+    }
+
+    [Client]
+    private void TryPredictHit(Collider other)
+    {
+        if (_hasPredictedHit || other == null || _ownerNetId == 0)
+            return;
+        if (!NetworkClient.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity) || !ownerIdentity.isLocalPlayer)
+            return;
+        if (other.transform.root == ownerIdentity.transform.root)
+            return;
+
+        HealthSystem targetHealth = other.GetComponentInParent<HealthSystem>();
+        StatManager targetStats = other.GetComponentInParent<StatManager>();
+        AttackProcessor attackProcessor = ownerIdentity.GetComponent<AttackProcessor>();
+        if (targetHealth == null || targetStats == null || attackProcessor == null)
+            return;
+
+        float predictedDamage = attackProcessor.PredictSkillHitDamage(_damageMultiplier, targetStats);
+        Vector3 hitPoint = other.ClosestPoint(transform.position);
+        targetHealth.ShowPredictedPhysicalDamagePopup(hitPoint, predictedDamage, _ownerNetId);
+        _hasPredictedHit = true;
     }
 }

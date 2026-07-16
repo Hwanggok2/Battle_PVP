@@ -194,6 +194,39 @@ public sealed class AttackProcessor : MonoBehaviour
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
     }
 
+    public float PredictHitDamage(AttackData attackData, StatManager defenderStats, float bodyPartMultiplier = 1f)
+    {
+        if (attackData == null || _attackerStats == null || defenderStats == null)
+            return 0f;
+
+        Identity attackerIdentity = _attackerStats.CurrentIdentity;
+        Identity defenderIdentity = defenderStats.CurrentIdentity;
+        float attackerStrFinal = _attackerStats.GetFinalTotal(StatKind.STR);
+        float attackPower = CalculateAttackPower(attackerStrFinal) * attackData.damage;
+        float penetrationPercent = attackerStrFinal * 0.3f;
+        if (_playerCombat != null)
+            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
+
+        if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
+        {
+            attackPower *= 1.4f;
+            penetrationPercent += 18f;
+        }
+
+        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
+        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        float finalDamage = _damageCalculator.PredictFinalDamage(
+            attackPower,
+            defenderDef,
+            bonusDefense,
+            Clamp(penetrationPercent, 0f, 100f));
+
+        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
+            finalDamage *= 0.7f;
+
+        return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
+    }
+
     public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition)
     {
         if (damageMultiplier <= 0f || defenderStats == null || defender == null)
@@ -228,6 +261,30 @@ public sealed class AttackProcessor : MonoBehaviour
         float actualDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
         _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
         return true;
+    }
+
+    public float PredictSkillHitDamage(float damageMultiplier, StatManager defenderStats)
+    {
+        if (damageMultiplier <= 0f || defenderStats == null)
+            return 0f;
+
+        float attackPower = _currentAtk * damageMultiplier;
+        if (_playerCombat != null)
+            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
+
+        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
+        Identity defenderIdentity = defenderStats.CurrentIdentity;
+        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        float finalDamage = _damageCalculator.PredictFinalDamage(
+            attackPower,
+            defenderDef,
+            bonusDefense,
+            Mathf.Clamp(_currentPene, 0f, 100f));
+
+        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
+            finalDamage *= 0.7f;
+
+        return Mathf.Max(0f, finalDamage);
     }
 
     private static float Clamp(float v, float min, float max)

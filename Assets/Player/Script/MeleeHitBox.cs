@@ -307,9 +307,6 @@ namespace BattlePvp.Combat
             if (defender is HealthSystem && bodyPart == null)
                 return;
 
-            if (NetworkClient.active && !NetworkServer.active && defender is HealthSystem)
-                return;
-
             StatManager defenderStats = other.GetComponent<StatManager>();
             if (defenderStats == null)
                 defenderStats = other.GetComponentInParent<StatManager>();
@@ -324,6 +321,22 @@ namespace BattlePvp.Combat
                 hitQueryPosition += Vector3.up * _crouchVerticalOffset;
 
             Vector3 hitPosition = other.ClosestPoint(hitQueryPosition);
+
+            if (NetworkClient.active && !NetworkServer.active && defender is HealthSystem targetHealth)
+            {
+                if (_playerCombat != null && !_playerCombat.TryRegisterHitTarget(defender))
+                    return;
+
+                float predictedBuffMultiplier = _playerCombat != null ? _playerCombat.ConsumeNextAttackDamageMultiplier() : 1f;
+                float predictedDamage = _attackProcessor.PredictHitDamage(
+                    _currentAttackData,
+                    defenderStats,
+                    bodyPartMultiplier * predictedBuffMultiplier);
+                targetHealth.ShowPredictedPhysicalDamagePopup(hitPosition, predictedDamage, _playerCombat != null ? _playerCombat.netId : 0);
+                _hitTargets.Add(defender);
+                return;
+            }
+
             if (_playerCombat != null && !_playerCombat.TryRegisterHitTarget(defender))
                 return;
 

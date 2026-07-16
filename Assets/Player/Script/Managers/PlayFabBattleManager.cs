@@ -73,6 +73,7 @@ namespace BattlePvp.Networking
         private bool _isRoomInfoRequestInFlight;
         private float _lastRoomInfoLoadTime = -999f;
         private bool _clientStatisticUpdatesDisabled;
+        private bool _isRelayStartupInProgress;
 
         public string CurrentRoomId => _joinedRoomId;
         public RoomInfo CurrentRoomInfo => _currentRoomInfo;
@@ -95,23 +96,34 @@ namespace BattlePvp.Networking
 
         private async void HandleRoomJoinSuccess()
         {
+            if (_isRelayStartupInProgress || NetworkServer.active || NetworkClient.isConnected)
+                return;
+
+            _isRelayStartupInProgress = true;
             if (NetworkManager.singleton == null)
             {
                 Debug.LogError("[PlayFabManager] NetworkManager.singleton is missing! Mirror setup required.");
+                _isRelayStartupInProgress = false;
                 return;
             }
 
             var relayTransport = EnsureRelayTransport();
             if (relayTransport == null)
+            {
+                _isRelayStartupInProgress = false;
                 return;
-
-            if (_isHost)
-            {
-                await StartRelayHostAsync(relayTransport);
             }
-            else
+
+            try
             {
-                await StartRelayClientAsync(relayTransport);
+                if (_isHost)
+                    await StartRelayHostAsync(relayTransport);
+                else
+                    await StartRelayClientAsync(relayTransport);
+            }
+            finally
+            {
+                _isRelayStartupInProgress = false;
             }
         }
 
@@ -152,12 +164,7 @@ namespace BattlePvp.Networking
         {
             try
             {
-                string joinCode = _currentRoomInfo.RelayJoinCode;
-                if (string.IsNullOrWhiteSpace(joinCode))
-                {
-                    await RefreshCurrentRoomInfoAsync();
-                    joinCode = _currentRoomInfo.RelayJoinCode;
-                }
+                string joinCode = await WaitForRelayJoinCodeAsync();
 
                 if (string.IsNullOrWhiteSpace(joinCode))
                     throw new InvalidOperationException("Room does not have a Relay join code yet.");
@@ -173,6 +180,28 @@ namespace BattlePvp.Networking
                 Debug.LogError($"[PlayFabManager] Failed to start Relay client: {ex}");
                 LeaveCurrentRoom();
             }
+        }
+
+        private async System.Threading.Tasks.Task<string> WaitForRelayJoinCodeAsync()
+        {
+            const int maxAttempts = 10;
+            const int retryDelayMilliseconds = 500;
+
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                string joinCode = _currentRoomInfo.RelayJoinCode;
+                if (!string.IsNullOrWhiteSpace(joinCode))
+                    return joinCode;
+
+                await RefreshCurrentRoomInfoAsync();
+                joinCode = _currentRoomInfo.RelayJoinCode;
+                if (!string.IsNullOrWhiteSpace(joinCode))
+                    return joinCode;
+
+                await System.Threading.Tasks.Task.Delay(retryDelayMilliseconds);
+            }
+
+            return string.Empty;
         }
 
         private System.Threading.Tasks.Task RefreshCurrentRoomInfoAsync()
@@ -221,6 +250,9 @@ namespace BattlePvp.Networking
                     UpdateRoomData(roomId, ROOM_STARTED_KEY, "false");
                     UpdateRoomData(roomId, ROOM_PLAYER_COUNT_KEY, "1");
                     UpdateRoomData(roomId, ROOM_MASTER_NAME_KEY, masterName);
+
+                    // Relay allocation and registry publication can run in parallel.
+                    HandleRoomJoinSuccess();
                     
                     // 湲濡쒕쾶 ?덉??ㅽ듃由ъ뿉 ??諛⑹쓽 怨좎쑀 ID? ?ㅼ젣 ?쒕ぉ???띿쑝濡??깅줉?⑸땲??
                     RegisterRoomToRegistry(roomId, roomName, masterName);

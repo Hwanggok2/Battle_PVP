@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
 using BattlePvp.Networking;
@@ -88,6 +89,9 @@ namespace BattlePvp.Combat
         private const float AroundCharacterPopupRadius = 0.65f;
         private const float AroundCharacterPopupHeight = 1.35f;
         private static readonly Vector3 ThornsPopupOffset = new Vector3(0.65f, 1.25f, 0f);
+        private static readonly Dictionary<uint, float> PredictedPopupExpiryByVictim = new Dictionary<uint, float>();
+        private static readonly Dictionary<uint, int> PredictedPopupCountByVictim = new Dictionary<uint, int>();
+        private const float PredictedPopupSuppressSeconds = 5f;
 
         private void Awake()
         {
@@ -390,6 +394,9 @@ namespace BattlePvp.Combat
             bool localAttacker = attackerNetId != 0
                 && IsLocalPlayerNetId(attackerNetId);
 
+            if (localAttacker && source == DamageSource.Physical && ConsumePredictedPopup(victimNetId))
+                return;
+
             if (localVictim)
             {
                 if (source == DamageSource.Physical)
@@ -412,6 +419,48 @@ namespace BattlePvp.Combat
                 popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
             else
                 popupManager.CreatePopup(position, amount, false, popupColor);
+        }
+
+        public void ShowPredictedPhysicalDamagePopup(Vector3 position, float amount, uint attackerNetId)
+        {
+            if (amount <= 0f || attackerNetId == 0 || !IsLocalPlayerNetId(attackerNetId))
+                return;
+
+            uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
+            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId);
+            if (victimNetId != 0)
+            {
+                PredictedPopupExpiryByVictim[victimNetId] = Time.unscaledTime + PredictedPopupSuppressSeconds;
+                PredictedPopupCountByVictim.TryGetValue(victimNetId, out int count);
+                PredictedPopupCountByVictim[victimNetId] = count + 1;
+            }
+        }
+
+        private static bool ConsumePredictedPopup(uint victimNetId)
+        {
+            if (victimNetId == 0 ||
+                !PredictedPopupExpiryByVictim.TryGetValue(victimNetId, out float expiry) ||
+                !PredictedPopupCountByVictim.TryGetValue(victimNetId, out int count))
+                return false;
+
+            if (Time.unscaledTime > expiry)
+            {
+                PredictedPopupExpiryByVictim.Remove(victimNetId);
+                PredictedPopupCountByVictim.Remove(victimNetId);
+                return false;
+            }
+
+            if (count <= 1)
+            {
+                PredictedPopupExpiryByVictim.Remove(victimNetId);
+                PredictedPopupCountByVictim.Remove(victimNetId);
+            }
+            else
+            {
+                PredictedPopupCountByVictim[victimNetId] = count - 1;
+            }
+
+            return true;
         }
 
         private Vector3 ResolveDamagePopupPosition(Vector3 hitPosition, DamageSource source)

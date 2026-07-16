@@ -6,6 +6,7 @@ using BattlePvp.Managers;
 using Mirror;
 using System.Text.RegularExpressions;
 using System.Collections;
+using TMPro;
 
 namespace BattlePvp.UI
 {
@@ -78,6 +79,7 @@ namespace BattlePvp.UI
             
             FindCanvasCustomizer();
             RefreshVisibility();
+            EnsureLobbyButtonTextVisible();
         }
 
         private void OnEnable()
@@ -176,6 +178,7 @@ namespace BattlePvp.UI
         public void RefreshVisibility()
         {
             if (this == null) return;
+            EnsureLobbyButtonTextVisible();
             string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             bool isLobby = sceneName.Contains("Lobby") || !sceneName.Contains("Battle"); 
             bool isBattleWaiting = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
@@ -224,6 +227,30 @@ namespace BattlePvp.UI
                     if (_battleButton != null) _battleButton.gameObject.SetActive(false);
                     if (_statSettingButton != null) _statSettingButton.gameObject.SetActive(false);
                 }
+            }
+        }
+
+        private void EnsureLobbyButtonTextVisible()
+        {
+            EnsureButtonTextVisible(_battleButton);
+            EnsureButtonTextVisible(_statSettingButton);
+        }
+
+        private static void EnsureButtonTextVisible(Button button)
+        {
+            if (button == null)
+                return;
+
+            // WebGL can retain a transparent/white TMP material variant from the prefab.
+            // Keep the existing label and force a high-contrast vertex color at runtime.
+            TextMeshProUGUI[] labels = button.GetComponentsInChildren<TextMeshProUGUI>(true);
+            foreach (TextMeshProUGUI label in labels)
+            {
+                if (label == null)
+                    continue;
+
+                label.color = new Color(0.05f, 0.05f, 0.05f, 1f);
+                label.canvasRenderer.SetAlpha(1f);
             }
         }
 
