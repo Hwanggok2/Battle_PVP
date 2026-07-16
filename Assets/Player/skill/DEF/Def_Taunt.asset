@@ -17,8 +17,8 @@ MonoBehaviour:
   _iconSprite: {fileID: 21300000, guid: 276af0ddc66b3e244989603f4fe3785b, type: 3}
   _castSeconds: 0.8
   _durationSeconds: 0
-  _cooldownSeconds: 40
-  _inputLockFlags: 15
+  _cooldownSeconds: 30
+  _inputLockFlags: 0
   _inputLockSeconds: 0
   _castAnimationStateName: Taunt Gesture
   _castAnimationLayer: 1

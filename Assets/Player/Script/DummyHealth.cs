@@ -12,9 +12,6 @@ namespace BattlePvp.Combat
     [RequireComponent(typeof(StatManager))]
     public class DummyHealth : MonoBehaviour, IDamageReceiverWithContext
     {
-        private const float BaseAttackPower = 22f;
-        private const float BaseStatTotal = 5f;
-        private const float AttackPowerPerStr = 3f;
         private static readonly Color PoisonPopupColor = new Color(0.25f, 1f, 0.25f, 1f);
         private const float PoisonPopupFontSizeDelta = -16f;
 
@@ -85,50 +82,15 @@ namespace BattlePvp.Combat
         {
             if (_statManager == null) return;
 
-            // HealthSystem/AttackProcessor/PlayerManager/PlayerCombat의 공식과 동일하게 계산
-            float con = _statManager.GetFinalTotal(StatKind.CON);
-            float str = _statManager.GetFinalTotal(StatKind.STR);
-            float agi = _statManager.GetFinalTotal(StatKind.AGI);
-            float def = _statManager.GetFinalTotal(StatKind.DEF);
-            
             Identity id = _statManager.CurrentIdentity;
-
-            // 1. HP 공식 (Base 100 + CON * 15 + DEF * 2)
-            float baseMax = 100f + (con * 15f) + (def * 2f);
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON) baseMax *= 1.6f;
-            else if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.AGI) baseMax *= 0.7f;
-            _maxHp = baseMax;
-
-            // 2. Regen 공식 (CON * 0.15)
-            _currentRegen = con * 0.15f; 
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON) _currentRegen += 5f;
-
-            // 3. Attack Power 공식 (Base 22 + STR * 3)
-            _attackPower = BaseAttackPower + (Mathf.Max(0f, str - BaseStatTotal) * AttackPowerPerStr); 
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.STR) _attackPower *= 1.4f;
-
-            // 4. Physical Penetration 공식 (STR * 0.3)
-            _physicalPenetration = str * 0.3f;
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.STR) _physicalPenetration += 18f;
-
-            // 5. Move Speed 공식 (Base 3.0 + AGI * 0.04)
-            _moveSpeed = 3.0f + (agi * 0.04f);
-            if (id.Type == IdentityType.Monostat)
-            {
-                if (id.PrimaryStat == StatKind.AGI) _moveSpeed *= 1.2f;
-                else if (id.PrimaryStat == StatKind.STR) _moveSpeed *= 0.75f;
-                else if (id.PrimaryStat == StatKind.DEF) _moveSpeed *= 0.8f;
-            }
-
-            // 6. Attack Speed 공식 (Base 0.6 + AGI * 0.02)
-            _attackSpeed = 0.6f + (agi * 0.02f);
-            if (id.Type == IdentityType.Monostat)
-            {
-                if (id.PrimaryStat == StatKind.AGI) _attackSpeed *= 3f;
-                else if (id.PrimaryStat == StatKind.STR) _attackSpeed *= 0.75f;
-            }
-
-            _defenseRate = def;
+            DerivedCombatStats derived = _statManager.GetDerivedStats();
+            _maxHp = derived.MaxHp;
+            _currentRegen = derived.RegenPerSecond;
+            _attackPower = derived.AttackPower;
+            _physicalPenetration = derived.PenetrationPercent;
+            _moveSpeed = derived.MoveSpeed;
+            _attackSpeed = derived.AttackSpeed;
+            _defenseRate = derived.DefenseEfficiencyPercent;
             _identity = id.Type;
 
             // MaxHp가 바뀌었을 때 현재 체력이 Max를 넘지 않도록 조정

@@ -130,6 +130,8 @@ namespace BattlePvp.UI
 
         private void OnEnable()
         {
+            StatBalanceConfig.BalanceChanged += RebuildBudgetAndPreview;
+
             if (GlobalDataManager.Instance != null)
                 GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
 
@@ -155,6 +157,8 @@ namespace BattlePvp.UI
 
         private void OnDisable()
         {
+            StatBalanceConfig.BalanceChanged -= RebuildBudgetAndPreview;
+
             if (GlobalDataManager.Instance != null)
                 GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
 

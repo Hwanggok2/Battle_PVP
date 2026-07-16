@@ -11,10 +11,6 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class AttackProcessor : MonoBehaviour
 {
-    private const float BaseAttackPower = 22f;
-    private const float BaseStatTotal = 5f;
-    private const float AttackPowerPerStr = 3f;
-
     [Header("Self (Attacker)")]
     [SerializeField] private StatManager _attackerStats;
 
@@ -80,16 +76,9 @@ public sealed class AttackProcessor : MonoBehaviour
     {
         if (_attackerStats == null) return;
 
-        float str = _attackerStats.GetFinalTotal(StatKind.STR);
-        _currentAtk = CalculateAttackPower(str);
-        _currentPene = str * 0.3f;
-
-        Identity id = _attackerStats.CurrentIdentity;
-        if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.STR)
-        {
-            _currentAtk *= 1.4f;
-            _currentPene += 18f;
-        }
+        DerivedCombatStats derived = _attackerStats.GetDerivedStats();
+        _currentAtk = derived.AttackPower;
+        _currentPene = derived.PenetrationPercent;
     }
 
     /// <summary>
@@ -111,25 +100,18 @@ public sealed class AttackProcessor : MonoBehaviour
             return;
 
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
-        Identity defenderIdentity = defenderStats.CurrentIdentity;
 
         // 1) ATK / Piercing 구성 (기획안: 1 STR당 ATK 3, 물관 0.3%)
-        float attackerStrFinal = _attackerStats.GetFinalTotal(StatKind.STR);
-        float baseAtk = CalculateAttackPower(attackerStrFinal);
-        float basePene = attackerStrFinal * 0.3f;
+        DerivedCombatStats attackerDerived = _attackerStats.GetDerivedStats();
 
         // AttackData.damage는 실제 공격의 세기를 곱해주는 계수
-        float attackPower = baseAtk * attackData.damage;
-        float penetrationPercent = basePene;
+        float attackPower = attackerDerived.AttackPower * attackData.damage;
+        float penetrationPercent = attackerDerived.PenetrationPercent;
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
 
         if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
         {
-            // Monostat STR: 공격력 +40%, 물관 18%
-            attackPower *= 1.4f;
-            penetrationPercent += 18f;
-
             // Monostat STR: 가드 파괴 (선택적 훅)
             if (defenderGuard != null && defenderGuard.IsGuarding)
                 defenderGuard.BreakGuard();
@@ -141,12 +123,8 @@ public sealed class AttackProcessor : MonoBehaviour
         float defenderDefFinal = defenderStats.GetFinalTotal(StatKind.DEF);
         float defenderCurrentDefNormalized = defenderDefFinal / 100f; // editor sim과 동일한 스케일링 가정
 
-        float bonusEffNormalized = 0f;
-        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF)
-        {
-            // Monostat DEF: 방어 효율 +50%
-            bonusEffNormalized = 0.5f;
-        }
+        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
+        float bonusEffNormalized = defenderDerived.DefenseBonusNormalized;
 
         // 3) 최종 피해 계산 (reference-formulae.md의 Prediction은 DamageCalculator에 위임)
         float finalDamage = _damageCalculator.PredictFinalDamage(
@@ -155,9 +133,7 @@ public sealed class AttackProcessor : MonoBehaviour
             bonusEffNormalized,
             penetrationPercent);
 
-        // 4) Monostat CON: 최종 데미지 -30%
-        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
-            finalDamage *= 0.7f;
+        finalDamage *= defenderDerived.IncomingDamageMultiplier;
 
         finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
 
@@ -199,30 +175,22 @@ public sealed class AttackProcessor : MonoBehaviour
         if (attackData == null || _attackerStats == null || defenderStats == null)
             return 0f;
 
-        Identity attackerIdentity = _attackerStats.CurrentIdentity;
-        Identity defenderIdentity = defenderStats.CurrentIdentity;
-        float attackerStrFinal = _attackerStats.GetFinalTotal(StatKind.STR);
-        float attackPower = CalculateAttackPower(attackerStrFinal) * attackData.damage;
-        float penetrationPercent = attackerStrFinal * 0.3f;
+        DerivedCombatStats attackerDerived = _attackerStats.GetDerivedStats();
+        float attackPower = attackerDerived.AttackPower * attackData.damage;
+        float penetrationPercent = attackerDerived.PenetrationPercent;
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
 
-        if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
-        {
-            attackPower *= 1.4f;
-            penetrationPercent += 18f;
-        }
-
         float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
-        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
+        float bonusDefense = defenderDerived.DefenseBonusNormalized;
         float finalDamage = _damageCalculator.PredictFinalDamage(
             attackPower,
             defenderDef,
             bonusDefense,
             Clamp(penetrationPercent, 0f, 100f));
 
-        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
-            finalDamage *= 0.7f;
+        finalDamage *= defenderDerived.IncomingDamageMultiplier;
 
         return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
     }
@@ -240,11 +208,10 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
         float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
-        Identity defenderIdentity = defenderStats.CurrentIdentity;
-        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
+        float bonusDefense = defenderDerived.DefenseBonusNormalized;
         float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, bonusDefense, Mathf.Clamp(_currentPene, 0f, 100f));
-        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
-            finalDamage *= 0.7f;
+        finalDamage *= defenderDerived.IncomingDamageMultiplier;
         if (finalDamage <= 0f)
             return false;
 
@@ -273,16 +240,15 @@ public sealed class AttackProcessor : MonoBehaviour
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
 
         float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
-        Identity defenderIdentity = defenderStats.CurrentIdentity;
-        float bonusDefense = defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.DEF ? 0.5f : 0f;
+        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
+        float bonusDefense = defenderDerived.DefenseBonusNormalized;
         float finalDamage = _damageCalculator.PredictFinalDamage(
             attackPower,
             defenderDef,
             bonusDefense,
             Mathf.Clamp(_currentPene, 0f, 100f));
 
-        if (defenderIdentity.Type == IdentityType.Monostat && defenderIdentity.PrimaryStat == StatKind.CON)
-            finalDamage *= 0.7f;
+        finalDamage *= defenderDerived.IncomingDamageMultiplier;
 
         return Mathf.Max(0f, finalDamage);
     }
@@ -294,9 +260,5 @@ public sealed class AttackProcessor : MonoBehaviour
         return v;
     }
 
-    private static float CalculateAttackPower(float finalStr)
-    {
-        return BaseAttackPower + (Mathf.Max(0f, finalStr - BaseStatTotal) * AttackPowerPerStr);
-    }
 }
 

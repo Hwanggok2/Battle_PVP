@@ -9,10 +9,6 @@ namespace BattlePvp.Stats
     /// </summary>
     public sealed class StatManager : Mirror.NetworkBehaviour, IIdentitySource
     {
-        private const float BaseAttackPower = 22f;
-        private const float BaseStatTotal = 5f;
-        private const float AttackPowerPerStr = 3f;
-
         public static StatManager Local { get; private set; }
 
         [Header("Stat Data")]
@@ -106,79 +102,25 @@ namespace BattlePvp.Stats
         /// </summary>
         public StatContainer GetStatsCopy() => _stats;
 
+        public DerivedCombatStats GetDerivedStats()
+        {
+            return StatBalanceCalculator.Calculate(_stats, CurrentIdentity);
+        }
+
         /// <summary>
         /// 슬라이더 시뮬레이션용 데이터로 파생 스탯(ATK, DEF, MaxHP, Pene, Regen, MoveSpeed, AttackSpeed)을 즉시 계산합니다.
         /// </summary>
         public void CalculatePreviewStats(StatContainer virtualStats, out float previewAtk, out float previewDef, out float previewMaxHp, out float previewPene, out float previewRegen, out float previewMoveSpd, out float previewAtkSpd)
         {
-            float vStr = StatMath.FinalTotal(virtualStats.STR);
-            float vCon = StatMath.FinalTotal(virtualStats.CON);
-            float vAgi = StatMath.FinalTotal(virtualStats.AGI);
-            float vDef = StatMath.FinalTotal(virtualStats.DEF);
-
-            // 미리보기용 Identity
             Identity vId = Calculator.ResolveIdentity(virtualStats, out _);
-
-            // 1) ATK & Pene
-            float baseAtk = CalculateAttackPower(vStr);
-            float basePene = vStr * 0.3f;
-            if (vId.Type == IdentityType.Monostat && vId.PrimaryStat == StatKind.STR)
-            {
-                baseAtk *= 1.4f;
-                basePene += 18f;
-            }
-            previewAtk = baseAtk;
-            previewPene = Mathf.Clamp(basePene, 0f, 100f);
-
-            // 2) MaxHP & Regen (Base 100, CON * 15, STR * 4, DEF * 2)
-            float baseMaxHp = 100f + (vCon * 15f) + (vStr * 4f) + (vDef * 2f);
-            float baseRegen = vCon * 0.15f;
-            if (vId.Type == IdentityType.Monostat)
-            {
-                if (vId.PrimaryStat == StatKind.CON)
-                {
-                    baseMaxHp *= 1.6f;
-                    baseRegen += 5f;
-                }
-                else if (vId.PrimaryStat == StatKind.AGI)
-                {
-                    baseMaxHp *= 0.7f;
-                }
-            }
-            previewMaxHp = baseMaxHp;
-            previewRegen = baseRegen;
-
-            // 3) DEF 효율
-            float currentDefNormalized = vDef / 100f;
-            float bonusEff = (vId.Type == IdentityType.Monostat && vId.PrimaryStat == StatKind.DEF) ? 0.5f : 0f;
-            float cur = Mathf.Clamp01(currentDefNormalized);
-            float bonus = Mathf.Clamp01(bonusEff);
-            float finalEff = 1f - (1f - cur) * (1f - bonus);
-            finalEff = Mathf.Min(finalEff, 0.75f);
-            previewDef = Mathf.Max(0f, finalEff) * 100f; // 백분율 표기
-
-            // 4) MoveSpeed & AttackSpeed
-            float baseMs = 3.0f + (vAgi * 0.04f);
-            float baseAs = 0.6f + (vAgi * 0.02f);
-            if (vId.Type == IdentityType.Monostat)
-            {
-                if (vId.PrimaryStat == StatKind.AGI)
-                {
-                    baseMs *= 1.2f;
-                    baseAs *= 3f;
-                }
-                else if (vId.PrimaryStat == StatKind.STR)
-                {
-                    baseMs *= 0.75f;
-                    baseAs *= 0.75f;
-                }
-                else if (vId.PrimaryStat == StatKind.DEF)
-                {
-                    baseMs *= 0.8f;
-                }
-            }
-            previewMoveSpd = baseMs;
-            previewAtkSpd = baseAs;
+            DerivedCombatStats derived = StatBalanceCalculator.Calculate(virtualStats, vId);
+            previewAtk = derived.AttackPower;
+            previewDef = derived.DefenseEfficiencyPercent;
+            previewMaxHp = derived.MaxHp;
+            previewPene = derived.PenetrationPercent;
+            previewRegen = derived.RegenPerSecond;
+            previewMoveSpd = derived.MoveSpeed;
+            previewAtkSpd = derived.AttackSpeed;
         }
 
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
@@ -187,6 +129,8 @@ namespace BattlePvp.Stats
 
         private void OnEnable()
         {
+            StatBalanceConfig.BalanceChanged += OnBalanceChanged;
+
             if (_autoRecalculateOnEnable)
                 RecalculateIdentity();
 
@@ -210,12 +154,19 @@ namespace BattlePvp.Stats
 
         private void OnDisable()
         {
+            StatBalanceConfig.BalanceChanged -= OnBalanceChanged;
+
             if (Local == this) Local = null;
 
             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
                 BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
             }
+        }
+
+        private void OnBalanceChanged()
+        {
+            StatsChanged?.Invoke(_stats);
         }
 
         public override void OnStartLocalPlayer()
@@ -385,10 +336,6 @@ namespace BattlePvp.Stats
             ApplyStats(next, recalculateIdentity);
         }
 
-        private static float CalculateAttackPower(float finalStr)
-        {
-            return BaseAttackPower + (Mathf.Max(0f, finalStr - BaseStatTotal) * AttackPowerPerStr);
-        }
     }
 }
 

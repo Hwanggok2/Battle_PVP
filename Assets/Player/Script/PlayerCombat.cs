@@ -561,20 +561,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (_statManager != null)
         {
-            float agi = _statManager.GetFinalTotal(StatKind.AGI);
-            float baseAs = 0.6f + (agi * 0.02f);
-
-            Identity id = _statManager.CurrentIdentity;
-            if (id.Type == IdentityType.Monostat)
-            {
-                if (id.PrimaryStat == StatKind.AGI) baseAs *= 3f;
-                else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f;
-            }
-
-            if (SkillTime < _attackSpeedBonusUntil)
-                baseAs *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
-
-            _currentAttackSpeed = baseAs;
+            _currentAttackSpeed = ResolveCurrentAttackSpeed();
             if (animator != null)
                 animator.speed = _currentAttackSpeed;
         }
@@ -639,20 +626,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (_statManager != null)
         {
-            float agi = _statManager.GetFinalTotal(StatKind.AGI);
-            float baseAs = 0.6f + (agi * 0.02f);
-
-            Identity id = _statManager.CurrentIdentity;
-            if (id.Type == IdentityType.Monostat)
-            {
-                if (id.PrimaryStat == StatKind.AGI) baseAs *= 3f;
-                else if (id.PrimaryStat == StatKind.STR) baseAs *= 0.75f;
-            }
-
-            if (SkillTime < _attackSpeedBonusUntil)
-                baseAs *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
-
-            _currentAttackSpeed = baseAs;
+            _currentAttackSpeed = ResolveCurrentAttackSpeed();
         }
 
         if (animator != null)
@@ -671,6 +645,14 @@ public class PlayerCombat : NetworkBehaviour
                 hb.SetAttackContext(aimDirection, pm != null && pm.IsCrouching);
             }
         }
+    }
+
+    private float ResolveCurrentAttackSpeed()
+    {
+        float attackSpeed = _statManager != null ? _statManager.GetDerivedStats().AttackSpeed : 1f;
+        if (SkillTime < _attackSpeedBonusUntil)
+            attackSpeed *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
+        return Mathf.Max(0.01f, attackSpeed);
     }
 
     private void PlayAttackAnimation(int index)

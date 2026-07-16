@@ -27,13 +27,6 @@ namespace BattlePvp.Combat
         [SerializeField] private StatManager _statManager;
         [SerializeField] private Animator _animator; // [추가] 캐릭터 애니메이터
 
-        [Header("HP Model")]
-        [SerializeField] private float _baseMaxHp = 100f;
-        [Tooltip("FinalTotal(CON) 1당 증가하는 최대 HP")]
-        [SerializeField] private float _maxHpPerCon = 15f;
-        [Tooltip("FinalTotal(CON) 1당 초당 재생되는 HP")]
-        [SerializeField] private float _regenPerCon = 0.15f;
-
         [Header("Runtime")]
         [SyncVar(hook = nameof(OnHpChangedInternal))]
         [SerializeField] private float _currentHp = 100f;
@@ -61,7 +54,6 @@ namespace BattlePvp.Combat
         [SerializeField] private float _maxHp;
         [SerializeField] private float _currentRegen;
         [SerializeField] private float _defenseRate;
-        [SerializeField] private float _bonusDefenseEff;
         [SyncVar(hook = nameof(OnShieldSynced))] [SerializeField] private float _currentShield;
         [SyncVar] [SerializeField] private double _shieldExpiresAt;
         [SerializeField] private float _shieldSyncIntervalSeconds = 0.05f;
@@ -100,11 +92,6 @@ namespace BattlePvp.Combat
 
             if (_animator == null)
                 _animator = GetComponentInChildren<Animator>();
-
-            // 스탯 비율 동기화를 위해 유니티 인스펙터 변수 덮어쓰기 보정
-            _baseMaxHp = 100f;
-            _maxHpPerCon = 15f;
-            _regenPerCon = 0.15f;
 
             _damageCalculator = new DamageCalculator();
             _strategistRules = new StrategistRules();
@@ -196,12 +183,6 @@ namespace BattlePvp.Combat
             if (_statManager != null)
             {
                 _defenseRate = _statManager.GetFinalTotal(StatKind.DEF);
-                
-                Identity id = _statManager.CurrentIdentity;
-                if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.DEF)
-                    _bonusDefenseEff = 0.5f;
-                else
-                    _bonusDefenseEff = 0f;
             }
 
             if (!keepCurrentHpFlat)
@@ -514,23 +495,9 @@ namespace BattlePvp.Combat
         private float PredictMaxHp()
         {
             if (_statManager == null)
-                return _baseMaxHp;
+                return StatBalanceCalculator.Config.BaseMaxHp;
 
-            float conFinal = _statManager.GetFinalTotal(StatKind.CON);
-            float strFinal = _statManager.GetFinalTotal(StatKind.STR);
-            float defFinal = _statManager.GetFinalTotal(StatKind.DEF);
-            float max = _baseMaxHp + (conFinal * _maxHpPerCon) + (strFinal * 4f) + (defFinal * 2f);
-
-            // Monostat CON: 최대 체력 +60% (스펙 반영)
-            Identity id = _statManager.CurrentIdentity;
-            if (id.Type == IdentityType.Monostat)
-            {
-                if (id.PrimaryStat == StatKind.CON) max *= 1.6f;
-                // Monostat AGI: 최대 체력 -30% (스펙 반영)
-                else if (id.PrimaryStat == StatKind.AGI) max *= 0.7f;
-            }
-
-            return max;
+            return _statManager.GetDerivedStats().MaxHp;
         }
 
         private float PredictRegen()
@@ -538,15 +505,7 @@ namespace BattlePvp.Combat
             if (_statManager == null)
                 return 0f;
 
-            float conFinal = _statManager.GetFinalTotal(StatKind.CON);
-            float regen = conFinal * _regenPerCon;
-
-            // Monostat CON: 초당 재생력 +5
-            Identity id = _statManager.CurrentIdentity;
-            if (id.Type == IdentityType.Monostat && id.PrimaryStat == StatKind.CON)
-                regen += 5f;
-
-            return regen;
+            return _statManager.GetDerivedStats().RegenPerSecond;
         }
 
         private bool IsMonostatDef()

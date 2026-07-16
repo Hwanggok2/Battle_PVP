@@ -6,6 +6,7 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(100)]
 public sealed class BowAttackController : NetworkBehaviour
 {
     [Header("Settings")]
@@ -50,8 +51,13 @@ public sealed class BowAttackController : NetworkBehaviour
     private GameObject _crosshairRoot;
     private double _chargeStartedAt = -1d;
     private Vector3 _pendingDirection;
+    private Vector3 _pendingAimPoint;
     private float _pendingDamageMultiplier;
     private bool _hasPendingShot;
+    private bool _hasPendingAimPoint;
+    private bool _captureAimPointPending;
+    private bool _releaseArrowEventPending;
+    private bool _releaseFinishedPending;
     private bool _isVisuallyCharging;
     private bool _isAimHoldReady;
     private bool _releaseQueued;
@@ -74,6 +80,24 @@ public sealed class BowAttackController : NetworkBehaviour
     {
         CancelCharge();
         SetCrosshairVisible(false);
+    }
+
+    private void LateUpdate()
+    {
+        if (_captureAimPointPending)
+        {
+            _captureAimPointPending = false;
+            _hasPendingAimPoint = TryResolveCenterScreenAimPoint(out _pendingAimPoint);
+        }
+
+        if (_releaseArrowEventPending)
+            SpawnPendingArrowFromReleasePose();
+
+        if (_releaseFinishedPending && !_releaseArrowEventPending)
+        {
+            _releaseFinishedPending = false;
+            UnlockReleaseInput();
+        }
     }
 
     private void OnDestroy()
@@ -138,6 +162,10 @@ public sealed class BowAttackController : NetworkBehaviour
 
         _chargeStartedAt = -1d;
         _hasPendingShot = false;
+        _hasPendingAimPoint = false;
+        _captureAimPointPending = false;
+        _releaseArrowEventPending = false;
+        _releaseFinishedPending = false;
         _releaseQueued = false;
         _isAimHoldReady = false;
         _isReleaseLocked = false;
@@ -174,29 +202,26 @@ public sealed class BowAttackController : NetworkBehaviour
     public void OnBowReleaseArrow()
     {
         SetHandArrowVisible(false);
-        if (!_hasPendingShot)
+        if (!_hasPendingShot || _releaseArrowEventPending)
             return;
 
-        Vector3 direction = _pendingDirection.sqrMagnitude > 0.001f ? _pendingDirection.normalized : transform.forward;
-        float damageMultiplier = _pendingDamageMultiplier;
-        _hasPendingShot = false;
-
-        if (isClient && isLocalPlayer && !isServer)
-            CmdSpawnBowArrow(direction, damageMultiplier);
-        else if (NetworkServer.active)
-            SpawnBowArrow(direction, damageMultiplier);
+        _releaseArrowEventPending = true;
     }
 
     public void OnBowReleaseFinished()
     {
-        UnlockReleaseInput();
+        if (_releaseArrowEventPending)
+            _releaseFinishedPending = true;
+        else
+            UnlockReleaseInput();
     }
 
     private void QueueShot(JobSkillData bowData, float chargeSeconds, Vector3 direction)
     {
-        // Capture the local camera ray when the player releases the input. Animation events can
-        // reach a remote client several frames later, where recalculating this ray is unreliable.
-        _pendingDirection = ResolveCenterScreenDirection(direction);
+        // LateUpdate captures the release-frame camera ray after FollowCamera applies mouse input.
+        _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        _hasPendingAimPoint = false;
+        _captureAimPointPending = isLocalPlayer;
         float denominator = Mathf.Max(0.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds);
         float t = chargeSeconds < bowData.MinimumBowChargeSeconds
             ? 0f
@@ -299,24 +324,61 @@ public sealed class BowAttackController : NetworkBehaviour
         _animator.Play(stateName, safeLayer, 0f);
     }
 
-    [Command]
-    private void CmdSpawnBowArrow(Vector3 direction, float damageMultiplier)
+    private void SpawnPendingArrowFromReleasePose()
     {
-        SpawnBowArrow(direction, damageMultiplier);
+        _releaseArrowEventPending = false;
+        if (!_hasPendingShot)
+            return;
+
+        ResolveReferences();
+        Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
+        Vector3 spawnPosition = spawnPoint.position;
+        Vector3 direction = _hasPendingAimPoint
+            ? _pendingAimPoint - spawnPosition
+            : _pendingDirection;
+        if (direction.sqrMagnitude <= 0.001f)
+            direction = transform.forward;
+
+        float damageMultiplier = _pendingDamageMultiplier;
+        _hasPendingShot = false;
+        _hasPendingAimPoint = false;
+
+        if (isClient && isLocalPlayer && !isServer)
+            CmdSpawnBowArrow(spawnPosition, direction.normalized, damageMultiplier);
+        else if (NetworkServer.active)
+            SpawnBowArrow(spawnPosition, direction.normalized, damageMultiplier);
     }
 
-    private void SpawnBowArrow(Vector3 direction, float damageMultiplier)
+    [Command]
+    private void CmdSpawnBowArrow(Vector3 spawnPosition, Vector3 direction, float damageMultiplier)
+    {
+        SpawnBowArrow(spawnPosition, direction, damageMultiplier);
+    }
+
+    private void SpawnBowArrow(Vector3 requestedSpawnPosition, Vector3 direction, float damageMultiplier)
     {
         BowArrowProjectile projectilePrefab = ProjectilePrefab;
         if (!NetworkServer.active || projectilePrefab == null || damageMultiplier <= 0f)
             return;
 
         Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
+        Vector3 spawnPosition = IsValidRequestedSpawnPosition(requestedSpawnPosition)
+            ? requestedSpawnPosition
+            : spawnPoint.position;
         Vector3 normalizedDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         Quaternion rotation = Quaternion.LookRotation(normalizedDirection, Vector3.up);
-        BowArrowProjectile arrow = Instantiate(projectilePrefab, spawnPoint.position, rotation);
+        BowArrowProjectile arrow = Instantiate(projectilePrefab, spawnPosition, rotation);
         arrow.Initialize(netId, normalizedDirection, ProjectileSpeed, ProjectileLifeSeconds, damageMultiplier);
         NetworkServer.Spawn(arrow.gameObject);
+    }
+
+    private bool IsValidRequestedSpawnPosition(Vector3 position)
+    {
+        if (!float.IsFinite(position.x) || !float.IsFinite(position.y) || !float.IsFinite(position.z))
+            return false;
+
+        const float maxDistanceFromOwner = 4f;
+        return (position - transform.position).sqrMagnitude <= maxDistanceFromOwner * maxDistanceFromOwner;
     }
 
     private void ResolveReferences()
@@ -328,7 +390,7 @@ public sealed class BowAttackController : NetworkBehaviour
         if (_animator == null)
             _animator = GetComponentInChildren<Animator>();
         if (_arrowSpawnPoint == null)
-            _arrowSpawnPoint = FindChildTransform("ArrowSpawnPoint");
+            _arrowSpawnPoint = FindChildTransform("Arrow_Point") ?? FindChildTransform("ArrowSpawnPoint");
         if (_handArrowVisual == null)
             _handArrowVisual = FindChildGameObject("Arrow_hand");
         if (_bowAimRigObject == null)
@@ -341,8 +403,9 @@ public sealed class BowAttackController : NetworkBehaviour
             _bowAimRigTarget = GetComponent<BowAimRigTarget>();
     }
 
-    private Vector3 ResolveCenterScreenDirection(Vector3 fallback)
+    private bool TryResolveCenterScreenAimPoint(out Vector3 aimPoint)
     {
+        aimPoint = Vector3.zero;
         if (isLocalPlayer)
         {
             if (_followCamera == null)
@@ -350,16 +413,13 @@ public sealed class BowAttackController : NetworkBehaviour
 
             if (_followCamera != null)
             {
-                Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
                 Ray aimRay = _followCamera.GetAimRay();
-                Vector3 aimPoint = ResolveAimPoint(aimRay);
-                Vector3 direction = aimPoint - spawnPoint.position;
-                if (direction.sqrMagnitude > 0.001f)
-                    return direction.normalized;
+                aimPoint = ResolveAimPoint(aimRay);
+                return true;
             }
         }
 
-        return fallback.sqrMagnitude > 0.001f ? fallback.normalized : transform.forward;
+        return false;
     }
 
     private Vector3 ResolveAimPoint(Ray aimRay)
@@ -550,6 +610,14 @@ public sealed class BowAttackController : NetworkBehaviour
     {
         yield return new WaitForSeconds(seconds);
         _releaseLockFallbackRoutine = null;
+
+        if (_hasPendingShot)
+        {
+            _releaseArrowEventPending = true;
+            _releaseFinishedPending = true;
+            yield break;
+        }
+
         UnlockReleaseInput();
     }
 

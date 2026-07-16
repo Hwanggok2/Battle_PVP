@@ -502,17 +502,7 @@ public class PlayerManager : NetworkBehaviour
     private void UpdateMoveSpeed()
     {
         if (_statManager == null) return;
-        float agi = _statManager.GetFinalTotal(StatKind.AGI);
-        moveSpeed = 3.0f + (agi * 0.04f);
-
-        // Monostat 보너스/페널티 (기획안 반영)
-        Identity id = _statManager.CurrentIdentity;
-        if (id.Type == IdentityType.Monostat)
-        {
-            if (id.PrimaryStat == StatKind.AGI) moveSpeed *= 1.2f; // 민첩 몰빵: 이속 +20%
-            else if (id.PrimaryStat == StatKind.STR) moveSpeed *= 0.75f; // 힘 몰빵: 이속 -25%
-            else if (id.PrimaryStat == StatKind.DEF) moveSpeed *= 0.8f; // 방어 몰빵: 이속 -20%
-        }
+        moveSpeed = _statManager.GetDerivedStats().MoveSpeed;
     }
 
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)

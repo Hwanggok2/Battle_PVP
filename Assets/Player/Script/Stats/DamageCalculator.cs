@@ -7,9 +7,12 @@ namespace BattlePvp.Stats
     /// </summary>
     public sealed class DamageCalculator
     {
-        // reference-formulae.md 기준
-        private const float HardCapDefenseEff = 0.75f; // 75%
-        private const float ThornsFixedDamage = 5f;
+        private readonly StatBalanceConfig _balance;
+
+        public DamageCalculator(StatBalanceConfig balance = null)
+        {
+            _balance = balance != null ? balance : StatBalanceCalculator.Config;
+        }
 
         /// <summary>
         /// 최종 데미지 공식:
@@ -41,19 +44,19 @@ namespace BattlePvp.Stats
             float cur = Clamp01(currentDefNormalized);
             float bonus = Clamp01(bonusEffNormalized);
             float finalEff = 1f - (1f - cur) * (1f - bonus);
-            finalEff = Math.Min(finalEff, HardCapDefenseEff);
+            finalEff = Math.Min(finalEff, _balance.DefenseEfficiencyHardCap);
             return Math.Max(0f, finalEff);
         }
 
         /// <summary>
         /// 가시(Thorns) 반사 데미지:
-        /// - 공격자 ATK * 0.15 + 5
-        /// - 공격자 MaxHP * 0.07 상한
+        /// - 공격자 ATK 계수와 고정 피해는 StatBalanceConfig 기준
+        /// - 공격자 MaxHP 상한도 StatBalanceConfig 기준
         /// </summary>
         public float PredictThornsReflectDamage(float attackerAtkPower, float attackerMaxHp)
         {
-            float reflect = (attackerAtkPower * 0.15f) + ThornsFixedDamage;
-            float cap = attackerMaxHp * 0.07f;
+            float reflect = (attackerAtkPower * _balance.ThornsAttackPowerRatio) + _balance.ThornsFixedDamage;
+            float cap = attackerMaxHp * _balance.ThornsAttackerMaxHpCapRatio;
             return Math.Max(0f, Math.Min(reflect, cap));
         }
 
