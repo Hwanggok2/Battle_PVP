@@ -8089,7 +8089,7 @@ MonoBehaviour:
   _projectileSpeedOverride: -1
   _projectileLifeSecondsOverride: -1
   _releaseInputLockFallbackSecondsOverride: -1
-  _aimDistance: 1000
+  _aimDistance: 10
   _aimHitMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -8098,7 +8098,8 @@ MonoBehaviour:
   _bowCameraRotationOffset: {x: 0, y: 0, z: 0}
   _showCrosshair: 1
   _chargeRingColor: {r: 1, g: 1, b: 1, a: 0.75}
-  _chargeRingMaximumScale: 2.2
+  _chargeRingMaximumScale: 5
+  _chargeRingThickness: 8
 --- !u!114 &1361630273049683799
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8386,17 +8387,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 2e4d9937ca9444f79f19b24c2fb74a24, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.CombatHitFeedback
   _normalHitColor: {r: 1, g: 1, b: 1, a: 1}
   _headshotColor: {r: 1, g: 0.08, b: 0.08, a: 1}
   _startOpacity: 0.9
   _endOpacity: 0
-  _duration: 0.22
+  _duration: 0.17
   _growPortion: 0.35
-  _centerGap: 7
-  _maximumSpikeLength: 18
-  _spikeWidth: 4
+  _centerGap: 17
+  _maximumSpikeLength: 40
+  _spikeWidth: 8
 --- !u!114 &6114079827364519025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8407,9 +8408,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5a8d374c722a446ab27bd16644422947, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.CombatReticleView
-  _baseColor: {r: 1, g: 0, b: 0, a: 1}
+  _baseColor: {r: 1, g: 1, b: 1, a: 1}
   _baseSize: 15
 --- !u!4 &2873757302630405629 stripped
 Transform:

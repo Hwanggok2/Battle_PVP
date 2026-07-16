@@ -16,9 +16,9 @@ namespace BattlePvp.UI
         [Header("Animation")]
         [Min(0.01f)] [SerializeField] private float _duration = 0.22f;
         [Range(0.05f, 0.95f)] [SerializeField] private float _growPortion = 0.35f;
-        [Min(0f)] [SerializeField] private float _centerGap = 7f;
-        [Min(1f)] [SerializeField] private float _maximumSpikeLength = 18f;
-        [Min(0.5f)] [SerializeField] private float _spikeWidth = 4f;
+        [Range(0f, 50f)] [SerializeField] private float _centerGap = 7f;
+        [Range(1f, 60f)] [SerializeField] private float _maximumSpikeLength = 18f;
+        [Range(0.5f, 20f)] [SerializeField] private float _spikeWidth = 4f;
 
         public void Play(bool isHeadshot)
         {
@@ -29,8 +29,15 @@ namespace BattlePvp.UI
             view.InitializeForLocalPlayer(transform);
 
             Color baseColor = isHeadshot ? _headshotColor : _normalHitColor;
-            float maximumSize = (_centerGap + _maximumSpikeLength + _spikeWidth) * 2f;
-            view.PlayHit(baseColor, _startOpacity, _endOpacity, _duration, _growPortion, maximumSize);
+            view.PlayHit(
+                baseColor,
+                _startOpacity,
+                _endOpacity,
+                _duration,
+                _growPortion,
+                _centerGap,
+                _maximumSpikeLength,
+                _spikeWidth);
         }
     }
 }

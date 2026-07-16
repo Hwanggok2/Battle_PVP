@@ -37,7 +37,8 @@ public sealed class BowAttackController : NetworkBehaviour
     [SerializeField] private Vector3 _bowCameraRotationOffset;
     [SerializeField] private bool _showCrosshair = true;
     [SerializeField] private Color _chargeRingColor = new Color(1f, 1f, 1f, 0.75f);
-    [Min(1f)] [SerializeField] private float _chargeRingMaximumScale = 2.2f;
+    [Range(1f, 5f)] [SerializeField] private float _chargeRingMaximumScale = 2.2f;
+    [Range(0.5f, 8f)] [SerializeField] private float _chargeRingThickness = 2f;
 
     private PlayerCombat _playerCombat;
     private PlayerManager _playerManager;
@@ -577,7 +578,14 @@ public sealed class BowAttackController : NetworkBehaviour
         float damageProgress = elapsed < _activeChargeData.MinimumBowChargeSeconds
             ? 0f
             : Mathf.Clamp01((elapsed - _activeChargeData.MinimumBowChargeSeconds) / denominator);
-        _reticleView.SetCharge(damageProgress, _chargeRingMaximumScale, _chargeRingColor);
+
+        if (_chargeRingMaximumScale <= 1.001f || damageProgress >= 0.999f)
+        {
+            SetChargeRingVisible(false);
+            return;
+        }
+
+        _reticleView.SetCharge(damageProgress, _chargeRingMaximumScale, _chargeRingColor, _chargeRingThickness);
         _chargeRingVisible = true;
     }
 
