@@ -18,6 +18,7 @@ namespace BattlePvp.UI
         [SerializeField] private Button _refreshButton;             // 새로고침 버튼
 
         [SerializeField] private ScrollRect _scrollRect;
+        [SerializeField] private Scrollbar _horizontalScrollbar;
         [SerializeField] private Scrollbar _verticalScrollbar;
         [SerializeField] private GameObject _developerPanelRoot;
         [SerializeField] private TMP_InputField _adminKeyInput;
@@ -31,12 +32,19 @@ namespace BattlePvp.UI
         [SerializeField] private float _manualRefreshCooldownSeconds = 2f;
         [SerializeField] private float _scrollSensitivity = 24f;
 
-        private const float RoomItemHeight = 25f;
-        private const float RoomItemSpacing = 15f;
-        private const float RoomListPaddingLeft = 20f;
-        private const float RoomListPaddingRight = 20f;
-        private const float RoomListPaddingTop = 15f;
-        private const float RoomListPaddingBottom = 0f;
+        [Header("Scrollbars")]
+        [SerializeField] private bool _showHorizontalScrollbar;
+        [SerializeField, Min(1f)] private float _scrollbarThickness = 20f;
+        [SerializeField, Min(0f)] private float _scrollbarMargin = 0f;
+
+        [Header("Room List Layout")]
+        [SerializeField, Min(1f)] private float _roomItemHeight = 25f;
+        [SerializeField, Min(0f)] private float _roomItemSpacing = 15f;
+        [SerializeField, Min(0f)] private float _roomListPaddingLeft = 20f;
+        [SerializeField, Min(0f)] private float _roomListPaddingRight = 20f;
+        [SerializeField, Min(0f)] private float _roomListPaddingTop = 15f;
+        [SerializeField, Min(0f)] private float _roomListPaddingBottom = 0f;
+        [SerializeField, Min(1f)] private float _minimumRoomItemWidth = 300f;
 
         private readonly List<RoomListItem> _instantiatedItems = new List<RoomListItem>();
         private readonly Dictionary<string, PlayFabBattleManager.RoomInfo> _lastVisibleRooms = new Dictionary<string, PlayFabBattleManager.RoomInfo>();
@@ -293,7 +301,7 @@ namespace BattlePvp.UI
                 _contentParent = contentRect;
         }
 
-        private static void PrepareItemForLayout(RoomListItem item)
+        private void PrepareItemForLayout(RoomListItem item)
         {
             if (item == null)
                 return;
@@ -306,7 +314,7 @@ namespace BattlePvp.UI
                 rect.pivot = new Vector2(0.5f, 1f);
                 rect.anchoredPosition = Vector2.zero;
                 rect.localScale = Vector3.one;
-                rect.sizeDelta = new Vector2(-(RoomListPaddingLeft + RoomListPaddingRight), RoomItemHeight);
+                rect.sizeDelta = new Vector2(-(_roomListPaddingLeft + _roomListPaddingRight), _roomItemHeight);
             }
 
             var layoutElement = item.GetComponent<LayoutElement>();
@@ -314,8 +322,8 @@ namespace BattlePvp.UI
                 layoutElement = item.gameObject.AddComponent<LayoutElement>();
 
             layoutElement.ignoreLayout = false;
-            layoutElement.minHeight = RoomItemHeight;
-            layoutElement.preferredHeight = RoomItemHeight;
+            layoutElement.minHeight = _roomItemHeight;
+            layoutElement.preferredHeight = _roomItemHeight;
             layoutElement.flexibleHeight = 0f;
         }
 
@@ -327,24 +335,94 @@ namespace BattlePvp.UI
             if (_scrollRect == null)
                 return;
 
+            if (_horizontalScrollbar == null)
+                _horizontalScrollbar = _scrollRect.horizontalScrollbar;
+
             if (_verticalScrollbar == null)
                 _verticalScrollbar = _scrollRect.verticalScrollbar;
 
+            NormalizeScrollRectRects();
+            NormalizeScrollbarRects();
+
             _scrollRect.vertical = true;
-            _scrollRect.horizontal = false;
+            _scrollRect.horizontal = _showHorizontalScrollbar;
             _scrollRect.scrollSensitivity = Mathf.Max(1f, _scrollSensitivity);
             _scrollRect.movementType = ScrollRect.MovementType.Clamped;
             _scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-            _scrollRect.horizontalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+            _scrollRect.horizontalScrollbarVisibility = _showHorizontalScrollbar
+                ? ScrollRect.ScrollbarVisibility.Permanent
+                : ScrollRect.ScrollbarVisibility.AutoHide;
 
-            if (_scrollRect.horizontalScrollbar != null)
-                _scrollRect.horizontalScrollbar.gameObject.SetActive(false);
+            if (_horizontalScrollbar != null)
+            {
+                _scrollRect.horizontalScrollbar = _horizontalScrollbar;
+                _horizontalScrollbar.gameObject.SetActive(_showHorizontalScrollbar);
+                _horizontalScrollbar.interactable = _showHorizontalScrollbar;
+            }
 
             if (_verticalScrollbar != null)
             {
                 _scrollRect.verticalScrollbar = _verticalScrollbar;
                 _verticalScrollbar.gameObject.SetActive(true);
                 _verticalScrollbar.interactable = true;
+            }
+        }
+
+        private void NormalizeScrollbarRects()
+        {
+            float thickness = Mathf.Max(1f, _scrollbarThickness);
+            float margin = Mathf.Max(0f, _scrollbarMargin);
+            float horizontalReserve = _showHorizontalScrollbar ? thickness + margin : 0f;
+
+            if (_verticalScrollbar != null && _verticalScrollbar.TryGetComponent(out RectTransform verticalRect))
+            {
+                verticalRect.anchorMin = new Vector2(1f, 0f);
+                verticalRect.anchorMax = new Vector2(1f, 1f);
+                verticalRect.pivot = new Vector2(1f, 1f);
+                verticalRect.anchoredPosition = new Vector2(-margin, 0f);
+                verticalRect.sizeDelta = new Vector2(thickness, -horizontalReserve);
+                verticalRect.localScale = Vector3.one;
+            }
+
+            if (_horizontalScrollbar != null && _horizontalScrollbar.TryGetComponent(out RectTransform horizontalRect))
+            {
+                horizontalRect.anchorMin = new Vector2(0f, 0f);
+                horizontalRect.anchorMax = new Vector2(1f, 0f);
+                horizontalRect.pivot = new Vector2(0f, 0f);
+                horizontalRect.anchoredPosition = new Vector2(0f, margin);
+                horizontalRect.sizeDelta = new Vector2(-(thickness + margin), thickness);
+                horizontalRect.localScale = Vector3.one;
+            }
+        }
+
+        private void NormalizeScrollRectRects()
+        {
+            if (_scrollRect == null)
+                return;
+
+            float thickness = Mathf.Max(1f, _scrollbarThickness);
+            float margin = Mathf.Max(0f, _scrollbarMargin);
+            float rightReserve = thickness + margin;
+            float bottomReserve = _showHorizontalScrollbar ? thickness + margin : 0f;
+
+            if (_scrollRect.viewport != null)
+            {
+                RectTransform viewport = _scrollRect.viewport;
+                viewport.anchorMin = Vector2.zero;
+                viewport.anchorMax = Vector2.one;
+                viewport.pivot = new Vector2(0f, 1f);
+                viewport.offsetMin = new Vector2(0f, bottomReserve);
+                viewport.offsetMax = new Vector2(-rightReserve, 0f);
+                viewport.localScale = Vector3.one;
+            }
+
+            if (_contentParent != null)
+            {
+                _contentParent.anchorMin = new Vector2(0f, 1f);
+                _contentParent.anchorMax = new Vector2(1f, 1f);
+                _contentParent.pivot = new Vector2(0.5f, 1f);
+                _contentParent.anchoredPosition = Vector2.zero;
+                _contentParent.localScale = Vector3.one;
             }
         }
 
@@ -356,15 +434,19 @@ namespace BattlePvp.UI
             ConfigureContentLayout();
 
             int itemCount = _instantiatedItems.Count;
-            float contentHeight = RoomListPaddingTop + RoomListPaddingBottom;
+            float contentHeight = _roomListPaddingTop + _roomListPaddingBottom;
             if (itemCount > 0)
-                contentHeight += itemCount * RoomItemHeight + Mathf.Max(0, itemCount - 1) * RoomItemSpacing;
+                contentHeight += itemCount * _roomItemHeight + Mathf.Max(0, itemCount - 1) * _roomItemSpacing;
 
             float viewportHeight = 0f;
             if (_scrollRect != null && _scrollRect.viewport != null)
                 viewportHeight = _scrollRect.viewport.rect.height;
 
+            float viewportWidth = GetViewportWidth();
+            float itemWidth = Mathf.Max(_minimumRoomItemWidth, viewportWidth - _roomListPaddingLeft - _roomListPaddingRight);
+
             contentHeight = Mathf.Max(contentHeight, viewportHeight);
+            _contentParent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
             _contentParent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
             _contentParent.anchoredPosition = Vector2.zero;
 
@@ -379,14 +461,14 @@ namespace BattlePvp.UI
                     continue;
 
                 rect.anchorMin = new Vector2(0f, 1f);
-                rect.anchorMax = new Vector2(1f, 1f);
+                rect.anchorMax = new Vector2(0f, 1f);
                 rect.pivot = new Vector2(0.5f, 1f);
                 rect.localScale = Vector3.one;
-                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, RoomItemHeight);
-                rect.sizeDelta = new Vector2(-(RoomListPaddingLeft + RoomListPaddingRight), RoomItemHeight);
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, itemWidth);
+                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, _roomItemHeight);
                 rect.anchoredPosition = new Vector2(
-                    (RoomListPaddingLeft - RoomListPaddingRight) * 0.5f,
-                    -(RoomListPaddingTop + i * (RoomItemHeight + RoomItemSpacing)));
+                    _roomListPaddingLeft + itemWidth * 0.5f,
+                    -(_roomListPaddingTop + i * (_roomItemHeight + _roomItemSpacing)));
             }
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_contentParent);
@@ -397,6 +479,25 @@ namespace BattlePvp.UI
                 _scrollRect.content = _contentParent;
                 _scrollRect.verticalNormalizedPosition = 1f;
             }
+        }
+
+        private float GetViewportWidth()
+        {
+            if (_scrollRect != null && _scrollRect.viewport != null)
+            {
+                float viewportWidth = _scrollRect.viewport.rect.width;
+                if (viewportWidth > 1f)
+                    return viewportWidth;
+            }
+
+            if (_contentParent != null && _contentParent.parent is RectTransform parentRect)
+            {
+                float parentWidth = parentRect.rect.width;
+                if (parentWidth > 1f)
+                    return parentWidth;
+            }
+
+            return _minimumRoomItemWidth + _roomListPaddingLeft + _roomListPaddingRight;
         }
 
         private void ConfigureContentLayout()
@@ -414,11 +515,17 @@ namespace BattlePvp.UI
             if (layout == null)
                 layout = _contentParent.gameObject.AddComponent<VerticalLayoutGroup>();
 
-            layout.enabled = false;
+            layout.enabled = true;
+            layout.padding = new RectOffset(
+                Mathf.RoundToInt(_roomListPaddingLeft),
+                Mathf.RoundToInt(_roomListPaddingRight),
+                Mathf.RoundToInt(_roomListPaddingTop),
+                Mathf.RoundToInt(_roomListPaddingBottom));
+            layout.spacing = _roomItemSpacing;
             layout.childAlignment = TextAnchor.UpperLeft;
-            layout.childControlWidth = true;
+            layout.childControlWidth = false;
             layout.childControlHeight = false;
-            layout.childForceExpandWidth = true;
+            layout.childForceExpandWidth = false;
             layout.childForceExpandHeight = false;
             layout.reverseArrangement = false;
 
