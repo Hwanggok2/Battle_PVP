@@ -44,7 +44,6 @@ namespace BattlePvp.UI
         [SerializeField, Min(0f)] private float _roomListPaddingRight = 20f;
         [SerializeField, Min(0f)] private float _roomListPaddingTop = 15f;
         [SerializeField, Min(0f)] private float _roomListPaddingBottom = 0f;
-        [SerializeField, Min(1f)] private float _minimumRoomItemWidth = 300f;
 
         private readonly List<RoomListItem> _instantiatedItems = new List<RoomListItem>();
         private readonly Dictionary<string, PlayFabBattleManager.RoomInfo> _lastVisibleRooms = new Dictionary<string, PlayFabBattleManager.RoomInfo>();
@@ -262,8 +261,8 @@ namespace BattlePvp.UI
                         _lastVisibleRooms[kvp.Key] = kvp.Value;
                 }
 
-                LayoutRoomItems();
                 EnsureScrollBarVisible();
+                LayoutRoomItems();
                 Debug.Log($"[RoomList] Refresh completed. {visibleCount} rooms shown ({rooms.Count} returned).");
                 RunQueuedRefreshIfNeeded();
             });
@@ -442,34 +441,9 @@ namespace BattlePvp.UI
             if (_scrollRect != null && _scrollRect.viewport != null)
                 viewportHeight = _scrollRect.viewport.rect.height;
 
-            float viewportWidth = GetViewportWidth();
-            float itemWidth = Mathf.Max(_minimumRoomItemWidth, viewportWidth - _roomListPaddingLeft - _roomListPaddingRight);
-
             contentHeight = Mathf.Max(contentHeight, viewportHeight);
-            _contentParent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
             _contentParent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
             _contentParent.anchoredPosition = Vector2.zero;
-
-            for (int i = 0; i < _instantiatedItems.Count; i++)
-            {
-                var item = _instantiatedItems[i];
-                if (item == null)
-                    continue;
-
-                var rect = item.GetComponent<RectTransform>();
-                if (rect == null)
-                    continue;
-
-                rect.anchorMin = new Vector2(0f, 1f);
-                rect.anchorMax = new Vector2(0f, 1f);
-                rect.pivot = new Vector2(0.5f, 1f);
-                rect.localScale = Vector3.one;
-                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, itemWidth);
-                rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, _roomItemHeight);
-                rect.anchoredPosition = new Vector2(
-                    _roomListPaddingLeft + itemWidth * 0.5f,
-                    -(_roomListPaddingTop + i * (_roomItemHeight + _roomItemSpacing)));
-            }
 
             LayoutRebuilder.ForceRebuildLayoutImmediate(_contentParent);
             Canvas.ForceUpdateCanvases();
@@ -479,25 +453,6 @@ namespace BattlePvp.UI
                 _scrollRect.content = _contentParent;
                 _scrollRect.verticalNormalizedPosition = 1f;
             }
-        }
-
-        private float GetViewportWidth()
-        {
-            if (_scrollRect != null && _scrollRect.viewport != null)
-            {
-                float viewportWidth = _scrollRect.viewport.rect.width;
-                if (viewportWidth > 1f)
-                    return viewportWidth;
-            }
-
-            if (_contentParent != null && _contentParent.parent is RectTransform parentRect)
-            {
-                float parentWidth = parentRect.rect.width;
-                if (parentWidth > 1f)
-                    return parentWidth;
-            }
-
-            return _minimumRoomItemWidth + _roomListPaddingLeft + _roomListPaddingRight;
         }
 
         private void ConfigureContentLayout()
@@ -523,9 +478,9 @@ namespace BattlePvp.UI
                 Mathf.RoundToInt(_roomListPaddingBottom));
             layout.spacing = _roomItemSpacing;
             layout.childAlignment = TextAnchor.UpperLeft;
-            layout.childControlWidth = false;
+            layout.childControlWidth = true;
             layout.childControlHeight = false;
-            layout.childForceExpandWidth = false;
+            layout.childForceExpandWidth = true;
             layout.childForceExpandHeight = false;
             layout.reverseArrangement = false;
 
