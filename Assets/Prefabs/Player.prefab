@@ -8397,7 +8397,7 @@ MonoBehaviour:
   _growPortion: 0.35
   _centerGap: 17
   _maximumSpikeLength: 40
-  _spikeWidth: 8
+  _spikeWidth: 2
 --- !u!114 &6114079827364519025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8410,6 +8410,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5a8d374c722a446ab27bd16644422947, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.CombatReticleView
+  _baseReticleSprite: {fileID: 21300000, guid: 8a2ccbc5e2394fe09b473e9801ae9234, type: 3}
+  _chargeReticleSprite: {fileID: 21300000, guid: 8a2ccbc5e2394fe09b473e9801ae9234, type: 3}
+  _hitSpikeSprite: {fileID: 21300000, guid: 1554dbf37b654cb3895f1649978ae9a4, type: 3}
   _baseColor: {r: 1, g: 1, b: 1, a: 1}
   _baseSize: 15
 --- !u!4 &2873757302630405629 stripped

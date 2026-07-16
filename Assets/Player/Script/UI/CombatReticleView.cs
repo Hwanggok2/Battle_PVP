@@ -17,6 +17,14 @@ namespace BattlePvp.UI
             new Vector2(-1f, -1f).normalized
         };
 
+        [Header("Sprites")]
+        [Tooltip("Base reticle sprite. Uses the default Resources sprite when empty.")]
+        [SerializeField] private Sprite _baseReticleSprite;
+        [Tooltip("Charge reticle sprite. Uses the generated ring and thickness setting when empty.")]
+        [SerializeField] private Sprite _chargeReticleSprite;
+        [Tooltip("Hit feedback spike sprite. Uses the default Resources sprite when empty.")]
+        [SerializeField] private Sprite _hitSpikeSprite;
+
         [Header("Base Reticle")]
         [SerializeField] private Color _baseColor = new Color(1f, 0f, 0f, 1f);
         [Range(4f, 80f)] [SerializeField] private float _baseSize = 15f;
@@ -65,7 +73,11 @@ namespace BattlePvp.UI
             if (_chargeImage == null)
                 return;
 
-            EnsureChargeRingSprite(thickness);
+            if (_chargeReticleSprite != null)
+                _chargeImage.sprite = _chargeReticleSprite;
+            else
+                EnsureChargeRingSprite(thickness);
+
             float scale = Mathf.Lerp(Mathf.Max(1f, maximumScale), 1f, Mathf.Clamp01(damageProgress));
             _chargeImage.rectTransform.sizeDelta = Vector2.one * (_baseSize * scale);
             _chargeImage.color = color;
@@ -106,10 +118,14 @@ namespace BattlePvp.UI
 
         private void CreateImages(Transform parent)
         {
-            Sprite ringSprite = Resources.Load<Sprite>(RingResourcePath);
-            Sprite spikeSprite = Resources.Load<Sprite>(SpikeResourcePath);
+            Sprite ringSprite = _baseReticleSprite != null
+                ? _baseReticleSprite
+                : Resources.Load<Sprite>(RingResourcePath);
+            Sprite spikeSprite = _hitSpikeSprite != null
+                ? _hitSpikeSprite
+                : Resources.Load<Sprite>(SpikeResourcePath);
             _baseImage = CreateImage(parent, "BaseReticle", ringSprite, _baseSize, _baseSize, _baseColor, true);
-            _chargeImage = CreateImage(parent, "ChargeReticle", null, _baseSize, _baseSize, Color.white, true);
+            _chargeImage = CreateImage(parent, "ChargeReticle", _chargeReticleSprite, _baseSize, _baseSize, Color.white, true);
 
             for (int i = 0; i < _hitSpikes.Length; i++)
             {
