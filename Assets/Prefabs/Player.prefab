@@ -1027,7 +1027,7 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 25
+    m_FontSize: 20
     m_FontStyle: 1
     m_BestFit: 0
     m_MinSize: 0
@@ -8404,8 +8404,8 @@ MonoBehaviour:
   _spikeWidth: 10
   _statusDamageDuration: 0.22
   _statusDamageGrowPortion: 0.35
-  _statusDamageCenterGap: 18
-  _statusDamageMaximumSpikeLength: 44.8
+  _statusDamageCenterGap: 32
+  _statusDamageMaximumSpikeLength: 42
   _statusDamageSpikeWidth: 10
 --- !u!114 &6114079827364519025
 MonoBehaviour:

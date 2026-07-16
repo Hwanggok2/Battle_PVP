@@ -41,6 +41,7 @@ namespace BattlePvp.UI
         [SerializeField] private Image _identityIcon;
         [SerializeField] private TMP_Text _identityName;
         [SerializeField] private IdentitySpriteSet _spriteSet;
+        [SerializeField] private UIIdentityGlitchBinder[] _identityPreviewGlitchBinders;
 
         [Header("Derived Stats Preview")]
         [SerializeField] private TMP_Text _previewAtkText;
@@ -482,6 +483,7 @@ namespace BattlePvp.UI
             if (_remainPointsText != null) _remainPointsText.text = $"잔여 스탯: {remain}";
 
             Identity id = _identityCalculator.ResolveIdentity(_virtualStats, out _);
+            ApplyIdentityPreviewGlitch(id);
             if (_identityName != null) {
                 _sb.Clear();
                 _sb.Append(id.PrimaryStat); _sb.Append(' '); _sb.Append(id.Type.ToString().ToUpperInvariant());
@@ -528,6 +530,7 @@ namespace BattlePvp.UI
         {
             if (_identityIcon != null && _identityName != null)
             {
+                ResolveIdentityPreviewGlitchBinders();
                 if (!_identityIcon.gameObject.activeSelf)
                     _identityIcon.gameObject.SetActive(true);
                 if (!_identityName.gameObject.activeSelf)
@@ -549,6 +552,31 @@ namespace BattlePvp.UI
                 _identityIcon.gameObject.SetActive(true);
             if (_identityName != null && !_identityName.gameObject.activeSelf)
                 _identityName.gameObject.SetActive(true);
+
+            if ((_identityPreviewGlitchBinders == null || _identityPreviewGlitchBinders.Length == 0) && preview != null)
+                _identityPreviewGlitchBinders = preview.GetComponentsInChildren<UIIdentityGlitchBinder>(true);
+        }
+
+        private void ResolveIdentityPreviewGlitchBinders()
+        {
+            if (_identityPreviewGlitchBinders != null && _identityPreviewGlitchBinders.Length > 0)
+                return;
+
+            Transform preview = FindChildRecursive(transform, "Identity_Preview");
+            if (preview != null)
+                _identityPreviewGlitchBinders = preview.GetComponentsInChildren<UIIdentityGlitchBinder>(true);
+        }
+
+        private void ApplyIdentityPreviewGlitch(Identity identity)
+        {
+            if (_identityPreviewGlitchBinders == null || _identityPreviewGlitchBinders.Length == 0)
+                return;
+
+            foreach (UIIdentityGlitchBinder binder in _identityPreviewGlitchBinders)
+            {
+                if (binder != null)
+                    binder.SetIdentity(identity);
+            }
         }
 
         private static Transform FindChildRecursive(Transform root, string targetName)

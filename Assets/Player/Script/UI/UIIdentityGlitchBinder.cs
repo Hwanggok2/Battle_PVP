@@ -1,5 +1,6 @@
 using BattlePvp.Combat;
 using BattlePvp.Stats;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -44,7 +45,6 @@ namespace BattlePvp.UI
         [SerializeField] [Range(0f, 1f)] private float _vignetteMainSoftness = 1.0f;
 
         [Header("Primary Stat Color")]
-        [SerializeField] private bool _applyRuntimeStatColor;
         [SerializeField] private Color _strColor = Color.red;
         [SerializeField] private Color _agiColor = Color.green;
         [SerializeField] private Color _conColor = Color.yellow;
@@ -67,15 +67,15 @@ namespace BattlePvp.UI
         private float _lastMirrorActive;
         private float _lastVignetteRadius;
         private float _lastVignetteSoftness;
+        private Coroutine _resolveSourcesRoutine;
+        private bool _isSubscribed;
 
         private void Awake()
         {
             if (_targetGraphic == null)
                 _targetGraphic = GetComponent<Graphic>();
 
-            _identitySource = _identitySourceBehaviour as IIdentitySource;
-            _statusSource = _statusSourceBehaviour as IPlayerStatusSource;
-            _hpReader = _statusSourceBehaviour as IDamageReceiver;
+            RefreshSourceInterfaces();
 
             _reassembleProgress = Mathf.Clamp01(_defaultReassembleProgress);
         }
@@ -84,39 +84,27 @@ namespace BattlePvp.UI
         {
             EnsureRuntimeMaterial();
 
-            if (_identitySource != null)
-            {
-                _identitySource.IdentityChanged += OnIdentityChanged;
-                _currentIdentity = _identitySource.CurrentIdentity;
-            }
-
-            if (_statusSource != null)
-            {
-                _statusSource.OverflowChanged += OnOverflowChanged;
-                _statusSource.HpChanged += OnHpChanged;
-            }
+            TryAutoResolveSources();
+            RefreshSourceInterfaces();
+            SubscribeSources();
 
             // 시작 시점 즉시 반영(이벤트 대기 없이 초기 상태를 보장)
             PullInitialOverlapFromHpReader();
             ApplyAll();
+
+            if (_identitySource == null || _statusSource == null)
+                _resolveSourcesRoutine = StartCoroutine(CoResolveSourcesWhenReady());
         }
 
         private void OnDisable()
         {
-            if (_identitySourceBehaviour != null)
+            if (_resolveSourcesRoutine != null)
             {
-                if (_identitySource != null)
-                    _identitySource.IdentityChanged -= OnIdentityChanged;
+                StopCoroutine(_resolveSourcesRoutine);
+                _resolveSourcesRoutine = null;
             }
 
-            if (_statusSourceBehaviour != null)
-            {
-                if (_statusSource != null)
-                {
-                    _statusSource.OverflowChanged -= OnOverflowChanged;
-                    _statusSource.HpChanged -= OnHpChanged;
-                }
-            }
+            UnsubscribeSources();
         }
 
         private void OnDestroy()
@@ -134,11 +122,120 @@ namespace BattlePvp.UI
             ApplyAll();
         }
 
+        public void SetIdentity(Identity identity)
+        {
+            _currentIdentity = identity;
+            ApplyAll();
+        }
+
         private void OnIdentityChanged(Identity identity)
         {
             if (this == null) return;
             _currentIdentity = identity;
             ApplyAll();
+        }
+
+        private IEnumerator CoResolveSourcesWhenReady()
+        {
+            var wait = new WaitForSecondsRealtime(0.25f);
+            while (isActiveAndEnabled && (_identitySource == null || _statusSource == null))
+            {
+                if (TryAutoResolveSources())
+                {
+                    UnsubscribeSources();
+                    RefreshSourceInterfaces();
+                    SubscribeSources();
+                    PullInitialOverlapFromHpReader();
+                    ApplyAll();
+                }
+
+                yield return wait;
+            }
+
+            _resolveSourcesRoutine = null;
+        }
+
+        private void RefreshSourceInterfaces()
+        {
+            _identitySource = _identitySourceBehaviour as IIdentitySource;
+            _statusSource = _statusSourceBehaviour as IPlayerStatusSource;
+            _hpReader = _statusSourceBehaviour as IDamageReceiver;
+        }
+
+        private bool TryAutoResolveSources()
+        {
+            bool changed = false;
+
+            if (_identitySourceBehaviour == null || _identitySourceBehaviour is not IIdentitySource)
+            {
+                StatManager localStats = StatManager.Local != null
+                    ? StatManager.Local
+                    : FindFirstObjectByType<StatManager>();
+
+                if (localStats != null)
+                {
+                    _identitySourceBehaviour = localStats;
+                    changed = true;
+                }
+            }
+
+            if (_statusSourceBehaviour == null ||
+                _statusSourceBehaviour is not IPlayerStatusSource ||
+                _statusSourceBehaviour is not IDamageReceiver)
+            {
+                HealthSystem localHealth = null;
+                if (_identitySourceBehaviour is Component identityComponent)
+                    localHealth = identityComponent.GetComponent<HealthSystem>();
+                if (localHealth == null && StatManager.Local != null)
+                    localHealth = StatManager.Local.GetComponent<HealthSystem>();
+                if (localHealth == null)
+                    localHealth = FindFirstObjectByType<HealthSystem>();
+
+                if (localHealth != null)
+                {
+                    _statusSourceBehaviour = localHealth;
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
+        private void SubscribeSources()
+        {
+            if (_isSubscribed)
+                return;
+
+            if (_identitySource != null)
+            {
+                _identitySource.IdentityChanged += OnIdentityChanged;
+                _currentIdentity = _identitySource.CurrentIdentity;
+            }
+
+            if (_statusSource != null)
+            {
+                _statusSource.OverflowChanged += OnOverflowChanged;
+                _statusSource.HpChanged += OnHpChanged;
+            }
+
+            _isSubscribed = true;
+        }
+
+        private void UnsubscribeSources()
+        {
+            if (!_isSubscribed)
+                return;
+
+            if (_identitySource != null)
+                _identitySource.IdentityChanged -= OnIdentityChanged;
+
+            if (_statusSource != null)
+            {
+                _statusSource.OverflowChanged -= OnOverflowChanged;
+                _statusSource.HpChanged -= OnHpChanged;
+            }
+
+            _isSubscribed = false;
         }
 
         private void OnOverflowChanged(bool isOverflow, float overlapPercent)
@@ -195,7 +292,7 @@ namespace BattlePvp.UI
             float mirrorActive = ResolveMirrorActive(_currentIdentity.Type);
             bool changed = !_hasAppliedMaterialValues
                            || !Mathf.Approximately(_lastGlitchAmount, glitchAmount)
-                           || (_applyRuntimeStatColor && _lastStatColor != statColor)
+                           || _lastStatColor != statColor
                            || !Mathf.Approximately(_lastEmissionPulse, dynamicPulse)
                            || !Mathf.Approximately(_lastOverlapPercent, _overlapPercent)
                            || !Mathf.Approximately(_lastReassembleProgress, _reassembleProgress)
@@ -217,8 +314,7 @@ namespace BattlePvp.UI
             _hasAppliedMaterialValues = true;
 
             _runtimeMaterial.SetFloat(GlitchAmountId, glitchAmount);
-            if (_applyRuntimeStatColor)
-                _runtimeMaterial.SetVector(StatColorId, (Vector4)statColor);
+            _runtimeMaterial.SetVector(StatColorId, (Vector4)statColor);
             _runtimeMaterial.SetFloat(EmissionPulseId, dynamicPulse);
             _runtimeMaterial.SetFloat(OverlapPercentId, _overlapPercent);
             _runtimeMaterial.SetFloat(ReassembleProgressId, _reassembleProgress);
