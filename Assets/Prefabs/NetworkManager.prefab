@@ -79,7 +79,7 @@ MonoBehaviour:
   headlessStartMode: 0
   editorAutoStart: 0
   sendRate: 60
-  offlineScene: Assets/Scenes/Battle_waiting.unity
+  offlineScene: Assets/Scenes/Lobby.unity
   onlineScene: Assets/Scenes/Battle.unity
   offlineSceneLoadDelay: 0
   transport: {fileID: 4408723999444492752}

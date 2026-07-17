@@ -78,11 +78,28 @@ namespace BattlePvp.UI
 
         private RectTransform EnsureContainer()
         {
-            if (_container != null)
-                return _container;
+            if (_container == null)
+                _container = CreateDefaultContainer(transform);
 
-            _container = CreateDefaultContainer(transform);
+            ConfigureContainerLayout(_container);
             return _container;
+        }
+
+        private void ConfigureContainerLayout(RectTransform container)
+        {
+            if (container == null)
+                return;
+
+            VerticalLayoutGroup layout = container.GetComponent<VerticalLayoutGroup>();
+            if (layout == null)
+                layout = container.gameObject.AddComponent<VerticalLayoutGroup>();
+
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.spacing = _spacing;
         }
 
         private GameObject CreateItem(RectTransform parent, string killerName, string victimName)
@@ -164,14 +181,6 @@ namespace BattlePvp.UI
             rect.pivot = new Vector2(0.5f, 1f);
             rect.anchoredPosition = new Vector2(0f, -56f);
             rect.sizeDelta = new Vector2(900f, 0f);
-
-            VerticalLayoutGroup layout = containerObject.GetComponent<VerticalLayoutGroup>();
-            layout.childAlignment = TextAnchor.UpperCenter;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-            layout.spacing = _spacing;
 
             ContentSizeFitter fitter = containerObject.GetComponent<ContentSizeFitter>();
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;

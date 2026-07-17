@@ -670,7 +670,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_SizeDelta: {x: 20, y: 20}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8673400186692568002
 CanvasRenderer:
@@ -976,7 +976,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1000
   m_TargetDisplay: 0
 --- !u!114 &3360010462319185237
 MonoBehaviour:
@@ -3221,6 +3221,8 @@ MonoBehaviour:
   CurrentPoints: 0
   CurrentDeaths: 0
   PlayerName: Unknown
+  MatchDamageDealt: 0
+  MatchDamageTaken: 0
 --- !u!114 &2781980942100056727
 MonoBehaviour:
   m_ObjectHideFlags: 0

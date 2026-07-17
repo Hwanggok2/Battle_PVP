@@ -27,6 +27,8 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float _remotePositionLerpSpeed = 18f;
     [SerializeField] private float _remoteRotationLerpSpeed = 18f;
     [SerializeField] private float _remoteSnapDistance = 3f;
+    [SerializeField, Min(0f)] private float _remoteAnimationMinSpeed = 0.05f;
+    [SerializeField, Min(0f)] private float _remoteAnimationDampTime = 0.08f;
 
     [Header("Crouch Settings")]
     [SerializeField] private float crouchSpeedMultiplier = 0.7f;
@@ -66,6 +68,8 @@ public class PlayerManager : NetworkBehaviour
     private Vector3 _remoteTargetPosition;
     private Quaternion _remoteTargetRotation;
     private bool _hasRemoteTransformTarget;
+    private Vector3 _lastRemoteAnimationPosition;
+    private bool _remoteAnimationPositionInitialized;
     private float _standingControllerHeight;
     private Vector3 _standingControllerCenter;
     private float _skillMoveMultiplier = 1f;
@@ -535,6 +539,7 @@ public class PlayerManager : NetworkBehaviour
         if (!isLocalPlayer)
         {
             SmoothRemoteTransform();
+            UpdateRemoteMovementAnimation();
             return;
         }
 
@@ -906,6 +911,32 @@ public class PlayerManager : NetworkBehaviour
 
         if (controllerWasEnabled)
             controller.enabled = true;
+    }
+
+    private void UpdateRemoteMovementAnimation()
+    {
+        if (animator == null)
+            return;
+
+        Vector3 currentPosition = transform.position;
+        if (!_remoteAnimationPositionInitialized)
+        {
+            _lastRemoteAnimationPosition = currentPosition;
+            _remoteAnimationPositionInitialized = true;
+            animator.SetFloat(speedHash, 0f);
+            return;
+        }
+
+        Vector3 displacement = currentPosition - _lastRemoteAnimationPosition;
+        displacement.y = 0f;
+        _lastRemoteAnimationPosition = currentPosition;
+
+        float worldSpeed = Time.deltaTime > 0f ? displacement.magnitude / Time.deltaTime : 0f;
+        if (worldSpeed < _remoteAnimationMinSpeed || (_healthSystem != null && _healthSystem.IsDead))
+            worldSpeed = 0f;
+
+        float normalizedSpeed = Mathf.Clamp01(worldSpeed / Mathf.Max(0.1f, moveSpeed));
+        animator.SetFloat(speedHash, normalizedSpeed, _remoteAnimationDampTime, Time.deltaTime);
     }
 
     private void HandleDeath()

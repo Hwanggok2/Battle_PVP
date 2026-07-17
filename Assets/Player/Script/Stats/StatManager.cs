@@ -265,6 +265,11 @@ namespace BattlePvp.Stats
 
         private void ApplyVisualScaling()
         {
+            // Dummy and other stat-bearing network objects have their own authored scale.
+            // Identity-based character scaling only belongs to actual player objects.
+            if (!TryGetComponent<PlayerManager>(out _))
+                return;
+
             InitializeCameraReference();
 
             // 조건: STR 또는 CON 몰빵(Monostat) 상태일 때만 1.2배 (Task 3 수정)

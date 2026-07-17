@@ -1788,7 +1788,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3611292104285783595, guid: 9d8a9517e2621574f949054211ea26ff, type: 3}
       propertyPath: offlineScene
-      value: Assets/Scenes/Login.unity
+      value: Assets/Scenes/Lobby.unity
       objectReference: {fileID: 0}
     - target: {fileID: 3611292104285783595, guid: 9d8a9517e2621574f949054211ea26ff, type: 3}
       propertyPath: spawnPrefabs.Array.size

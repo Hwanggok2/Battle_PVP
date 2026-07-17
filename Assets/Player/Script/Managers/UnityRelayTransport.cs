@@ -151,7 +151,10 @@ namespace BattlePvp.Networking
         public override void ClientDisconnect()
         {
             if (_clientDriver.IsCreated && _clientConnection.IsCreated)
+            {
                 _clientConnection.Disconnect(_clientDriver);
+                _clientDriver.ScheduleUpdate().Complete();
+            }
 
             _clientConnected = false;
             _clientConnection = default;
@@ -201,7 +204,10 @@ namespace BattlePvp.Networking
         public override void ServerDisconnect(int connectionId)
         {
             if (_serverDriver.IsCreated && _serverConnections.TryGetValue(connectionId, out UtpNetworkConnection connection))
+            {
                 connection.Disconnect(_serverDriver);
+                _serverDriver.ScheduleUpdate().Complete();
+            }
 
             _serverConnections.Remove(connectionId);
         }
@@ -210,11 +216,18 @@ namespace BattlePvp.Networking
 
         public override void ServerStop()
         {
+            bool disconnectedAny = false;
             foreach (UtpNetworkConnection connection in _serverConnections.Values)
             {
                 if (connection.IsCreated && _serverDriver.IsCreated)
+                {
                     connection.Disconnect(_serverDriver);
+                    disconnectedAny = true;
+                }
             }
+
+            if (disconnectedAny && _serverDriver.IsCreated)
+                _serverDriver.ScheduleUpdate().Complete();
 
             _serverConnections.Clear();
             DisposeServerDriver();
@@ -314,6 +327,18 @@ namespace BattlePvp.Networking
                 _serverConnections.Remove(connectionId);
                 OnServerDisconnected?.Invoke(connectionId);
             }
+        }
+
+        public override void ClientLateUpdate()
+        {
+            if (_clientDriver.IsCreated)
+                _clientDriver.ScheduleFlushSend().Complete();
+        }
+
+        public override void ServerLateUpdate()
+        {
+            if (_serverDriver.IsCreated)
+                _serverDriver.ScheduleFlushSend().Complete();
         }
 
         private NetworkPipeline GetClientPipeline(int channelId)

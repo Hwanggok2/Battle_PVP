@@ -807,14 +807,14 @@ MonoBehaviour:
       m_Calls: []
   m_text: 
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: b6ba224e29ba0954c8620cf966439c25, type: 2}
-  m_sharedMaterial: {fileID: 2650887370580843292, guid: b6ba224e29ba0954c8620cf966439c25, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 02e51bcc51403a145816e25671493371, type: 2}
+  m_sharedMaterial: {fileID: -3756666449512872266, guid: 02e51bcc51403a145816e25671493371, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4043309055
   m_fontColor: {r: 1, g: 1, b: 1, a: 0.94}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -2479,8 +2479,8 @@ MonoBehaviour:
   _logText: {fileID: 366804293472400611}
   _input: {fileID: 537956019981821072}
   _minHeight: 150
-  _maxHeight: 420
-  _maxLines: 80
+  _maxHeight: 600
+  _maxLines: 100
 --- !u!1 &4649867509051848174
 GameObject:
   m_ObjectHideFlags: 0

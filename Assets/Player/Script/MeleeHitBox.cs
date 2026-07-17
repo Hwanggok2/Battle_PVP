@@ -332,6 +332,7 @@ namespace BattlePvp.Combat
                     _currentAttackData,
                     defenderStats,
                     bodyPartMultiplier * predictedBuffMultiplier);
+                _playerCombat?.PlayPredictedHitFeedback(bodyPart != null && bodyPart.Part == BodyPart.Head);
                 targetHealth.ShowPredictedPhysicalDamagePopup(hitPosition, predictedDamage, _playerCombat != null ? _playerCombat.netId : 0);
                 _playerCombat?.RequestServerMeleeHit(
                     defender,

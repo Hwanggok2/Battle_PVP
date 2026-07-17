@@ -70,6 +70,10 @@ public class PlayerCombat : NetworkBehaviour
     [SerializeField, Min(1f)] private float _remoteMeleeValidationDistance = 7.5f;
     [SerializeField, Min(0.5f)] private float _remoteHitPositionTolerance = 3f;
 
+    [Header("Network Action Timing")]
+    [SerializeField, Range(0.05f, 0.5f)] private float _maxActionRewindSeconds = 0.25f;
+    [SerializeField, Range(0f, 0.1f)] private float _maxFutureActionLeadSeconds = 0.05f;
+
     [Header("Strategist Preset Aura")]
     [SerializeField] private Material _strategistStrAuraMaterial;
     [SerializeField] private Material _strategistAgiAuraMaterial;
@@ -115,6 +119,14 @@ public class PlayerCombat : NetworkBehaviour
     private bool _isPointerOverUI;
     private readonly HashSet<IDamageReceiver> _hitTargetsThisSwing = new HashSet<IDamageReceiver>();
     private readonly HashSet<IDamageReceiver> _networkReportedHitTargetsThisAttack = new HashSet<IDamageReceiver>();
+    private readonly Queue<float> _predictedHitFeedbackExpiries = new Queue<float>();
+    private uint _nextLocalAttackSequence;
+    private uint _currentAttackSequence;
+    private uint _lastServerAttackSequence;
+    private uint _lastRemoteAttackSequence;
+    private uint _nextLocalSkillSequence;
+    private uint _lastServerSkillSequence;
+    private uint _lastRemoteSkillSequence;
 
     private Animator animator;
     private Transform _cachedTransform;
@@ -132,6 +144,7 @@ public class PlayerCombat : NetworkBehaviour
     private AudioSource _audioSource;
     private AttackProcessor _attackProcessor;
     private CombatHitFeedback _hitFeedback;
+    private ServerPoseHistory _serverPoseHistory;
     private Coroutine _advancedSkillRoutine;
     private Coroutine _localAdvancedMoveLockRoutine;
     private Coroutine _localSkillAnimationAttackLockRoutine;
@@ -231,6 +244,9 @@ public class PlayerCombat : NetworkBehaviour
         _playerManager = GetComponent<PlayerManager>();
         _attackProcessor = GetComponent<AttackProcessor>();
         _hitFeedback = GetComponent<CombatHitFeedback>();
+        _serverPoseHistory = GetComponent<ServerPoseHistory>();
+        if (_serverPoseHistory == null)
+            _serverPoseHistory = gameObject.AddComponent<ServerPoseHistory>();
         _audioSource = GetComponent<AudioSource>();
         if (_kickHitBox == null)
             _kickHitBox = GetComponentInChildren<KickSkillHitBox>(true);
@@ -540,7 +556,12 @@ public class PlayerCombat : NetworkBehaviour
         return battleState.IsLoading || battleState.CurrentState != BattlePvp.Networking.BattleState.InBattle;
     }
 
-    private void StartAttack(int index, bool notifyServer, Vector3 aimDirection, bool ignoreControlLocks = false)
+    private void StartAttack(
+        int index,
+        bool notifyServer,
+        Vector3 aimDirection,
+        bool ignoreControlLocks = false,
+        double visualStartedAt = double.NaN)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
@@ -575,7 +596,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (animator != null)
-            PlayAttackAnimation(index);
+            PlayAttackAnimation(index, visualStartedAt);
 
         if (_comboRoutine != null)
             StopCoroutine(_comboRoutine);
@@ -592,34 +613,65 @@ public class PlayerCombat : NetworkBehaviour
 
         if (notifyServer && isClient && isLocalPlayer)
         {
+            uint sequence = NextAttackSequence();
+            double requestedStartTime = SkillTime;
+            _currentAttackSequence = sequence;
+
             if (isServer)
-                RpcStartAttack(index, aimDirection);
+            {
+                _lastServerAttackSequence = sequence;
+                RpcStartAttack(index, aimDirection, sequence, requestedStartTime);
+            }
             else
-                CmdStartAttack(index, aimDirection, ignoreControlLocks);
+                CmdStartAttack(index, aimDirection, ignoreControlLocks, sequence, requestedStartTime);
         }
     }
 
     [Command]
-    private void CmdStartAttack(int index, Vector3 aimDirection, bool forcedTauntAttack)
+    private void CmdStartAttack(
+        int index,
+        Vector3 aimDirection,
+        bool forcedTauntAttack,
+        uint sequence,
+        double requestedStartTime)
     {
-        if (_healthSystem != null && _healthSystem.IsDead)
+        if (!IsNewerSequence(sequence, _lastServerAttackSequence) ||
+            (_healthSystem != null && _healthSystem.IsDead))
+        {
+            TargetResolveAttackRequest(connectionToClient, sequence, false);
             return;
+        }
 
+        _lastServerAttackSequence = sequence;
+        _currentAttackSequence = sequence;
+        double acceptedStartTime = ResolveServerActionTime(requestedStartTime);
         bool allowForcedTauntAttack = forcedTauntAttack && _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
-        StartAttack(index, false, aimDirection, allowForcedTauntAttack);
-        RpcStartAttack(index, aimDirection);
+        StartAttack(index, false, aimDirection, allowForcedTauntAttack, acceptedStartTime);
+        RpcStartAttack(index, aimDirection, sequence, acceptedStartTime);
+        TargetResolveAttackRequest(connectionToClient, sequence, true);
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcStartAttack(int index, Vector3 aimDirection)
+    private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
     {
         if (isServer)
             return;
 
-        StartRemoteAttackVisual(index, aimDirection);
+        if (!IsNewerSequence(sequence, _lastRemoteAttackSequence))
+            return;
+
+        _lastRemoteAttackSequence = sequence;
+        StartRemoteAttackVisual(index, aimDirection, acceptedStartTime);
     }
 
-    private void StartRemoteAttackVisual(int index, Vector3 aimDirection)
+    [TargetRpc]
+    private void TargetResolveAttackRequest(NetworkConnectionToClient target, uint sequence, bool accepted)
+    {
+        if (!accepted && sequence == _currentAttackSequence)
+            CancelCurrentAttack();
+    }
+
+    private void StartRemoteAttackVisual(int index, Vector3 aimDirection, double acceptedStartTime)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
@@ -638,7 +690,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (animator != null)
-            PlayAttackAnimation(index);
+            PlayAttackAnimation(index, acceptedStartTime);
 
         if (_comboRoutine != null)
             StopCoroutine(_comboRoutine);
@@ -663,7 +715,7 @@ public class PlayerCombat : NetworkBehaviour
         return Mathf.Max(0.01f, attackSpeed);
     }
 
-    private void PlayAttackAnimation(int index)
+    private void PlayAttackAnimation(int index, double visualStartedAt = double.NaN)
     {
         if (animator == null || comboList == null || index < 0 || index >= comboList.Length || comboList[index] == null)
             return;
@@ -672,6 +724,80 @@ public class PlayerCombat : NetworkBehaviour
         animator.speed = Mathf.Max(0.01f, _currentAttackSpeed);
         animator.Play(comboList[index].animationName, 1, 0f);
         animator.Update(0f);
+
+        if (double.IsNaN(visualStartedAt))
+            return;
+
+        double elapsedSeconds = Math.Max(0d, SkillTime - visualStartedAt);
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(1);
+        if (!stateInfo.IsName(comboList[index].animationName) || stateInfo.length <= 0f)
+            return;
+
+        float normalizedTime = Mathf.Clamp((float)(elapsedSeconds * animator.speed / stateInfo.length), 0f, 0.94f);
+        if (normalizedTime <= 0.001f)
+            return;
+
+        animator.Play(comboList[index].animationName, 1, normalizedTime);
+        animator.Update(0f);
+    }
+
+    private uint NextAttackSequence()
+    {
+        _nextLocalAttackSequence++;
+        if (_nextLocalAttackSequence == 0)
+            _nextLocalAttackSequence = 1;
+        return _nextLocalAttackSequence;
+    }
+
+    private uint NextSkillSequence()
+    {
+        _nextLocalSkillSequence++;
+        if (_nextLocalSkillSequence == 0)
+            _nextLocalSkillSequence = 1;
+        return _nextLocalSkillSequence;
+    }
+
+    private bool TryAcceptSkillSequence(uint sequence, out double acceptedStartTime, double requestedStartTime)
+    {
+        acceptedStartTime = SkillTime;
+        if (!IsNewerSequence(sequence, _lastServerSkillSequence))
+            return false;
+
+        _lastServerSkillSequence = sequence;
+        acceptedStartTime = ResolveServerActionTime(requestedStartTime);
+        return true;
+    }
+
+    [TargetRpc]
+    private void TargetResolveSkillRequest(NetworkConnectionToClient target, uint sequence, bool accepted)
+    {
+        if (accepted || sequence != _nextLocalSkillSequence)
+            return;
+
+        _localMonostatStrSkillAttackLockUntil = 0d;
+        _localMonostatAgiSkillAttackLockUntil = 0d;
+        _localAdvancedAttackLockUntil = 0d;
+        _localSkillAnimationAttackLocked = false;
+        _playerManager?.SetSkillMovementLock(false);
+        PublishSkillHudState();
+    }
+
+    private static bool IsNewerSequence(uint candidate, uint baseline)
+    {
+        return candidate != baseline && unchecked(candidate - baseline) < 0x80000000u;
+    }
+
+    private double ResolveServerActionTime(double requestedTime)
+    {
+        double now = SkillTime;
+        if (double.IsNaN(requestedTime) || double.IsInfinity(requestedTime))
+            return now;
+
+        double connectionRewind = connectionToClient != null
+            ? Math.Max(0d, connectionToClient.rtt)
+            : 0d;
+        double maxRewind = Math.Min(Math.Max(0.05f, _maxActionRewindSeconds), connectionRewind + 0.05d);
+        return Math.Clamp(requestedTime, now - maxRewind, now + Math.Max(0f, _maxFutureActionLeadSeconds));
     }
 
     public void EnableHitBox()
@@ -721,13 +847,26 @@ public class PlayerCombat : NetworkBehaviour
         if (targetIdentity == null || targetIdentity.netId == 0)
             return;
 
-        CmdReportMeleeHit(currentComboIndex, targetIdentity.netId, bodyPart, hitPosition);
+        CmdReportMeleeHit(
+            _currentAttackSequence,
+            currentComboIndex,
+            targetIdentity.netId,
+            bodyPart,
+            hitPosition,
+            SkillTime);
     }
 
     [Command]
-    private void CmdReportMeleeHit(int attackIndex, uint targetNetId, BodyPart bodyPart, Vector3 hitPosition)
+    private void CmdReportMeleeHit(
+        uint attackSequence,
+        int attackIndex,
+        uint targetNetId,
+        BodyPart bodyPart,
+        Vector3 hitPosition,
+        double reportedHitTime)
     {
-        if (!isAttacking || attackIndex != currentComboIndex || currentComboIndex < 0 || comboList == null ||
+        if (!isAttacking || attackSequence == 0 || attackSequence != _currentAttackSequence ||
+            attackIndex != currentComboIndex || currentComboIndex < 0 || comboList == null ||
             currentComboIndex >= comboList.Length || comboList[currentComboIndex] == null)
             return;
 
@@ -735,8 +874,12 @@ public class PlayerCombat : NetworkBehaviour
             targetIdentity == null || targetIdentity == netIdentity)
             return;
 
+        double validationTime = ResolveServerActionTime(reportedHitTime);
+        Vector3 attackerPosition = SampleServerPosition(_serverPoseHistory, transform.position, validationTime);
+        ServerPoseHistory targetHistory = targetIdentity.GetComponent<ServerPoseHistory>();
+        Vector3 targetPosition = SampleServerPosition(targetHistory, targetIdentity.transform.position, validationTime);
         float maxDistance = Mathf.Max(1f, _remoteMeleeValidationDistance);
-        if ((targetIdentity.transform.position - transform.position).sqrMagnitude > maxDistance * maxDistance)
+        if ((targetPosition - attackerPosition).sqrMagnitude > maxDistance * maxDistance)
             return;
 
         HealthSystem targetHealth = targetIdentity.GetComponent<HealthSystem>();
@@ -771,6 +914,13 @@ public class PlayerCombat : NetworkBehaviour
             hitPosition,
             bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier,
             bodyPart: bodyPart);
+    }
+
+    private static Vector3 SampleServerPosition(ServerPoseHistory history, Vector3 fallback, double time)
+    {
+        return history != null && history.TrySample(time, out Vector3 position)
+            ? position
+            : fallback;
     }
 
     private static float ResolveServerBodyPartMultiplier(NetworkIdentity targetIdentity, BodyPart bodyPart)
@@ -890,6 +1040,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseMonostatStrSkillInput())
             return;
 
+        uint sequence = NextSkillSequence();
+        double requestedStartTime = SkillTime;
         _localMonostatStrSkillAttackLockUntil = SkillTime + MonostatStrCastSeconds;
         PlaySkillAnimationLocal(MonostatStrSkillData);
         LockLocalSkillAnimationAttack(MonostatStrSkillData);
@@ -897,13 +1049,16 @@ public class PlayerCombat : NetworkBehaviour
         if (isClient && isLocalPlayer)
         {
             if (isServer)
-                BeginMonostatStrSkill();
+            {
+                _lastServerSkillSequence = sequence;
+                BeginMonostatStrSkill(requestedStartTime, sequence);
+            }
             else
-                CmdUseMonostatStrSkill(GetCurrentStatsSnapshot());
+                CmdUseMonostatStrSkill(sequence, requestedStartTime);
             return;
         }
 
-        BeginMonostatStrSkill();
+        BeginMonostatStrSkill(requestedStartTime, sequence);
     }
 
     private void TryUseSelectedSkill()
@@ -947,30 +1102,38 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     [Command]
-    private void CmdUseMonostatStrSkill(StatContainer stats)
+    private void CmdUseMonostatStrSkill(uint sequence, double requestedStartTime)
     {
-        ApplyCommandStats(stats);
-        BeginMonostatStrSkill();
+        bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
+                        BeginMonostatStrSkill(acceptedStartTime, sequence);
+        TargetResolveSkillRequest(connectionToClient, sequence, accepted);
     }
 
     [Command]
-    private void CmdUseMonostatAgiSkill(StatContainer stats)
+    private void CmdUseMonostatAgiSkill(uint sequence, double requestedStartTime)
     {
-        ApplyCommandStats(stats);
-        BeginMonostatAgiSkill();
+        bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
+                        BeginMonostatAgiSkill(acceptedStartTime, sequence);
+        TargetResolveSkillRequest(connectionToClient, sequence, accepted);
     }
 
     [Command]
     private void CmdUseAdvancedSkill(
         int skillKey,
         Vector3 direction,
-        StatContainer currentStats,
         StatContainer strategistTargetPreset,
-        bool hasStrategistTargetPreset)
+        bool hasStrategistTargetPreset,
+        uint sequence,
+        double requestedStartTime)
     {
-        ApplyCommandStats(currentStats);
-        SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
-        BeginAdvancedSkill(skillKey, direction);
+        bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime);
+        if (accepted)
+        {
+            SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
+            accepted = BeginAdvancedSkill(skillKey, direction, acceptedStartTime, sequence);
+        }
+
+        TargetResolveSkillRequest(connectionToClient, sequence, accepted);
     }
 
     private void TryUseAdvancedSkill(JobSkillData data)
@@ -984,6 +1147,8 @@ public class PlayerCombat : NetworkBehaviour
         bool hasStrategistTargetPreset = GlobalDataManager.Instance != null && GlobalDataManager.Instance.HasStrategistTargetPreset;
         if (hasStrategistTargetPreset)
             strategistTargetPreset = GlobalDataManager.Instance.StrategistTargetPreset;
+        uint sequence = NextSkillSequence();
+        double requestedStartTime = SkillTime;
         _localAdvancedAttackLockUntil = SkillTime + data.CastSeconds;
         _pendingAdvancedSkillHitKey = key;
         _pendingAdvancedSkillDirection = direction;
@@ -991,11 +1156,18 @@ public class PlayerCombat : NetworkBehaviour
         LockLocalSkillAnimationAttack(data);
         _playerManager?.ApplySkillInputLock(data.InputLockFlags, data.ResolveInputLockSeconds());
         if (isClient && isLocalPlayer && !isServer)
-            CmdUseAdvancedSkill(key, direction, GetCurrentStatsSnapshot(), strategistTargetPreset, hasStrategistTargetPreset);
+            CmdUseAdvancedSkill(
+                key,
+                direction,
+                strategistTargetPreset,
+                hasStrategistTargetPreset,
+                sequence,
+                requestedStartTime);
         else
         {
+            _lastServerSkillSequence = sequence;
             SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
-            BeginAdvancedSkill(key, direction);
+            BeginAdvancedSkill(key, direction, requestedStartTime, sequence);
         }
     }
 
@@ -1003,25 +1175,6 @@ public class PlayerCombat : NetworkBehaviour
     {
         _runtimeStrategistTargetPreset = targetPreset;
         _hasRuntimeStrategistTargetPreset = hasTargetPreset;
-    }
-
-    private StatContainer GetCurrentStatsSnapshot()
-    {
-        if (_statManager == null)
-            _statManager = GetComponent<StatManager>();
-
-        return _statManager != null ? _statManager.GetStatsCopy() : default;
-    }
-
-    private void ApplyCommandStats(StatContainer stats)
-    {
-        if (!NetworkServer.active)
-            return;
-
-        if (_statManager == null)
-            _statManager = GetComponent<StatManager>();
-
-        _statManager?.ApplyStats(stats, true);
     }
 
     private Vector3 ResolveAdvancedSkillDirection(JobSkillData data)
@@ -1094,29 +1247,29 @@ public class PlayerCombat : NetworkBehaviour
         _localSkillAnimationAttackLockRoutine = null;
     }
 
-    private void BeginAdvancedSkill(int skillKey, Vector3 direction)
+    private bool BeginAdvancedSkill(int skillKey, Vector3 direction, double requestedStartTime, uint sequence)
     {
         JobSkillData data = ResolveAdvancedSkillData(skillKey);
         double now = SkillTime;
         if (data == null || (_healthSystem != null && _healthSystem.IsDead))
-            return;
+            return false;
         if (_advancedCastingSkillKey >= 0 || (_advancedCooldownUntil.TryGetValue(skillKey, out double cooldown) && now < cooldown))
-            return;
+            return false;
 
         if (data.CooldownSeconds > 0f)
-            _advancedCooldownUntil[skillKey] = now + data.CooldownSeconds;
+            _advancedCooldownUntil[skillKey] = requestedStartTime + data.CooldownSeconds;
 
         CancelCurrentAttack();
-        PlaySkillAnimationNetworked(data);
+        PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
         PlaySkillSfx(skillKey);
         if (data.CastSeconds <= 0f && !HasSkillCastAnimation(data) && ShouldApplySkillAtCastEnd(data))
         {
             ApplyAdvancedSkill(data, direction);
-            return;
+            return true;
         }
 
         _advancedCastingSkillKey = skillKey;
-        _advancedCastCompleteAt = now + data.CastSeconds;
+        _advancedCastCompleteAt = requestedStartTime + data.CastSeconds;
         bool lockMovement = ShouldLockMovementDuringSkillCast(data);
         if (lockMovement)
             _playerManager?.SetSkillMovementLock(true);
@@ -1128,11 +1281,12 @@ public class PlayerCombat : NetworkBehaviour
         if (_advancedSkillRoutine != null)
             StopCoroutine(_advancedSkillRoutine);
         _advancedSkillRoutine = StartCoroutine(CoAdvancedSkillCast(data, direction, lockMovement, applyAtCastStart));
+        return true;
     }
 
     private System.Collections.IEnumerator CoAdvancedSkillCast(JobSkillData data, Vector3 direction, bool lockMovement, bool alreadyApplied)
     {
-        while (SkillTime < _advancedCastCompleteAt || !IsSkillCastAnimationFinished(data))
+        while (SkillTime < _advancedCastCompleteAt)
             yield return null;
 
         _advancedCastingSkillKey = -1;
@@ -1811,18 +1965,18 @@ public class PlayerCombat : NetworkBehaviour
         manager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
     }
 
-    private void BeginMonostatStrSkill()
+    private bool BeginMonostatStrSkill(double requestedStartTime, uint sequence)
     {
         double now = SkillTime;
         if (!CanStartMonostatStrSkill(now))
-            return;
+            return false;
 
         _isCastingMonostatStrSkill = true;
-        _monostatStrSkillCastCompleteAt = now + MonostatStrCastSeconds;
-        _monostatStrSkillCooldownUntil = now + MonostatStrCooldownSeconds;
+        _monostatStrSkillCastCompleteAt = requestedStartTime + MonostatStrCastSeconds;
+        _monostatStrSkillCooldownUntil = requestedStartTime + MonostatStrCooldownSeconds;
 
         CancelCurrentAttack();
-        PlaySkillAnimationNetworked(MonostatStrSkillData);
+        PlaySkillAnimationNetworked(MonostatStrSkillData, requestedStartTime, sequence);
         PlaySkillSfx(0);
         PublishSkillHudState();
 
@@ -1830,6 +1984,7 @@ public class PlayerCombat : NetworkBehaviour
             StopCoroutine(_monostatStrSkillRoutine);
 
         _monostatStrSkillRoutine = StartCoroutine(CoMonostatStrSkill());
+        return true;
     }
 
     private void TryUseMonostatAgiSkill()
@@ -1837,6 +1992,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseMonostatAgiSkillInput())
             return;
 
+        uint sequence = NextSkillSequence();
+        double requestedStartTime = SkillTime;
         _localMonostatAgiSkillAttackLockUntil = SkillTime + MonostatAgiCastSeconds;
         PlaySkillAnimationLocal(MonostatAgiSkillData);
         LockLocalSkillAnimationAttack(MonostatAgiSkillData);
@@ -1844,27 +2001,30 @@ public class PlayerCombat : NetworkBehaviour
         if (isClient && isLocalPlayer)
         {
             if (isServer)
-                BeginMonostatAgiSkill();
+            {
+                _lastServerSkillSequence = sequence;
+                BeginMonostatAgiSkill(requestedStartTime, sequence);
+            }
             else
-                CmdUseMonostatAgiSkill(GetCurrentStatsSnapshot());
+                CmdUseMonostatAgiSkill(sequence, requestedStartTime);
             return;
         }
 
-        BeginMonostatAgiSkill();
+        BeginMonostatAgiSkill(requestedStartTime, sequence);
     }
 
-    private void BeginMonostatAgiSkill()
+    private bool BeginMonostatAgiSkill(double requestedStartTime, uint sequence)
     {
         double now = SkillTime;
         if (!CanStartMonostatAgiSkill(now))
-            return;
+            return false;
 
         _isCastingMonostatAgiSkill = true;
-        _monostatAgiSkillCastCompleteAt = now + MonostatAgiCastSeconds;
-        _monostatAgiSkillCooldownUntil = now + MonostatAgiCooldownSeconds;
+        _monostatAgiSkillCastCompleteAt = requestedStartTime + MonostatAgiCastSeconds;
+        _monostatAgiSkillCooldownUntil = requestedStartTime + MonostatAgiCooldownSeconds;
 
         CancelCurrentAttack();
-        PlaySkillAnimationNetworked(MonostatAgiSkillData);
+        PlaySkillAnimationNetworked(MonostatAgiSkillData, requestedStartTime, sequence);
         PlaySkillSfx(1);
         PublishSkillHudState();
 
@@ -1872,11 +2032,12 @@ public class PlayerCombat : NetworkBehaviour
             StopCoroutine(_monostatAgiSkillRoutine);
 
         _monostatAgiSkillRoutine = StartCoroutine(CoMonostatAgiSkill());
+        return true;
     }
 
     private System.Collections.IEnumerator CoMonostatStrSkill()
     {
-        while (SkillTime < _monostatStrSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatStrSkillData))
+        while (SkillTime < _monostatStrSkillCastCompleteAt)
             yield return null;
 
         _isCastingMonostatStrSkill = false;
@@ -1911,12 +2072,21 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcPlaySkillAnimation(string stateName, int layer)
+    private void RpcPlaySkillAnimation(string stateName, int layer, uint sequence, double acceptedStartTime)
     {
-        PlaySkillAnimationLocal(stateName, layer);
+        if (isServer || !IsNewerSequence(sequence, _lastRemoteSkillSequence))
+            return;
+
+        _lastRemoteSkillSequence = sequence;
+        PlaySkillAnimationLocal(stateName, layer, acceptedStartTime);
     }
 
     private void PlaySkillAnimationLocal(string stateName, int layer)
+    {
+        PlaySkillAnimationLocal(stateName, layer, double.NaN);
+    }
+
+    private void PlaySkillAnimationLocal(string stateName, int layer, double visualStartedAt)
     {
         if (animator == null || string.IsNullOrWhiteSpace(stateName))
             return;
@@ -1933,6 +2103,22 @@ public class PlayerCombat : NetworkBehaviour
 
         animator.speed = 1f;
         animator.Play(stateName, safeLayer, 0f);
+        animator.Update(0f);
+
+        if (double.IsNaN(visualStartedAt))
+            return;
+
+        double elapsedSeconds = Math.Max(0d, SkillTime - visualStartedAt);
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(safeLayer);
+        if (!stateInfo.IsName(stateName) || stateInfo.length <= 0f)
+            return;
+
+        float normalizedTime = Mathf.Clamp((float)(elapsedSeconds / stateInfo.length), 0f, 0.98f);
+        if (normalizedTime <= 0.001f)
+            return;
+
+        animator.Play(stateName, safeLayer, normalizedTime);
+        animator.Update(0f);
     }
 
     private bool HasSkillCastAnimation(JobSkillData data)
@@ -2067,15 +2253,15 @@ public class PlayerCombat : NetworkBehaviour
             : Array.Empty<Renderer>();
     }
 
-    private void PlaySkillAnimationNetworked(JobSkillData data)
+    private void PlaySkillAnimationNetworked(JobSkillData data, double acceptedStartTime, uint sequence)
     {
         if (!HasSkillCastAnimation(data))
             return;
 
-        PlaySkillAnimationLocal(data);
+        PlaySkillAnimationLocal(data.CastAnimationStateName, data.CastAnimationLayer, acceptedStartTime);
 
         if (NetworkServer.active)
-            RpcPlaySkillAnimation(data.CastAnimationStateName, data.CastAnimationLayer);
+            RpcPlaySkillAnimation(data.CastAnimationStateName, data.CastAnimationLayer, sequence, acceptedStartTime);
     }
 
     private void PlaySkillAnimationLocal(JobSkillData data)
@@ -2088,7 +2274,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoMonostatAgiSkill()
     {
-        while (SkillTime < _monostatAgiSkillCastCompleteAt || !IsSkillCastAnimationFinished(MonostatAgiSkillData))
+        while (SkillTime < _monostatAgiSkillCastCompleteAt)
             yield return null;
 
         _isCastingMonostatAgiSkill = false;
@@ -2815,7 +3001,33 @@ public class PlayerCombat : NetworkBehaviour
     [TargetRpc]
     private void TargetShowHitFeedback(NetworkConnectionToClient target, bool isHeadshot)
     {
+        PrunePredictedHitFeedback();
+        if (_predictedHitFeedbackExpiries.Count > 0)
+        {
+            _predictedHitFeedbackExpiries.Dequeue();
+            return;
+        }
+
         PlayHitFeedbackLocal(isHeadshot);
+    }
+
+    public void PlayPredictedHitFeedback(bool isHeadshot)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        PrunePredictedHitFeedback();
+        _predictedHitFeedbackExpiries.Enqueue(Time.unscaledTime + 1.5f);
+        PlayHitFeedbackLocal(isHeadshot);
+    }
+
+    private void PrunePredictedHitFeedback()
+    {
+        while (_predictedHitFeedbackExpiries.Count > 0 &&
+               _predictedHitFeedbackExpiries.Peek() < Time.unscaledTime)
+        {
+            _predictedHitFeedbackExpiries.Dequeue();
+        }
     }
 
     private void PlayHitFeedbackLocal(bool isHeadshot)
@@ -2865,5 +3077,78 @@ public class PlayerCombat : NetworkBehaviour
         Vector3 direction = target.position - transform.position;
         direction.y = 0f;
         return direction.sqrMagnitude > 0.001f ? direction.normalized : fallback;
+    }
+}
+
+internal sealed class ServerPoseHistory : MonoBehaviour
+{
+    private const int Capacity = 64;
+    private const double RecordInterval = 1d / 30d;
+
+    private readonly double[] _times = new double[Capacity];
+    private readonly Vector3[] _positions = new Vector3[Capacity];
+    private int _nextIndex;
+    private int _count;
+    private double _lastRecordTime = double.NegativeInfinity;
+
+    private void Update()
+    {
+        if (!NetworkServer.active)
+            return;
+
+        double now = NetworkTime.time;
+        if (now - _lastRecordTime < RecordInterval)
+            return;
+
+        _times[_nextIndex] = now;
+        _positions[_nextIndex] = transform.position;
+        _nextIndex = (_nextIndex + 1) % Capacity;
+        _count = Math.Min(_count + 1, Capacity);
+        _lastRecordTime = now;
+    }
+
+    public bool TrySample(double time, out Vector3 position)
+    {
+        position = transform.position;
+        if (_count == 0)
+            return false;
+
+        int beforeIndex = -1;
+        int afterIndex = -1;
+        double beforeTime = double.NegativeInfinity;
+        double afterTime = double.PositiveInfinity;
+
+        for (int i = 0; i < _count; i++)
+        {
+            double sampleTime = _times[i];
+            if (sampleTime <= time && sampleTime > beforeTime)
+            {
+                beforeTime = sampleTime;
+                beforeIndex = i;
+            }
+
+            if (sampleTime >= time && sampleTime < afterTime)
+            {
+                afterTime = sampleTime;
+                afterIndex = i;
+            }
+        }
+
+        if (beforeIndex < 0)
+            beforeIndex = afterIndex;
+        if (afterIndex < 0)
+            afterIndex = beforeIndex;
+        if (beforeIndex < 0 || afterIndex < 0)
+            return false;
+
+        if (beforeIndex == afterIndex || afterTime <= beforeTime)
+        {
+            position = _positions[beforeIndex];
+            return true;
+        }
+
+        float t = Mathf.Clamp01((float)((time - beforeTime) / (afterTime - beforeTime)));
+        position = Vector3.Lerp(_positions[beforeIndex], _positions[afterIndex], t);
+        return true;
     }
 }
