@@ -1,6 +1,6 @@
 using UnityEngine;
-using UnityEngine.UI;
 using System;
+using TMPro;
 
 namespace BattlePvp.UI
 {
@@ -14,13 +14,15 @@ namespace BattlePvp.UI
 
         [Header("UI References")]
         [Tooltip("남은 시간을 표시할 텍스트 컴포넌트")]
-        [SerializeField] private Text _timerText;
+        [SerializeField] private TextMeshProUGUI _timerText;
         
         [Tooltip("상태 메시지(Get Ready, Fight 등)를 표시할 텍스트 컴포넌트")]
-        [SerializeField] private Text _stateMessageText;
+        [SerializeField] private TextMeshProUGUI _stateMessageText;
 
         private void Awake()
         {
+            _timerText = TmpTextMigration.ResolveOrUpgrade(transform, _timerText);
+
             if (Instance == null)
             {
                 Instance = this;

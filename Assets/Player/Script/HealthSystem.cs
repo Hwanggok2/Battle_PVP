@@ -286,6 +286,7 @@ namespace BattlePvp.Combat
             if (isInvincible || NetworkTime.time < _skillInvulnerableUntil || amount <= 0f)
                 return;
 
+            float hpBeforeDamage = _currentHp;
             bool tauntDefenseActive = NetworkTime.time < _tauntDefenseUntil;
             if (tauntDefenseActive)
                 amount *= _tauntIncomingDamageMultiplier;
@@ -308,6 +309,7 @@ namespace BattlePvp.Combat
             }
 
             _currentHp = next < 0f ? 0f : next;
+            RecordMatchDamage(Mathf.Max(0f, hpBeforeDamage - _currentHp), attacker);
             ShowDamagePopup(hitPosition, amount, popupSource, attacker);
 
             EvaluateDeath(); // [공통 로직으로 교체]
@@ -341,6 +343,32 @@ namespace BattlePvp.Combat
             }
 
             UpdateOverflowState();
+        }
+
+        [Server]
+        private void RecordMatchDamage(float actualHpDamage, IDamageReceiver attacker)
+        {
+            if (actualHpDamage <= 0f ||
+                BattleStateMachine.Instance == null ||
+                BattleStateMachine.Instance.CurrentState != BattleState.InBattle)
+            {
+                return;
+            }
+
+            ScoreSystem victimScore = GetComponent<ScoreSystem>();
+            if (victimScore == null || GetComponent<PlayerManager>() == null)
+                return;
+
+            victimScore.RecordDamageTaken(actualHpDamage);
+
+            if (attacker is not MonoBehaviour attackerBehaviour)
+                return;
+
+            ScoreSystem attackerScore = attackerBehaviour.GetComponent<ScoreSystem>();
+            if (attackerScore == null || attackerScore == victimScore || attackerBehaviour.GetComponent<PlayerManager>() == null)
+                return;
+
+            attackerScore.RecordDamageDealt(actualHpDamage);
         }
 
         private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source, IDamageReceiver attacker)

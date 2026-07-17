@@ -39,6 +39,9 @@ namespace BattlePvp.Combat
         [SyncVar(hook = nameof(OnNameChanged))]
         public string PlayerName = "Unknown";
 
+        [SyncVar] public float MatchDamageDealt;
+        [SyncVar] public float MatchDamageTaken;
+
         public static event System.Action<ScoreSystem> OnScoreUpdated;
 
         public static readonly List<ScoreSystem> ActiveScores = new List<ScoreSystem>();
@@ -61,8 +64,22 @@ namespace BattlePvp.Combat
         {
             CurrentPoints = 0;
             CurrentDeaths = 0;
+            MatchDamageDealt = 0f;
+            MatchDamageTaken = 0f;
             _killsByVictim.Clear();
             _deathsByKiller.Clear();
+        }
+
+        [Server]
+        public void RecordDamageDealt(float amount)
+        {
+            MatchDamageDealt += Mathf.Max(0f, amount);
+        }
+
+        [Server]
+        public void RecordDamageTaken(float amount)
+        {
+            MatchDamageTaken += Mathf.Max(0f, amount);
         }
 
         [Server]
@@ -120,12 +137,24 @@ namespace BattlePvp.Combat
 
         public string GetMostKilledEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
         {
-            return ResolveTopOpponentName(_killsByVictim, allPlayers);
+            GetMostKilledEnemy(allPlayers, out string name, out _);
+            return name;
         }
 
         public string GetMostKilledByEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
         {
-            return ResolveTopOpponentName(_deathsByKiller, allPlayers);
+            GetMostKilledByEnemy(allPlayers, out string name, out _);
+            return name;
+        }
+
+        public void GetMostKilledEnemy(IReadOnlyList<ScoreSystem> allPlayers, out string name, out int count)
+        {
+            ResolveTopOpponent(_killsByVictim, allPlayers, out name, out count);
+        }
+
+        public void GetMostKilledByEnemy(IReadOnlyList<ScoreSystem> allPlayers, out string name, out int count)
+        {
+            ResolveTopOpponent(_deathsByKiller, allPlayers, out name, out count);
         }
 
         private static void Increment(Dictionary<uint, int> values, uint netId)
@@ -136,10 +165,16 @@ namespace BattlePvp.Combat
                 values[netId] = 1;
         }
 
-        private static string ResolveTopOpponentName(Dictionary<uint, int> values, IReadOnlyList<ScoreSystem> allPlayers)
+        private static void ResolveTopOpponent(
+            Dictionary<uint, int> values,
+            IReadOnlyList<ScoreSystem> allPlayers,
+            out string name,
+            out int count)
         {
+            name = "None";
+            count = 0;
             if (values == null || values.Count == 0)
-                return "None";
+                return;
 
             uint topNetId = 0;
             int topCount = int.MinValue;
@@ -152,17 +187,22 @@ namespace BattlePvp.Combat
                 }
             }
 
+            count = Mathf.Max(0, topCount);
+
             if (allPlayers != null)
             {
                 for (int i = 0; i < allPlayers.Count; i++)
                 {
                     var player = allPlayers[i];
                     if (player != null && player.netId == topNetId)
-                        return string.IsNullOrEmpty(player.PlayerName) ? "Unknown" : player.PlayerName;
+                    {
+                        name = string.IsNullOrEmpty(player.PlayerName) ? "Unknown" : player.PlayerName;
+                        return;
+                    }
                 }
             }
 
-            return "Unknown";
+            name = "Unknown";
         }
 
         /// <summary>

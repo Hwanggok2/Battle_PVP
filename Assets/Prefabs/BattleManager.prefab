@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 1903737507872724591}
   - component: {fileID: 2864469221451844340}
   - component: {fileID: 5764130383237914037}
+  - component: {fileID: 5939991182592210051}
   m_Layer: 0
   m_Name: BattleManager
   m_TagString: Untagged
@@ -68,8 +69,29 @@ MonoBehaviour:
   CurrentState: 0
   RemainingTime: 0
   IsLoading: 0
-  PreMatchDuration: 10
+  PreMatchDuration: 0
   CountdownDuration: 5
-  MatchDuration: 180
+  MatchDuration: 10
   RespawnDuration: 5
   ResultDelaySeconds: 5
+  _resultPanel: {fileID: 0}
+  _nicknameText: {fileID: 0}
+  _rankText: {fileID: 0}
+  _mostKilledByText: {fileID: 0}
+  _mostKilledText: {fileID: 0}
+  _restartPromptText: {fileID: 0}
+  _resultSummaryText: {fileID: 0}
+--- !u!114 &5939991182592210051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1526608346374316465}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90031d37c0af22e41b8028ebaae6ff3f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.BattleTimerUI
+  _timerText: {fileID: 0}
+  _stateMessageText: {fileID: 0}

@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using Mirror;
+using TMPro;
 
 namespace BattlePvp.UI
 {
@@ -11,7 +12,7 @@ namespace BattlePvp.UI
     {
         [Header("UI References")]
         [Tooltip("카운트다운을 표시할 텍스트 컴포넌트입니다. 할당하지 않으면 자식에서 자동으로 찾습니다.")]
-        [SerializeField] private Text _countdownText;
+        [SerializeField] private TextMeshProUGUI _countdownText;
 
         [Header("Settings")]
         [Tooltip("카운트다운 시간 (초)")]
@@ -33,10 +34,7 @@ namespace BattlePvp.UI
             }
             
             // Text가 할당되지 않았다면 자식 오브젝트에서 찾기 시도
-            if (_countdownText == null)
-            {
-                _countdownText = GetComponentInChildren<Text>();
-            }
+            _countdownText = TmpTextMigration.ResolveOrUpgrade(transform, _countdownText);
 
             if (_countdownText != null)
             {
@@ -126,6 +124,71 @@ namespace BattlePvp.UI
             {
                 _countdownText.text = _originalText;
             }
+        }
+    }
+
+    internal static class TmpTextMigration
+    {
+        public static TextMeshProUGUI ResolveOrUpgrade(Transform root, TextMeshProUGUI assigned)
+        {
+            if (assigned != null || root == null)
+                return assigned;
+
+            TextMeshProUGUI existing = root.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (existing != null)
+                return existing;
+
+            Text legacy = root.GetComponentInChildren<Text>(true);
+            if (legacy == null)
+                return null;
+
+            var labelObject = new GameObject(
+                "TMP Label",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(TextMeshProUGUI));
+            labelObject.transform.SetParent(legacy.transform, false);
+
+            RectTransform rect = labelObject.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+            label.text = legacy.text;
+            label.font = TMP_Settings.defaultFontAsset;
+            label.fontSize = legacy.fontSize;
+            label.color = legacy.color;
+            label.alignment = ConvertAlignment(legacy.alignment);
+            label.enableAutoSizing = legacy.resizeTextForBestFit;
+            label.fontSizeMin = legacy.resizeTextMinSize;
+            label.fontSizeMax = legacy.resizeTextMaxSize;
+            label.textWrappingMode = legacy.horizontalOverflow == HorizontalWrapMode.Wrap
+                ? TextWrappingModes.Normal
+                : TextWrappingModes.NoWrap;
+            label.overflowMode = legacy.verticalOverflow == VerticalWrapMode.Truncate
+                ? TextOverflowModes.Truncate
+                : TextOverflowModes.Overflow;
+            label.raycastTarget = legacy.raycastTarget;
+            legacy.enabled = false;
+            return label;
+        }
+
+        private static TextAlignmentOptions ConvertAlignment(TextAnchor alignment)
+        {
+            return alignment switch
+            {
+                TextAnchor.UpperLeft => TextAlignmentOptions.TopLeft,
+                TextAnchor.UpperCenter => TextAlignmentOptions.Top,
+                TextAnchor.UpperRight => TextAlignmentOptions.TopRight,
+                TextAnchor.MiddleLeft => TextAlignmentOptions.Left,
+                TextAnchor.MiddleRight => TextAlignmentOptions.Right,
+                TextAnchor.LowerLeft => TextAlignmentOptions.BottomLeft,
+                TextAnchor.LowerCenter => TextAlignmentOptions.Bottom,
+                TextAnchor.LowerRight => TextAlignmentOptions.BottomRight,
+                _ => TextAlignmentOptions.Center
+            };
         }
     }
 }

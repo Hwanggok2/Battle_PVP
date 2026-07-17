@@ -40,10 +40,23 @@ namespace BattlePvp.Networking
         [SerializeField] private GameObject _resultPanel;
         [SerializeField] private TMP_Text _nicknameText;
         [SerializeField] private TMP_Text _rankText;
+        [SerializeField] private TMP_Text _damageTakenText;
+        [SerializeField] private TMP_Text _damageDealtText;
+        [SerializeField] private TMP_Text _winnerText;
         [SerializeField] private TMP_Text _mostKilledByText;
         [SerializeField] private TMP_Text _mostKilledText;
         [SerializeField] private TMP_Text _restartPromptText;
         [SerializeField] private TMP_Text _resultSummaryText;
+
+        [Header("Result UI Labels")]
+        [SerializeField] private string _nicknamePrefix = "\uB2C9\uB124\uC784 : ";
+        [SerializeField] private string _rankPrefix = "\uC21C\uC704 : ";
+        [SerializeField] private string _damageTakenPrefix = "\uBC1B\uC740 \uB370\uBBF8\uC9C0 : ";
+        [SerializeField] private string _damageDealtPrefix = "\uC785\uD78C \uB370\uBBF8\uC9C0 : ";
+        [SerializeField] private string _winnerPrefix = "\uC2B9\uC790 : ";
+        [SerializeField] private string _mostKilledByPrefix = "\uB098\uB97C \uCD5C\uB2E4 \uCC98\uCE58 : ";
+        [SerializeField] private string _mostKilledPrefix = "\uB0B4\uAC00 \uCD5C\uB2E4 \uCC98\uCE58 : ";
+        [SerializeField] private string _restartPrompt = "Press Enter to Restart";
 
         private Coroutine _activeMatchRoutine;
         private GameObject _runtimeResultPanel;
@@ -205,7 +218,7 @@ namespace BattlePvp.Networking
             }
 
             uint[] winnerNetIds = new uint[winners.Count];
-            string winnerName = winners.Count > 0 ? winners[0].PlayerName : "Unknown";
+            string winnerName = BuildWinnerName(winners);
             int displayWinnerScore = winners.Count > 0 ? winnerScore : 0;
             for (int i = 0; i < winners.Count; i++)
             {
@@ -216,7 +229,7 @@ namespace BattlePvp.Networking
                 winners[0].DistributeRewards(allScores);
 
             RpcHandleMatchEnded(winnerNetIds);
-            SendPersonalResults(allScores);
+            SendPersonalResults(allScores, winnerName);
             Debug.Log($"[BattleStateMachine] Match ended. Winners={winners.Count}, Score={displayWinnerScore}");
         }
 
@@ -236,7 +249,7 @@ namespace BattlePvp.Networking
         }
 
         [Server]
-        private void SendPersonalResults(List<ScoreSystem> allScores)
+        private void SendPersonalResults(List<ScoreSystem> allScores, string winnerName)
         {
             if (allScores == null)
                 return;
@@ -249,10 +262,37 @@ namespace BattlePvp.Networking
 
                 int rank = CalculateRank(score, allScores);
                 string playerName = string.IsNullOrEmpty(score.PlayerName) ? "Unknown" : score.PlayerName;
-                string mostKilledBy = score.GetMostKilledByEnemyName(allScores);
-                string mostKilled = score.GetMostKilledEnemyName(allScores);
-                TargetShowPersonalResult(score.connectionToClient, playerName, rank, mostKilledBy, mostKilled);
+                score.GetMostKilledByEnemy(allScores, out string mostKilledBy, out int mostKilledByCount);
+                score.GetMostKilledEnemy(allScores, out string mostKilled, out int mostKilledCount);
+                TargetShowPersonalResult(
+                    score.connectionToClient,
+                    playerName,
+                    rank,
+                    winnerName,
+                    score.MatchDamageTaken,
+                    score.MatchDamageDealt,
+                    mostKilledBy,
+                    mostKilledByCount,
+                    mostKilled,
+                    mostKilledCount);
             }
+        }
+
+        private static string BuildWinnerName(IReadOnlyList<ScoreSystem> winners)
+        {
+            if (winners == null || winners.Count == 0)
+                return "Unknown";
+
+            var names = new List<string>(winners.Count);
+            for (int i = 0; i < winners.Count; i++)
+            {
+                ScoreSystem winner = winners[i];
+                names.Add(winner == null || string.IsNullOrWhiteSpace(winner.PlayerName)
+                    ? "Unknown"
+                    : winner.PlayerName);
+            }
+
+            return string.Join(", ", names);
         }
 
         private int CalculateRank(ScoreSystem target, IReadOnlyList<ScoreSystem> allScores)
@@ -272,9 +312,28 @@ namespace BattlePvp.Networking
         }
 
         [TargetRpc]
-        private void TargetShowPersonalResult(NetworkConnectionToClient target, string playerName, int rank, string mostKilledBy, string mostKilled)
+        private void TargetShowPersonalResult(
+            NetworkConnectionToClient target,
+            string playerName,
+            int rank,
+            string winnerName,
+            float damageTaken,
+            float damageDealt,
+            string mostKilledBy,
+            int mostKilledByCount,
+            string mostKilled,
+            int mostKilledCount)
         {
-            StartCoroutine(CoShowResultPanel(playerName, rank, mostKilledBy, mostKilled));
+            StartCoroutine(CoShowResultPanel(
+                playerName,
+                rank,
+                winnerName,
+                damageTaken,
+                damageDealt,
+                mostKilledBy,
+                mostKilledByCount,
+                mostKilled,
+                mostKilledCount));
         }
 
         private bool IsWinnerNetId(uint netId, uint[] winnerNetIds)
@@ -304,14 +363,32 @@ namespace BattlePvp.Networking
             return null;
         }
 
-        private IEnumerator CoShowResultPanel(string playerName, int rank, string mostKilledBy, string mostKilled)
+        private IEnumerator CoShowResultPanel(
+            string playerName,
+            int rank,
+            string winnerName,
+            float damageTaken,
+            float damageDealt,
+            string mostKilledBy,
+            int mostKilledByCount,
+            string mostKilled,
+            int mostKilledCount)
         {
             _resultPanelVisible = false;
             HideResultPanel();
 
             yield return new WaitForSeconds(ResultDelaySeconds);
 
-            ShowResultPanel(playerName, rank, mostKilledBy, mostKilled);
+            ShowResultPanel(
+                playerName,
+                rank,
+                winnerName,
+                damageTaken,
+                damageDealt,
+                mostKilledBy,
+                mostKilledByCount,
+                mostKilled,
+                mostKilledCount);
         }
 
         private void HideResultPanel()
@@ -326,17 +403,38 @@ namespace BattlePvp.Networking
                 _resultPanel.SetActive(false);
         }
 
-        private void ShowResultPanel(string playerName, int rank, string mostKilledBy, string mostKilled)
+        private void ShowResultPanel(
+            string playerName,
+            int rank,
+            string winnerName,
+            float damageTaken,
+            float damageDealt,
+            string mostKilledBy,
+            int mostKilledByCount,
+            string mostKilled,
+            int mostKilledCount)
         {
-            string resultMessage = BuildResultMessage(playerName, rank, mostKilledBy, mostKilled);
+            string resultMessage = BuildResultMessage(
+                playerName,
+                rank,
+                winnerName,
+                damageTaken,
+                damageDealt,
+                mostKilledBy,
+                mostKilledByCount,
+                mostKilled,
+                mostKilledCount);
             if (_resultPanel != null)
             {
                 ResolveResultTextReferences();
-                SetText(_nicknameText, $"Nickname: {playerName}");
-                SetText(_rankText, $"Rank: {rank}");
-                SetText(_mostKilledByText, $"Most defeated by: {mostKilledBy}");
-                SetText(_mostKilledText, $"Most defeated: {mostKilled}");
-                SetText(_restartPromptText, "Press Enter to Restart");
+                SetText(_nicknameText, $"{_nicknamePrefix}{playerName}");
+                SetText(_rankText, $"{_rankPrefix}{rank}");
+                SetText(_damageTakenText, $"{_damageTakenPrefix}{FormatDamage(damageTaken)}");
+                SetText(_damageDealtText, $"{_damageDealtPrefix}{FormatDamage(damageDealt)}");
+                SetText(_winnerText, $"{_winnerPrefix}{winnerName}");
+                SetText(_mostKilledByText, $"{_mostKilledByPrefix}{FormatOpponent(mostKilledBy, mostKilledByCount)}");
+                SetText(_mostKilledText, $"{_mostKilledPrefix}{FormatOpponent(mostKilled, mostKilledCount)}");
+                SetText(_restartPromptText, _restartPrompt);
 
                 if (_resultSummaryText != null)
                     _resultSummaryText.text = resultMessage;
@@ -403,18 +501,36 @@ namespace BattlePvp.Networking
 
                 if (_nicknameText == null && lowerName.Contains("nickname"))
                     _nicknameText = text;
+                else if (_nicknameText == null && lowerName.Contains("playername"))
+                    _nicknameText = text;
                 else if (_rankText == null && lowerName.Contains("rank"))
                     _rankText = text;
-                else if (_mostKilledByText == null && (lowerName.Contains("killedby") || lowerName.Contains("killed_by") || lowerName.Contains("killed by") || lowerName.Contains("defeatedby") || lowerName.Contains("defeated_by") || lowerName.Contains("defeated by")))
+                else if (_damageTakenText == null && (lowerName.Contains("takedamage") || lowerName.Contains("damage taken") || lowerName.Contains("receiveddamage")))
+                    _damageTakenText = text;
+                else if (_damageDealtText == null && (lowerName.Contains("hitdamage") || lowerName.Contains("damage dealt") || lowerName.Contains("dealtdamage")))
+                    _damageDealtText = text;
+                else if (_winnerText == null && lowerName.Contains("winner"))
+                    _winnerText = text;
+                else if (_mostKilledByText == null && (lowerName.Contains("manydie") || lowerName.Contains("killedby") || lowerName.Contains("killed_by") || lowerName.Contains("killed by") || lowerName.Contains("defeatedby") || lowerName.Contains("defeated_by") || lowerName.Contains("defeated by")))
                     _mostKilledByText = text;
-                else if (_mostKilledText == null && (lowerName.Contains("mostkilled") || lowerName.Contains("most_killed") || lowerName.Contains("most killed") || lowerName.Contains("mostdefeated") || lowerName.Contains("most_defeated") || lowerName.Contains("most defeated") || lowerName.Contains("defeated")))
+                else if (_mostKilledText == null && (lowerName.Contains("manykill") || lowerName.Contains("mostkilled") || lowerName.Contains("most_killed") || lowerName.Contains("most killed") || lowerName.Contains("mostdefeated") || lowerName.Contains("most_defeated") || lowerName.Contains("most defeated") || lowerName.Contains("defeated")))
                     _mostKilledText = text;
                 else if (_restartPromptText == null && (lowerName.Contains("restart") || lowerName.Contains("prompt")))
                     _restartPromptText = text;
             }
 
-            if (_resultSummaryText == null && _nicknameText == null && _rankText == null && _mostKilledByText == null && _mostKilledText == null && texts.Length > 0)
+            if (_resultSummaryText == null &&
+                _nicknameText == null &&
+                _rankText == null &&
+                _damageTakenText == null &&
+                _damageDealtText == null &&
+                _winnerText == null &&
+                _mostKilledByText == null &&
+                _mostKilledText == null &&
+                texts.Length > 0)
+            {
                 _resultSummaryText = texts[0];
+            }
         }
 
         private static void SetText(TMP_Text text, string value)
@@ -423,9 +539,37 @@ namespace BattlePvp.Networking
                 text.text = value;
         }
 
-        private string BuildResultMessage(string playerName, int rank, string mostKilledBy, string mostKilled)
+        private string BuildResultMessage(
+            string playerName,
+            int rank,
+            string winnerName,
+            float damageTaken,
+            float damageDealt,
+            string mostKilledBy,
+            int mostKilledByCount,
+            string mostKilled,
+            int mostKilledCount)
         {
-            return $"Nickname: {playerName}\nRank: {rank}\nMost defeated by: {mostKilledBy}\nMost defeated: {mostKilled}\n\nPress Enter to Restart";
+            return
+                $"{_nicknamePrefix}{playerName}\n" +
+                $"{_rankPrefix}{rank}\n" +
+                $"{_damageTakenPrefix}{FormatDamage(damageTaken)}\n" +
+                $"{_damageDealtPrefix}{FormatDamage(damageDealt)}\n" +
+                $"{_winnerPrefix}{winnerName}\n" +
+                $"{_mostKilledByPrefix}{FormatOpponent(mostKilledBy, mostKilledByCount)}\n" +
+                $"{_mostKilledPrefix}{FormatOpponent(mostKilled, mostKilledCount)}\n\n" +
+                _restartPrompt;
+        }
+
+        private static string FormatDamage(float damage)
+        {
+            return Mathf.Max(0f, damage).ToString("0.#");
+        }
+
+        private static string FormatOpponent(string opponentName, int count)
+        {
+            string name = string.IsNullOrWhiteSpace(opponentName) ? "None" : opponentName;
+            return $"{name} ({Mathf.Max(0, count)})";
         }
 
         [Server]
