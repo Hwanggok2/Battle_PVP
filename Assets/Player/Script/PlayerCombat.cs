@@ -619,6 +619,7 @@ public class PlayerCombat : NetworkBehaviour
             if (isServer)
             {
                 _lastServerAttackSequence = sequence;
+                RpcStartAttackFast(index, aimDirection, sequence, requestedStartTime);
                 RpcStartAttack(index, aimDirection, sequence, requestedStartTime);
             }
             else
@@ -646,12 +647,24 @@ public class PlayerCombat : NetworkBehaviour
         double acceptedStartTime = ResolveServerActionTime(requestedStartTime);
         bool allowForcedTauntAttack = forcedTauntAttack && _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
         StartAttack(index, false, aimDirection, allowForcedTauntAttack, acceptedStartTime);
+        RpcStartAttackFast(index, aimDirection, sequence, acceptedStartTime);
         RpcStartAttack(index, aimDirection, sequence, acceptedStartTime);
         TargetResolveAttackRequest(connectionToClient, sequence, true);
     }
 
+    [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
+    private void RpcStartAttackFast(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
+    {
+        ReceiveRemoteAttackStart(index, aimDirection, sequence, acceptedStartTime);
+    }
+
     [ClientRpc(includeOwner = false)]
     private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
+    {
+        ReceiveRemoteAttackStart(index, aimDirection, sequence, acceptedStartTime);
+    }
+
+    private void ReceiveRemoteAttackStart(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
     {
         if (isServer)
             return;

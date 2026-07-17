@@ -27,6 +27,8 @@ public class PlayerManager : NetworkBehaviour
 
     [Header("Remote Movement Smoothing")]
     [SerializeField, Range(0.03f, 0.25f)] private float _remoteInterpolationBackTime = 0.1f;
+    [SerializeField, Range(0.1f, 0.6f)] private float _remoteMaxInterpolationBackTime = 0.35f;
+    [SerializeField, Range(0f, 0.1f)] private float _remoteJitterMargin = 0.03f;
     [SerializeField, Range(4, 64)] private int _remoteSnapshotBufferSize = 32;
     [SerializeField, Range(0f, 0.25f)] private float _remoteExtrapolationLimit = 0.1f;
     [SerializeField] private float _remoteSnapDistance = 3f;
@@ -80,6 +82,10 @@ public class PlayerManager : NetworkBehaviour
     private bool _hasRemoteTransformTarget;
     private readonly List<RemoteTransformSnapshot> _remoteTransformSnapshots = new List<RemoteTransformSnapshot>(32);
     private double _latestRemoteSnapshotTime = double.NegativeInfinity;
+    private double _remoteSnapshotDelayEstimate;
+    private double _remoteSnapshotDelayDeviation;
+    private float _remoteRenderDelay;
+    private bool _hasRemoteDelayEstimate;
     private Vector2 _remoteLocomotionTarget;
     private ushort _lastSentLocomotionState;
     private bool _hasSentLocomotionState;
@@ -1025,6 +1031,8 @@ public class PlayerManager : NetworkBehaviour
         if (double.IsNaN(sampleTime) || double.IsInfinity(sampleTime) || sampleTime <= _latestRemoteSnapshotTime)
             return;
 
+        UpdateRemoteDelayEstimate(sampleTime);
+
         bool shouldSnap = !_hasRemoteTransformTarget ||
                           Vector3.Distance(_remoteTargetPosition, position) > _remoteSnapDistance;
         if (shouldSnap)
@@ -1054,7 +1062,26 @@ public class PlayerManager : NetworkBehaviour
         if (!_hasRemoteTransformTarget || !isClient || _remoteTransformSnapshots.Count == 0)
             return;
 
-        double renderTime = NetworkTime.time - Mathf.Max(0f, _remoteInterpolationBackTime);
+        float minimumDelay = Mathf.Max(0f, _remoteInterpolationBackTime);
+        float maximumDelay = Mathf.Max(minimumDelay, _remoteMaxInterpolationBackTime);
+        float targetDelay = minimumDelay;
+        if (_hasRemoteDelayEstimate)
+        {
+            targetDelay = Mathf.Clamp(
+                (float)(_remoteSnapshotDelayEstimate + 2d * _remoteSnapshotDelayDeviation) + _remoteJitterMargin,
+                minimumDelay,
+                maximumDelay);
+        }
+
+        if (_remoteRenderDelay <= 0f)
+            _remoteRenderDelay = targetDelay;
+        else
+            _remoteRenderDelay = Mathf.MoveTowards(
+                _remoteRenderDelay,
+                targetDelay,
+                Time.deltaTime * (targetDelay > _remoteRenderDelay ? 0.5f : 0.05f));
+
+        double renderTime = NetworkTime.time - _remoteRenderDelay;
         while (_remoteTransformSnapshots.Count >= 3 && _remoteTransformSnapshots[1].Time <= renderTime)
             _remoteTransformSnapshots.RemoveAt(0);
 
@@ -1090,6 +1117,23 @@ public class PlayerManager : NetworkBehaviour
         }
 
         ApplyRemotePose(nextPosition, nextRotation);
+    }
+
+    private void UpdateRemoteDelayEstimate(double sampleTime)
+    {
+        double observedDelay = Math.Max(0d, NetworkTime.time - sampleTime);
+        if (!_hasRemoteDelayEstimate)
+        {
+            _remoteSnapshotDelayEstimate = observedDelay;
+            _remoteSnapshotDelayDeviation = 0d;
+            _hasRemoteDelayEstimate = true;
+            return;
+        }
+
+        const double smoothing = 0.1d;
+        double difference = observedDelay - _remoteSnapshotDelayEstimate;
+        _remoteSnapshotDelayEstimate += difference * smoothing;
+        _remoteSnapshotDelayDeviation += (Math.Abs(difference) - _remoteSnapshotDelayDeviation) * smoothing;
     }
 
     private void ApplyRemotePose(Vector3 position, Quaternion rotation)

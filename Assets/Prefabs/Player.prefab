@@ -2867,6 +2867,8 @@ MonoBehaviour:
   _coyoteTimeSeconds: 0.08
   _groundSnapDistance: 0.2
   _remoteInterpolationBackTime: 0.1
+  _remoteMaxInterpolationBackTime: 0.35
+  _remoteJitterMargin: 0.03
   _remoteSnapshotBufferSize: 32
   _remoteExtrapolationLimit: 0.1
   _remoteSnapDistance: 3
