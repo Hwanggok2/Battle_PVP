@@ -181,6 +181,13 @@ namespace BattlePvp.UI
         private bool TryAutoResolveSources()
         {
             bool changed = false;
+            StatManager parentStats = GetComponentInParent<StatManager>(true);
+
+            if (parentStats != null && _identitySourceBehaviour != parentStats)
+            {
+                _identitySourceBehaviour = parentStats;
+                changed = true;
+            }
 
             if (_identitySourceBehaviour == null || _identitySourceBehaviour is not IIdentitySource)
             {
@@ -191,6 +198,13 @@ namespace BattlePvp.UI
                     _identitySourceBehaviour = localStats;
                     changed = true;
                 }
+            }
+
+            HealthSystem parentHealth = parentStats != null ? parentStats.GetComponent<HealthSystem>() : null;
+            if (parentHealth != null && _statusSourceBehaviour != parentHealth)
+            {
+                _statusSourceBehaviour = parentHealth;
+                changed = true;
             }
 
             if (_statusSourceBehaviour == null ||

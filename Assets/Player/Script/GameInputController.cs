@@ -19,6 +19,7 @@ namespace BattlePvp.Logic
 
         private FollowCamera _followCamera;
         private bool _isCursorUnlocked = false;
+        private static bool IsWebGlRuntime => Application.platform == RuntimePlatform.WebGLPlayer;
 
         public static GameInputController Instance { get; private set; }
 
@@ -82,10 +83,18 @@ namespace BattlePvp.Logic
                 ClearSelectedUiIfNotTextInput();
             }
 
-            if (!IsTextInputActive && Mouse.current != null &&
-                (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame))
+            bool pointerPressed = !IsTextInputActive && Mouse.current != null &&
+                                  (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame);
+            if (pointerPressed)
             {
                 ClearSelectedUiIfNotTextInput();
+
+                if (IsWebGlRuntime && !_isCursorUnlocked && IsBattleCursorControlledScene() &&
+                    Cursor.lockState != CursorLockMode.Locked)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
+                }
             }
 
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
@@ -108,7 +117,7 @@ namespace BattlePvp.Logic
                     Cursor.visible = true;
                 }
             }
-            else if (IsBattleCursorControlledScene())
+            else if (IsBattleCursorControlledScene() && !IsWebGlRuntime)
             {
                 if (Cursor.lockState != CursorLockMode.Locked || Cursor.visible)
                 {
@@ -154,8 +163,15 @@ namespace BattlePvp.Logic
                 // ESC 2회: 커서 잠금, 카메라 회전 (기본 상태)
                 if (IsBattleCursorControlledScene())
                 {
-                    Cursor.lockState = CursorLockMode.Locked;
-                    Cursor.visible = false;
+                    if (!IsWebGlRuntime)
+                    {
+                        Cursor.lockState = CursorLockMode.Locked;
+                        Cursor.visible = false;
+                    }
+                    else
+                    {
+                        Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
+                    }
                 }
                 if (_followCamera != null) _followCamera.IsLocked = false;
             }

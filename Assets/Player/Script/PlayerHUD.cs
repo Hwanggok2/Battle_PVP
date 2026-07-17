@@ -303,6 +303,13 @@ namespace BattlePvp.UI
             if (localStats == null || localHealth == null)
                 return false;
 
+            if (_ownerIdentity != null && !_ownerIdentity.isLocalPlayer)
+            {
+                UnsubscribeCurrent();
+                SetViewActive(false);
+                return false;
+            }
+
             if (_ownerIdentity != null && HasGlobalHud())
             {
                 _globalHud.SetTarget(localStats, localHealth, localCombat);
@@ -324,6 +331,9 @@ namespace BattlePvp.UI
 
         public void SetTarget(StatManager sm, HealthSystem hs, PlayerCombat combat)
         {
+            if (NetworkClient.active && _ownerIdentity != null && !_ownerIdentity.isLocalPlayer)
+                return;
+
             if (NetworkClient.active && NetworkClient.localPlayer != null)
             {
                 if (hs == null || hs.transform.root != NetworkClient.localPlayer.transform)

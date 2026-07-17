@@ -112,6 +112,7 @@ public class PlayerCombat : NetworkBehaviour
     [SyncVar] [SerializeField] private uint _tauntedByNetId;
     [SyncVar] [SerializeField] private double _tauntedUntil;
     private readonly SyncDictionary<int, double> _advancedCooldownUntil = new SyncDictionary<int, double>();
+    private readonly Dictionary<int, double> _offlineAdvancedCooldownUntil = new Dictionary<int, double>();
 
     private int currentComboIndex;
     private bool isAttacking;
@@ -1258,11 +1259,11 @@ public class PlayerCombat : NetworkBehaviour
         double now = SkillTime;
         if (data == null || (_healthSystem != null && _healthSystem.IsDead))
             return false;
-        if (_advancedCastingSkillKey >= 0 || (_advancedCooldownUntil.TryGetValue(skillKey, out double cooldown) && now < cooldown))
+        if (_advancedCastingSkillKey >= 0 || (TryGetAdvancedCooldownUntil(skillKey, out double cooldown) && now < cooldown))
             return false;
 
         if (data.CooldownSeconds > 0f)
-            _advancedCooldownUntil[skillKey] = requestedStartTime + data.CooldownSeconds;
+            SetAdvancedCooldownUntil(skillKey, requestedStartTime + data.CooldownSeconds);
 
         CancelCurrentAttack();
         PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
@@ -1470,7 +1471,7 @@ public class PlayerCombat : NetworkBehaviour
                 _advancedActiveSkillKey = (int)data.SkillKind;
                 _advancedActiveUntil = SkillTime + data.RollDurationSeconds;
                 _healthSystem?.SetSkillInvulnerable(data.RollDurationSeconds);
-                RpcExecuteSkillMove(direction, data.RollDistance, data.RollDurationSeconds, 1f, 0f);
+                ExecuteSkillMove(direction, data.RollDistance, data.RollDurationSeconds, 1f, 0f);
                 break;
             case JobSkillKind.StrategistPresetChange:
             case JobSkillKind.PolymathPresetChange:
@@ -1955,6 +1956,22 @@ public class PlayerCombat : NetworkBehaviour
     [ClientRpc]
     private void RpcExecuteSkillMove(Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
     {
+        ExecuteSkillMoveLocal(direction, distance, duration, moveMultiplier, slowDuration);
+    }
+
+    private void ExecuteSkillMove(Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
+    {
+        if (NetworkServer.active)
+        {
+            RpcExecuteSkillMove(direction, distance, duration, moveMultiplier, slowDuration);
+            return;
+        }
+
+        ExecuteSkillMoveLocal(direction, distance, duration, moveMultiplier, slowDuration);
+    }
+
+    private void ExecuteSkillMoveLocal(Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
+    {
         _playerManager?.MoveBySkill(direction, distance, duration);
         if (slowDuration > 0f)
             _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
@@ -2345,10 +2362,29 @@ public class PlayerCombat : NetworkBehaviour
         if (data == null) return false;
         if (_advancedCastingSkillKey >= 0) return false;
         if (_advancedActiveSkillKey == (int)data.SkillKind && SkillTime < _advancedActiveUntil) return false;
-        if (_advancedCooldownUntil.TryGetValue((int)data.SkillKind, out double cooldownUntil) &&
+        if (TryGetAdvancedCooldownUntil((int)data.SkillKind, out double cooldownUntil) &&
             SkillTime < cooldownUntil) return false;
 
         return ResolveAdvancedSkillData((int)data.SkillKind) == data;
+    }
+
+    private bool TryGetAdvancedCooldownUntil(int skillKey, out double cooldownUntil)
+    {
+        if (NetworkServer.active || NetworkClient.active)
+            return _advancedCooldownUntil.TryGetValue(skillKey, out cooldownUntil);
+
+        return _offlineAdvancedCooldownUntil.TryGetValue(skillKey, out cooldownUntil);
+    }
+
+    private void SetAdvancedCooldownUntil(int skillKey, double cooldownUntil)
+    {
+        if (NetworkServer.active || NetworkClient.active)
+        {
+            _advancedCooldownUntil[skillKey] = cooldownUntil;
+            return;
+        }
+
+        _offlineAdvancedCooldownUntil[skillKey] = cooldownUntil;
     }
 
     private bool CanStartMonostatStrSkill(double now)
@@ -2722,7 +2758,7 @@ public class PlayerCombat : NetworkBehaviour
                     remaining = Mathf.Max(0f, (float)(_advancedActiveUntil - now));
                     fill = 1f;
                 }
-                else if (_advancedCooldownUntil.TryGetValue(key, out double cooldownUntil) && now < cooldownUntil)
+                else if (TryGetAdvancedCooldownUntil(key, out double cooldownUntil) && now < cooldownUntil)
                 {
                     phase = SkillHudPhase.Cooldown;
                     remaining = Mathf.Max(0f, (float)(cooldownUntil - now));

@@ -124,6 +124,7 @@ public class PlayerManager : NetworkBehaviour
     public bool IsSkillCrouchLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Crouch);
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     private double LocalInputTime => Time.timeAsDouble;
+    private bool ShouldHandleLocalInput => isLocalPlayer || (!NetworkClient.active && !NetworkServer.active);
 
     public Vector3 GetSkillMoveDirection()
     {
@@ -354,7 +355,7 @@ public class PlayerManager : NetworkBehaviour
 
     public void RefreshMoveInputFromCurrentAction()
     {
-        if (isClient && !isLocalPlayer)
+        if (!ShouldHandleLocalInput)
             return;
 
         if (isDead || _matchEndLocked || GameInputController.IsPaused || GameInputController.IsTextInputActive || _skillMovementLocked || IsSkillMoveLocked || IsEmoteBlockingMovement)
@@ -372,7 +373,7 @@ public class PlayerManager : NetworkBehaviour
 
     private void ResetLocalInputForPlayMode()
     {
-        if (!isLocalPlayer)
+        if (!ShouldHandleLocalInput)
             return;
 
         if (_playerInput == null)
@@ -477,10 +478,13 @@ public class PlayerManager : NetworkBehaviour
         if (rb == null)
             return;
 
+        if (!rb.isKinematic)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
         rb.isKinematic = true;
         rb.useGravity = false;
-        rb.linearVelocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
     }
 
     public override void OnStartLocalPlayer()
@@ -516,6 +520,9 @@ public class PlayerManager : NetworkBehaviour
         {
             _healthSystem.OnDied += HandleDeath;
         }
+
+        if (ShouldHandleLocalInput)
+            ResetLocalInputForPlayMode();
     }
 
     private void OnDisable()
@@ -551,21 +558,21 @@ public class PlayerManager : NetworkBehaviour
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
     public void OnMove(InputValue value)
     {
-        if (isClient && !isLocalPlayer) return;
+        if (!ShouldHandleLocalInput) return;
         if (isDead || _matchEndLocked || _skillMovementLocked || IsSkillMoveLocked || IsEmoteBlockingMovement) { inputVector = Vector2.zero; return; }
         inputVector = value.Get<Vector2>();
     }
 
     public void OnJump(InputValue value)
     {
-        if (isClient && !isLocalPlayer) return;
+        if (!ShouldHandleLocalInput) return;
         if (!value.isPressed) return;
         QueueJumpRequest();
     }
 
     public void OnCrouch(InputValue value)
     {
-        if (isClient && !isLocalPlayer) return;
+        if (!ShouldHandleLocalInput) return;
         if (!value.isPressed) return;
         if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || _skillMovementLocked || IsSkillCrouchLocked || IsEmoteBlockingJump) return;
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
@@ -575,7 +582,7 @@ public class PlayerManager : NetworkBehaviour
 
     private void Update()
     {
-        if (!isLocalPlayer)
+        if (!ShouldHandleLocalInput)
         {
             SmoothRemoteTransform();
             UpdateRemoteLocomotionAnimation();
@@ -836,7 +843,6 @@ public class PlayerManager : NetworkBehaviour
         if (isAttacking && inputVector.sqrMagnitude < 0.001f && !forcedTauntMoving)
         {
             currentMoveSpeed = 0f;
-            if (rb != null) rb.linearVelocity = Vector3.zero; // Rigidbody가 있다면 명시적으로 0
         }
 
         Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
@@ -853,7 +859,7 @@ public class PlayerManager : NetworkBehaviour
 
     private void UpdateLocalLocomotion(Vector2 locomotion)
     {
-        if (!isLocalPlayer)
+        if (!ShouldHandleLocalInput)
             return;
 
         Vector2 sanitized = SanitizeLocomotion(locomotion);
@@ -1348,8 +1354,16 @@ public class PlayerManager : NetworkBehaviour
             followCamera.IsLocked = !isWinner;
         }
 
-        Cursor.lockState = isWinner ? CursorLockMode.Locked : CursorLockMode.None;
-        Cursor.visible = !isWinner;
+        if (!isWinner)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+        else if (Application.platform != RuntimePlatform.WebGLPlayer)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 
     private void ToggleCharacterVisibility(bool visible)

@@ -249,17 +249,20 @@ namespace BattlePvp.Networking
 
         public override void ClientEarlyUpdate()
         {
-            if (!_clientDriver.IsCreated)
+            if (!_clientDriver.IsCreated || !_clientConnection.IsCreated)
                 return;
 
             _clientDriver.ScheduleUpdate().Complete();
 
-            NetworkEvent.Type eventType;
-            while ((eventType = _clientConnection.PopEvent(
-                       _clientDriver,
-                       out DataStreamReader reader,
-                       out NetworkPipeline pipeline)) != NetworkEvent.Type.Empty)
+            while (_clientDriver.IsCreated && _clientConnection.IsCreated)
             {
+                NetworkEvent.Type eventType = _clientConnection.PopEvent(
+                    _clientDriver,
+                    out DataStreamReader reader,
+                    out NetworkPipeline pipeline);
+                if (eventType == NetworkEvent.Type.Empty)
+                    return;
+
                 switch (eventType)
                 {
                     case NetworkEvent.Type.Connect:
@@ -275,8 +278,12 @@ namespace BattlePvp.Networking
                         _clientConnected = false;
                         _clientConnection = default;
                         OnClientDisconnected?.Invoke();
-                        break;
+                        return;
                 }
+
+                // Mirror callbacks can synchronously stop the client and dispose the driver.
+                if (!_clientDriver.IsCreated || !_clientConnection.IsCreated)
+                    return;
             }
         }
 
