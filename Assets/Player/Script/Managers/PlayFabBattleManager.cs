@@ -17,7 +17,7 @@ namespace BattlePvp.Networking
     {
         public static PlayFabBattleManager Instance { get; private set; }
 
-        private const string ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY"; // 諛?紐⑸줉????ν븷 怨듭슜 洹몃９ ID
+        private const string ROOM_REGISTRY_ID = "GLOBALROOMREGISTRY"; // PlayFab SharedGroupId only uses a safe alphanumeric id.
         private const string ROOM_STARTED_KEY = "IsStarted";
         private const string ROOM_PLAYER_COUNT_KEY = "PlayerCount";
         private const string ROOM_MASTER_NAME_KEY = "MasterName";
@@ -57,6 +57,7 @@ namespace BattlePvp.Networking
         public event Action<Dictionary<string, RoomInfo>> OnRoomInfoListLoaded;
         public event Action OnRoomRegistryChanged;
         public event Action OnRoomJoined;
+        public event Action<string, bool> OnRoomFlowStateChanged;
 
         private bool _isHost = false; // 諛⑹옣 ?щ? ?뺤씤 ?뚮옒洹?
 
@@ -143,19 +144,33 @@ namespace BattlePvp.Networking
         {
             try
             {
+                SetRoomFlowState("\uB9B4\uB808\uC774 \uBC29\uC744 \uC900\uBE44\uD558\uB294 \uC911...", true);
                 Debug.Log($"[PlayFabManager] Creating Unity Relay allocation for Room: {_waitSceneName}");
                 string joinCode = await relayTransport.PrepareHostAsync(NetworkManager.singleton.maxConnections);
                 Debug.Log($"[PlayFabManager] Unity Relay host prepared. JoinCode={joinCode}");
 
-                bool updated = await UpdateCurrentRoomRelayJoinCodeAsync(joinCode);
-                if (!updated)
-                    throw new InvalidOperationException("Failed to publish Relay join code to PlayFab.");
+                string roomId = !string.IsNullOrWhiteSpace(_joinedRoomId) ? _joinedRoomId : _ownedRoomId;
+                if (string.IsNullOrWhiteSpace(roomId))
+                    throw new InvalidOperationException("The host room id is missing.");
+
+                _knownRoomRelayJoinCodes[roomId] = joinCode;
+                _currentRoomInfo = new RoomInfo(
+                    GetKnownRoomName(roomId),
+                    GetKnownRoomMasterName(roomId),
+                    Mathf.Max(1, GetKnownRoomCount(roomId)),
+                    joinCode);
 
                 NetworkManager.singleton.StartHost();
+                RegisterRoomToRegistry(
+                    roomId,
+                    GetKnownRoomName(roomId),
+                    GetKnownRoomMasterName(roomId),
+                    joinCode);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayFabManager] Failed to start Relay host: {ex}");
+                SetRoomFlowState("\uBC29 \uC0DD\uC131\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
                 LeaveCurrentRoom();
             }
         }
@@ -164,6 +179,7 @@ namespace BattlePvp.Networking
         {
             try
             {
+                SetRoomFlowState("\uB9B4\uB808\uC774 \uC11C\uBC84\uC5D0 \uC5F0\uACB0\uD558\uB294 \uC911...", true);
                 string joinCode = await WaitForRelayJoinCodeAsync();
 
                 if (string.IsNullOrWhiteSpace(joinCode))
@@ -174,10 +190,12 @@ namespace BattlePvp.Networking
 
                 NetworkManager.singleton.networkAddress = "relay";
                 NetworkManager.singleton.StartClient();
+                SetRoomFlowState("\uBC29\uC5D0 \uC811\uC18D\uD558\uB294 \uC911...", true);
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[PlayFabManager] Failed to start Relay client: {ex}");
+                SetRoomFlowState("\uBC29 \uCC38\uC5EC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
                 LeaveCurrentRoom();
             }
         }
@@ -211,13 +229,6 @@ namespace BattlePvp.Networking
             return completion.Task;
         }
 
-        private System.Threading.Tasks.Task<bool> UpdateCurrentRoomRelayJoinCodeAsync(string joinCode)
-        {
-            var completion = new System.Threading.Tasks.TaskCompletionSource<bool>();
-            UpdateCurrentRoomRelayJoinCode(joinCode, success => completion.TrySetResult(success));
-            return completion.Task;
-        }
-
         #region [Room Management]
 
         /// <summary>
@@ -239,32 +250,18 @@ namespace BattlePvp.Networking
             _knownRoomRelayJoinCodes[roomId] = string.Empty;
             _currentRoomInfo = new RoomInfo(roomName, masterName, 1, string.Empty);
             OnRoomRegistryChanged?.Invoke();
-            var request = new CreateSharedGroupRequest
-            {
-                SharedGroupId = roomId 
-            };
+            SetRoomFlowState("\uBC29 \uC0DD\uC131\uC744 \uC900\uBE44\uD558\uB294 \uC911...", true);
 
-            PlayFabClientAPI.CreateSharedGroup(request, 
-                result => {
-                    Debug.Log($"諛??앹꽦 ?깃났: {roomName} (ID: {roomId})");
-                    UpdateRoomData(roomId, ROOM_STARTED_KEY, "false");
-                    UpdateRoomData(roomId, ROOM_PLAYER_COUNT_KEY, "1");
-                    UpdateRoomData(roomId, ROOM_MASTER_NAME_KEY, masterName);
-
-                    // Relay allocation and registry publication can run in parallel.
-                    HandleRoomJoinSuccess();
-                    
-                    // 湲濡쒕쾶 ?덉??ㅽ듃由ъ뿉 ??諛⑹쓽 怨좎쑀 ID? ?ㅼ젣 ?쒕ぉ???띿쑝濡??깅줉?⑸땲??
-                    RegisterRoomToRegistry(roomId, roomName, masterName);
-                }, 
-                error => Debug.LogError($"諛??앹꽦 ?ㅽ뙣: {error.GenerateErrorReport()}")
-            );
+            // CloudScript creates the Shared Group and writes all room data after Relay
+            // has produced a join code. Doing the same work here added four Web requests.
+            HandleRoomJoinSuccess();
         }
 
         private void JoinRoomThroughCloudScript(string roomId)
         {
             LeaveJoinedRoomBeforeSwitch(roomId);
             _isHost = !string.IsNullOrEmpty(_ownedRoomId) && roomId == _ownedRoomId;
+            SetRoomFlowState("\uBC29 \uC815\uBCF4\uB97C \uD655\uC778\uD558\uB294 \uC911...", true);
 
             var parameters = new Dictionary<string, object>
             {
@@ -283,6 +280,7 @@ namespace BattlePvp.Networking
                     if (result.Error != null)
                     {
                         Debug.LogError($"[PlayFab] CloudScript room join failed: {FormatCloudScriptError(result)}");
+                        SetRoomFlowState("\uBC29 \uCC38\uC5EC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
                         return;
                     }
 
@@ -299,7 +297,11 @@ namespace BattlePvp.Networking
                     OnRoomRegistryChanged?.Invoke();
                     OnRoomJoined?.Invoke();
                 },
-                error => Debug.LogError($"[PlayFab] CloudScript room join request failed: {error.GenerateErrorReport()}")
+                error =>
+                {
+                    Debug.LogError($"[PlayFab] CloudScript room join request failed: {error.GenerateErrorReport()}");
+                    SetRoomFlowState("\uBC29 \uCC38\uC5EC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
+                }
             );
         }
 
@@ -326,13 +328,15 @@ namespace BattlePvp.Networking
         /// <summary>
         /// 紐⑤뱺 ?뚮젅?댁뼱媛 蹂????덈뒗 怨듭슜 洹몃９???꾩옱 諛??뺣낫瑜?異붽??⑸땲??
         /// </summary>
-        private void RegisterRoomToRegistry(string roomId, string roomName, string masterName)
+        private void RegisterRoomToRegistry(string roomId, string roomName, string masterName, string relayJoinCode)
         {
+            SetRoomFlowState("\uBC29\uC744 \uB4F1\uB85D\uD558\uB294 \uC911...", true);
             var parameters = new Dictionary<string, object>
             {
                 { "roomId", roomId },
                 { "roomName", roomName },
-                { "masterName", masterName }
+                { "masterName", masterName },
+                { "relayJoinCode", relayJoinCode ?? string.Empty }
             };
 
             PlayFabClientAPI.ExecuteCloudScript(
@@ -347,20 +351,33 @@ namespace BattlePvp.Networking
                     if (result.Error != null)
                     {
                         Debug.LogError($"[PlayFab] CloudScript room registry update failed: {FormatCloudScriptError(result)}");
+                        SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
                         TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
                         return;
                     }
 
                     Debug.Log($"[PlayFab] Room '{roomName}' registered through CloudScript. Result={SerializeForLog(result.FunctionResult)}");
+                    SetRoomFlowState(string.Empty, false);
                     OnRoomRegistryChanged?.Invoke();
                     OnRoomJoined?.Invoke();
                 },
                 error =>
                 {
                     Debug.LogError($"[PlayFab] CloudScript room registry request failed: {error.GenerateErrorReport()}");
+                    SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
                     TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
                 }
             );
+        }
+
+        private void SetRoomFlowState(string message, bool isBusy)
+        {
+            OnRoomFlowStateChanged?.Invoke(message ?? string.Empty, isBusy);
+        }
+
+        public void NotifyRoomNetworkConnected()
+        {
+            SetRoomFlowState(string.Empty, false);
         }
 
         private void TryRegisterRoomToRegistryWithClientApi(string roomId, string roomName)
@@ -829,7 +846,7 @@ namespace BattlePvp.Networking
                 string masterName = GetStringValue(infoDict, "masterName", "Unknown");
                 int playerCount = GetIntValue(infoDict, "playerCount", 0);
                 string relayJoinCode = GetStringValue(infoDict, "relayJoinCode", GetKnownRoomRelayJoinCode(kv.Key));
-                if (playerCount <= 0)
+                if (playerCount <= 0 || string.IsNullOrWhiteSpace(relayJoinCode))
                     continue;
 
                 _knownRooms[kv.Key] = roomName;

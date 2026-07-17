@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections;
+using System.Runtime.InteropServices;
 using BattlePvp.Logic;
 using TMPro;
 using UnityEngine;
@@ -10,6 +11,14 @@ namespace BattlePvp.UI
 {
     public sealed class BattleChatUI : MonoBehaviour
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")]
+        private static extern void BattlePvpWebGlIme_Open(string receiverName, string initialText, int maxLength);
+
+        [DllImport("__Internal")]
+        private static extern void BattlePvpWebGlIme_Close();
+#endif
+
         private readonly List<string> _lines = new List<string>();
 
         [Header("UI References")]
@@ -34,6 +43,7 @@ namespace BattlePvp.UI
         private Coroutine _scrollRoutine;
         private bool _inputSubmitHooked;
         private bool _isSubmitting;
+        private bool _webGlImeActive;
 
         private void Awake()
         {
@@ -52,6 +62,7 @@ namespace BattlePvp.UI
         private void OnDisable()
         {
             BattleChatNetwork.MessageReceived -= AddMessage;
+            CloseWebGlImeInput();
             UnhookInputSubmit();
             _isTyping = false;
             GameInputController.SetTextInputActive(false);
@@ -200,13 +211,18 @@ namespace BattlePvp.UI
             if (isTyping)
             {
                 Input.imeCompositionMode = IMECompositionMode.On;
+#if UNITY_WEBGL && !UNITY_EDITOR
+                OpenWebGlImeInput();
+#else
                 HookInputSubmit();
                 _input.interactable = true;
                 _input.ActivateInputField();
                 _input.Select();
+#endif
             }
             else
             {
+                CloseWebGlImeInput();
                 UnhookInputSubmit();
                 _input.DeactivateInputField();
                 _input.interactable = false;
@@ -214,6 +230,59 @@ namespace BattlePvp.UI
                 ClearInputField();
                 ClearUiSelection();
             }
+        }
+
+        private void OpenWebGlImeInput()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (_webGlImeActive)
+                return;
+
+            _webGlImeActive = true;
+            _input.interactable = true;
+            _input.DeactivateInputField();
+            WebGLInput.captureAllKeyboardInput = false;
+            BattlePvpWebGlIme_Open(gameObject.name, _input.text ?? string.Empty, _input.characterLimit);
+#endif
+        }
+
+        private void CloseWebGlImeInput()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (!_webGlImeActive)
+                return;
+
+            _webGlImeActive = false;
+            BattlePvpWebGlIme_Close();
+            WebGLInput.captureAllKeyboardInput = true;
+#endif
+        }
+
+        public void OnWebGlInputChanged(string text)
+        {
+            if (!_isTyping || _input == null)
+                return;
+
+            text ??= string.Empty;
+            _input.SetTextWithoutNotify(text);
+            _input.caretPosition = text.Length;
+            _input.stringPosition = text.Length;
+            _input.ForceLabelUpdate();
+        }
+
+        public void OnWebGlInputSubmitted(string text)
+        {
+            if (!_isTyping)
+                return;
+
+            OnWebGlInputChanged(text);
+            QueueSubmittedText(text);
+        }
+
+        public void OnWebGlInputCancelled(string _)
+        {
+            if (_isTyping)
+                SetTyping(false);
         }
 
         private void ClearInputField()

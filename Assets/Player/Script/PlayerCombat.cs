@@ -66,6 +66,10 @@ public class PlayerCombat : NetworkBehaviour
     [Header("Job Skill Hit Boxes")]
     [SerializeField] private KickSkillHitBox _kickHitBox;
 
+    [Header("Network Hit Validation")]
+    [SerializeField, Min(1f)] private float _remoteMeleeValidationDistance = 7.5f;
+    [SerializeField, Min(0.5f)] private float _remoteHitPositionTolerance = 3f;
+
     [Header("Strategist Preset Aura")]
     [SerializeField] private Material _strategistStrAuraMaterial;
     [SerializeField] private Material _strategistAgiAuraMaterial;
@@ -110,6 +114,7 @@ public class PlayerCombat : NetworkBehaviour
     private bool hasComboReserved;
     private bool _isPointerOverUI;
     private readonly HashSet<IDamageReceiver> _hitTargetsThisSwing = new HashSet<IDamageReceiver>();
+    private readonly HashSet<IDamageReceiver> _networkReportedHitTargetsThisAttack = new HashSet<IDamageReceiver>();
 
     private Animator animator;
     private Transform _cachedTransform;
@@ -552,6 +557,7 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
+        _networkReportedHitTargetsThisAttack.Clear();
         aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward);
 
         if (animator != null)
@@ -696,11 +702,88 @@ public class PlayerCombat : NetworkBehaviour
         if (target == null)
             return false;
 
+        if (_networkReportedHitTargetsThisAttack.Contains(target))
+            return false;
+
         if (_hitTargetsThisSwing.Contains(target))
             return false;
 
         _hitTargetsThisSwing.Add(target);
         return true;
+    }
+
+    public void RequestServerMeleeHit(IDamageReceiver target, BodyPart bodyPart, Vector3 hitPosition)
+    {
+        if (!isClient || !isLocalPlayer || isServer || target is not Component targetComponent)
+            return;
+
+        NetworkIdentity targetIdentity = targetComponent.GetComponentInParent<NetworkIdentity>();
+        if (targetIdentity == null || targetIdentity.netId == 0)
+            return;
+
+        CmdReportMeleeHit(currentComboIndex, targetIdentity.netId, bodyPart, hitPosition);
+    }
+
+    [Command]
+    private void CmdReportMeleeHit(int attackIndex, uint targetNetId, BodyPart bodyPart, Vector3 hitPosition)
+    {
+        if (!isAttacking || attackIndex != currentComboIndex || currentComboIndex < 0 || comboList == null ||
+            currentComboIndex >= comboList.Length || comboList[currentComboIndex] == null)
+            return;
+
+        if (!NetworkServer.spawned.TryGetValue(targetNetId, out NetworkIdentity targetIdentity) ||
+            targetIdentity == null || targetIdentity == netIdentity)
+            return;
+
+        float maxDistance = Mathf.Max(1f, _remoteMeleeValidationDistance);
+        if ((targetIdentity.transform.position - transform.position).sqrMagnitude > maxDistance * maxDistance)
+            return;
+
+        HealthSystem targetHealth = targetIdentity.GetComponent<HealthSystem>();
+        StatManager targetStats = targetIdentity.GetComponent<StatManager>();
+        if (targetHealth == null || targetStats == null || targetHealth.IsDead)
+            return;
+
+        if (!TryRegisterHitTarget(targetHealth))
+            return;
+
+        _networkReportedHitTargetsThisAttack.Add(targetHealth);
+
+        if (_attackProcessor == null)
+            _attackProcessor = GetComponent<AttackProcessor>();
+        if (_attackProcessor == null)
+            return;
+
+        if (!Enum.IsDefined(typeof(BodyPart), bodyPart))
+            bodyPart = BodyPart.Body;
+
+        float bodyPartMultiplier = ResolveServerBodyPartMultiplier(targetIdentity, bodyPart);
+        float attackBuffMultiplier = ConsumeNextAttackDamageMultiplier();
+        Vector3 targetCenter = targetIdentity.transform.position + Vector3.up;
+        float hitTolerance = Mathf.Max(0.5f, _remoteHitPositionTolerance);
+        if ((hitPosition - targetCenter).sqrMagnitude > hitTolerance * hitTolerance)
+            hitPosition = targetCenter;
+
+        _attackProcessor.ProcessHit(
+            comboList[currentComboIndex],
+            targetStats,
+            targetHealth,
+            hitPosition,
+            bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier,
+            bodyPart: bodyPart);
+    }
+
+    private static float ResolveServerBodyPartMultiplier(NetworkIdentity targetIdentity, BodyPart bodyPart)
+    {
+        HitBodyPart[] bodyParts = targetIdentity.GetComponentsInChildren<HitBodyPart>(true);
+        for (int i = 0; i < bodyParts.Length; i++)
+        {
+            HitBodyPart candidate = bodyParts[i];
+            if (candidate != null && candidate.Part == bodyPart)
+                return candidate.DamageMultiplier;
+        }
+
+        return 1f;
     }
 
     public float ConsumeNextAttackDamageMultiplier()
@@ -816,7 +899,7 @@ public class PlayerCombat : NetworkBehaviour
             if (isServer)
                 BeginMonostatStrSkill();
             else
-                CmdUseMonostatStrSkill();
+                CmdUseMonostatStrSkill(GetCurrentStatsSnapshot());
             return;
         }
 
@@ -864,20 +947,28 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     [Command]
-    private void CmdUseMonostatStrSkill()
+    private void CmdUseMonostatStrSkill(StatContainer stats)
     {
+        ApplyCommandStats(stats);
         BeginMonostatStrSkill();
     }
 
     [Command]
-    private void CmdUseMonostatAgiSkill()
+    private void CmdUseMonostatAgiSkill(StatContainer stats)
     {
+        ApplyCommandStats(stats);
         BeginMonostatAgiSkill();
     }
 
     [Command]
-    private void CmdUseAdvancedSkill(int skillKey, Vector3 direction, StatContainer strategistTargetPreset, bool hasStrategistTargetPreset)
+    private void CmdUseAdvancedSkill(
+        int skillKey,
+        Vector3 direction,
+        StatContainer currentStats,
+        StatContainer strategistTargetPreset,
+        bool hasStrategistTargetPreset)
     {
+        ApplyCommandStats(currentStats);
         SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
         BeginAdvancedSkill(skillKey, direction);
     }
@@ -900,7 +991,7 @@ public class PlayerCombat : NetworkBehaviour
         LockLocalSkillAnimationAttack(data);
         _playerManager?.ApplySkillInputLock(data.InputLockFlags, data.ResolveInputLockSeconds());
         if (isClient && isLocalPlayer && !isServer)
-            CmdUseAdvancedSkill(key, direction, strategistTargetPreset, hasStrategistTargetPreset);
+            CmdUseAdvancedSkill(key, direction, GetCurrentStatsSnapshot(), strategistTargetPreset, hasStrategistTargetPreset);
         else
         {
             SetRuntimeStrategistTargetPreset(strategistTargetPreset, hasStrategistTargetPreset);
@@ -912,6 +1003,25 @@ public class PlayerCombat : NetworkBehaviour
     {
         _runtimeStrategistTargetPreset = targetPreset;
         _hasRuntimeStrategistTargetPreset = hasTargetPreset;
+    }
+
+    private StatContainer GetCurrentStatsSnapshot()
+    {
+        if (_statManager == null)
+            _statManager = GetComponent<StatManager>();
+
+        return _statManager != null ? _statManager.GetStatsCopy() : default;
+    }
+
+    private void ApplyCommandStats(StatContainer stats)
+    {
+        if (!NetworkServer.active)
+            return;
+
+        if (_statManager == null)
+            _statManager = GetComponent<StatManager>();
+
+        _statManager?.ApplyStats(stats, true);
     }
 
     private Vector3 ResolveAdvancedSkillDirection(JobSkillData data)
@@ -1736,7 +1846,7 @@ public class PlayerCombat : NetworkBehaviour
             if (isServer)
                 BeginMonostatAgiSkill();
             else
-                CmdUseMonostatAgiSkill();
+                CmdUseMonostatAgiSkill(GetCurrentStatsSnapshot());
             return;
         }
 

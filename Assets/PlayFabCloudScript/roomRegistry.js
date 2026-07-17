@@ -1,4 +1,4 @@
-var ROOM_REGISTRY_ID = "GLOBAL_ROOM_REGISTRY";
+var ROOM_REGISTRY_ID = "GLOBALROOMREGISTRY";
 var ROOM_STARTED_KEY = "IsStarted";
 var ROOM_PLAYER_COUNT_KEY = "PlayerCount";
 var ROOM_MASTER_NAME_KEY = "MasterName";
@@ -137,11 +137,10 @@ handlers.JoinRoom = function(args, context) {
         throw "Room does not exist: " + roomId;
     }
 
-    addCurrentPlayerToRoom(roomId);
+    var memberAdded = addCurrentPlayerToRoom(roomId);
 
-    var roomData = getSharedGroupData(roomId);
-    var currentCount = parseCount(getRecordValue(roomData, ROOM_PLAYER_COUNT_KEY), roomInfo.playerCount);
-    var nextCount = Math.max(1, currentCount + 1);
+    var currentCount = Math.max(1, roomInfo.playerCount || 1);
+    var nextCount = memberAdded ? Math.max(1, currentCount + 1) : Math.max(1, currentCount);
     roomInfo.playerCount = nextCount;
 
     server.UpdateSharedGroupData({
@@ -203,8 +202,6 @@ handlers.LeaveRoom = function(args, context) {
 };
 
 function loadActiveRoomInfos() {
-    ensureSharedGroup(ROOM_REGISTRY_ID);
-
     var registryData = getSharedGroupData(ROOM_REGISTRY_ID);
     var roomInfos = {};
     var dirtyRemoveKeys = [];
@@ -245,8 +242,6 @@ function loadActiveRoomInfos() {
 }
 
 function getRoomInfo(roomId) {
-    ensureSharedGroup(ROOM_REGISTRY_ID);
-
     var registryData = getSharedGroupData(ROOM_REGISTRY_ID);
     if (!registryData || !registryData[roomId])
         return null;
@@ -270,6 +265,7 @@ function addCurrentPlayerToRoom(roomId, ignoreFailure) {
             SharedGroupId: roomId,
             PlayFabIds: [currentPlayerId]
         });
+        return true;
     } catch (e) {
         var message = getErrorText(e);
         if (message.indexOf("already") === -1 &&
@@ -278,17 +274,17 @@ function addCurrentPlayerToRoom(roomId, ignoreFailure) {
             message.indexOf("UsersAlreadyInSharedGroup") === -1) {
             if (ignoreFailure) {
                 log.info("AddSharedGroupMembers skipped for " + roomId + ": " + message);
-                return;
+                return false;
             }
 
             throw e;
         }
+
+        return false;
     }
 }
 
 function setRegistryRoomInfo(roomId, roomInfo) {
-    ensureSharedGroup(ROOM_REGISTRY_ID);
-
     var data = {};
     data[roomId] = JSON.stringify(normalizeRoomInfo(roomInfo, roomId));
 
@@ -306,8 +302,6 @@ function removeRegistryRoom(roomId) {
 function removeRegistryRooms(roomIds) {
     if (!roomIds || roomIds.length === 0)
         return;
-
-    ensureSharedGroup(ROOM_REGISTRY_ID);
 
     for (var i = 0; i < roomIds.length; i += REMOVE_KEYS_BATCH_SIZE) {
         var batch = roomIds.slice(i, i + REMOVE_KEYS_BATCH_SIZE);

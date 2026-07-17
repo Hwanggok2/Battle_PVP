@@ -70,6 +70,7 @@ namespace BattlePvp.Networking
         public override void OnClientConnect()
         {
             base.OnClientConnect();
+            PlayFabBattleManager.Instance?.NotifyRoomNetworkConnected();
             Debug.Log("[BattleNetworkManager] Client connected to server.");
         }
 

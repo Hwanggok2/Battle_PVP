@@ -42,6 +42,7 @@ namespace BattlePvp.UI
         private Coroutine _discoveryRoutine;
         private Coroutine _statUpdateRoutine;
         private BattlePvp.Combat.HealthSystem _localHealthSystem;
+        private TextMeshProUGUI _roomFlowStatusText;
 
         private void Awake()
         {
@@ -79,6 +80,7 @@ namespace BattlePvp.UI
             
             FindCanvasCustomizer();
             RefreshVisibility();
+            UpgradeHangulLegacyText();
             EnsureLobbyButtonTextVisible();
         }
 
@@ -92,6 +94,8 @@ namespace BattlePvp.UI
             if (_joinRoomButton != null) _joinRoomButton.onClick.AddListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.AddListener(OnSaveRoomButtonClicked);
             if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.AddListener(OnSaveRoomButtonClicked);
+            if (PlayFabBattleManager.Instance != null)
+                PlayFabBattleManager.Instance.OnRoomFlowStateChanged += OnRoomFlowStateChanged;
 
             // [최적화] 코루틴 기반 지속적 탐색 루틴 시작
             if (_discoveryRoutine != null) StopCoroutine(_discoveryRoutine);
@@ -111,6 +115,8 @@ namespace BattlePvp.UI
             if (_joinRoomButton != null) _joinRoomButton.onClick.RemoveListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.RemoveListener(OnSaveRoomButtonClicked);
             if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.RemoveListener(OnSaveRoomButtonClicked);
+            if (PlayFabBattleManager.Instance != null)
+                PlayFabBattleManager.Instance.OnRoomFlowStateChanged -= OnRoomFlowStateChanged;
 
             if (Mirror.NetworkClient.localPlayer != null)
             {
@@ -252,6 +258,124 @@ namespace BattlePvp.UI
                 label.color = new Color(0.05f, 0.05f, 0.05f, 1f);
                 label.canvasRenderer.SetAlpha(1f);
             }
+        }
+
+        private void UpgradeHangulLegacyText()
+        {
+            if (_lobby_UI == null)
+                return;
+
+            UnityEngine.UI.Text[] legacyLabels = _lobby_UI.GetComponentsInChildren<UnityEngine.UI.Text>(true);
+            foreach (UnityEngine.UI.Text legacy in legacyLabels)
+            {
+                if (legacy == null || !ContainsHangul(legacy.text))
+                    continue;
+
+                TextMeshProUGUI label = legacy.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label == null)
+                {
+                    var labelObject = new GameObject(
+                        "TMP Label",
+                        typeof(RectTransform),
+                        typeof(CanvasRenderer),
+                        typeof(TextMeshProUGUI));
+                    labelObject.transform.SetParent(legacy.transform, false);
+
+                    RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+                    labelRect.anchorMin = Vector2.zero;
+                    labelRect.anchorMax = Vector2.one;
+                    labelRect.offsetMin = Vector2.zero;
+                    labelRect.offsetMax = Vector2.zero;
+
+                    label = labelObject.GetComponent<TextMeshProUGUI>();
+                }
+
+                label.text = legacy.text;
+                label.font = TMP_Settings.defaultFontAsset;
+                label.fontSize = legacy.fontSize;
+                label.color = legacy.color;
+                label.alignment = ConvertAlignment(legacy.alignment);
+                label.enableAutoSizing = legacy.resizeTextForBestFit;
+                label.fontSizeMin = legacy.resizeTextMinSize;
+                label.fontSizeMax = legacy.resizeTextMaxSize;
+                label.textWrappingMode = legacy.horizontalOverflow == HorizontalWrapMode.Wrap
+                    ? TextWrappingModes.Normal
+                    : TextWrappingModes.NoWrap;
+                label.overflowMode = legacy.verticalOverflow == VerticalWrapMode.Truncate
+                    ? TextOverflowModes.Truncate
+                    : TextOverflowModes.Overflow;
+                label.raycastTarget = legacy.raycastTarget;
+                label.canvasRenderer.SetAlpha(1f);
+                legacy.enabled = false;
+            }
+        }
+
+        private static bool ContainsHangul(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return false;
+
+            foreach (char character in value)
+            {
+                if (character >= '\uAC00' && character <= '\uD7A3')
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static TextAlignmentOptions ConvertAlignment(TextAnchor alignment)
+        {
+            return alignment switch
+            {
+                TextAnchor.UpperLeft => TextAlignmentOptions.TopLeft,
+                TextAnchor.UpperCenter => TextAlignmentOptions.Top,
+                TextAnchor.UpperRight => TextAlignmentOptions.TopRight,
+                TextAnchor.MiddleLeft => TextAlignmentOptions.Left,
+                TextAnchor.MiddleRight => TextAlignmentOptions.Right,
+                TextAnchor.LowerLeft => TextAlignmentOptions.BottomLeft,
+                TextAnchor.LowerCenter => TextAlignmentOptions.Bottom,
+                TextAnchor.LowerRight => TextAlignmentOptions.BottomRight,
+                _ => TextAlignmentOptions.Center
+            };
+        }
+
+        private void OnRoomFlowStateChanged(string message, bool isBusy)
+        {
+            UpdateRoomButtonsInteractable(!isBusy);
+
+            if (_roomFlowStatusText == null && !string.IsNullOrEmpty(message))
+                _roomFlowStatusText = CreateRoomFlowStatusText();
+
+            if (_roomFlowStatusText == null)
+                return;
+
+            _roomFlowStatusText.text = message ?? string.Empty;
+            _roomFlowStatusText.gameObject.SetActive(!string.IsNullOrEmpty(message));
+        }
+
+        private TextMeshProUGUI CreateRoomFlowStatusText()
+        {
+            Transform parent = _room_UI != null ? _room_UI.transform : transform;
+            var statusObject = new GameObject("RoomFlowStatus", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+            statusObject.transform.SetParent(parent, false);
+            statusObject.transform.SetAsLastSibling();
+
+            RectTransform rect = statusObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 18f);
+            rect.sizeDelta = new Vector2(640f, 42f);
+
+            TextMeshProUGUI label = statusObject.GetComponent<TextMeshProUGUI>();
+            label.font = TMP_Settings.defaultFontAsset;
+            label.fontSize = 24f;
+            label.color = Color.white;
+            label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.raycastTarget = false;
+            return label;
         }
 
         private IEnumerator CoSubscribeToLocalPlayerStats()
@@ -498,6 +622,12 @@ namespace BattlePvp.UI
             }
         }
 
-        public void UpdateRoomButtonsInteractable(bool interactable) { }
+        public void UpdateRoomButtonsInteractable(bool interactable)
+        {
+            if (_createRoomButton != null) _createRoomButton.interactable = interactable;
+            if (_joinRoomButton != null) _joinRoomButton.interactable = interactable;
+            if (_saveRoomButton != null) _saveRoomButton.interactable = interactable;
+            if (_saveRoomButtonComp != null) _saveRoomButtonComp.interactable = interactable;
+        }
     }
 }

@@ -754,6 +754,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lobby_UI
       objectReference: {fileID: 0}
+    - target: {fileID: 3113883622951788217, guid: 9f4253c467c79454bb1db7bf8faa0b67, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7282667633070966164, guid: 9f4253c467c79454bb1db7bf8faa0b67, type: 3}
+      propertyPath: m_text
+      value: "\u200B"
+      objectReference: {fileID: 0}
     - target: {fileID: 7971536582990981775, guid: 9f4253c467c79454bb1db7bf8faa0b67, type: 3}
       propertyPath: m_AnchorMax.x
       value: 0

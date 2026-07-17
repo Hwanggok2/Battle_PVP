@@ -8034,6 +8034,8 @@ MonoBehaviour:
   _polymathPresetSkillData: {fileID: 11400000, guid: 5e7f808b5861cc04588096d262a39070, type: 2}
   _polymathWeaponSwapSkillData: {fileID: 11400000, guid: f871b314ec0b80b41b44bdba3b3d2835, type: 2}
   _kickHitBox: {fileID: 9134532245816982230}
+  _remoteMeleeValidationDistance: 7.5
+  _remoteHitPositionTolerance: 3
   _strategistStrAuraMaterial: {fileID: 2100000, guid: 8ce6b9ec521cbf440bf5c16e18e65e02, type: 2}
   _strategistAgiAuraMaterial: {fileID: -876546973899608171, guid: 66fb401d65865284dade3038040b0e68, type: 3}
   _strategistConAuraMaterial: {fileID: -876546973899608171, guid: 6f3d00eb45a29fd4dbc228fdcda693a2, type: 3}

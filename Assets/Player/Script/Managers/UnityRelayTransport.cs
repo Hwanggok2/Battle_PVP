@@ -242,7 +242,10 @@ namespace BattlePvp.Networking
             _clientDriver.ScheduleUpdate().Complete();
 
             NetworkEvent.Type eventType;
-            while ((eventType = _clientConnection.PopEvent(_clientDriver, out DataStreamReader reader)) != NetworkEvent.Type.Empty)
+            while ((eventType = _clientConnection.PopEvent(
+                       _clientDriver,
+                       out DataStreamReader reader,
+                       out NetworkPipeline pipeline)) != NetworkEvent.Type.Empty)
             {
                 switch (eventType)
                 {
@@ -251,7 +254,9 @@ namespace BattlePvp.Networking
                         OnClientConnected?.Invoke();
                         break;
                     case NetworkEvent.Type.Data:
-                        OnClientDataReceived?.Invoke(ReadPayload(reader), Channels.Reliable);
+                        OnClientDataReceived?.Invoke(
+                            ReadPayload(reader),
+                            ResolveReceivedChannel(pipeline, _clientReliablePipeline));
                         break;
                     case NetworkEvent.Type.Disconnect:
                         _clientConnected = false;
@@ -284,12 +289,18 @@ namespace BattlePvp.Networking
                 UtpNetworkConnection serverConnection = kv.Value;
 
                 NetworkEvent.Type eventType;
-                while ((eventType = _serverDriver.PopEventForConnection(serverConnection, out DataStreamReader reader)) != NetworkEvent.Type.Empty)
+                while ((eventType = _serverDriver.PopEventForConnection(
+                           serverConnection,
+                           out DataStreamReader reader,
+                           out NetworkPipeline pipeline)) != NetworkEvent.Type.Empty)
                 {
                     switch (eventType)
                     {
                         case NetworkEvent.Type.Data:
-                            OnServerDataReceived?.Invoke(connectionId, ReadPayload(reader), Channels.Reliable);
+                            OnServerDataReceived?.Invoke(
+                                connectionId,
+                                ReadPayload(reader),
+                                ResolveReceivedChannel(pipeline, _serverReliablePipeline));
                             break;
                         case NetworkEvent.Type.Disconnect:
                             disconnected.Add(connectionId);
@@ -322,6 +333,11 @@ namespace BattlePvp.Networking
         private NetworkPipeline GetServerPipeline(int channelId)
         {
             return channelId == Channels.Reliable ? _serverReliablePipeline : NetworkPipeline.Null;
+        }
+
+        private static int ResolveReceivedChannel(NetworkPipeline pipeline, NetworkPipeline reliablePipeline)
+        {
+            return pipeline == reliablePipeline ? Channels.Reliable : Channels.Unreliable;
         }
 
         private void Send(
