@@ -2866,9 +2866,15 @@ MonoBehaviour:
   _jumpBufferSeconds: 0.15
   _coyoteTimeSeconds: 0.08
   _groundSnapDistance: 0.2
-  _remotePositionLerpSpeed: 18
-  _remoteRotationLerpSpeed: 18
+  _remoteInterpolationBackTime: 0.1
+  _remoteSnapshotBufferSize: 32
+  _remoteExtrapolationLimit: 0.1
   _remoteSnapDistance: 3
+  _locomotionSyncRate: 10
+  _locomotionQuantizedChangeThreshold: 8
+  _locomotionInputDeadzone: 0.05
+  _localLocomotionDampTime: 0.12
+  _remoteLocomotionDampTime: 0.08
   crouchSpeedMultiplier: 0.7
   crouchControllerHeightMultiplier: 0.55
   _emotes: []

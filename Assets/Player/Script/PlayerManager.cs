@@ -2,7 +2,9 @@ using UnityEngine;
 using UnityEngine.InputSystem; // 신형 시스템 네임스페이스
 using BattlePvp.Stats;
 using BattlePvp.Combat;
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using Mirror;
 using UnityEngine.SceneManagement;
 using BattlePvp.Logic; // 추가
@@ -24,11 +26,17 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float _groundSnapDistance = 0.2f;
 
     [Header("Remote Movement Smoothing")]
-    [SerializeField] private float _remotePositionLerpSpeed = 18f;
-    [SerializeField] private float _remoteRotationLerpSpeed = 18f;
+    [SerializeField, Range(0.03f, 0.25f)] private float _remoteInterpolationBackTime = 0.1f;
+    [SerializeField, Range(4, 64)] private int _remoteSnapshotBufferSize = 32;
+    [SerializeField, Range(0f, 0.25f)] private float _remoteExtrapolationLimit = 0.1f;
     [SerializeField] private float _remoteSnapDistance = 3f;
-    [SerializeField, Min(0f)] private float _remoteAnimationMinSpeed = 0.05f;
-    [SerializeField, Min(0f)] private float _remoteAnimationDampTime = 0.08f;
+
+    [Header("Locomotion Network Sync")]
+    [SerializeField, Range(1f, 30f)] private float _locomotionSyncRate = 10f;
+    [SerializeField, Range(1, 32)] private int _locomotionQuantizedChangeThreshold = 8;
+    [SerializeField, Range(0f, 0.5f)] private float _locomotionInputDeadzone = 0.05f;
+    [SerializeField, Min(0f)] private float _localLocomotionDampTime = 0.12f;
+    [SerializeField, Min(0f)] private float _remoteLocomotionDampTime = 0.08f;
 
     [Header("Crouch Settings")]
     [SerializeField] private float crouchSpeedMultiplier = 0.7f;
@@ -58,6 +66,8 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private bool _matchEndLocked = false;
     [SyncVar(hook = nameof(OnCrouchStateChanged))]
     [SerializeField] private bool isCrouching = false;
+    [SyncVar(hook = nameof(OnNetworkLocomotionStateChanged))]
+    private ushort _networkLocomotionState;
 
     private HealthSystem _healthSystem;
     private Coroutine _respawnRoutine;
@@ -68,8 +78,12 @@ public class PlayerManager : NetworkBehaviour
     private Vector3 _remoteTargetPosition;
     private Quaternion _remoteTargetRotation;
     private bool _hasRemoteTransformTarget;
-    private Vector3 _lastRemoteAnimationPosition;
-    private bool _remoteAnimationPositionInitialized;
+    private readonly List<RemoteTransformSnapshot> _remoteTransformSnapshots = new List<RemoteTransformSnapshot>(32);
+    private double _latestRemoteSnapshotTime = double.NegativeInfinity;
+    private Vector2 _remoteLocomotionTarget;
+    private ushort _lastSentLocomotionState;
+    private bool _hasSentLocomotionState;
+    private float _nextLocomotionSyncTime;
     private float _standingControllerHeight;
     private Vector3 _standingControllerCenter;
     private float _skillMoveMultiplier = 1f;
@@ -85,6 +99,13 @@ public class PlayerManager : NetworkBehaviour
     private float _forcedTauntStopDistance;
     private EmoteData _activeEmote;
     private Coroutine _emoteRoutine;
+
+    private struct RemoteTransformSnapshot
+    {
+        public double Time;
+        public Vector3 Position;
+        public Quaternion Rotation;
+    }
 
     public bool IsMatchEndLocked => _matchEndLocked;
     public bool IsCrouching => isCrouching;
@@ -409,6 +430,8 @@ public class PlayerManager : NetworkBehaviour
     }
 
     private readonly int speedHash = Animator.StringToHash("Speed");
+    private readonly int moveXHash = Animator.StringToHash("MoveX");
+    private readonly int moveYHash = Animator.StringToHash("MoveY");
     private readonly int dieHash = Animator.StringToHash("Die");
     private readonly int isDeadHash = Animator.StringToHash("IsDead");
     private readonly int movementStateHash = Animator.StringToHash("Movement");
@@ -463,7 +486,17 @@ public class PlayerManager : NetworkBehaviour
             followCamera.SetTarget(this.transform);
         }
 
+        _lastSentLocomotionState = PackLocomotion(Vector2.zero);
+        _hasSentLocomotionState = true;
+        ApplyLocomotionAnimation(Vector2.zero, false);
         ResetLocalInputForPlayMode();
+    }
+
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        if (!isLocalPlayer)
+            _remoteLocomotionTarget = UnpackLocomotion(_networkLocomotionState);
     }
 
     private void OnEnable()
@@ -539,12 +572,16 @@ public class PlayerManager : NetworkBehaviour
         if (!isLocalPlayer)
         {
             SmoothRemoteTransform();
-            UpdateRemoteMovementAnimation();
+            UpdateRemoteLocomotionAnimation();
             return;
         }
 
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive) return;
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive)
+        {
+            UpdateLocalLocomotion(Vector2.zero);
+            return;
+        }
         PollJumpInputFallback();
         ApplyMovement();
     }
@@ -801,10 +838,124 @@ public class PlayerManager : NetworkBehaviour
         TrySyncTransform();
 
         // 5. 애니메이션 (사망 시 업데이트 중지)
-        if (!isDead)
+        Vector2 locomotion = forcedTauntMoving ? Vector2.up : inputVector;
+        if (isDead || currentMoveSpeed <= 0.001f || moveDirection.sqrMagnitude <= 0.001f)
+            locomotion = Vector2.zero;
+
+        UpdateLocalLocomotion(locomotion);
+    }
+
+    private void UpdateLocalLocomotion(Vector2 locomotion)
+    {
+        if (!isLocalPlayer)
+            return;
+
+        Vector2 sanitized = SanitizeLocomotion(locomotion);
+        ApplyLocomotionAnimation(sanitized, false);
+        TrySyncLocomotionState(sanitized);
+    }
+
+    private void TrySyncLocomotionState(Vector2 locomotion)
+    {
+        if (!isClient)
+            return;
+
+        ushort packedState = PackLocomotion(locomotion);
+        bool movingStateChanged = IsMovingState(packedState) != IsMovingState(_lastSentLocomotionState);
+        bool directionChanged = QuantizedAxisDelta(packedState, _lastSentLocomotionState) >= _locomotionQuantizedChangeThreshold;
+
+        if (_hasSentLocomotionState && !movingStateChanged && !directionChanged)
+            return;
+
+        if (_hasSentLocomotionState && !movingStateChanged && Time.time < _nextLocomotionSyncTime)
+            return;
+
+        _hasSentLocomotionState = true;
+        _lastSentLocomotionState = packedState;
+        _nextLocomotionSyncTime = Time.time + 1f / Mathf.Max(1f, _locomotionSyncRate);
+        CmdSetLocomotionState(packedState);
+    }
+
+    [Command]
+    private void CmdSetLocomotionState(ushort packedState)
+    {
+        SetServerLocomotionState(packedState);
+    }
+
+    [Server]
+    private void SetServerLocomotionState(ushort packedState)
+    {
+        if (_networkLocomotionState == packedState)
+            return;
+
+        _networkLocomotionState = packedState;
+
+        if (isClient && !isLocalPlayer)
+            _remoteLocomotionTarget = UnpackLocomotion(packedState);
+    }
+
+    private void OnNetworkLocomotionStateChanged(ushort oldState, ushort newState)
+    {
+        if (!isLocalPlayer)
+            _remoteLocomotionTarget = UnpackLocomotion(newState);
+    }
+
+    private Vector2 SanitizeLocomotion(Vector2 locomotion)
+    {
+        if (locomotion.sqrMagnitude <= _locomotionInputDeadzone * _locomotionInputDeadzone)
+            return Vector2.zero;
+
+        return Vector2.ClampMagnitude(locomotion, 1f);
+    }
+
+    private static ushort PackLocomotion(Vector2 locomotion)
+    {
+        int xValue = Mathf.Clamp(Mathf.RoundToInt(locomotion.x * 127f), -127, 127);
+        int yValue = Mathf.Clamp(Mathf.RoundToInt(locomotion.y * 127f), -127, 127);
+        byte x = unchecked((byte)(sbyte)xValue);
+        byte y = unchecked((byte)(sbyte)yValue);
+        return (ushort)(x | (y << 8));
+    }
+
+    private static Vector2 UnpackLocomotion(ushort packedState)
+    {
+        sbyte x = unchecked((sbyte)(byte)(packedState & 0xFF));
+        sbyte y = unchecked((sbyte)(byte)(packedState >> 8));
+        return new Vector2(x / 127f, y / 127f);
+    }
+
+    private static bool IsMovingState(ushort packedState)
+    {
+        return packedState != 0;
+    }
+
+    private static int QuantizedAxisDelta(ushort current, ushort previous)
+    {
+        sbyte currentX = unchecked((sbyte)(byte)(current & 0xFF));
+        sbyte currentY = unchecked((sbyte)(byte)(current >> 8));
+        sbyte previousX = unchecked((sbyte)(byte)(previous & 0xFF));
+        sbyte previousY = unchecked((sbyte)(byte)(previous >> 8));
+        return Mathf.Max(Mathf.Abs(currentX - previousX), Mathf.Abs(currentY - previousY));
+    }
+
+    private void ApplyLocomotionAnimation(Vector2 locomotion, bool isRemote)
+    {
+        if (animator == null)
+            return;
+
+        float speed = Mathf.Clamp01(locomotion.magnitude);
+        float dampTime = isRemote ? _remoteLocomotionDampTime : _localLocomotionDampTime;
+        if (dampTime > 0f)
         {
-            animator.SetFloat(speedHash, forcedTauntMoving ? 1f : inputVector.magnitude);
+            animator.SetFloat(speedHash, speed, dampTime, Time.deltaTime);
+            animator.SetFloat(moveXHash, locomotion.x, dampTime, Time.deltaTime);
+            animator.SetFloat(moveYHash, locomotion.y, dampTime, Time.deltaTime);
+            return;
         }
+
+        animator.SetFloat(speedHash, speed);
+        animator.SetFloat(moveXHash, locomotion.x);
+        animator.SetFloat(moveYHash, locomotion.y);
     }
 
     private void TrySyncTransform()
@@ -828,7 +979,7 @@ public class PlayerManager : NetworkBehaviour
             _nextRotationOnlySyncTime = Time.time + Mathf.Max(_transformSyncInterval, _rotationOnlyTransformSyncInterval);
         _lastSentPosition = transform.position;
         _lastSentRotation = transform.rotation;
-        CmdSyncTransform(transform.position, transform.rotation);
+        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time);
     }
 
     private void ForceSyncTransform()
@@ -839,35 +990,110 @@ public class PlayerManager : NetworkBehaviour
         _nextTransformSyncTime = Time.time + _transformSyncInterval;
         _lastSentPosition = transform.position;
         _lastSentRotation = transform.rotation;
-        CmdSyncTransform(transform.position, transform.rotation);
+        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time);
     }
 
     [Command(channel = Channels.Unreliable)]
-    private void CmdSyncTransform(Vector3 position, Quaternion rotation)
+    private void CmdSyncTransform(Vector3 position, Quaternion rotation, double sampleTime)
     {
-        if (!isLocalPlayer)
-            ApplySyncedTransform(position, rotation, false);
+        double serverTime = NetworkTime.time;
+        double acceptedSampleTime = Math.Clamp(sampleTime, serverTime - 0.5d, serverTime + 0.05d);
+        GetComponent<ServerPoseHistory>()?.RecordNetworkPose(acceptedSampleTime, position);
 
-        RpcSyncTransform(position, rotation);
+        if (!isLocalPlayer)
+        {
+            if (isClient)
+                AddRemoteTransformSnapshot(position, rotation, acceptedSampleTime);
+            else
+                ApplyRemotePose(position, rotation);
+        }
+
+        RpcSyncTransform(position, rotation, acceptedSampleTime);
     }
 
     [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
-    private void RpcSyncTransform(Vector3 position, Quaternion rotation)
+    private void RpcSyncTransform(Vector3 position, Quaternion rotation, double sampleTime)
     {
-        if (isLocalPlayer)
+        if (isServer || isLocalPlayer)
             return;
 
-        ApplySyncedTransform(position, rotation, true);
+        AddRemoteTransformSnapshot(position, rotation, sampleTime);
     }
 
-    private void ApplySyncedTransform(Vector3 position, Quaternion rotation, bool interpolate)
+    private void AddRemoteTransformSnapshot(Vector3 position, Quaternion rotation, double sampleTime)
     {
-        if (interpolate && isClient && !isLocalPlayer)
-        {
-            SetRemoteTransformTarget(position, rotation);
+        if (double.IsNaN(sampleTime) || double.IsInfinity(sampleTime) || sampleTime <= _latestRemoteSnapshotTime)
             return;
+
+        bool shouldSnap = !_hasRemoteTransformTarget ||
+                          Vector3.Distance(_remoteTargetPosition, position) > _remoteSnapDistance;
+        if (shouldSnap)
+        {
+            _remoteTransformSnapshots.Clear();
+            ApplyRemotePose(position, rotation);
         }
 
+        _remoteTargetPosition = position;
+        _remoteTargetRotation = rotation;
+        _hasRemoteTransformTarget = true;
+        _latestRemoteSnapshotTime = sampleTime;
+        _remoteTransformSnapshots.Add(new RemoteTransformSnapshot
+        {
+            Time = sampleTime,
+            Position = position,
+            Rotation = rotation
+        });
+
+        int maxSnapshots = Mathf.Clamp(_remoteSnapshotBufferSize, 4, 64);
+        while (_remoteTransformSnapshots.Count > maxSnapshots)
+            _remoteTransformSnapshots.RemoveAt(0);
+    }
+
+    private void SmoothRemoteTransform()
+    {
+        if (!_hasRemoteTransformTarget || !isClient || _remoteTransformSnapshots.Count == 0)
+            return;
+
+        double renderTime = NetworkTime.time - Mathf.Max(0f, _remoteInterpolationBackTime);
+        while (_remoteTransformSnapshots.Count >= 3 && _remoteTransformSnapshots[1].Time <= renderTime)
+            _remoteTransformSnapshots.RemoveAt(0);
+
+        RemoteTransformSnapshot from = _remoteTransformSnapshots[0];
+        Vector3 nextPosition = from.Position;
+        Quaternion nextRotation = from.Rotation;
+
+        if (_remoteTransformSnapshots.Count >= 2)
+        {
+            RemoteTransformSnapshot to = _remoteTransformSnapshots[1];
+            double duration = Math.Max(0.0001d, to.Time - from.Time);
+
+            if (renderTime <= to.Time)
+            {
+                float t = Mathf.Clamp01((float)((renderTime - from.Time) / duration));
+                nextPosition = Vector3.Lerp(from.Position, to.Position, t);
+                nextRotation = Quaternion.Slerp(from.Rotation, to.Rotation, t);
+            }
+            else
+            {
+                nextPosition = to.Position;
+                nextRotation = to.Rotation;
+
+                if (_remoteLocomotionTarget.sqrMagnitude > 0.001f && _remoteExtrapolationLimit > 0f)
+                {
+                    float extrapolationSeconds = Mathf.Min(
+                        (float)(renderTime - to.Time),
+                        _remoteExtrapolationLimit);
+                    Vector3 velocity = (to.Position - from.Position) / (float)duration;
+                    nextPosition += velocity * extrapolationSeconds;
+                }
+            }
+        }
+
+        ApplyRemotePose(nextPosition, nextRotation);
+    }
+
+    private void ApplyRemotePose(Vector3 position, Quaternion rotation)
+    {
         bool controllerWasEnabled = controller != null && controller.enabled;
         if (controllerWasEnabled)
             controller.enabled = false;
@@ -876,67 +1102,14 @@ public class PlayerManager : NetworkBehaviour
 
         if (controllerWasEnabled)
             controller.enabled = true;
-
-        _remoteTargetPosition = position;
-        _remoteTargetRotation = rotation;
-        _hasRemoteTransformTarget = true;
     }
 
-    private void SetRemoteTransformTarget(Vector3 position, Quaternion rotation)
+    private void UpdateRemoteLocomotionAnimation()
     {
-        _remoteTargetPosition = position;
-        _remoteTargetRotation = rotation;
-        _hasRemoteTransformTarget = true;
-
-        if (Vector3.Distance(transform.position, position) > _remoteSnapDistance)
-            ApplySyncedTransform(position, rotation, false);
-    }
-
-    private void SmoothRemoteTransform()
-    {
-        if (!_hasRemoteTransformTarget || !isClient)
-            return;
-
-        float positionT = 1f - Mathf.Exp(-Mathf.Max(0f, _remotePositionLerpSpeed) * Time.deltaTime);
-        float rotationT = 1f - Mathf.Exp(-Mathf.Max(0f, _remoteRotationLerpSpeed) * Time.deltaTime);
-
-        Vector3 nextPosition = Vector3.Lerp(transform.position, _remoteTargetPosition, positionT);
-        Quaternion nextRotation = Quaternion.Slerp(transform.rotation, _remoteTargetRotation, rotationT);
-
-        bool controllerWasEnabled = controller != null && controller.enabled;
-        if (controllerWasEnabled)
-            controller.enabled = false;
-
-        transform.SetPositionAndRotation(nextPosition, nextRotation);
-
-        if (controllerWasEnabled)
-            controller.enabled = true;
-    }
-
-    private void UpdateRemoteMovementAnimation()
-    {
-        if (animator == null)
-            return;
-
-        Vector3 currentPosition = transform.position;
-        if (!_remoteAnimationPositionInitialized)
-        {
-            _lastRemoteAnimationPosition = currentPosition;
-            _remoteAnimationPositionInitialized = true;
-            animator.SetFloat(speedHash, 0f);
-            return;
-        }
-
-        Vector3 displacement = currentPosition - _lastRemoteAnimationPosition;
-        displacement.y = 0f;
-        _lastRemoteAnimationPosition = currentPosition;
-
-        float worldSpeed = Time.deltaTime > 0f ? displacement.magnitude / Time.deltaTime : 0f;
-        if (worldSpeed < _remoteAnimationMinSpeed || (_healthSystem != null && _healthSystem.IsDead))
-            worldSpeed = 0f;
-
-        float normalizedSpeed = Mathf.Clamp01(worldSpeed / Mathf.Max(0.1f, moveSpeed));
-        animator.SetFloat(speedHash, normalizedSpeed, _remoteAnimationDampTime, Time.deltaTime);
+        Vector2 locomotion = _healthSystem != null && _healthSystem.IsDead
+            ? Vector2.zero
+            : _remoteLocomotionTarget;
+        ApplyLocomotionAnimation(locomotion, true);
     }
 
     private void HandleDeath()
@@ -973,6 +1146,8 @@ public class PlayerManager : NetworkBehaviour
             return;
 
         animator.SetFloat(speedHash, 0f);
+        animator.SetFloat(moveXHash, 0f);
+        animator.SetFloat(moveYHash, 0f);
         animator.SetBool(isDeadHash, true);
         animator.ResetTrigger(dieHash);
         animator.SetTrigger(dieHash);
@@ -986,6 +1161,8 @@ public class PlayerManager : NetworkBehaviour
         animator.ResetTrigger(dieHash);
         animator.SetBool(isDeadHash, false);
         animator.SetFloat(speedHash, 0f);
+        animator.SetFloat(moveXHash, 0f);
+        animator.SetFloat(moveYHash, 0f);
         animator.Play(movementStateHash, 0, 0f);
         animator.Update(0f);
     }
@@ -1003,6 +1180,7 @@ public class PlayerManager : NetworkBehaviour
 
         isDead = true;
         inputVector = Vector2.zero;
+        UpdateLocalLocomotion(Vector2.zero);
         isAttacking = false;
         StopEmote(_activeEmote);
         ClearSkillInputLock();
@@ -1088,6 +1266,7 @@ public class PlayerManager : NetworkBehaviour
 
         _matchEndLocked = !isWinner;
         inputVector = Vector2.zero;
+        UpdateLocalLocomotion(Vector2.zero);
         isAttacking = false;
         isDead = false;
         StopEmote(_activeEmote);

@@ -117,8 +117,7 @@ public class PlayerCombat : NetworkBehaviour
     private bool isAttacking;
     private bool hasComboReserved;
     private bool _isPointerOverUI;
-    private readonly HashSet<IDamageReceiver> _hitTargetsThisSwing = new HashSet<IDamageReceiver>();
-    private readonly HashSet<IDamageReceiver> _networkReportedHitTargetsThisAttack = new HashSet<IDamageReceiver>();
+    private readonly HashSet<IDamageReceiver> _hitTargetsThisAttack = new HashSet<IDamageReceiver>();
     private readonly Queue<float> _predictedHitFeedbackExpiries = new Queue<float>();
     private uint _nextLocalAttackSequence;
     private uint _currentAttackSequence;
@@ -578,7 +577,7 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
-        _networkReportedHitTargetsThisAttack.Clear();
+        _hitTargetsThisAttack.Clear();
         aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward);
 
         if (animator != null)
@@ -805,8 +804,6 @@ public class PlayerCombat : NetworkBehaviour
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
-        _hitTargetsThisSwing.Clear();
-
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
@@ -828,13 +825,10 @@ public class PlayerCombat : NetworkBehaviour
         if (target == null)
             return false;
 
-        if (_networkReportedHitTargetsThisAttack.Contains(target))
+        if (_hitTargetsThisAttack.Contains(target))
             return false;
 
-        if (_hitTargetsThisSwing.Contains(target))
-            return false;
-
-        _hitTargetsThisSwing.Add(target);
+        _hitTargetsThisAttack.Add(target);
         return true;
     }
 
@@ -889,8 +883,6 @@ public class PlayerCombat : NetworkBehaviour
 
         if (!TryRegisterHitTarget(targetHealth))
             return;
-
-        _networkReportedHitTargetsThisAttack.Add(targetHealth);
 
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
@@ -3096,15 +3088,27 @@ internal sealed class ServerPoseHistory : MonoBehaviour
         if (!NetworkServer.active)
             return;
 
-        double now = NetworkTime.time;
-        if (now - _lastRecordTime < RecordInterval)
+        RecordPose(NetworkTime.time, transform.position, false);
+    }
+
+    public void RecordNetworkPose(double time, Vector3 position)
+    {
+        if (!NetworkServer.active || double.IsNaN(time) || double.IsInfinity(time))
             return;
 
-        _times[_nextIndex] = now;
-        _positions[_nextIndex] = transform.position;
+        RecordPose(time, position, true);
+    }
+
+    private void RecordPose(double time, Vector3 position, bool force)
+    {
+        if (!force && time - _lastRecordTime < RecordInterval)
+            return;
+
+        _times[_nextIndex] = time;
+        _positions[_nextIndex] = position;
         _nextIndex = (_nextIndex + 1) % Capacity;
         _count = Math.Min(_count + 1, Capacity);
-        _lastRecordTime = now;
+        _lastRecordTime = Math.Max(_lastRecordTime, time);
     }
 
     public bool TrySample(double time, out Vector3 position)

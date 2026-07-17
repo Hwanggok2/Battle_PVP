@@ -383,16 +383,22 @@ namespace BattlePvp.Combat
                 return;
             }
 
-            CreateDamagePopupLocal(popupPosition, amount, source, attackerNetId, victimNetId);
+            CreateDamagePopupLocal(popupPosition, amount, source, attackerNetId, victimNetId, false);
         }
 
         [ClientRpc]
         private void RpcShowDamagePopup(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId)
         {
-            CreateDamagePopupLocal(position, amount, source, attackerNetId, victimNetId);
+            CreateDamagePopupLocal(position, amount, source, attackerNetId, victimNetId, false);
         }
 
-        private void CreateDamagePopupLocal(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId)
+        private void CreateDamagePopupLocal(
+            Vector3 position,
+            float amount,
+            DamageSource source,
+            uint attackerNetId,
+            uint victimNetId,
+            bool isPrediction)
         {
             DamagePopupManager popupManager = DamagePopupManager.Instance;
             if (popupManager == null)
@@ -403,7 +409,7 @@ namespace BattlePvp.Combat
             bool localAttacker = attackerNetId != 0
                 && IsLocalPlayerNetId(attackerNetId);
 
-            if (localAttacker && source == DamageSource.Physical && ConsumePredictedPopup(victimNetId))
+            if (!isPrediction && localAttacker && source == DamageSource.Physical && ConsumePredictedPopup(victimNetId))
                 return;
 
             if (localVictim)
@@ -443,7 +449,7 @@ namespace BattlePvp.Combat
                 return;
 
             uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
-            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId);
+            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId, true);
             if (victimNetId != 0)
             {
                 PredictedPopupExpiryByVictim[victimNetId] = Time.unscaledTime + PredictedPopupSuppressSeconds;

@@ -291,6 +291,9 @@ namespace BattlePvp.Combat
             if (other == null || other.transform.root == transform.root)
                 return;
 
+            if (_playerCombat != null && NetworkClient.active && !NetworkServer.active && !_playerCombat.isLocalPlayer)
+                return;
+
             HitBodyPart bodyPart = other.GetComponent<HitBodyPart>();
             if (bodyPart == null)
                 bodyPart = other.GetComponentInParent<HitBodyPart>();

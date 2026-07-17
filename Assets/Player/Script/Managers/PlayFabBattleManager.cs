@@ -1,6 +1,7 @@
 ﻿using PlayFab;
 using PlayFab.ClientModels;
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using BattlePvp.Stats;
 using BattlePvp.Managers;
@@ -33,6 +34,8 @@ namespace BattlePvp.Networking
         private const string ADMIN_CLEAR_ROOM_REGISTRY_FUNCTION = "AdminClearRoomRegistry";
         private const string CLOUDSCRIPT_NOT_FOUND = "CloudScriptNotFound";
         private const float ROOM_INFO_CACHE_SECONDS = 3f;
+        private const int ROOM_REGISTRATION_MAX_ATTEMPTS = 3;
+        private const float ROOM_REGISTRATION_RETRY_DELAY_SECONDS = 0.75f;
 
         public struct RoomInfo
         {
@@ -328,7 +331,12 @@ namespace BattlePvp.Networking
         /// <summary>
         /// 紐⑤뱺 ?뚮젅?댁뼱媛 蹂????덈뒗 怨듭슜 洹몃９???꾩옱 諛??뺣낫瑜?異붽??⑸땲??
         /// </summary>
-        private void RegisterRoomToRegistry(string roomId, string roomName, string masterName, string relayJoinCode)
+        private void RegisterRoomToRegistry(
+            string roomId,
+            string roomName,
+            string masterName,
+            string relayJoinCode,
+            int attempt = 1)
         {
             SetRoomFlowState("\uBC29\uC744 \uB4F1\uB85D\uD558\uB294 \uC911...", true);
             var parameters = new Dictionary<string, object>
@@ -350,9 +358,13 @@ namespace BattlePvp.Networking
                 {
                     if (result.Error != null)
                     {
-                        Debug.LogError($"[PlayFab] CloudScript room registry update failed: {FormatCloudScriptError(result)}");
-                        SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
-                        TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
+                        RetryOrFailRoomRegistration(
+                            roomId,
+                            roomName,
+                            masterName,
+                            relayJoinCode,
+                            attempt,
+                            FormatCloudScriptError(result));
                         return;
                     }
 
@@ -363,11 +375,62 @@ namespace BattlePvp.Networking
                 },
                 error =>
                 {
-                    Debug.LogError($"[PlayFab] CloudScript room registry request failed: {error.GenerateErrorReport()}");
-                    SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
-                    TryRegisterRoomToRegistryWithClientApi(roomId, roomName);
+                    RetryOrFailRoomRegistration(
+                        roomId,
+                        roomName,
+                        masterName,
+                        relayJoinCode,
+                        attempt,
+                        error.GenerateErrorReport());
                 }
             );
+        }
+
+        private void RetryOrFailRoomRegistration(
+            string roomId,
+            string roomName,
+            string masterName,
+            string relayJoinCode,
+            int attempt,
+            string errorMessage)
+        {
+            if (roomId != _joinedRoomId || !_isHost)
+                return;
+
+            if (attempt < ROOM_REGISTRATION_MAX_ATTEMPTS)
+            {
+                float delay = ROOM_REGISTRATION_RETRY_DELAY_SECONDS * attempt;
+                Debug.LogWarning(
+                    $"[PlayFab] Room registry attempt {attempt}/{ROOM_REGISTRATION_MAX_ATTEMPTS} failed. " +
+                    $"Retrying in {delay:F2}s. {errorMessage}");
+                SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC744 \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uB294 \uC911...", true);
+                StartCoroutine(RetryRoomRegistrationAfterDelay(
+                    roomId,
+                    roomName,
+                    masterName,
+                    relayJoinCode,
+                    attempt + 1,
+                    delay));
+                return;
+            }
+
+            Debug.LogError(
+                $"[PlayFab] Room registry failed after {ROOM_REGISTRATION_MAX_ATTEMPTS} attempts. {errorMessage}");
+            SetRoomFlowState("\uBC29 \uB4F1\uB85D\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.", false);
+        }
+
+        private IEnumerator RetryRoomRegistrationAfterDelay(
+            string roomId,
+            string roomName,
+            string masterName,
+            string relayJoinCode,
+            int attempt,
+            float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+
+            if (roomId == _joinedRoomId && _isHost)
+                RegisterRoomToRegistry(roomId, roomName, masterName, relayJoinCode, attempt);
         }
 
         private void SetRoomFlowState(string message, bool isBusy)
