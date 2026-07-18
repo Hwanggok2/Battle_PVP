@@ -124,7 +124,9 @@ public class PlayerManager : NetworkBehaviour
     public bool IsSkillCrouchLocked => _forcedTauntActive || IsSkillInputLocked(SkillInputLockFlags.Crouch);
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     private double LocalInputTime => Time.timeAsDouble;
-    private bool ShouldHandleLocalInput => isLocalPlayer || (!NetworkClient.active && !NetworkServer.active);
+    private bool ShouldHandleLocalInput =>
+        (NetworkClient.active && isLocalPlayer) ||
+        (!NetworkClient.active && !NetworkServer.active && !isClient && !isServer);
 
     public Vector3 GetSkillMoveDirection()
     {
@@ -869,7 +871,7 @@ public class PlayerManager : NetworkBehaviour
 
     private void TrySyncLocomotionState(Vector2 locomotion)
     {
-        if (!isClient)
+        if (!isClient || !NetworkClient.active || !NetworkClient.ready || !isOwned)
             return;
 
         ushort packedState = PackLocomotion(locomotion);

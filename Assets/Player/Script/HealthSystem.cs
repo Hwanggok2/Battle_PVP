@@ -81,9 +81,11 @@ namespace BattlePvp.Combat
         private const float AroundCharacterPopupRadius = 0.65f;
         private const float AroundCharacterPopupHeight = 1.35f;
         private static readonly Vector3 ThornsPopupOffset = new Vector3(0.65f, 1.25f, 0f);
-        private static readonly Dictionary<uint, float> PredictedPopupExpiryByVictim = new Dictionary<uint, float>();
-        private static readonly Dictionary<uint, int> PredictedPopupCountByVictim = new Dictionary<uint, int>();
-        private const float PredictedPopupSuppressSeconds = 5f;
+        private static readonly Dictionary<(uint attacker, uint victim, uint prediction), float> DisplayedPhysicalPopupExpiries =
+            new Dictionary<(uint, uint, uint), float>();
+        private static readonly List<(uint attacker, uint victim, uint prediction)> ExpiredPopupKeys =
+            new List<(uint, uint, uint)>();
+        private const float PopupCorrelationLifetimeSeconds = 30f;
 
         private void Awake()
         {
@@ -278,7 +280,7 @@ namespace BattlePvp.Combat
             ApplyDamageWithPopupSource(amount, source, attackerAttackPower, attacker, hitPosition, source);
         }
 
-        public void ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource)
+        public void ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
         {
             if (NetworkClient.active && !NetworkServer.active)
                 return;
@@ -310,7 +312,7 @@ namespace BattlePvp.Combat
 
             _currentHp = next < 0f ? 0f : next;
             RecordMatchDamage(Mathf.Max(0f, hpBeforeDamage - _currentHp), attacker);
-            ShowDamagePopup(hitPosition, amount, popupSource, attacker);
+            ShowDamagePopup(hitPosition, amount, popupSource, attacker, popupPredictionId);
 
             EvaluateDeath(); // [공통 로직으로 교체]
 
@@ -371,7 +373,7 @@ namespace BattlePvp.Combat
             attackerScore.RecordDamageDealt(actualHpDamage);
         }
 
-        private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source, IDamageReceiver attacker)
+        private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source, IDamageReceiver attacker, uint predictionId)
         {
             Vector3 popupPosition = ResolveDamagePopupPosition(hitPosition, source);
             uint attackerNetId = GetDamageReceiverNetId(attacker);
@@ -379,17 +381,17 @@ namespace BattlePvp.Combat
 
             if (isServer)
             {
-                RpcShowDamagePopup(popupPosition, amount, source, attackerNetId, victimNetId);
+                RpcShowDamagePopup(popupPosition, amount, source, attackerNetId, victimNetId, predictionId);
                 return;
             }
 
-            CreateDamagePopupLocal(popupPosition, amount, source, attackerNetId, victimNetId, false);
+            CreateDamagePopupLocal(popupPosition, amount, source, attackerNetId, victimNetId, predictionId);
         }
 
         [ClientRpc]
-        private void RpcShowDamagePopup(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId)
+        private void RpcShowDamagePopup(Vector3 position, float amount, DamageSource source, uint attackerNetId, uint victimNetId, uint predictionId)
         {
-            CreateDamagePopupLocal(position, amount, source, attackerNetId, victimNetId, false);
+            CreateDamagePopupLocal(position, amount, source, attackerNetId, victimNetId, predictionId);
         }
 
         private void CreateDamagePopupLocal(
@@ -398,7 +400,7 @@ namespace BattlePvp.Combat
             DamageSource source,
             uint attackerNetId,
             uint victimNetId,
-            bool isPrediction)
+            uint predictionId)
         {
             DamagePopupManager popupManager = DamagePopupManager.Instance;
             if (popupManager == null)
@@ -409,7 +411,8 @@ namespace BattlePvp.Combat
             bool localAttacker = attackerNetId != 0
                 && IsLocalPlayerNetId(attackerNetId);
 
-            if (!isPrediction && localAttacker && source == DamageSource.Physical && ConsumePredictedPopup(victimNetId))
+            if (localAttacker && source == DamageSource.Physical && predictionId != 0 &&
+                !TryClaimPhysicalPopup(attackerNetId, victimNetId, predictionId))
                 return;
 
             if (localVictim)
@@ -443,46 +446,44 @@ namespace BattlePvp.Combat
             CombatHitFeedback.PlayStatusDamageForLocalPlayer(source);
         }
 
-        public void ShowPredictedPhysicalDamagePopup(Vector3 position, float amount, uint attackerNetId)
+        public void ShowPredictedPhysicalDamagePopup(Vector3 position, float amount, uint attackerNetId, uint predictionId)
         {
-            if (amount <= 0f || attackerNetId == 0 || !IsLocalPlayerNetId(attackerNetId))
+            if (amount <= 0f || attackerNetId == 0 || predictionId == 0 || !IsLocalPlayerNetId(attackerNetId))
                 return;
 
             uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
-            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId, true);
-            if (victimNetId != 0)
-            {
-                PredictedPopupExpiryByVictim[victimNetId] = Time.unscaledTime + PredictedPopupSuppressSeconds;
-                PredictedPopupCountByVictim.TryGetValue(victimNetId, out int count);
-                PredictedPopupCountByVictim[victimNetId] = count + 1;
-            }
+            if (victimNetId == 0)
+                return;
+
+            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId, predictionId);
         }
 
-        private static bool ConsumePredictedPopup(uint victimNetId)
+        private static bool TryClaimPhysicalPopup(
+            uint attackerNetId,
+            uint victimNetId,
+            uint predictionId)
         {
-            if (victimNetId == 0 ||
-                !PredictedPopupExpiryByVictim.TryGetValue(victimNetId, out float expiry) ||
-                !PredictedPopupCountByVictim.TryGetValue(victimNetId, out int count))
+            PrunePopupCorrelations(DisplayedPhysicalPopupExpiries);
+            var key = (attackerNetId, victimNetId, predictionId);
+            if (DisplayedPhysicalPopupExpiries.ContainsKey(key))
                 return false;
 
-            if (Time.unscaledTime > expiry)
-            {
-                PredictedPopupExpiryByVictim.Remove(victimNetId);
-                PredictedPopupCountByVictim.Remove(victimNetId);
-                return false;
-            }
-
-            if (count <= 1)
-            {
-                PredictedPopupExpiryByVictim.Remove(victimNetId);
-                PredictedPopupCountByVictim.Remove(victimNetId);
-            }
-            else
-            {
-                PredictedPopupCountByVictim[victimNetId] = count - 1;
-            }
-
+            DisplayedPhysicalPopupExpiries[key] = Time.unscaledTime + PopupCorrelationLifetimeSeconds;
             return true;
+        }
+
+        private static void PrunePopupCorrelations(
+            Dictionary<(uint attacker, uint victim, uint prediction), float> correlations)
+        {
+            ExpiredPopupKeys.Clear();
+            foreach (var pair in correlations)
+            {
+                if (Time.unscaledTime > pair.Value)
+                    ExpiredPopupKeys.Add(pair.Key);
+            }
+
+            foreach (var key in ExpiredPopupKeys)
+                correlations.Remove(key);
         }
 
         private Vector3 ResolveDamagePopupPosition(Vector3 hitPosition, DamageSource source)

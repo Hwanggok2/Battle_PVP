@@ -21,6 +21,8 @@ namespace BattlePvp.Networking
 
         private const int RelayApiMaxAttempts = 3;
         private const int RelayApiBackoffMilliseconds = 500;
+        private const string SeoulRelayRegionId = "asia-northeast3";
+        private const string TokyoRelayRegionId = "asia-northeast1";
 
         private NetworkDriver _serverDriver;
         private NetworkDriver _clientDriver;
@@ -37,6 +39,8 @@ namespace BattlePvp.Networking
         private bool _clientConnected;
 
         public string LastJoinCode { get; private set; }
+        public string LastRelayRegion { get; private set; }
+        public string LastRelayRegionLabel { get; private set; }
 
         public override bool Available() => true;
 
@@ -45,9 +49,10 @@ namespace BattlePvp.Networking
             await EnsureUnityServicesAsync();
 
             int relayConnections = Mathf.Max(1, maxConnections - 1);
-            Allocation allocation = await RunRelayApiWithRetryAsync(
-                "CreateAllocationAsync",
-                () => RelayService.Instance.CreateAllocationAsync(relayConnections));
+            Allocation allocation = await CreatePreferredAllocationAsync(relayConnections);
+            LastRelayRegion = allocation.Region;
+            LastRelayRegionLabel = GetRegionLabel(LastRelayRegion);
+            Debug.Log($"[UnityRelayTransport] Relay region: {LastRelayRegionLabel} [{LastRelayRegion}]");
             LastJoinCode = await RunRelayApiWithRetryAsync(
                 "GetJoinCodeAsync",
                 () => RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId));
@@ -55,6 +60,39 @@ namespace BattlePvp.Networking
             _serverRelayData = allocation.ToRelayServerData(GetRelayConnectionType());
             _hasPreparedServerRelay = true;
             return LastJoinCode;
+        }
+
+        private async Task<Allocation> CreatePreferredAllocationAsync(int relayConnections)
+        {
+            try
+            {
+                Allocation allocation = await RelayService.Instance.CreateAllocationAsync(
+                    relayConnections,
+                    SeoulRelayRegionId);
+                if (IsPreferredRegion(allocation.Region))
+                    return allocation;
+
+                Debug.LogWarning(
+                    $"[UnityRelayTransport] Seoul request returned unsupported region [{allocation.Region}]. " +
+                    "Trying Tokyo.");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning(
+                    $"[UnityRelayTransport] Seoul allocation failed. Trying Tokyo. " +
+                    $"{ex.GetType().Name}: {ex.Message}");
+            }
+
+            Allocation fallback = await RunRelayApiWithRetryAsync(
+                "CreateAllocationAsync (Tokyo)",
+                () => RelayService.Instance.CreateAllocationAsync(relayConnections, TokyoRelayRegionId));
+            if (!IsPreferredRegion(fallback.Region))
+            {
+                throw new InvalidOperationException(
+                    $"Tokyo request returned unsupported region [{fallback.Region}].");
+            }
+
+            return fallback;
         }
 
         public async Task PrepareClientAsync(string joinCode)
@@ -67,8 +105,29 @@ namespace BattlePvp.Networking
             JoinAllocation allocation = await RunRelayApiWithRetryAsync(
                 "JoinAllocationAsync",
                 () => RelayService.Instance.JoinAllocationAsync(joinCode.Trim()));
+            LastRelayRegion = allocation.Region;
+            LastRelayRegionLabel = GetRegionLabel(LastRelayRegion);
+            Debug.Log($"[UnityRelayTransport] Joined Relay region: {LastRelayRegionLabel} [{LastRelayRegion}]");
             _clientRelayData = allocation.ToRelayServerData(GetRelayConnectionType());
             _hasPreparedClientRelay = true;
+        }
+
+        private static bool IsPreferredRegion(string regionId)
+        {
+            return string.Equals(regionId, SeoulRelayRegionId, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(regionId, TokyoRelayRegionId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string GetRegionLabel(string regionId)
+        {
+            if (string.IsNullOrWhiteSpace(regionId))
+                return string.Empty;
+
+            if (string.Equals(regionId, SeoulRelayRegionId, StringComparison.OrdinalIgnoreCase))
+                return "Seoul";
+            if (string.Equals(regionId, TokyoRelayRegionId, StringComparison.OrdinalIgnoreCase))
+                return "Tokyo";
+            return regionId;
         }
 
         private static async Task EnsureUnityServicesAsync()
@@ -245,6 +304,8 @@ namespace BattlePvp.Networking
             _hasPreparedClientRelay = false;
             _hasPreparedServerRelay = false;
             LastJoinCode = string.Empty;
+            LastRelayRegion = string.Empty;
+            LastRelayRegionLabel = string.Empty;
         }
 
         public override void ClientEarlyUpdate()

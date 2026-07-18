@@ -142,6 +142,15 @@ namespace BattlePvp.UI
             _ownerIdentity = GetComponentInParent<NetworkIdentity>();
 
             ResolveView();
+            if (_ownerIdentity != null && _hudView == null)
+            {
+                enabled = false;
+                return;
+            }
+
+            if (_ownerIdentity != null)
+                SetViewActive(false);
+
             if (_ownerIdentity == null && _hudView != null)
                 _globalHud = this;
 
@@ -219,15 +228,16 @@ namespace BattlePvp.UI
 
             return hud != null
                 && hud._hudView is PlayerHudView view
+                && view.IsViewVisible
                 && view.ShowReceivedDamage(damage, color);
         }
 
         private static PlayerHUD FindBindableHud()
         {
-            if (Instance != null && Instance.HasResolvedView())
+            if (Instance != null && Instance.CanBindThisHud() && Instance.HasResolvedView())
                 return Instance;
 
-            if (_globalHud != null && _globalHud.HasResolvedView())
+            if (_globalHud != null && _globalHud.CanBindThisHud() && _globalHud.HasResolvedView())
                 return _globalHud;
 
             PlayerHUD[] huds = Resources.FindObjectsOfTypeAll<PlayerHUD>();
@@ -236,7 +246,7 @@ namespace BattlePvp.UI
                 if (hud == null || !hud.gameObject.scene.isLoaded)
                     continue;
 
-                if (hud.HasResolvedView())
+                if (hud.CanBindThisHud() && hud.HasResolvedView())
                     return hud;
             }
 
@@ -426,6 +436,9 @@ namespace BattlePvp.UI
             if (_ownerIdentity == null)
                 return true;
 
+            if (NetworkClient.active && !_ownerIdentity.isLocalPlayer)
+                return false;
+
             if (_hasExplicitTarget)
                 return true;
 
@@ -516,6 +529,17 @@ namespace BattlePvp.UI
 
         private void SetViewActive(bool active)
         {
+            if (_hudView is PlayerHudView playerHudView)
+            {
+                if (!active)
+                    playerHudView.SetSkill(new SkillHudState(false, string.Empty, 0, 0, SkillHudPhase.Hidden, 0f, 0f));
+
+                GameObject viewRoot = playerHudView.ViewRoot;
+                if (viewRoot != null && viewRoot.activeSelf != active)
+                    viewRoot.SetActive(active);
+                return;
+            }
+
             if (_view != null)
             {
                 if (_view.gameObject.activeSelf != active)

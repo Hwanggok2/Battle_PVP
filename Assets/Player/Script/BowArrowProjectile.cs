@@ -76,7 +76,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         Vector3 hitPoint = other.ClosestPoint(transform.position);
         float bodyPartMultiplier = bodyPart != null ? bodyPart.DamageMultiplier : 1f;
         BodyPart part = bodyPart != null ? bodyPart.Part : BodyPart.Body;
-        ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, targetStats, target, hitPoint, bodyPartMultiplier, part);
+        ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, targetStats, target, hitPoint, bodyPartMultiplier, part, netId);
         NetworkServer.Destroy(gameObject);
     }
 
@@ -110,7 +110,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
 
         float predictedDamage = attackProcessor.PredictSkillHitDamage(_damageMultiplier, targetStats, bodyPart.DamageMultiplier);
         Vector3 hitPoint = other.ClosestPoint(transform.position);
-        targetHealth.ShowPredictedPhysicalDamagePopup(hitPoint, predictedDamage, _ownerNetId);
+        targetHealth.ShowPredictedPhysicalDamagePopup(hitPoint, predictedDamage, _ownerNetId, netId);
         _hasPredictedHit = true;
     }
 

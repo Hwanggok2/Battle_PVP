@@ -43,6 +43,12 @@ namespace BattlePvp.UI
         private Coroutine _statUpdateRoutine;
         private BattlePvp.Combat.HealthSystem _localHealthSystem;
         private TextMeshProUGUI _roomFlowStatusText;
+        private TextMeshProUGUI _latencyText;
+        private Coroutine _latencyDisplayRoutine;
+
+        private static readonly Color GoodLatencyColor = new Color(0.25f, 0.9f, 0.35f, 1f);
+        private static readonly Color FairLatencyColor = new Color(1f, 0.82f, 0.2f, 1f);
+        private static readonly Color PoorLatencyColor = new Color(1f, 0.3f, 0.25f, 1f);
 
         private void Awake()
         {
@@ -82,6 +88,7 @@ namespace BattlePvp.UI
             RefreshVisibility();
             UpgradeHangulLegacyText();
             EnsureLobbyButtonTextVisible();
+            EnsureLatencyText();
         }
 
         private void OnEnable()
@@ -103,6 +110,9 @@ namespace BattlePvp.UI
 
             if (_statUpdateRoutine != null) StopCoroutine(_statUpdateRoutine);
             _statUpdateRoutine = StartCoroutine(CoSubscribeToLocalPlayerStats());
+
+            if (_latencyDisplayRoutine != null) StopCoroutine(_latencyDisplayRoutine);
+            _latencyDisplayRoutine = StartCoroutine(CoUpdateLatencyDisplay());
         }
 
         private void OnDisable()
@@ -135,6 +145,119 @@ namespace BattlePvp.UI
             StopAllCoroutines();
             _discoveryRoutine = null;
             _statUpdateRoutine = null;
+            _latencyDisplayRoutine = null;
+        }
+
+        private void EnsureLatencyText()
+        {
+            if (_latencyText != null || _lobby_UI == null)
+                return;
+
+            Transform existing = _lobby_UI.transform.Find("NetworkLatency");
+            if (existing != null)
+                _latencyText = existing.GetComponent<TextMeshProUGUI>();
+
+            if (_latencyText == null)
+            {
+                var latencyObject = new GameObject(
+                    "NetworkLatency",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(TextMeshProUGUI));
+                latencyObject.transform.SetParent(_lobby_UI.transform, false);
+                _latencyText = latencyObject.GetComponent<TextMeshProUGUI>();
+            }
+
+            RectTransform rect = _latencyText.rectTransform;
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(-4f, -114f);
+            rect.sizeDelta = new Vector2(190f, 62f);
+
+            TextMeshProUGUI buttonLabel = _battleButton != null
+                ? _battleButton.GetComponentInChildren<TextMeshProUGUI>(true)
+                : null;
+            if (buttonLabel != null && buttonLabel.font != null)
+                _latencyText.font = buttonLabel.font;
+
+            _latencyText.fontSize = 16f;
+            _latencyText.alignment = TextAlignmentOptions.TopRight;
+            _latencyText.raycastTarget = false;
+            _latencyText.text = string.Empty;
+        }
+
+        private IEnumerator CoUpdateLatencyDisplay()
+        {
+            var wait = new WaitForSecondsRealtime(0.25f);
+            while (isActiveAndEnabled)
+            {
+                EnsureLatencyText();
+                UpdateLatencyText();
+                yield return wait;
+            }
+
+            _latencyDisplayRoutine = null;
+        }
+
+        private void UpdateLatencyText()
+        {
+            if (_latencyText == null)
+                return;
+
+            bool connected = NetworkClient.active && NetworkClient.isConnected;
+            _latencyText.gameObject.SetActive(connected);
+            if (!connected)
+                return;
+
+            if (NetworkServer.active)
+            {
+                double highestRemoteRtt = 0d;
+                foreach (NetworkConnectionToClient connection in NetworkServer.connections.Values)
+                {
+                    if (connection == null || connection is LocalConnectionToClient)
+                        continue;
+
+                    highestRemoteRtt = System.Math.Max(highestRemoteRtt, connection.rtt);
+                }
+
+                if (highestRemoteRtt <= 0d)
+                {
+                    _latencyText.text = AppendRelayRegion("HOST");
+                    _latencyText.color = GoodLatencyColor;
+                    return;
+                }
+
+                float hostRttMs = (float)(highestRemoteRtt * 1000d);
+                _latencyText.text = AppendRelayRegion($"CLIENT RTT {hostRttMs:F0} ms");
+                _latencyText.color = ResolveLatencyColor(hostRttMs);
+                return;
+            }
+
+            float rttMs = (float)(NetworkTime.rtt * 1000d);
+            float jitterMs = (float)(NetworkTime.rttVariance * 1000d);
+            _latencyText.text = AppendRelayRegion($"RTT {rttMs:F0} ms\nJitter {jitterMs:F0} ms");
+            _latencyText.color = ResolveLatencyColor(rttMs);
+        }
+
+        private static string AppendRelayRegion(string latencyText)
+        {
+            if (Transport.active is not UnityRelayTransport relay || string.IsNullOrWhiteSpace(relay.LastRelayRegion))
+                return latencyText;
+
+            string regionLabel = string.IsNullOrWhiteSpace(relay.LastRelayRegionLabel)
+                ? relay.LastRelayRegion
+                : relay.LastRelayRegionLabel;
+            return $"{latencyText}\nRelay {regionLabel}";
+        }
+
+        private static Color ResolveLatencyColor(float rttMs)
+        {
+            if (rttMs <= 50f)
+                return GoodLatencyColor;
+            if (rttMs <= 100f)
+                return FairLatencyColor;
+            return PoorLatencyColor;
         }
 
         // Update() 제거 (이벤트 기반으로 전환)

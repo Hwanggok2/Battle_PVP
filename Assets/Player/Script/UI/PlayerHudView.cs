@@ -47,8 +47,23 @@ namespace BattlePvp.UI
         private float _currentShield;
         private bool _shieldSliderAutoCreated;
         private bool _usingCustomShieldImage;
-        private Coroutine _receivedDamageTextRoutine;
+        private bool _receivedDamageTextVisible;
+        private float _receivedDamageShownAt;
+        private float _receivedDamageHideAt;
+        private Color _receivedDamageColor;
         private readonly StringBuilder _textBuilder = new StringBuilder(32);
+
+        public GameObject ViewRoot
+        {
+            get
+            {
+                ResolveReferences();
+                Canvas canvas = _hpSlider != null ? _hpSlider.GetComponentInParent<Canvas>(true) : null;
+                return canvas != null ? canvas.gameObject : gameObject;
+            }
+        }
+
+        public bool IsViewVisible => isActiveAndEnabled && ViewRoot.activeInHierarchy;
 
         private void Awake()
         {
@@ -61,6 +76,29 @@ namespace BattlePvp.UI
                 _defaultDeathTextColor = _deathCountdownText.color;
 
             HideReceivedDamageText();
+        }
+
+        private void OnDisable()
+        {
+            HideReceivedDamageText();
+        }
+
+        private void Update()
+        {
+            if (!_receivedDamageTextVisible || _receivedDamageText == null)
+                return;
+
+            float now = Time.unscaledTime;
+            if (now >= _receivedDamageHideAt)
+            {
+                HideReceivedDamageText();
+                return;
+            }
+
+            float lifetime = Mathf.Max(0.01f, _receivedDamageTextLifetime);
+            float normalizedRemaining = Mathf.Clamp01((_receivedDamageHideAt - now) / lifetime);
+            _receivedDamageColor.a = normalizedRemaining;
+            _receivedDamageText.color = _receivedDamageColor;
         }
 
         public void SetHp(float current, float max)
@@ -82,33 +120,15 @@ namespace BattlePvp.UI
             if (_receivedDamageText == null)
                 return false;
 
-            if (_receivedDamageTextRoutine != null)
-                StopCoroutine(_receivedDamageTextRoutine);
-
             _receivedDamageText.gameObject.SetActive(true);
             _receivedDamageText.text = $"-{Mathf.RoundToInt(damage)}";
             color.a = 1f;
             _receivedDamageText.color = color;
-            _receivedDamageTextRoutine = StartCoroutine(CoHideReceivedDamageText());
+            _receivedDamageColor = color;
+            _receivedDamageShownAt = Time.unscaledTime;
+            _receivedDamageHideAt = _receivedDamageShownAt + Mathf.Max(0.01f, _receivedDamageTextLifetime);
+            _receivedDamageTextVisible = true;
             return true;
-        }
-
-        private System.Collections.IEnumerator CoHideReceivedDamageText()
-        {
-            float timer = Mathf.Max(0.01f, _receivedDamageTextLifetime);
-            Color color = _receivedDamageText.color;
-
-            while (timer > 0f && _receivedDamageText != null)
-            {
-                timer -= Time.deltaTime;
-                float t = 1f - Mathf.Clamp01(timer / Mathf.Max(0.01f, _receivedDamageTextLifetime));
-                color.a = 1f - t;
-                _receivedDamageText.color = color;
-                yield return null;
-            }
-
-            HideReceivedDamageText();
-            _receivedDamageTextRoutine = null;
         }
 
         private void HideReceivedDamageText()
@@ -116,6 +136,9 @@ namespace BattlePvp.UI
             if (_receivedDamageText == null)
                 return;
 
+            _receivedDamageTextVisible = false;
+            _receivedDamageShownAt = 0f;
+            _receivedDamageHideAt = 0f;
             _receivedDamageText.gameObject.SetActive(true);
             _receivedDamageText.text = string.Empty;
             Color color = _receivedDamageText.color;

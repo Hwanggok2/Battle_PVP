@@ -124,6 +124,8 @@ public class PlayerCombat : NetworkBehaviour
     private uint _currentAttackSequence;
     private uint _lastServerAttackSequence;
     private uint _lastRemoteAttackSequence;
+    private const double DuplicateAttackInputWindowSeconds = 0.075d;
+    private double _lastAttackPressedAt = double.NegativeInfinity;
     private uint _nextLocalSkillSequence;
     private uint _lastServerSkillSequence;
     private uint _lastRemoteSkillSequence;
@@ -189,10 +191,14 @@ public class PlayerCombat : NetworkBehaviour
     public event Action<SkillHudState> SkillHudChanged;
     public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || (_bowAttackController != null && _bowAttackController.IsBusy);
     private double SkillTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
+    private bool ShouldHandleLocalInput =>
+        (NetworkClient.active && isLocalPlayer) ||
+        (!NetworkClient.active && !NetworkServer.active && !isClient && !isServer);
     public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
     public bool IsMonostatAgiPoisonCoatingActive => SkillTime < _monostatAgiSkillActiveUntil;
     public float AttackPowerBonusMultiplier => SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f;
+    public uint CurrentAttackPredictionId => _currentAttackSequence;
 
     private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
     private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
@@ -307,6 +313,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private void OnDisable()
     {
+        _lastAttackPressedAt = double.NegativeInfinity;
+
         if (_healthSystem != null)
         {
             _healthSystem.OnDied -= HandleDied;
@@ -350,6 +358,7 @@ public class PlayerCombat : NetworkBehaviour
 
         _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
         ApplyIdentityVisuals();
+        PublishSkillHudState();
     }
 
     private void Update()
@@ -357,11 +366,10 @@ public class PlayerCombat : NetworkBehaviour
         UpdateStrategistStrAura();
         RefreshSkillSwordVisualFromState();
 
-        if (isClient && !isLocalPlayer)
+        if (!ShouldHandleLocalInput)
             return;
 
-        if (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active))
-            UpdateLocalTauntControl();
+        UpdateLocalTauntControl();
 
         _isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
@@ -408,7 +416,7 @@ public class PlayerCombat : NetworkBehaviour
 
     public void OnSkill(InputValue value)
     {
-        if (isClient && !isLocalPlayer) return;
+        if (!ShouldHandleLocalInput) return;
         if (!value.isPressed) return;
         if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)) return;
 
@@ -498,14 +506,27 @@ public class PlayerCombat : NetworkBehaviour
 
     public void OnAttack(InputValue value)
     {
-        if (isClient && !isLocalPlayer) return;
+        if (!ShouldHandleLocalInput) return;
+
+        bool pressed = value.isPressed;
+        if (!pressed)
+        {
+            if (IsPolymath() && _isBowEquipped)
+                HandleBowAttackInput(false);
+            return;
+        }
+
+        double pressedAt = Time.unscaledTimeAsDouble;
+        if (pressedAt - _lastAttackPressedAt < DuplicateAttackInputWindowSeconds)
+            return;
+
+        _lastAttackPressedAt = pressedAt;
         if (_playerManager != null && _playerManager.IsSkillAttackLocked) return;
         if (IsPolymath() && _isBowEquipped)
         {
-            HandleBowAttackInput(value.isPressed);
+            HandleBowAttackInput(true);
             return;
         }
-        if (!value.isPressed) return;
         if (IsBattleLoadingOrNotStarted()) return;
 
         var pm = GetComponent<PlayerManager>();
@@ -611,7 +632,7 @@ public class PlayerCombat : NetworkBehaviour
             }
         }
 
-        if (notifyServer && isClient && isLocalPlayer)
+        if (notifyServer && isClient && isLocalPlayer && NetworkClient.active && NetworkClient.ready)
         {
             uint sequence = NextAttackSequence();
             double requestedStartTime = SkillTime;
@@ -919,7 +940,8 @@ public class PlayerCombat : NetworkBehaviour
             targetHealth,
             hitPosition,
             bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier,
-            bodyPart: bodyPart);
+            bodyPart: bodyPart,
+            popupPredictionId: attackSequence);
     }
 
     private static Vector3 SampleServerPosition(ServerPoseHistory history, Vector3 fallback, double time)
@@ -2578,7 +2600,7 @@ public class PlayerCombat : NetworkBehaviour
         _bowAttackController?.OnBowReleaseArrow();
     }
 
-    public bool ProcessBowProjectileHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier, BodyPart bodyPart)
+    public bool ProcessBowProjectileHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier, BodyPart bodyPart, uint popupPredictionId)
     {
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
@@ -2589,7 +2611,8 @@ public class PlayerCombat : NetworkBehaviour
             defender,
             hitPosition,
             bodyPartMultiplier,
-            bodyPart);
+            bodyPart,
+            popupPredictionId);
     }
 
     private int ResolveAvailableSkillCount()
@@ -2772,6 +2795,9 @@ public class PlayerCombat : NetworkBehaviour
 
     private void PublishSkillHudState(bool force = true)
     {
+        if (NetworkClient.active && !isLocalPlayer)
+            return;
+
         SkillHudState state = GetSkillHudState();
 
         if (!force)

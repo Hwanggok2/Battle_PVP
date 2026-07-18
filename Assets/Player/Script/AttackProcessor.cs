@@ -88,7 +88,7 @@ public sealed class AttackProcessor : MonoBehaviour
     /// <param name="defenderStats">피격자 StatManager</param>
     /// <param name="defender">피격자 HP 수신자</param>
     /// <param name="defenderGuard">선택적 가드 컴포넌트 (없으면 null)</param>
-    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body)
+    public void ProcessHit(AttackData attackData, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, IGuard defenderGuard = null, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0)
     {
         if (attackData == null)
             return;
@@ -155,7 +155,18 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_playerCombat == null)
             _playerCombat = GetComponent<PlayerCombat>();
 
-        if (defender is IDamageReceiverWithContext ctx)
+        if (defender is HealthSystem healthSystem)
+        {
+            healthSystem.ApplyDamageWithPopupSource(
+                finalDamage,
+                DamageSource.Physical,
+                attackPower,
+                _attackerDamageReceiver,
+                hitPosition,
+                DamageSource.Physical,
+                popupPredictionId);
+        }
+        else if (defender is IDamageReceiverWithContext ctx)
         {
             // defender가 여전히 유효한지 확인
             if (ctx is MonoBehaviour defenderMb && defenderMb == null) return;
@@ -196,7 +207,7 @@ public sealed class AttackProcessor : MonoBehaviour
         return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
     }
 
-    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body)
+    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0)
     {
         if (damageMultiplier <= 0f || defenderStats == null || defender == null)
             return false;
@@ -218,7 +229,18 @@ public sealed class AttackProcessor : MonoBehaviour
             return false;
 
         float hpBefore = defender.CurrentHp;
-        if (defender is IDamageReceiverWithContext context)
+        if (defender is HealthSystem healthSystem)
+        {
+            healthSystem.ApplyDamageWithPopupSource(
+                finalDamage,
+                DamageSource.Physical,
+                attackPower,
+                _attackerDamageReceiver,
+                hitPosition,
+                DamageSource.Physical,
+                popupPredictionId);
+        }
+        else if (defender is IDamageReceiverWithContext context)
         {
             context.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver, hitPosition);
         }

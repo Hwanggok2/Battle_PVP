@@ -336,7 +336,11 @@ namespace BattlePvp.Combat
                     defenderStats,
                     bodyPartMultiplier * predictedBuffMultiplier);
                 _playerCombat?.PlayPredictedHitFeedback(bodyPart != null && bodyPart.Part == BodyPart.Head);
-                targetHealth.ShowPredictedPhysicalDamagePopup(hitPosition, predictedDamage, _playerCombat != null ? _playerCombat.netId : 0);
+                targetHealth.ShowPredictedPhysicalDamagePopup(
+                    hitPosition,
+                    predictedDamage,
+                    _playerCombat != null ? _playerCombat.netId : 0,
+                    _playerCombat != null ? _playerCombat.CurrentAttackPredictionId : 0);
                 _playerCombat?.RequestServerMeleeHit(
                     defender,
                     bodyPart != null ? bodyPart.Part : BodyPart.Body,
@@ -355,7 +359,8 @@ namespace BattlePvp.Combat
                 defender,
                 hitPosition,
                 bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier,
-                bodyPart: bodyPart != null ? bodyPart.Part : BodyPart.Body);
+                bodyPart: bodyPart != null ? bodyPart.Part : BodyPart.Body,
+                popupPredictionId: _playerCombat != null ? _playerCombat.CurrentAttackPredictionId : 0);
             _hitTargets.Add(defender);
         }
 

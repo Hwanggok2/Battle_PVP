@@ -56,7 +56,7 @@ namespace BattlePvp.UI
             PlayerHudView[] views = Resources.FindObjectsOfTypeAll<PlayerHudView>();
             foreach (PlayerHudView view in views)
             {
-                if (view == null || !view.gameObject.scene.isLoaded)
+                if (view == null || !view.gameObject.scene.isLoaded || !view.IsViewVisible)
                     continue;
 
                 if (view.ShowReceivedDamage(damage, color))
