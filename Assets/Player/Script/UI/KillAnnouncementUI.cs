@@ -1,5 +1,9 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Unity.Profiling;
+#endif
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -10,6 +14,13 @@ namespace BattlePvp.UI
     public sealed class KillAnnouncementUI : MonoBehaviour
     {
         public static KillAnnouncementUI Instance { get; private set; }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        private static readonly ProfilerMarker ShowMarker = new ProfilerMarker("BattlePvp.UI.KillFeed.Show");
+        private static readonly ProfilerMarker CreateMarker = new ProfilerMarker("BattlePvp.UI.KillFeed.CreateItem");
+        private static readonly ProfilerMarker ReleaseMarker = new ProfilerMarker("BattlePvp.UI.KillFeed.Release");
+#endif
+        private readonly HashSet<GameObject> _activeItems = new HashSet<GameObject>();
 
         [Header("UI References")]
         [Tooltip("처치 알림들이 쌓일 부모 RectTransform입니다. 위치는 이 오브젝트로 직접 조절하세요.")]
@@ -35,8 +46,15 @@ namespace BattlePvp.UI
             EnsureContainer();
         }
 
+        private void OnDisable()
+        {
+            StopAllCoroutines();
+            ClearOwnedItems();
+        }
+
         private void OnDestroy()
         {
+            ClearOwnedItems();
             if (Instance == this)
                 Instance = null;
         }
@@ -58,6 +76,12 @@ namespace BattlePvp.UI
 
         public void Show(string killerName, string victimName)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using var sample = ShowMarker.Auto();
+#endif
+            if (!isActiveAndEnabled)
+                return;
+
             if (string.IsNullOrWhiteSpace(killerName) && string.IsNullOrWhiteSpace(victimName))
                 return;
 
@@ -72,7 +96,19 @@ namespace BattlePvp.UI
             if (item == null)
                 return;
 
+            _activeItems.Add(item);
+            if (this == null || !isActiveAndEnabled)
+            {
+                ReleaseItem(item);
+                return;
+            }
             item.SetActive(true);
+            // A prefab's OnEnable may disable its owner. Do not start a new lifetime after cleanup.
+            if (this == null || !isActiveAndEnabled || !_activeItems.Contains(item))
+            {
+                ReleaseItem(item);
+                return;
+            }
             StartCoroutine(CoRemoveAfter(item, _duration));
         }
 
@@ -104,6 +140,9 @@ namespace BattlePvp.UI
 
         private GameObject CreateItem(RectTransform parent, string killerName, string victimName)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using var sample = CreateMarker.Auto();
+#endif
             GameObject itemObject;
             if (_itemPrefab != null)
             {
@@ -123,7 +162,7 @@ namespace BattlePvp.UI
                 fallbackText.fontStyle = FontStyles.Bold;
                 fallbackText.color = Color.white;
                 fallbackText.raycastTarget = false;
-                fallbackText.text = $"{NormalizeName(killerName)}  >  {NormalizeName(victimName)}";
+                UserTextPresentation.SetPlain(fallbackText, $"{NormalizeName(killerName)}  >  {NormalizeName(victimName)}");
                 return itemObject;
             }
 
@@ -138,7 +177,7 @@ namespace BattlePvp.UI
             TextMeshProUGUI text = itemObject.GetComponentInChildren<TextMeshProUGUI>(true);
             if (text != null)
             {
-                text.text = $"{NormalizeName(killerName)}  >  {NormalizeName(victimName)}";
+                UserTextPresentation.SetPlain(text, $"{NormalizeName(killerName)}  >  {NormalizeName(victimName)}");
                 DisableRaycastTargets(itemObject);
                 return itemObject;
             }
@@ -151,8 +190,30 @@ namespace BattlePvp.UI
         {
             yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, seconds));
 
-            if (item != null)
-                Destroy(item);
+            ReleaseItem(item);
+        }
+
+        private void ClearOwnedItems()
+        {
+            while (_activeItems.Count > 0)
+            {
+                using var items = _activeItems.GetEnumerator();
+                items.MoveNext();
+                ReleaseItem(items.Current);
+            }
+        }
+
+        private void ReleaseItem(GameObject item)
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            using var sample = ReleaseMarker.Auto();
+#endif
+            if (!_activeItems.Remove(item) || item == null)
+                return;
+            item.SetActive(false);
+            // Also clean up owned editor objects when the component is removed outside Play Mode.
+            if (Application.isPlaying) Destroy(item);
+            else DestroyImmediate(item);
         }
 
         private static KillAnnouncementUI CreateFallbackInstance()
@@ -160,7 +221,7 @@ namespace BattlePvp.UI
             Canvas canvas = FindFirstObjectByType<Canvas>();
             if (canvas == null)
             {
-                GameObject canvasObject = new GameObject("KillAnnouncementCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                GameObject canvasObject = new GameObject("KillAnnouncementCanvas", typeof(Canvas), typeof(CanvasScaler));
                 canvas = canvasObject.GetComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             }
@@ -190,7 +251,7 @@ namespace BattlePvp.UI
 
         private static string NormalizeName(string value)
         {
-            return string.IsNullOrWhiteSpace(value) ? "Unknown" : value;
+            return UserDisplayText.SingleLine(value, UserDisplayText.NameLimit, "Unknown");
         }
 
         private static void DisableRaycastTargets(GameObject root)

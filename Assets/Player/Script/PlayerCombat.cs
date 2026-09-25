@@ -9,6 +9,11 @@ using UnityEngine.SceneManagement;
 using BattlePvp.Managers;
 using BattlePvp.UI;
 
+/// <summary>
+/// Owns combat requests, authoritative action state, and action coroutine lifetimes.
+/// Presentation helpers receive explicit display inputs and never mutate that state.
+/// Death, revival, and disable all terminate owned actions through CancelAllCombatActions.
+/// </summary>
 public class PlayerCombat : NetworkBehaviour
 {
     private enum AuraPrimitiveShape
@@ -68,11 +73,11 @@ public class PlayerCombat : NetworkBehaviour
 
     [Header("Network Hit Validation")]
     [SerializeField, Min(1f)] private float _remoteMeleeValidationDistance = 7.5f;
-    [SerializeField, Min(0.5f)] private float _remoteHitPositionTolerance = 3f;
 
     [Header("Network Action Timing")]
     [SerializeField, Range(0.05f, 0.5f)] private float _maxActionRewindSeconds = 0.25f;
     [SerializeField, Range(0f, 0.1f)] private float _maxFutureActionLeadSeconds = 0.05f;
+    [SerializeField, Range(0.5f, 3f)] private float _serverAttackReportGraceSeconds = 2f;
 
     [Header("Strategist Preset Aura")]
     [SerializeField] private Material _strategistStrAuraMaterial;
@@ -119,20 +124,21 @@ public class PlayerCombat : NetworkBehaviour
     private bool hasComboReserved;
     private bool _isPointerOverUI;
     private readonly HashSet<IDamageReceiver> _hitTargetsThisAttack = new HashSet<IDamageReceiver>();
-    private readonly Queue<float> _predictedHitFeedbackExpiries = new Queue<float>();
     private uint _nextLocalAttackSequence;
     private uint _currentAttackSequence;
-    private uint _lastServerAttackSequence;
+    [SyncVar] private uint _lastServerAttackSequence;
     private uint _lastRemoteAttackSequence;
+    private uint _serverReportableAttackSequence;
+    private int _serverReportableAttackIndex = -1;
+    private double _serverAttackReportExpiresAt;
+    private readonly HashSet<uint> _serverAttackHitTargetNetIds = new HashSet<uint>();
     private const double DuplicateAttackInputWindowSeconds = 0.075d;
     private double _lastAttackPressedAt = double.NegativeInfinity;
     private uint _nextLocalSkillSequence;
-    private uint _lastServerSkillSequence;
+    [SyncVar] private uint _lastServerSkillSequence;
     private uint _lastRemoteSkillSequence;
 
     private Animator animator;
-    private Transform _cachedTransform;
-    private CharacterController _characterController;
     private PlayerInput _playerInput;
     private Coroutine _comboRoutine;
     private HealthSystem _healthSystem;
@@ -141,52 +147,53 @@ public class PlayerCombat : NetworkBehaviour
     private Coroutine _monostatStrSkillRoutine;
     private Coroutine _monostatAgiSkillRoutine;
     private Coroutine _monostatAgiPoisonRoutine;
-    private double _localMonostatStrSkillAttackLockUntil;
-    private double _localMonostatAgiSkillAttackLockUntil;
-    private AudioSource _audioSource;
+    private readonly CombatActionLocks _actionLocks = new CombatActionLocks();
     private AttackProcessor _attackProcessor;
-    private CombatHitFeedback _hitFeedback;
     private ServerPoseHistory _serverPoseHistory;
     private Coroutine _advancedSkillRoutine;
-    private Coroutine _localAdvancedMoveLockRoutine;
     private Coroutine _localSkillAnimationAttackLockRoutine;
-    private double _localAdvancedAttackLockUntil;
-    private bool _localSkillAnimationAttackLocked;
     private int _pendingAdvancedSkillHitKey = -1;
     private Vector3 _pendingAdvancedSkillDirection;
     private bool _isKickHitBoxEnabled;
+    private readonly KickHitWindowAuthority _kickWindow = new KickHitWindowAuthority();
     private Coroutine _kickHitBoxRoutine;
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
     private float _nextAttackDamageMultiplier = 1f;
-    private float _attackPowerBonusMultiplier = 1f;
-    private double _attackPowerBonusUntil;
-    private float _attackSpeedBonusMultiplier = 1f;
-    private double _attackSpeedBonusUntil;
-    private GameObject _strategistStrAuraObject;
-    private Transform _strategistStrAuraTransform;
-    private Renderer _strategistStrAuraRenderer;
-    private Material _runtimeStrategistStrAuraMaterial;
-    private Material _activeStrategistAuraMaterialSource;
-    private StatKind _activeStrategistAuraStat = StatKind.STR;
-    private bool _strategistStrAuraVisible;
-    private StatKind _timedStrategistAuraStat = StatKind.STR;
-    private double _strategistPresetAuraUntil;
-    private Bounds _cachedStrategistAuraBounds;
-    private bool _hasCachedStrategistAuraBounds;
+    [SyncVar] private float _attackPowerBonusMultiplier = 1f;
+    [SyncVar] private double _attackPowerBonusUntil;
+    [SyncVar] private float _attackSpeedBonusMultiplier = 1f;
+    [SyncVar] private double _attackSpeedBonusUntil;
+    [SyncVar] private int _acceptedSkillAnimationKey = -1;
+    [SyncVar] private double _acceptedSkillStartedAt;
+    [SyncVar] private double _acceptedSkillAnimationUntil;
+    [SyncVar] private SkillInputLockFlags _acceptedSkillInputFlags;
+    [SyncVar] private double _acceptedSkillInputUntil;
+    private double _appliedAcceptedInputUntil;
+    private SkillInputLockFlags _appliedAcceptedInputFlags;
     private StatContainer _runtimeStrategistTargetPreset;
     private bool _hasRuntimeStrategistTargetPreset;
     private StatContainer _strategistSwapReturnPreset;
     private bool _hasStrategistSwapReturnPreset;
-    private readonly List<PoisonStackState> _monostatAgiPoisonStacks = new List<PoisonStackState>();
-    private Renderer[] _skillSwordRenderers;
-    private Material[][] _skillSwordOriginalMaterials;
-    private Material _activeSkillSwordMaterial;
-    private bool _isSkillSwordVisualActive;
+    private readonly PoisonStackCollection<IDamageReceiver, Vector3> _poisonStacks = new PoisonStackCollection<IDamageReceiver, Vector3>();
+    private readonly List<PoisonTick<IDamageReceiver, Vector3>> _poisonTicks = new List<PoisonTick<IDamageReceiver, Vector3>>();
+    private bool _restoredOwnerCastMovement;
     private bool _localTauntControlActive;
-    private const float SkillHudUpdateIntervalSeconds = 0.1f;
-    private SkillHudState _lastPublishedSkillHudState;
-    private bool _hasPublishedSkillHudState;
-    private float _nextSkillHudPublishTime;
+    private bool _serverTauntBowActive;
+    private readonly ServerComboSequence _serverCombo = new ServerComboSequence();
+
+    private CombatSkillPresentation _skillPresentation;
+    private SkillAuraPresentation _auraPresentation;
+    private readonly SkillHudPresenter _skillHudPresenter = new SkillHudPresenter();
+
+    private CombatSkillPresentation SkillPresentation =>
+        _skillPresentation ??= new CombatSkillPresentation(gameObject, animator);
+
+    private SkillAuraPresentation AuraPresentation =>
+        _auraPresentation ??= new SkillAuraPresentation(transform, GetComponent<CharacterController>(),
+            new SkillAuraSettings(_strategistStrAuraMaterial, _strategistAgiAuraMaterial,
+                _strategistConAuraMaterial, _strategistDefAuraMaterial,
+                (SkillAuraShape)_strategistStrAuraShape, _fitStrategistStrAuraToPlayer,
+                _preferCharacterControllerAuraBounds, _strategistStrAuraScale, _strategistStrAuraOffset));
 
     public event Action<SkillHudState> SkillHudChanged;
     public bool IsBusyForEmote => IsSkillCastingOrAttackLocked() || isAttacking || (_bowAttackController != null && _bowAttackController.IsBusy);
@@ -199,6 +206,17 @@ public class PlayerCombat : NetworkBehaviour
     public bool IsMonostatAgiPoisonCoatingActive => SkillTime < _monostatAgiSkillActiveUntil;
     public float AttackPowerBonusMultiplier => SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f;
     public uint CurrentAttackPredictionId => _currentAttackSequence;
+    public bool IsAttackActive => isAttacking;
+    public bool IsServerTaunted => _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
+
+    public JobSkillData ServerBowData => _polymathWeaponSwapSkillData;
+    private bool HasAuthoritativeCombatStats => !NetworkServer.active ||
+        (_statManager != null && _statManager.HasServerStats);
+    public bool CanServerUseBow => NetworkServer.active && isActiveAndEnabled &&
+        HasAuthoritativeCombatStats &&
+        _healthSystem != null && !_healthSystem.IsDead && IsPolymath() && _isBowEquipped &&
+        _polymathWeaponSwapSkillData != null && !IsBattleLoadingOrNotStarted() &&
+        (IsServerTaunted || !IsSkillCastingOrAttackLocked());
 
     private JobSkillData MonostatStrSkillData => IsSkillDataKind(_monostatStrSkillData, JobSkillKind.MonostatStrLifesteal) ? _monostatStrSkillData : null;
     private JobSkillData MonostatAgiSkillData => IsSkillDataKind(_monostatAgiSkillData, JobSkillKind.MonostatAgiPoison) ? _monostatAgiSkillData : null;
@@ -214,12 +232,45 @@ public class PlayerCombat : NetworkBehaviour
     private float MonostatAgiPoisonDamagePerStackPerSecondValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonDamagePerStackPerSecond > 0f ? MonostatAgiSkillData.PoisonDamagePerStackPerSecond : MonostatAgiPoisonDamagePerStackPerSecond;
     private float MonostatAgiPoisonStackDurationSecondsValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonStackDurationSeconds > 0f ? MonostatAgiSkillData.PoisonStackDurationSeconds : MonostatAgiPoisonStackDurationSeconds;
 
-    private sealed class PoisonStackState
+    // Existing SyncVars remain the serialization boundary; lifetime decisions live in the pure value type.
+    private CombatSkillExecution StrengthExecution
     {
-        public IDamageReceiver Target;
-        public int StackCount;
-        public double ExpiresAt;
-        public Vector3 LastHitPosition;
+        get => new CombatSkillExecution(_isCastingMonostatStrSkill, _monostatStrSkillCastCompleteAt,
+            _monostatStrSkillActiveUntil, _monostatStrSkillCooldownUntil);
+        set
+        {
+            _isCastingMonostatStrSkill = value.IsCasting;
+            _monostatStrSkillCastCompleteAt = value.CastCompleteAt;
+            _monostatStrSkillActiveUntil = value.ActiveUntil;
+            _monostatStrSkillCooldownUntil = value.CooldownUntil;
+        }
+    }
+
+    private CombatSkillExecution AgilityExecution
+    {
+        get => new CombatSkillExecution(_isCastingMonostatAgiSkill, _monostatAgiSkillCastCompleteAt,
+            _monostatAgiSkillActiveUntil, _monostatAgiSkillCooldownUntil);
+        set
+        {
+            _isCastingMonostatAgiSkill = value.IsCasting;
+            _monostatAgiSkillCastCompleteAt = value.CastCompleteAt;
+            _monostatAgiSkillActiveUntil = value.ActiveUntil;
+            _monostatAgiSkillCooldownUntil = value.CooldownUntil;
+        }
+    }
+
+    private CombatOwnerAction AcceptedOwnerAction
+    {
+        get => new CombatOwnerAction(_acceptedSkillAnimationKey, _acceptedSkillStartedAt, _acceptedSkillAnimationUntil,
+            (int)_acceptedSkillInputFlags, _acceptedSkillInputUntil);
+        set
+        {
+            _acceptedSkillAnimationKey = value.SkillKey;
+            _acceptedSkillStartedAt = value.StartedAt;
+            _acceptedSkillAnimationUntil = value.AnimationUntil;
+            _acceptedSkillInputFlags = (SkillInputLockFlags)value.InputFlags;
+            _acceptedSkillInputUntil = value.InputUntil;
+        }
     }
 
     private static bool IsSkillDataKind(JobSkillData data, JobSkillKind expectedKind)
@@ -229,8 +280,6 @@ public class PlayerCombat : NetworkBehaviour
 
     private void Awake()
     {
-        _cachedTransform = transform;
-        _characterController = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
         if (animator == null)
             animator = GetComponentInChildren<Animator>(true);
@@ -249,17 +298,14 @@ public class PlayerCombat : NetworkBehaviour
         _healthSystem = GetComponent<HealthSystem>();
         _playerManager = GetComponent<PlayerManager>();
         _attackProcessor = GetComponent<AttackProcessor>();
-        _hitFeedback = GetComponent<CombatHitFeedback>();
         _serverPoseHistory = GetComponent<ServerPoseHistory>();
         if (_serverPoseHistory == null)
             _serverPoseHistory = gameObject.AddComponent<ServerPoseHistory>();
-        _audioSource = GetComponent<AudioSource>();
         if (_kickHitBox == null)
             _kickHitBox = GetComponentInChildren<KickSkillHitBox>(true);
         if (_kickHitBox != null)
             _kickHitBox.Initialize(this);
-        if (_audioSource == null)
-            _audioSource = gameObject.AddComponent<AudioSource>();
+        _skillPresentation = new CombatSkillPresentation(gameObject, animator);
     }
 
 #if UNITY_EDITOR
@@ -313,6 +359,11 @@ public class PlayerCombat : NetworkBehaviour
 
     private void OnDisable()
     {
+        ClearServerTauntControl();
+        CancelAllCombatActions();
+        StopActionRoutine(ref _monostatAgiPoisonRoutine);
+        _poisonStacks.Clear();
+        _poisonTicks.Clear();
         _lastAttackPressedAt = double.NegativeInfinity;
 
         if (_healthSystem != null)
@@ -331,16 +382,15 @@ public class PlayerCombat : NetworkBehaviour
         ForceDisableKickHitBox();
         _bowAttackController?.CancelCharge();
         _bowAttackController?.SetCrosshairVisible(false);
-        SetStrategistStrAuraVisible(false);
+        _auraPresentation?.Cancel();
         SetSkillSwordVisual(null);
         ClearLocalTauntControl();
     }
 
     private void OnDestroy()
     {
-        SetSkillSwordVisual(null);
-        if (_runtimeStrategistStrAuraMaterial != null)
-            Destroy(_runtimeStrategistStrAuraMaterial);
+        _skillPresentation?.Dispose();
+        _auraPresentation?.Dispose();
     }
 
     public override void OnStartClient()
@@ -356,6 +406,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_playerInput != null)
             _playerInput.enabled = true;
 
+        RestoreLocalOwnerCombatState();
         _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
         ApplyIdentityVisuals();
         PublishSkillHudState();
@@ -363,6 +414,9 @@ public class PlayerCombat : NetworkBehaviour
 
     private void Update()
     {
+        ApplyAcceptedOwnerInputLock();
+        RefreshRestoredOwnerCastMovement();
+        UpdateServerTauntControl();
         UpdateStrategistStrAura();
         RefreshSkillSwordVisualFromState();
 
@@ -381,6 +435,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void HandleBowReleaseFallback()
     {
+        if (IsServerTaunted) return;
         if (Mouse.current == null || !IsPolymath() || !_isBowEquipped)
             return;
 
@@ -433,6 +488,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void OnIdentityChanged(Identity _)
     {
+        if (!IsPolymath()) _bowAttackController?.CancelCharge();
         ApplyIdentityVisuals();
     }
 
@@ -550,7 +606,6 @@ public class PlayerCombat : NetworkBehaviour
         if (isAttacking)
         {
             hasComboReserved = true;
-            Debug.Log($"{currentComboIndex + 2} attack reserved.");
             return;
         }
 
@@ -581,9 +636,10 @@ public class PlayerCombat : NetworkBehaviour
         int index,
         bool notifyServer,
         Vector3 aimDirection,
-        bool ignoreControlLocks = false,
-        double visualStartedAt = double.NaN)
+        bool ignoreControlLocks = false)
     {
+        if (!HasAuthoritativeCombatStats)
+            return;
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
 
@@ -596,9 +652,16 @@ public class PlayerCombat : NetworkBehaviour
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
             return;
 
+        bool sendOwnerRequest = notifyServer && isClient && isLocalPlayer && NetworkClient.active && NetworkClient.ready;
+        if (sendOwnerRequest)
+        {
+            _currentAttackSequence = NextAttackSequence();
+            if (isServer) _lastServerAttackSequence = _currentAttackSequence;
+        }
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
+        if (isServer) _serverCombo.Reset();
         _hitTargetsThisAttack.Clear();
         aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward);
 
@@ -616,13 +679,6 @@ public class PlayerCombat : NetworkBehaviour
                 animator.speed = _currentAttackSpeed;
         }
 
-        if (animator != null)
-            PlayAttackAnimation(index, visualStartedAt);
-
-        if (_comboRoutine != null)
-            StopCoroutine(_comboRoutine);
-        _comboRoutine = StartCoroutine(CoComboMonitor(index));
-
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
@@ -632,20 +688,24 @@ public class PlayerCombat : NetworkBehaviour
             }
         }
 
-        if (notifyServer && isClient && isLocalPlayer && NetworkClient.active && NetworkClient.ready)
-        {
-            uint sequence = NextAttackSequence();
-            double requestedStartTime = SkillTime;
-            _currentAttackSequence = sequence;
+        // Seeking frame zero can invoke hit events synchronously. Install data and deduplication first.
+        if (isServer && _currentAttackSequence != 0)
+            RegisterServerAcceptedAttack(_currentAttackSequence, index);
+        if (sendOwnerRequest && !isServer)
+            CmdStartAttack(index, aimDirection, _currentAttackSequence);
+        if (animator != null)
+            PlayAttackAnimation(index);
+        if (!isAttacking) return;
 
-            if (isServer)
-            {
-                _lastServerAttackSequence = sequence;
-                RpcStartAttackFast(index, aimDirection, sequence, requestedStartTime);
-                RpcStartAttack(index, aimDirection, sequence, requestedStartTime);
-            }
-            else
-                CmdStartAttack(index, aimDirection, ignoreControlLocks, sequence, requestedStartTime);
+        if (_comboRoutine != null)
+            StopCoroutine(_comboRoutine);
+        _comboRoutine = StartCoroutine(CoComboMonitor(index));
+
+        if (sendOwnerRequest && isServer)
+        {
+            uint sequence = _currentAttackSequence;
+            RpcStartAttackFast(index, aimDirection, sequence);
+            RpcStartAttack(index, aimDirection, sequence);
         }
     }
 
@@ -653,11 +713,12 @@ public class PlayerCombat : NetworkBehaviour
     private void CmdStartAttack(
         int index,
         Vector3 aimDirection,
-        bool forcedTauntAttack,
-        uint sequence,
-        double requestedStartTime)
+        uint sequence)
     {
-        if (!IsNewerSequence(sequence, _lastServerAttackSequence) ||
+        if (!HasAuthoritativeCombatStats || !CombatValidation.IsFinite(aimDirection) || aimDirection.sqrMagnitude <= 0.001f ||
+            IsBattleLoadingOrNotStarted() || _isBowEquipped || IsServerTaunted ||
+            !IsNewerSequence(sequence, _lastServerAttackSequence) ||
+            index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null ||
             (_healthSystem != null && _healthSystem.IsDead))
         {
             TargetResolveAttackRequest(connectionToClient, sequence, false);
@@ -665,28 +726,44 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         _lastServerAttackSequence = sequence;
+        if (IsSkillCastingOrAttackLocked() ||
+            (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)))
+        {
+            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            return;
+        }
+        float comboProgress = animator != null && isAttacking
+            ? animator.GetCurrentAnimatorStateInfo(1).normalizedTime : float.NaN;
+        if (!_serverCombo.CanStart(index, isAttacking, currentComboIndex, comboProgress, SkillTime))
+        {
+            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            return;
+        }
         _currentAttackSequence = sequence;
-        double acceptedStartTime = ResolveServerActionTime(requestedStartTime);
-        bool allowForcedTauntAttack = forcedTauntAttack && _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
-        StartAttack(index, false, aimDirection, allowForcedTauntAttack, acceptedStartTime);
-        RpcStartAttackFast(index, aimDirection, sequence, acceptedStartTime);
-        RpcStartAttack(index, aimDirection, sequence, acceptedStartTime);
+        StartAttack(index, false, aimDirection);
+        if (!isAttacking || currentComboIndex != index)
+        {
+            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            return;
+        }
+        RpcStartAttackFast(index, aimDirection, sequence);
+        RpcStartAttack(index, aimDirection, sequence);
         TargetResolveAttackRequest(connectionToClient, sequence, true);
     }
 
     [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
-    private void RpcStartAttackFast(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
+    private void RpcStartAttackFast(int index, Vector3 aimDirection, uint sequence)
     {
-        ReceiveRemoteAttackStart(index, aimDirection, sequence, acceptedStartTime);
+        ReceiveRemoteAttackStart(index, aimDirection, sequence);
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
+    private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence)
     {
-        ReceiveRemoteAttackStart(index, aimDirection, sequence, acceptedStartTime);
+        ReceiveRemoteAttackStart(index, aimDirection, sequence);
     }
 
-    private void ReceiveRemoteAttackStart(int index, Vector3 aimDirection, uint sequence, double acceptedStartTime)
+    private void ReceiveRemoteAttackStart(int index, Vector3 aimDirection, uint sequence)
     {
         if (isServer)
             return;
@@ -695,7 +772,7 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         _lastRemoteAttackSequence = sequence;
-        StartRemoteAttackVisual(index, aimDirection, acceptedStartTime);
+        StartRemoteAttackVisual(index, aimDirection);
     }
 
     [TargetRpc]
@@ -705,7 +782,7 @@ public class PlayerCombat : NetworkBehaviour
             CancelCurrentAttack();
     }
 
-    private void StartRemoteAttackVisual(int index, Vector3 aimDirection, double acceptedStartTime)
+    private void StartRemoteAttackVisual(int index, Vector3 aimDirection)
     {
         if (_healthSystem != null && _healthSystem.IsDead)
             return;
@@ -724,7 +801,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (animator != null)
-            PlayAttackAnimation(index, acceptedStartTime);
+            PlayAttackAnimation(index);
 
         if (_comboRoutine != null)
             StopCoroutine(_comboRoutine);
@@ -749,7 +826,7 @@ public class PlayerCombat : NetworkBehaviour
         return Mathf.Max(0.01f, attackSpeed);
     }
 
-    private void PlayAttackAnimation(int index, double visualStartedAt = double.NaN)
+    private void PlayAttackAnimation(int index)
     {
         if (animator == null || comboList == null || index < 0 || index >= comboList.Length || comboList[index] == null)
             return;
@@ -758,43 +835,133 @@ public class PlayerCombat : NetworkBehaviour
         animator.speed = Mathf.Max(0.01f, _currentAttackSpeed);
         animator.Play(comboList[index].animationName, 1, 0f);
         animator.Update(0f);
+    }
 
-        if (double.IsNaN(visualStartedAt))
-            return;
+    [Server]
+    private void RegisterServerAcceptedAttack(uint sequence, int attackIndex)
+    {
+        _serverReportableAttackSequence = sequence;
+        _serverReportableAttackIndex = attackIndex;
+        _serverAttackReportExpiresAt = SkillTime + Mathf.Max(0.5f, _serverAttackReportGraceSeconds);
+        _serverAttackHitTargetNetIds.Clear();
+    }
 
-        double elapsedSeconds = Math.Max(0d, SkillTime - visualStartedAt);
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(1);
-        if (!stateInfo.IsName(comboList[index].animationName) || stateInfo.length <= 0f)
-            return;
+    [Server]
+    private bool IsServerAttackReportValid(uint sequence, int attackIndex)
+    {
+        return sequence != 0 &&
+               sequence == _serverReportableAttackSequence &&
+               attackIndex == _serverReportableAttackIndex &&
+               SkillTime <= _serverAttackReportExpiresAt;
+    }
 
-        float normalizedTime = Mathf.Clamp((float)(elapsedSeconds * animator.speed / stateInfo.length), 0f, 0.94f);
-        if (normalizedTime <= 0.001f)
-            return;
-
-        animator.Play(comboList[index].animationName, 1, normalizedTime);
-        animator.Update(0f);
+    [Server]
+    private bool TryRegisterServerAttackHitTarget(uint sequence, uint targetNetId)
+    {
+        return sequence == _serverReportableAttackSequence &&
+               targetNetId != 0 &&
+               _serverAttackHitTargetNetIds.Add(targetNetId);
     }
 
     private uint NextAttackSequence()
     {
-        _nextLocalAttackSequence++;
-        if (_nextLocalAttackSequence == 0)
-            _nextLocalAttackSequence = 1;
+        _nextLocalAttackSequence = CombatRequestSequences.Next(_nextLocalAttackSequence);
         return _nextLocalAttackSequence;
     }
 
     private uint NextSkillSequence()
     {
-        _nextLocalSkillSequence++;
-        if (_nextLocalSkillSequence == 0)
-            _nextLocalSkillSequence = 1;
+        _nextLocalSkillSequence = CombatRequestSequences.Next(_nextLocalSkillSequence);
         return _nextLocalSkillSequence;
+    }
+
+    /// <summary>Rebinds owner-local state without restarting or cancelling retained server actions.</summary>
+    public void RestoreLocalOwnerCombatState()
+    {
+        if (!isLocalPlayer) return;
+        RestoreLocalRequestSequences();
+        if (isServer) return;
+        double restoreNow = CombatOwnerAction.ResolveRestoreTime(SkillTime,
+            NetworkClient.connection != null ? NetworkClient.connection.remoteTimeStamp : SkillTime);
+        ApplyAcceptedOwnerInputLock(restoreNow);
+
+        CombatOwnerAction accepted = AcceptedOwnerAction;
+        JobSkillData animatedSkill = ResolveSkillData(accepted.SkillKey);
+        if (accepted.HasAnimation(restoreNow) && HasSkillCastAnimation(animatedSkill))
+        {
+            SkillPresentation.PlayAnimation(animatedSkill.CastAnimationStateName, animatedSkill.CastAnimationLayer,
+                accepted.StartedAt, restoreNow);
+            LockLocalSkillAnimationAttack(animatedSkill);
+        }
+
+        JobSkillData castingSkill = null;
+        double castCompleteAt = 0d;
+        CombatCastChannel channel = CombatCastChannel.Advanced;
+        if (_isCastingMonostatStrSkill)
+        {
+            castingSkill = MonostatStrSkillData;
+            castCompleteAt = _monostatStrSkillCastCompleteAt;
+            channel = CombatCastChannel.Strength;
+        }
+        else if (_isCastingMonostatAgiSkill)
+        {
+            castingSkill = MonostatAgiSkillData;
+            castCompleteAt = _monostatAgiSkillCastCompleteAt;
+            channel = CombatCastChannel.Agility;
+        }
+        else if (_advancedCastingSkillKey >= 0)
+        {
+            castingSkill = ResolveAdvancedSkillData(_advancedCastingSkillKey);
+            castCompleteAt = _advancedCastCompleteAt;
+        }
+
+        if (castingSkill == null) return;
+        _actionLocks.LockUntil(channel, castCompleteAt);
+        if (_advancedCastingSkillKey >= 0)
+        {
+            if (ShouldLockMovementDuringSkillCast(castingSkill))
+            {
+                _playerManager?.SetInputLock(CombatEffectSources.ServerCastMovement, SkillInputLockFlags.Move,
+                    float.PositiveInfinity);
+                _restoredOwnerCastMovement = true;
+            }
+        }
+    }
+
+    private void ApplyAcceptedOwnerInputLock(double minimumNow = double.NegativeInfinity)
+    {
+        if ((!isServer && !isLocalPlayer) || _playerManager == null ||
+            (double.IsNegativeInfinity(minimumNow) && _appliedAcceptedInputUntil == _acceptedSkillInputUntil &&
+             _appliedAcceptedInputFlags == _acceptedSkillInputFlags)) return;
+        _appliedAcceptedInputUntil = _acceptedSkillInputUntil;
+        _appliedAcceptedInputFlags = _acceptedSkillInputFlags;
+        double remaining = AcceptedOwnerAction.RemainingInput(Math.Max(SkillTime, minimumNow));
+        if (remaining > 0d)
+            // SetInputLock adds the manager's current network clock: retain the absolute server deadline.
+            _playerManager.SetInputLock(CombatEffectSources.AuthoritativeSkillInput, _acceptedSkillInputFlags,
+                (float)Math.Max(0d, _acceptedSkillInputUntil - SkillTime));
+        else
+            _playerManager.RemoveInputLock(CombatEffectSources.AuthoritativeSkillInput);
+    }
+
+    private void RestoreLocalRequestSequences()
+    {
+        _nextLocalAttackSequence = CombatRequestSequences.RestoreOwner(_nextLocalAttackSequence, _lastServerAttackSequence);
+        _nextLocalSkillSequence = CombatRequestSequences.RestoreOwner(_nextLocalSkillSequence, _lastServerSkillSequence);
+    }
+
+    private void RefreshRestoredOwnerCastMovement()
+    {
+        if (!_restoredOwnerCastMovement || (isLocalPlayer && _advancedCastingSkillKey >= 0)) return;
+        _playerManager?.RemoveInputLock(CombatEffectSources.ServerCastMovement);
+        _restoredOwnerCastMovement = false;
     }
 
     private bool TryAcceptSkillSequence(uint sequence, out double acceptedStartTime, double requestedStartTime)
     {
         acceptedStartTime = SkillTime;
-        if (!IsNewerSequence(sequence, _lastServerSkillSequence))
+        if (!HasAuthoritativeCombatStats || !double.IsFinite(requestedStartTime) ||
+            !IsNewerSequence(sequence, _lastServerSkillSequence))
             return false;
 
         _lastServerSkillSequence = sequence;
@@ -808,17 +975,21 @@ public class PlayerCombat : NetworkBehaviour
         if (accepted || sequence != _nextLocalSkillSequence)
             return;
 
-        _localMonostatStrSkillAttackLockUntil = 0d;
-        _localMonostatAgiSkillAttackLockUntil = 0d;
-        _localAdvancedAttackLockUntil = 0d;
-        _localSkillAnimationAttackLocked = false;
-        _playerManager?.SetSkillMovementLock(false);
+        CancelPredictedSkillAction();
         PublishSkillHudState();
+    }
+
+    private void CancelPredictedSkillAction()
+    {
+        _actionLocks.Cancel();
+        StopActionRoutine(ref _localSkillAnimationAttackLockRoutine);
+        _playerManager?.RemoveInputLock(CombatEffectSources.PredictedCastMovement);
+        _playerManager?.RemoveInputLock(CombatEffectSources.AdvancedSkillInput);
     }
 
     private static bool IsNewerSequence(uint candidate, uint baseline)
     {
-        return candidate != baseline && unchecked(candidate - baseline) < 0x80000000u;
+        return CombatRequestSequences.IsNewer(candidate, baseline);
     }
 
     private double ResolveServerActionTime(double requestedTime)
@@ -836,7 +1007,7 @@ public class PlayerCombat : NetworkBehaviour
 
     public void EnableHitBox()
     {
-        if (_healthSystem != null && _healthSystem.IsDead)
+        if (!isActiveAndEnabled || !isAttacking || (_healthSystem != null && _healthSystem.IsDead))
             return;
 
         foreach (var hb in _hitboxes)
@@ -860,6 +1031,16 @@ public class PlayerCombat : NetworkBehaviour
         if (target == null)
             return false;
 
+        if (isServer &&
+            target is Component targetComponent &&
+            targetComponent.GetComponentInParent<NetworkIdentity>() is NetworkIdentity targetIdentity &&
+            targetIdentity.netId != 0 &&
+            _currentAttackSequence == _serverReportableAttackSequence &&
+            !_serverAttackHitTargetNetIds.Add(targetIdentity.netId))
+        {
+            return false;
+        }
+
         if (_hitTargetsThisAttack.Contains(target))
             return false;
 
@@ -882,7 +1063,9 @@ public class PlayerCombat : NetworkBehaviour
             targetIdentity.netId,
             bodyPart,
             hitPosition,
-            SkillTime);
+            SkillTime,
+            targetIdentity.TryGetComponent(out PlayerManager targetManager)
+                ? targetManager.RemotePoseRenderTime : SkillTime);
     }
 
     [Command]
@@ -892,11 +1075,15 @@ public class PlayerCombat : NetworkBehaviour
         uint targetNetId,
         BodyPart bodyPart,
         Vector3 hitPosition,
-        double reportedHitTime)
+        double reportedHitTime,
+        double reportedTargetPoseTime)
     {
-        if (!isAttacking || attackSequence == 0 || attackSequence != _currentAttackSequence ||
-            attackIndex != currentComboIndex || currentComboIndex < 0 || comboList == null ||
-            currentComboIndex >= comboList.Length || comboList[currentComboIndex] == null)
+        if (!CombatValidation.IsFinite(hitPosition) || !double.IsFinite(reportedHitTime) ||
+            !double.IsFinite(reportedTargetPoseTime) ||
+            (_healthSystem != null && _healthSystem.IsDead) ||
+            !IsServerAttackReportValid(attackSequence, attackIndex) ||
+            attackIndex < 0 || comboList == null ||
+            attackIndex >= comboList.Length || comboList[attackIndex] == null)
             return;
 
         if (!NetworkServer.spawned.TryGetValue(targetNetId, out NetworkIdentity targetIdentity) ||
@@ -904,9 +1091,11 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         double validationTime = ResolveServerActionTime(reportedHitTime);
+        // A remote target is displayed from its interpolation buffer, independently of attack input time.
+        double targetValidationTime = Math.Clamp(reportedTargetPoseTime, SkillTime - 0.5d, SkillTime);
         Vector3 attackerPosition = SampleServerPosition(_serverPoseHistory, transform.position, validationTime);
         ServerPoseHistory targetHistory = targetIdentity.GetComponent<ServerPoseHistory>();
-        Vector3 targetPosition = SampleServerPosition(targetHistory, targetIdentity.transform.position, validationTime);
+        Vector3 targetPosition = SampleServerPosition(targetHistory, targetIdentity.transform.position, targetValidationTime);
         float maxDistance = Mathf.Max(1f, _remoteMeleeValidationDistance);
         if ((targetPosition - attackerPosition).sqrMagnitude > maxDistance * maxDistance)
             return;
@@ -916,29 +1105,32 @@ public class PlayerCombat : NetworkBehaviour
         if (targetHealth == null || targetStats == null || targetHealth.IsDead)
             return;
 
-        if (!TryRegisterHitTarget(targetHealth))
-            return;
-
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
         if (_attackProcessor == null)
             return;
 
-        if (!Enum.IsDefined(typeof(BodyPart), bodyPart))
-            bodyPart = BodyPart.Body;
-
-        float bodyPartMultiplier = ResolveServerBodyPartMultiplier(targetIdentity, bodyPart);
+        if (!Enum.IsDefined(typeof(BodyPart), bodyPart) || targetHistory == null ||
+            !targetHistory.TryValidateBodyPart(targetValidationTime, bodyPart, hitPosition,
+                out Vector3 validatedHitPosition, out float bodyPartMultiplier))
+            return;
+        bool intersectsAttack = false;
+        if (_hitboxes != null)
+            foreach (MeleeHitBox hitbox in _hitboxes)
+                if (hitbox != null && hitbox.ValidateServerHit(validatedHitPosition, SkillTime, attackerPosition))
+                { intersectsAttack = true; break; }
+        if (!intersectsAttack ||
+            !CombatValidation.HasClearPath(attackerPosition + Vector3.up, validatedHitPosition,
+                transform, targetIdentity.transform) ||
+            !TryRegisterServerAttackHitTarget(attackSequence, targetNetId))
+            return;
         float attackBuffMultiplier = ConsumeNextAttackDamageMultiplier();
-        Vector3 targetCenter = targetIdentity.transform.position + Vector3.up;
-        float hitTolerance = Mathf.Max(0.5f, _remoteHitPositionTolerance);
-        if ((hitPosition - targetCenter).sqrMagnitude > hitTolerance * hitTolerance)
-            hitPosition = targetCenter;
 
         _attackProcessor.ProcessHit(
-            comboList[currentComboIndex],
+            comboList[attackIndex],
             targetStats,
             targetHealth,
-            hitPosition,
+            validatedHitPosition,
             bodyPartMultiplier: bodyPartMultiplier * attackBuffMultiplier,
             bodyPart: bodyPart,
             popupPredictionId: attackSequence);
@@ -949,19 +1141,6 @@ public class PlayerCombat : NetworkBehaviour
         return history != null && history.TrySample(time, out Vector3 position)
             ? position
             : fallback;
-    }
-
-    private static float ResolveServerBodyPartMultiplier(NetworkIdentity targetIdentity, BodyPart bodyPart)
-    {
-        HitBodyPart[] bodyParts = targetIdentity.GetComponentsInChildren<HitBodyPart>(true);
-        for (int i = 0; i < bodyParts.Length; i++)
-        {
-            HitBodyPart candidate = bodyParts[i];
-            if (candidate != null && candidate.Part == bodyPart)
-                return candidate.DamageMultiplier;
-        }
-
-        return 1f;
     }
 
     public float ConsumeNextAttackDamageMultiplier()
@@ -979,7 +1158,10 @@ public class PlayerCombat : NetworkBehaviour
         while (true)
         {
             if (animator == null)
+            {
+                StopCombo();
                 yield break;
+            }
 
             var stateInfo = animator.GetCurrentAnimatorStateInfo(1);
             if (stateInfo.IsName(comboList[index].animationName))
@@ -1000,7 +1182,7 @@ public class PlayerCombat : NetworkBehaviour
             StartAttack(currentComboIndex + 1, true, GetCurrentAimDirection());
         else
         {
-            StopCombo();
+            StopCombo(allowDelayedContinuation: true);
             if (animator != null)
                 animator.speed = 1.0f;
         }
@@ -1008,10 +1190,12 @@ public class PlayerCombat : NetworkBehaviour
 
     public void OnAttackAnimationEnd()
     {
+        if (!isAttacking) _playerManager?.SetMovementLock(false);
     }
 
     public void CancelCurrentAttack()
     {
+        _serverCombo.Reset();
         if (_comboRoutine != null)
         {
             StopCoroutine(_comboRoutine);
@@ -1030,6 +1214,40 @@ public class PlayerCombat : NetworkBehaviour
         var pm = _playerManager != null ? _playerManager : GetComponent<PlayerManager>();
         if (pm != null)
             pm.SetMovementLock(false);
+    }
+
+    private void CancelAllCombatActions()
+    {
+        CancelCurrentAttack();
+        StopActionRoutine(ref _advancedSkillRoutine);
+        StopActionRoutine(ref _monostatStrSkillRoutine);
+        StopActionRoutine(ref _monostatAgiSkillRoutine);
+        CancelPredictedSkillAction();
+        _bowAttackController?.CancelCharge();
+        StrengthExecution = StrengthExecution.Cancel();
+        AgilityExecution = AgilityExecution.Cancel();
+        AcceptedOwnerAction = CombatOwnerAction.Cancelled;
+        _playerManager?.RemoveInputLock(CombatEffectSources.AuthoritativeSkillInput);
+        FinishAdvancedCast();
+        _advancedActiveSkillKey = -1;
+        _advancedActiveUntil = 0d;
+        _serverReportableAttackSequence = 0;
+        _serverAttackHitTargetNetIds.Clear();
+        _nextAttackDamageMultiplier = 1f;
+        _attackPowerBonusMultiplier = 1f;
+        _attackPowerBonusUntil = 0d;
+        _attackSpeedBonusMultiplier = 1f;
+        _attackSpeedBonusUntil = 0d;
+        _auraPresentation?.Cancel();
+        _playerManager?.RemoveMovementEffect(CombatEffectSources.WeaponSwap);
+        _playerManager?.RemoveMovementEffect(CombatEffectSources.StrategistMove);
+        SetSkillSwordVisual(null);
+    }
+
+    private void StopActionRoutine(ref Coroutine routine)
+    {
+        if (routine != null) StopCoroutine(routine);
+        routine = null;
     }
 
     public void NotifyPhysicalDamageDealt(float actualDamage, IDamageReceiver defender = null, Vector3 hitPosition = default)
@@ -1070,7 +1288,7 @@ public class PlayerCombat : NetworkBehaviour
 
         uint sequence = NextSkillSequence();
         double requestedStartTime = SkillTime;
-        _localMonostatStrSkillAttackLockUntil = SkillTime + MonostatStrCastSeconds;
+        _actionLocks.LockUntil(CombatCastChannel.Strength, SkillTime + MonostatStrCastSeconds);
         PlaySkillAnimationLocal(MonostatStrSkillData);
         LockLocalSkillAnimationAttack(MonostatStrSkillData);
 
@@ -1094,13 +1312,16 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseSkillInput())
             return;
 
-        if (IsMonostatStr() && _selectedSkillIndex == 0)
+        if (_statManager == null || !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, _selectedSkillIndex, out JobSkillKind kind))
+            return;
+
+        if (kind == JobSkillKind.MonostatStrLifesteal)
         {
             TryUseMonostatStrSkill();
             return;
         }
 
-        if (IsMonostatAgi() && _selectedSkillIndex == 0)
+        if (kind == JobSkillKind.MonostatAgiPoison)
         {
             TryUseMonostatAgiSkill();
             return;
@@ -1154,6 +1375,13 @@ public class PlayerCombat : NetworkBehaviour
         uint sequence,
         double requestedStartTime)
     {
+        if (!CombatValidation.IsFinite(direction) ||
+            (hasStrategistTargetPreset && (_statManager == null ||
+                !StatValidation.TryValidateClientStats(strategistTargetPreset, _statManager.GetStatsCopy(), out strategistTargetPreset))))
+        {
+            TargetResolveSkillRequest(connectionToClient, sequence, false);
+            return;
+        }
         bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime);
         if (accepted)
         {
@@ -1177,12 +1405,12 @@ public class PlayerCombat : NetworkBehaviour
             strategistTargetPreset = GlobalDataManager.Instance.StrategistTargetPreset;
         uint sequence = NextSkillSequence();
         double requestedStartTime = SkillTime;
-        _localAdvancedAttackLockUntil = SkillTime + data.CastSeconds;
+        _actionLocks.LockUntil(CombatCastChannel.Advanced, SkillTime + data.CastSeconds);
         _pendingAdvancedSkillHitKey = key;
         _pendingAdvancedSkillDirection = direction;
         PlaySkillAnimationLocal(data);
         LockLocalSkillAnimationAttack(data);
-        _playerManager?.ApplySkillInputLock(data.InputLockFlags, data.ResolveInputLockSeconds());
+        _playerManager?.SetInputLock(CombatEffectSources.AdvancedSkillInput, data.InputLockFlags, data.ResolveInputLockSeconds());
         if (isClient && isLocalPlayer && !isServer)
             CmdUseAdvancedSkill(
                 key,
@@ -1207,8 +1435,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private Vector3 ResolveAdvancedSkillDirection(JobSkillData data)
     {
-        if (data != null &&
-            (data.SkillKind == JobSkillKind.StrategistRoll || data.SkillKind == JobSkillKind.PolymathRoll))
+        if (data != null && CombatSkillRules.EffectOf(data.SkillKind) == AdvancedSkillEffect.Roll)
         {
             Vector3 forward = transform.forward;
             forward.y = 0f;
@@ -1218,41 +1445,9 @@ public class PlayerCombat : NetworkBehaviour
         return _playerManager != null ? _playerManager.GetSkillMoveDirection() : transform.forward;
     }
 
-    private void LockLocalAdvancedMovement(JobSkillData data)
-    {
-        if (data == null || _playerManager == null || !ShouldLockMovementDuringSkillCast(data))
-            return;
-
-        if (data.CastSeconds <= 0f && !HasSkillCastAnimation(data))
-            return;
-
-        _playerManager.SetSkillMovementLock(true);
-        if (_localAdvancedMoveLockRoutine != null)
-            StopCoroutine(_localAdvancedMoveLockRoutine);
-        _localAdvancedMoveLockRoutine = StartCoroutine(CoLocalAdvancedMoveLock(data));
-    }
-
-    private System.Collections.IEnumerator CoLocalAdvancedMoveLock(JobSkillData data)
-    {
-        float endTime = Time.time + Mathf.Max(0f, data.CastSeconds);
-        while (Time.time < endTime || !IsSkillCastAnimationFinished(data))
-            yield return null;
-
-        _playerManager?.SetSkillMovementLock(false);
-        _localAdvancedMoveLockRoutine = null;
-    }
-
     private bool ShouldLockMovementDuringSkillCast(JobSkillData data)
     {
-        if (data == null)
-            return false;
-
-        return data.SkillKind switch
-        {
-            JobSkillKind.MonostatAgiPoison => false,
-            JobSkillKind.PolymathWeaponSwap => false,
-            _ => true
-        };
+        return data != null && CombatSkillRules.LocksCastMovement(data.SkillKind);
     }
 
     private void LockLocalSkillAnimationAttack(JobSkillData data)
@@ -1260,7 +1455,7 @@ public class PlayerCombat : NetworkBehaviour
         if (!HasSkillCastAnimation(data))
             return;
 
-        _localSkillAnimationAttackLocked = true;
+        _actionLocks.SetAnimationLocked(true);
         if (_localSkillAnimationAttackLockRoutine != null)
             StopCoroutine(_localSkillAnimationAttackLockRoutine);
         _localSkillAnimationAttackLockRoutine = StartCoroutine(CoLocalSkillAnimationAttackLock(data));
@@ -1271,77 +1466,102 @@ public class PlayerCombat : NetworkBehaviour
         while (!IsSkillCastAnimationFinished(data))
             yield return null;
 
-        _localSkillAnimationAttackLocked = false;
+        _actionLocks.SetAnimationLocked(false);
         _localSkillAnimationAttackLockRoutine = null;
     }
 
     private bool BeginAdvancedSkill(int skillKey, Vector3 direction, double requestedStartTime, uint sequence)
     {
+        if (!HasAuthoritativeCombatStats) return false;
         JobSkillData data = ResolveAdvancedSkillData(skillKey);
         double now = SkillTime;
         if (data == null || (_healthSystem != null && _healthSystem.IsDead))
             return false;
-        if (_advancedCastingSkillKey >= 0 || (TryGetAdvancedCooldownUntil(skillKey, out double cooldown) && now < cooldown))
+        TryGetAdvancedCooldownUntil(skillKey, out double cooldown);
+        var execution = new CombatSkillExecution(_advancedCastingSkillKey >= 0, _advancedCastCompleteAt, 0d, cooldown);
+        if (!AdvancedSkillPlan.TryBegin(data.SkillKind, execution, now, requestedStartTime,
+                data.CastSeconds, data.CooldownSeconds, HasSkillCastAnimation(data), out AdvancedSkillPlan plan))
             return false;
 
         if (data.CooldownSeconds > 0f)
-            SetAdvancedCooldownUntil(skillKey, requestedStartTime + data.CooldownSeconds);
+            SetAdvancedCooldownUntil(skillKey, plan.Execution.CooldownUntil);
 
         CancelCurrentAttack();
-        PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
-        PlaySkillSfx(skillKey);
-        if (data.CastSeconds <= 0f && !HasSkillCastAnimation(data) && ShouldApplySkillAtCastEnd(data))
+        _bowAttackController?.CancelCharge();
+        if (plan.AppliesImmediately)
         {
-            ApplyAdvancedSkill(data, direction);
+            RecordAcceptedOwnerAction(data, requestedStartTime);
+            PlaySkillSfx(skillKey);
+            ApplyAdvancedSkill(plan, data, direction);
             return true;
         }
 
         _advancedCastingSkillKey = skillKey;
-        _advancedCastCompleteAt = requestedStartTime + data.CastSeconds;
-        bool lockMovement = ShouldLockMovementDuringSkillCast(data);
-        if (lockMovement)
-            _playerManager?.SetSkillMovementLock(true);
-        bool applyAtCastStart = ShouldApplySkillAtCastStart(data);
-        if (applyAtCastStart)
-            ApplyAdvancedSkill(data, direction);
+        _advancedCastCompleteAt = plan.Execution.CastCompleteAt;
+        if (plan.LocksMovement)
+            _playerManager?.SetInputLock(CombatEffectSources.ServerCastMovement, SkillInputLockFlags.Move, float.PositiveInfinity);
+        if (plan.ApplyAtStart)
+            ApplyAdvancedSkill(plan, data, direction);
         _pendingAdvancedSkillHitKey = skillKey;
+        if (plan.HasHitWindow)
+        {
+            ResolveKickAnimationWindow(data, out float opensAt, out float closesAt);
+            _kickWindow.Begin(sequence, requestedStartTime + opensAt, requestedStartTime + closesAt);
+        }
         _pendingAdvancedSkillDirection = direction;
+        // Animation seeking may fire a hit event immediately; establish the approved window first.
+        PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
+        PlaySkillSfx(skillKey);
         if (_advancedSkillRoutine != null)
             StopCoroutine(_advancedSkillRoutine);
-        _advancedSkillRoutine = StartCoroutine(CoAdvancedSkillCast(data, direction, lockMovement, applyAtCastStart));
+        _advancedSkillRoutine = StartCoroutine(CoAdvancedSkillCast(plan, data, direction));
         return true;
     }
 
-    private System.Collections.IEnumerator CoAdvancedSkillCast(JobSkillData data, Vector3 direction, bool lockMovement, bool alreadyApplied)
+    private void ResolveKickAnimationWindow(JobSkillData data, out float opensAt, out float closesAt)
+    {
+        opensAt = 0f;
+        closesAt = Mathf.Max(0f, data.CastSeconds);
+        if (animator == null || animator.runtimeAnimatorController == null) return;
+        foreach (AnimationClip clip in animator.runtimeAnimatorController.animationClips)
+        {
+            if (clip.name != data.CastAnimationStateName) continue;
+            foreach (AnimationEvent animationEvent in clip.events)
+            {
+                if (animationEvent.functionName == nameof(EnableKickHitBox) ||
+                    animationEvent.functionName == nameof(EnableSkillHitBox) ||
+                    animationEvent.functionName == nameof(OnSkillHitWindow))
+                    opensAt = animationEvent.time;
+                if (animationEvent.functionName == nameof(DisableKickHitBox) ||
+                    animationEvent.functionName == nameof(DisableSkillHitBox))
+                    closesAt = Mathf.Max(closesAt, animationEvent.time + 1f / 30f);
+            }
+            return;
+        }
+    }
+
+    private System.Collections.IEnumerator CoAdvancedSkillCast(AdvancedSkillPlan plan, JobSkillData data, Vector3 direction)
     {
         while (SkillTime < _advancedCastCompleteAt)
             yield return null;
 
-        _advancedCastingSkillKey = -1;
-        _advancedCastCompleteAt = 0d;
-        if (lockMovement)
-            _playerManager?.SetSkillMovementLock(false);
-        if (!alreadyApplied && ShouldApplySkillAtCastEnd(data))
-            ApplyAdvancedSkill(data, direction);
+        FinishAdvancedCast();
+        if (plan.CanApplyAtFinish(_healthSystem == null || !_healthSystem.IsDead,
+                ResolveAdvancedSkillData((int)plan.Kind) == data))
+            ApplyAdvancedSkill(plan, data, direction);
+        if (plan.HasHitWindow)
+            while (SkillTime <= _kickWindow.EndsAt && (_healthSystem == null || !_healthSystem.IsDead))
+                yield return null;
         ForceDisableKickHitBox();
         _advancedSkillRoutine = null;
     }
 
-    private bool ShouldApplySkillAtCastStart(JobSkillData data)
+    private void FinishAdvancedCast()
     {
-        if (data == null)
-            return false;
-
-        return data.SkillKind == JobSkillKind.StrategistRoll ||
-               data.SkillKind == JobSkillKind.PolymathRoll;
-    }
-
-    private bool ShouldApplySkillAtCastEnd(JobSkillData data)
-    {
-        if (data == null)
-            return false;
-
-        return data.SkillKind != JobSkillKind.MonostatConKick;
+        _advancedCastingSkillKey = -1;
+        _advancedCastCompleteAt = 0d;
+        _playerManager?.RemoveInputLock(CombatEffectSources.ServerCastMovement);
+        _restoredOwnerCastMovement = false;
     }
 
     public void OnSkillHitWindow()
@@ -1370,17 +1590,12 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     [Command]
-    private void CmdSetKickHitBoxEnabled(int skillKey, bool enabled)
+    private void CmdRequestKickContact(uint skillSequence)
     {
-        SetKickHitBoxEnabledServer(skillKey, enabled);
-    }
-
-    [Command]
-    private void CmdSetKickHitBoxEnabledWithPose(int skillKey, bool enabled, Vector3 center, Vector3 halfExtents, Quaternion rotation)
-    {
-        SetKickHitBoxEnabledServer(skillKey, enabled);
-        if (enabled)
-            ProcessKickOverlapBox(center, halfExtents, rotation);
+        // Client animation events may request a query, but cannot open or resize the server window.
+        if (_kickWindow.CanHit(skillSequence, SkillTime) && _isKickHitBoxEnabled &&
+            _healthSystem != null && !_healthSystem.IsDead)
+            _kickHitBox?.ProcessCurrentOverlaps();
     }
 
     private void SetKickHitBoxEnabled(bool enabled)
@@ -1388,15 +1603,7 @@ public class PlayerCombat : NetworkBehaviour
         int skillKey = ResolveKickHitBoxSkillKey();
         if (isClient && isLocalPlayer && !isServer)
         {
-            if (enabled && _kickHitBox != null &&
-                _kickHitBox.TryGetOverlapBox(out Vector3 center, out Vector3 halfExtents, out Quaternion rotation))
-            {
-                CmdSetKickHitBoxEnabledWithPose(skillKey, true, center, halfExtents, rotation);
-            }
-            else
-            {
-                CmdSetKickHitBoxEnabled(skillKey, enabled);
-            }
+            if (enabled) CmdRequestKickContact(_nextLocalSkillSequence);
             return;
         }
 
@@ -1412,8 +1619,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private void SetKickHitBoxEnabledServer(int skillKey, bool enabled)
     {
-        bool isKickSkill = skillKey == (int)JobSkillKind.MonostatConKick;
-        if (!isKickSkill && skillKey != _pendingAdvancedSkillHitKey)
+        if (!NetworkServer.active || skillKey != (int)JobSkillKind.MonostatConKick ||
+            skillKey != _pendingAdvancedSkillHitKey || _healthSystem == null || _healthSystem.IsDead)
             return;
 
         JobSkillData data = ResolveAssignedAdvancedSkillData(skillKey);
@@ -1422,7 +1629,8 @@ public class PlayerCombat : NetworkBehaviour
 
         if (enabled)
         {
-            if (_isKickHitBoxEnabled)
+            if (_isKickHitBoxEnabled || ResolveAdvancedSkillData(skillKey) != data ||
+                !_kickWindow.TryOpen(_kickWindow.Sequence, SkillTime))
                 return;
 
             _isKickHitBoxEnabled = true;
@@ -1438,9 +1646,9 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         _isKickHitBoxEnabled = false;
+        _kickWindow.Close();
         if (_kickHitBox != null)
             _kickHitBox.SetActive(false);
-        _kickHitTargets.Clear();
     }
 
     private System.Collections.IEnumerator CoProcessKickHitBox()
@@ -1457,6 +1665,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void ForceDisableKickHitBox()
     {
+        _kickWindow.Cancel();
         _isKickHitBoxEnabled = false;
         if (_kickHitBox != null)
             _kickHitBox.SetActive(false);
@@ -1470,46 +1679,40 @@ public class PlayerCombat : NetworkBehaviour
         _pendingAdvancedSkillDirection = Vector3.zero;
     }
 
-    private void ProcessKickOverlapBox(Vector3 center, Vector3 halfExtents, Quaternion rotation)
+    private void ApplyAdvancedSkill(AdvancedSkillPlan plan, JobSkillData data, Vector3 direction)
     {
-        Collider[] hits = Physics.OverlapBox(center, halfExtents, rotation, ~0, QueryTriggerInteraction.Collide);
-        for (int i = 0; i < hits.Length; i++)
-            TryProcessKickHit(hits[i]);
-    }
-
-    private void ApplyAdvancedSkill(JobSkillData data, Vector3 direction)
-    {
-        switch (data.SkillKind)
+        switch (plan.Effect)
         {
-            case JobSkillKind.MonostatConKick:
+            case AdvancedSkillEffect.KickWindow:
                 break;
-            case JobSkillKind.MonostatDefTaunt:
-                _advancedActiveSkillKey = (int)data.SkillKind;
+            case AdvancedSkillEffect.TauntReady:
+                _advancedActiveSkillKey = (int)plan.Kind;
                 _advancedActiveUntil = SkillTime + data.TauntReadyDurationSeconds;
                 SetSkillSwordVisual(data);
                 break;
-            case JobSkillKind.StrategistRoll:
-            case JobSkillKind.PolymathRoll:
-                _advancedActiveSkillKey = (int)data.SkillKind;
+            case AdvancedSkillEffect.Roll:
+                _advancedActiveSkillKey = (int)plan.Kind;
                 _advancedActiveUntil = SkillTime + data.RollDurationSeconds;
                 _healthSystem?.SetSkillInvulnerable(data.RollDurationSeconds);
                 ExecuteSkillMove(direction, data.RollDistance, data.RollDurationSeconds, 1f, 0f);
                 break;
-            case JobSkillKind.StrategistPresetChange:
-            case JobSkillKind.PolymathPresetChange:
+            case AdvancedSkillEffect.PresetChange:
                 ExecutePresetChange(data);
                 break;
-            case JobSkillKind.PolymathWeaponSwap:
-                _isBowEquipped = !_isBowEquipped;
+            case AdvancedSkillEffect.WeaponSwap:
+                var swap = new CombatWeaponSwapPlan(_isBowEquipped, _nextAttackDamageMultiplier,
+                    data.WeaponSwapNextAttackMultiplier, data.WeaponSwapMoveMultiplier, data.WeaponSwapMoveBonusDurationSeconds);
+                _bowAttackController?.CancelCharge();
+                _isBowEquipped = swap.BowEquipped;
                 ApplyIdentityVisuals();
-                ApplyWeaponSwapBonus(data);
+                ApplyWeaponSwapBonus(swap);
                 break;
         }
     }
 
     public void TryProcessKickHit(Collider hit)
     {
-        if (!NetworkServer.active || !_isKickHitBoxEnabled)
+        if (!NetworkServer.active || !_isKickHitBoxEnabled || !_kickWindow.CanHit(_kickWindow.Sequence, SkillTime))
             return;
 
         JobSkillData data = ResolveAssignedAdvancedSkillData((int)JobSkillKind.MonostatConKick);
@@ -1519,8 +1722,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
 
-        IDamageReceiver target = hit.GetComponentInParent<IDamageReceiver>();
-        StatManager targetStats = hit.GetComponentInParent<StatManager>();
+        CombatHitTargets.Resolve(hit, out IDamageReceiver target, out StatManager targetStats, out _);
         if (target == null || targetStats == null)
             return;
 
@@ -1528,6 +1730,8 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         Vector3 hitPosition = hit.ClosestPoint(_kickHitBox != null ? _kickHitBox.transform.position : transform.position);
+        if (!CombatValidation.HasClearPath(transform.position + Vector3.up, hitPosition, transform, hit.transform))
+            return;
         if (!_attackProcessor.ProcessSkillHit(data.KickDamageMultiplier, targetStats, target, hitPosition))
             return;
 
@@ -1537,6 +1741,9 @@ public class PlayerCombat : NetworkBehaviour
             if (targetManager != null)
             {
                 Vector3 push = targetManager.transform.position - transform.position;
+                targetManager.ServerAuthorizeForcedMove(push, data.KickKnockbackDistance, 0.2f);
+                targetManager.SetMovementEffect(CombatEffectSources.KickSlow,
+                    data.KickSlowMoveMultiplier, data.KickSlowDurationSeconds);
                 RpcApplyMovementEffect(targetManager.netId, push, data.KickKnockbackDistance, 0.2f,
                     data.KickSlowMoveMultiplier, data.KickSlowDurationSeconds);
             }
@@ -1561,66 +1768,69 @@ public class PlayerCombat : NetworkBehaviour
             targetPreset = GlobalDataManager.Instance.StrategistTargetPreset;
         }
 
-        if (data.SkillKind == JobSkillKind.StrategistPresetChange)
-        {
-            if (!IsCompletePreset(targetPreset))
-            {
-                Debug.LogWarning("[PlayerCombat] Strategist preset change ignored. Target preset is not complete.", this);
-                return;
-            }
+        if (NetworkServer.active && !StatValidation.TryValidateClientStats(targetPreset, currentPreset, out targetPreset))
+            return;
 
-            bool currentlyUsingTargetPreset = AreSamePreset(currentPreset, targetPreset);
-            if (_hasStrategistSwapReturnPreset && currentlyUsingTargetPreset)
-            {
-                targetPreset = _strategistSwapReturnPreset;
-                _hasStrategistSwapReturnPreset = false;
-            }
-            else
-            {
-                _strategistSwapReturnPreset = currentPreset;
-                _hasStrategistSwapReturnPreset = true;
-            }
+        bool strategist = data.SkillKind == JobSkillKind.StrategistPresetChange;
+        if (!CombatPresetPlan.TryCreate(strategist, currentPreset, targetPreset, _strategistSwapReturnPreset,
+                _hasStrategistSwapReturnPreset, out CombatPresetPlan plan))
+        {
+            Debug.LogWarning("[PlayerCombat] Strategist preset change ignored. Target preset is not complete.", this);
+            return;
         }
 
-        StatKind targetDominantStat = ResolveDominantStat(targetPreset);
+        StatKind targetDominantStat = CombatPresetPlan.DominantStat(plan.Target);
         float oldMax = _healthSystem.MaxHp;
         float oldCurrent = _healthSystem.CurrentHp;
-        _statManager.ApplyStats(targetPreset, true);
+        if (NetworkServer.active)
+        {
+            if (!_statManager.TryApplyServerPreset(plan.Target)) return;
+        }
+        else
+            _statManager.ApplyStats(plan.Target, true);
+        _strategistSwapReturnPreset = plan.ReturnPreset;
+        _hasStrategistSwapReturnPreset = plan.HasReturnPreset;
         float newMax = _healthSystem.MaxHp;
-        float newCurrent = Mathf.Min(oldCurrent, newMax);
-        float shield = Mathf.Max(0f, oldCurrent - newCurrent);
-        shield += Mathf.Max(0f, newMax - oldMax) * data.MaxHealthIncreaseShieldRatio;
-        if (data.SkillKind == JobSkillKind.StrategistPresetChange)
-            shield += ApplyStrategistPresetBonus(data, targetDominantStat, newMax);
+        float bonusShield = strategist ? ApplyStrategistPresetBonus(data, targetDominantStat, newMax) : 0f;
+        CombatPresetPlan.ResolveVitals(oldMax, oldCurrent, newMax, data.MaxHealthIncreaseShieldRatio,
+            bonusShield, out float newCurrent, out float shield);
         _healthSystem.SetCurrentHp(newCurrent);
         _healthSystem.GrantDecayingShield(shield, data.ShieldDurationSeconds);
     }
 
     private float ApplyStrategistPresetBonus(JobSkillData data, StatKind targetDominantStat, float targetMaxHp)
     {
-        switch (targetDominantStat)
+        CombatPresetBonus bonus = CombatPresetBonus.Resolve(targetDominantStat, targetMaxHp, new CombatPresetBonusSettings
+        {
+            StrAttackMultiplier = data.StrategistStrNextAttackMultiplier,
+            StrDuration = data.StrategistStrAttackBonusDurationSeconds,
+            AgiMoveMultiplier = data.StrategistAgiMoveMultiplier,
+            AgiAttackSpeedMultiplier = data.StrategistAgiAttackSpeedMultiplier,
+            AgiDuration = data.StrategistAgiBonusDurationSeconds,
+            ConShieldRatio = data.StrategistConTargetMaxHpShieldRatio,
+            DefInvulnerableSeconds = data.StrategistDefInvulnerableSeconds
+        });
+        switch (bonus.Stat)
         {
             case StatKind.STR:
-                ApplyStrPresetBonusLocal(data.StrategistStrNextAttackMultiplier, data.StrategistStrAttackBonusDurationSeconds);
+                ApplyStrPresetBonusLocal(bonus.AttackMultiplier, bonus.Duration);
                 if (NetworkServer.active)
-                    RpcApplyStrPresetBonus(data.StrategistStrNextAttackMultiplier, data.StrategistStrAttackBonusDurationSeconds);
+                    RpcApplyStrPresetBonus(bonus.AttackMultiplier, bonus.Duration);
                 break;
             case StatKind.AGI:
-                ApplyAgiPresetBonusLocal(data.StrategistAgiMoveMultiplier, data.StrategistAgiAttackSpeedMultiplier, data.StrategistAgiBonusDurationSeconds);
+                ApplyAgiPresetBonusLocal(bonus.MoveMultiplier, bonus.AttackSpeedMultiplier, bonus.Duration);
                 if (NetworkServer.active)
-                    RpcApplyAgiPresetBonus(data.StrategistAgiMoveMultiplier, data.StrategistAgiAttackSpeedMultiplier, data.StrategistAgiBonusDurationSeconds);
+                    RpcApplyAgiPresetBonus(bonus.MoveMultiplier, bonus.AttackSpeedMultiplier, bonus.Duration);
                 break;
-            case StatKind.CON:
-                return Mathf.Max(0f, targetMaxHp * data.StrategistConTargetMaxHpShieldRatio);
             case StatKind.DEF:
-                _healthSystem?.SetSkillInvulnerable(data.StrategistDefInvulnerableSeconds);
-                ShowStrategistPresetAuraLocal(StatKind.DEF, data.StrategistDefInvulnerableSeconds);
+                _healthSystem?.SetSkillInvulnerable(bonus.Duration);
+                ShowStrategistPresetAuraLocal(bonus.Stat, bonus.Duration);
                 if (NetworkServer.active)
-                    RpcShowStrategistPresetAura(StatKind.DEF, data.StrategistDefInvulnerableSeconds);
+                    RpcShowStrategistPresetAura(bonus.Stat, bonus.Duration);
                 break;
         }
 
-        return 0f;
+        return bonus.Shield;
     }
 
     [ClientRpc]
@@ -1636,12 +1846,12 @@ public class PlayerCombat : NetworkBehaviour
         ShowStrategistPresetAuraLocal(StatKind.STR, durationSeconds);
     }
 
-    private void ApplyWeaponSwapBonus(JobSkillData data)
+    private void ApplyWeaponSwapBonus(CombatWeaponSwapPlan plan)
     {
-        ApplyMoveBonusLocal(data.WeaponSwapMoveMultiplier, data.WeaponSwapMoveBonusDurationSeconds);
+        ApplyMoveBonusLocal(CombatEffectSources.WeaponSwap, plan.MoveMultiplier, plan.MoveDuration);
         if (NetworkServer.active)
-            RpcApplyMoveBonus(data.WeaponSwapMoveMultiplier, data.WeaponSwapMoveBonusDurationSeconds);
-        _nextAttackDamageMultiplier = Mathf.Max(_nextAttackDamageMultiplier, data.WeaponSwapNextAttackMultiplier);
+            RpcApplyMoveBonus(plan.MoveMultiplier, plan.MoveDuration);
+        _nextAttackDamageMultiplier = plan.NextAttackMultiplier;
     }
 
     [ClientRpc]
@@ -1653,7 +1863,7 @@ public class PlayerCombat : NetworkBehaviour
     [ClientRpc]
     private void RpcApplyMoveBonus(float moveMultiplier, float durationSeconds)
     {
-        ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
+        ApplyMoveBonusLocal(CombatEffectSources.WeaponSwap, moveMultiplier, durationSeconds);
     }
 
     [ClientRpc]
@@ -1664,315 +1874,26 @@ public class PlayerCombat : NetworkBehaviour
 
     private void ApplyAgiPresetBonusLocal(float moveMultiplier, float attackSpeedMultiplier, float durationSeconds)
     {
-        ApplyMoveBonusLocal(moveMultiplier, durationSeconds);
+        ApplyMoveBonusLocal(CombatEffectSources.StrategistMove, moveMultiplier, durationSeconds);
         _attackSpeedBonusMultiplier = attackSpeedMultiplier;
         _attackSpeedBonusUntil = SkillTime + Mathf.Max(0f, durationSeconds);
         ShowStrategistPresetAuraLocal(StatKind.AGI, durationSeconds);
     }
 
-    private void ApplyMoveBonusLocal(float moveMultiplier, float durationSeconds)
+    private void ApplyMoveBonusLocal(int source, float moveMultiplier, float durationSeconds)
     {
-        _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, durationSeconds);
+        _playerManager?.SetMovementEffect(source, moveMultiplier, durationSeconds);
     }
 
     private void ShowStrategistPresetAuraLocal(StatKind statKind, float durationSeconds)
     {
-        float clampedDuration = Mathf.Max(0f, durationSeconds);
-        if (clampedDuration <= 0f)
-            return;
-
-        _timedStrategistAuraStat = statKind;
-        _strategistPresetAuraUntil = SkillTime + clampedDuration;
-        UpdateStrategistStrAura();
+        AuraPresentation.ShowTimed(statKind, durationSeconds, SkillTime,
+            _healthSystem != null ? _healthSystem.CurrentShield : 0f);
     }
 
     private void UpdateStrategistStrAura()
     {
-        bool active = TryResolveStrategistAuraStat(out StatKind auraStat);
-        if (!active)
-        {
-            SetStrategistStrAuraVisible(false);
-            return;
-        }
-
-        bool wasVisible = _strategistStrAuraVisible;
-        SetStrategistStrAuraVisible(true);
-        if (_strategistStrAuraObject == null)
-            return;
-
-        if (wasVisible && _activeStrategistAuraStat == auraStat)
-            return;
-
-        _activeStrategistAuraStat = auraStat;
-        ApplyStrategistPresetAuraMaterial();
-        if (_runtimeStrategistStrAuraMaterial != null)
-        {
-            if (_runtimeStrategistStrAuraMaterial.HasProperty("_Pulse"))
-                _runtimeStrategistStrAuraMaterial.SetFloat("_Pulse", 1f);
-        }
-    }
-
-    private bool TryResolveStrategistAuraStat(out StatKind auraStat)
-    {
-        if (SkillTime < _strategistPresetAuraUntil)
-        {
-            auraStat = _timedStrategistAuraStat;
-            return true;
-        }
-
-        if (_healthSystem != null && _healthSystem.CurrentShield >= 1f)
-        {
-            auraStat = StatKind.CON;
-            return true;
-        }
-
-        auraStat = StatKind.STR;
-        return false;
-    }
-
-    private void SetStrategistStrAuraVisible(bool visible)
-    {
-        if (visible)
-            EnsureStrategistStrAura();
-
-        if (_strategistStrAuraObject != null && _strategistStrAuraObject.activeSelf != visible)
-            _strategistStrAuraObject.SetActive(visible);
-
-        _strategistStrAuraVisible = visible && _strategistStrAuraObject != null;
-    }
-
-    private void EnsureStrategistStrAura()
-    {
-        if (_strategistStrAuraObject != null)
-            return;
-
-        GameObject aura = GameObject.CreatePrimitive(ToPrimitiveType(_strategistStrAuraShape));
-        aura.name = "Strategist_STR_Attack_Aura";
-        _strategistStrAuraObject = aura;
-        _strategistStrAuraTransform = aura.transform;
-        _strategistStrAuraTransform.SetParent(_cachedTransform, false);
-        RefreshStrategistAuraTransform();
-
-        Collider auraCollider = aura.GetComponent<Collider>();
-        if (auraCollider != null)
-            Destroy(auraCollider);
-
-        Renderer auraRenderer = aura.GetComponent<Renderer>();
-        if (auraRenderer != null)
-        {
-            _strategistStrAuraRenderer = auraRenderer;
-            auraRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            auraRenderer.receiveShadows = false;
-            ApplyStrategistPresetAuraMaterial();
-        }
-
-        _strategistStrAuraObject.SetActive(false);
-    }
-
-    private void RefreshStrategistAuraTransform()
-    {
-        if (_strategistStrAuraTransform == null)
-            return;
-
-        _strategistStrAuraTransform.localPosition = ResolveStrategistStrAuraLocalPosition();
-        _strategistStrAuraTransform.localRotation = Quaternion.identity;
-        _strategistStrAuraTransform.localScale = ResolveStrategistStrAuraLocalScale();
-    }
-
-    private void ApplyStrategistPresetAuraMaterial()
-    {
-        if (_strategistStrAuraRenderer == null)
-            return;
-
-        Material source = ResolveStrategistPresetAuraMaterial(_activeStrategistAuraStat);
-        if (_activeStrategistAuraMaterialSource == source && _strategistStrAuraRenderer.sharedMaterial != null)
-            return;
-
-        _activeStrategistAuraMaterialSource = source;
-        if (source != null)
-        {
-            _strategistStrAuraRenderer.sharedMaterial = source;
-            return;
-        }
-
-        if (_runtimeStrategistStrAuraMaterial == null)
-        {
-            Shader shader = Shader.Find("BattlePVP/FresnelAura");
-            if (shader != null)
-                _runtimeStrategistStrAuraMaterial = new Material(shader);
-        }
-
-        if (_runtimeStrategistStrAuraMaterial != null)
-            _strategistStrAuraRenderer.sharedMaterial = _runtimeStrategistStrAuraMaterial;
-    }
-
-    private Material ResolveStrategistPresetAuraMaterial(StatKind statKind)
-    {
-        return statKind switch
-        {
-            StatKind.AGI => _strategistAgiAuraMaterial != null ? _strategistAgiAuraMaterial : _strategistStrAuraMaterial,
-            StatKind.CON => _strategistConAuraMaterial != null ? _strategistConAuraMaterial : _strategistStrAuraMaterial,
-            StatKind.DEF => _strategistDefAuraMaterial != null ? _strategistDefAuraMaterial : _strategistStrAuraMaterial,
-            _ => _strategistStrAuraMaterial
-        };
-    }
-
-    private Vector3 ResolveStrategistStrAuraLocalPosition()
-    {
-        if (_fitStrategistStrAuraToPlayer && _preferCharacterControllerAuraBounds && _characterController != null)
-            return _characterController.center + _strategistStrAuraOffset;
-
-        if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
-            return Vector3.up + _strategistStrAuraOffset;
-
-        Vector3 worldCenter = bounds.center + (_cachedTransform != null ? _cachedTransform.TransformVector(_strategistStrAuraOffset) : _strategistStrAuraOffset);
-        return _cachedTransform != null ? _cachedTransform.InverseTransformPoint(worldCenter) : worldCenter;
-    }
-
-    private Vector3 ResolveStrategistStrAuraLocalScale()
-    {
-        if (_fitStrategistStrAuraToPlayer && _preferCharacterControllerAuraBounds && _characterController != null)
-        {
-            float radius = Mathf.Max(0.01f, _characterController.radius);
-            float height = Mathf.Max(radius * 2f, _characterController.height);
-            Vector3 controllerSize = new Vector3(radius * 2f, height, radius * 2f);
-            Vector3 controllerPrimitiveSize = GetPrimitiveLocalSize(_strategistStrAuraShape);
-            return new Vector3(
-                controllerSize.x * Mathf.Max(0.01f, _strategistStrAuraScale.x) / controllerPrimitiveSize.x,
-                controllerSize.y * Mathf.Max(0.01f, _strategistStrAuraScale.y) / controllerPrimitiveSize.y,
-                controllerSize.z * Mathf.Max(0.01f, _strategistStrAuraScale.z) / controllerPrimitiveSize.z);
-        }
-
-        if (!_fitStrategistStrAuraToPlayer || !TryGetPlayerRenderBounds(out Bounds bounds))
-            return _strategistStrAuraScale;
-
-        Vector3 size = bounds.size;
-        Vector3 scaledSize = new Vector3(
-            Mathf.Max(0.01f, size.x * Mathf.Max(0.01f, _strategistStrAuraScale.x)),
-            Mathf.Max(0.01f, size.y * Mathf.Max(0.01f, _strategistStrAuraScale.y)),
-            Mathf.Max(0.01f, size.z * Mathf.Max(0.01f, _strategistStrAuraScale.z)));
-
-        Vector3 primitiveSize = GetPrimitiveLocalSize(_strategistStrAuraShape);
-        return new Vector3(
-            scaledSize.x / primitiveSize.x,
-            scaledSize.y / primitiveSize.y,
-            scaledSize.z / primitiveSize.z);
-    }
-
-    private bool TryGetPlayerRenderBounds(out Bounds bounds)
-    {
-        if (_preferCharacterControllerAuraBounds && TryGetCharacterControllerAuraBounds(out bounds))
-            return true;
-
-        if (_hasCachedStrategistAuraBounds)
-        {
-            bounds = _cachedStrategistAuraBounds;
-            return true;
-        }
-
-        SkinnedMeshRenderer[] renderers = GetComponentsInChildren<SkinnedMeshRenderer>(true);
-        bool found = false;
-        bounds = default;
-
-        foreach (Renderer rendererComponent in renderers)
-        {
-            if (rendererComponent == null || rendererComponent.gameObject == _strategistStrAuraObject)
-                continue;
-
-            if (rendererComponent.GetComponentInParent<Canvas>() != null)
-                continue;
-
-            if (!found)
-            {
-                bounds = rendererComponent.bounds;
-                found = true;
-            }
-            else
-            {
-                bounds.Encapsulate(rendererComponent.bounds);
-            }
-        }
-
-        _cachedStrategistAuraBounds = bounds;
-        _hasCachedStrategistAuraBounds = found;
-        return found;
-    }
-
-    private bool TryGetCharacterControllerAuraBounds(out Bounds bounds)
-    {
-        if (_characterController == null)
-        {
-            bounds = default;
-            return false;
-        }
-
-        Transform ownerTransform = _cachedTransform != null ? _cachedTransform : transform;
-        Vector3 worldCenter = ownerTransform.TransformPoint(_characterController.center);
-        Vector3 scale = ownerTransform.lossyScale;
-        float radiusScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
-        float radius = Mathf.Max(0.01f, _characterController.radius * radiusScale);
-        float height = Mathf.Max(radius * 2f, _characterController.height * Mathf.Abs(scale.y));
-        bounds = new Bounds(worldCenter, new Vector3(radius * 2f, height, radius * 2f));
-        return true;
-    }
-
-    private static PrimitiveType ToPrimitiveType(AuraPrimitiveShape shape)
-    {
-        return shape switch
-        {
-            AuraPrimitiveShape.Capsule => PrimitiveType.Capsule,
-            AuraPrimitiveShape.Cube => PrimitiveType.Cube,
-            _ => PrimitiveType.Sphere
-        };
-    }
-
-    private static Vector3 GetPrimitiveLocalSize(AuraPrimitiveShape shape)
-    {
-        return shape switch
-        {
-            AuraPrimitiveShape.Capsule => new Vector3(1f, 2f, 1f),
-            _ => Vector3.one
-        };
-    }
-
-    private static StatKind ResolveDominantStat(StatContainer stats)
-    {
-        StatKind dominant = StatKind.STR;
-        float best = stats.STR.Invested + stats.STR.Item;
-        float agi = stats.AGI.Invested + stats.AGI.Item;
-        float con = stats.CON.Invested + stats.CON.Item;
-        float def = stats.DEF.Invested + stats.DEF.Item;
-
-        if (agi > best)
-        {
-            dominant = StatKind.AGI;
-            best = agi;
-        }
-
-        if (con > best)
-        {
-            dominant = StatKind.CON;
-            best = con;
-        }
-
-        if (def > best)
-            dominant = StatKind.DEF;
-
-        return dominant;
-    }
-
-    private static bool IsCompletePreset(StatContainer stats)
-    {
-        float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
-        return Mathf.RoundToInt(total) == 30;
-    }
-
-    private static bool AreSamePreset(StatContainer a, StatContainer b)
-    {
-        return Mathf.RoundToInt(a.STR.Invested) == Mathf.RoundToInt(b.STR.Invested)
-            && Mathf.RoundToInt(a.AGI.Invested) == Mathf.RoundToInt(b.AGI.Invested)
-            && Mathf.RoundToInt(a.CON.Invested) == Mathf.RoundToInt(b.CON.Invested)
-            && Mathf.RoundToInt(a.DEF.Invested) == Mathf.RoundToInt(b.DEF.Invested);
+        AuraPresentation.Update(SkillTime, _healthSystem != null ? _healthSystem.CurrentShield : 0f);
     }
 
     [ClientRpc]
@@ -1985,6 +1906,9 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (NetworkServer.active)
         {
+            _playerManager?.ServerAuthorizeForcedMove(direction, distance, duration);
+            if (slowDuration > 0f)
+                _playerManager?.SetMovementEffect(CombatEffectSources.SkillMoveSlow, moveMultiplier, slowDuration);
             RpcExecuteSkillMove(direction, distance, duration, moveMultiplier, slowDuration);
             return;
         }
@@ -1994,9 +1918,11 @@ public class PlayerCombat : NetworkBehaviour
 
     private void ExecuteSkillMoveLocal(Vector3 direction, float distance, float duration, float moveMultiplier, float slowDuration)
     {
-        _playerManager?.MoveBySkill(direction, distance, duration);
+        if (NetworkClient.active && !isLocalPlayer) return;
+        if (!NetworkClient.active && !NetworkServer.active)
+            _playerManager?.MoveBySkill(direction, distance, duration);
         if (slowDuration > 0f)
-            _playerManager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
+            _playerManager?.SetMovementEffect(CombatEffectSources.SkillMoveSlow, moveMultiplier, slowDuration);
     }
 
     [ClientRpc]
@@ -2005,19 +1931,20 @@ public class PlayerCombat : NetworkBehaviour
         if (!NetworkClient.spawned.TryGetValue(targetNetId, out NetworkIdentity identity))
             return;
         PlayerManager manager = identity.GetComponent<PlayerManager>();
-        manager?.MoveBySkill(direction, distance, duration);
-        manager?.ApplySkillMoveMultiplier(moveMultiplier, slowDuration);
+        if (manager == null || !manager.isLocalPlayer) return;
+        manager?.SetMovementEffect(CombatEffectSources.KickSlow, moveMultiplier, slowDuration);
     }
 
     private bool BeginMonostatStrSkill(double requestedStartTime, uint sequence)
     {
+        if (!HasAuthoritativeCombatStats) return false;
         double now = SkillTime;
         if (!CanStartMonostatStrSkill(now))
             return false;
 
-        _isCastingMonostatStrSkill = true;
-        _monostatStrSkillCastCompleteAt = requestedStartTime + MonostatStrCastSeconds;
-        _monostatStrSkillCooldownUntil = requestedStartTime + MonostatStrCooldownSeconds;
+        if (!StrengthExecution.TryBegin(now, requestedStartTime, MonostatStrCastSeconds,
+                MonostatStrCooldownSeconds, out CombatSkillExecution execution)) return false;
+        StrengthExecution = execution;
 
         CancelCurrentAttack();
         PlaySkillAnimationNetworked(MonostatStrSkillData, requestedStartTime, sequence);
@@ -2038,7 +1965,7 @@ public class PlayerCombat : NetworkBehaviour
 
         uint sequence = NextSkillSequence();
         double requestedStartTime = SkillTime;
-        _localMonostatAgiSkillAttackLockUntil = SkillTime + MonostatAgiCastSeconds;
+        _actionLocks.LockUntil(CombatCastChannel.Agility, SkillTime + MonostatAgiCastSeconds);
         PlaySkillAnimationLocal(MonostatAgiSkillData);
         LockLocalSkillAnimationAttack(MonostatAgiSkillData);
 
@@ -2059,13 +1986,14 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool BeginMonostatAgiSkill(double requestedStartTime, uint sequence)
     {
+        if (!HasAuthoritativeCombatStats) return false;
         double now = SkillTime;
         if (!CanStartMonostatAgiSkill(now))
             return false;
 
-        _isCastingMonostatAgiSkill = true;
-        _monostatAgiSkillCastCompleteAt = requestedStartTime + MonostatAgiCastSeconds;
-        _monostatAgiSkillCooldownUntil = requestedStartTime + MonostatAgiCooldownSeconds;
+        if (!AgilityExecution.TryBegin(now, requestedStartTime, MonostatAgiCastSeconds,
+                MonostatAgiCooldownSeconds, out CombatSkillExecution execution)) return false;
+        AgilityExecution = execution;
 
         CancelCurrentAttack();
         PlaySkillAnimationNetworked(MonostatAgiSkillData, requestedStartTime, sequence);
@@ -2084,7 +2012,7 @@ public class PlayerCombat : NetworkBehaviour
         while (SkillTime < _monostatStrSkillCastCompleteAt)
             yield return null;
 
-        _isCastingMonostatStrSkill = false;
+        StrengthExecution = StrengthExecution.FinishCast();
         PublishSkillHudState();
 
         if (_healthSystem == null)
@@ -2102,14 +2030,19 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        _monostatStrSkillActiveUntil = SkillTime + MonostatStrDurationSeconds;
+        if (!StrengthExecution.TryActivate(SkillTime, MonostatStrDurationSeconds, out CombatSkillExecution active))
+        {
+            _monostatStrSkillRoutine = null;
+            yield break;
+        }
+        StrengthExecution = active;
         SetSkillSwordVisual(MonostatStrSkillData);
         PublishSkillHudState();
 
         while (SkillTime < _monostatStrSkillActiveUntil)
             yield return null;
 
-        _monostatStrSkillActiveUntil = 0d;
+        StrengthExecution = StrengthExecution.EndActive();
         SetSkillSwordVisual(null);
         _monostatStrSkillRoutine = null;
         PublishSkillHudState();
@@ -2132,37 +2065,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void PlaySkillAnimationLocal(string stateName, int layer, double visualStartedAt)
     {
-        if (animator == null || string.IsNullOrWhiteSpace(stateName))
-            return;
-
-        int safeLayer = Mathf.Clamp(layer, 0, animator.layerCount - 1);
-        int stateHash = Animator.StringToHash(stateName);
-        if (!animator.HasState(safeLayer, stateHash))
-        {
-            Debug.LogWarning(
-                $"[PlayerCombat] Animator state '{stateName}' was not found on layer {safeLayer}. Check the skill SO animation name/layer.",
-                this);
-            return;
-        }
-
-        animator.speed = 1f;
-        animator.Play(stateName, safeLayer, 0f);
-        animator.Update(0f);
-
-        if (double.IsNaN(visualStartedAt))
-            return;
-
-        double elapsedSeconds = Math.Max(0d, SkillTime - visualStartedAt);
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(safeLayer);
-        if (!stateInfo.IsName(stateName) || stateInfo.length <= 0f)
-            return;
-
-        float normalizedTime = Mathf.Clamp((float)(elapsedSeconds / stateInfo.length), 0f, 0.98f);
-        if (normalizedTime <= 0.001f)
-            return;
-
-        animator.Play(stateName, safeLayer, normalizedTime);
-        animator.Update(0f);
+        SkillPresentation.PlayAnimation(stateName, layer, visualStartedAt, SkillTime);
     }
 
     private bool HasSkillCastAnimation(JobSkillData data)
@@ -2172,82 +2075,18 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool IsSkillCastAnimationFinished(JobSkillData data)
     {
-        if (!HasSkillCastAnimation(data))
-            return true;
-
-        if (animator == null)
-            return true;
-
-        int layer = Mathf.Clamp(data.CastAnimationLayer, 0, animator.layerCount - 1);
-        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(layer);
-        if (!stateInfo.IsName(data.CastAnimationStateName))
-            return true;
-
-        return !animator.IsInTransition(layer) && stateInfo.normalizedTime >= 1f;
+        return data == null || SkillPresentation.IsAnimationFinished(data.CastAnimationStateName, data.CastAnimationLayer);
     }
 
     private void SetSkillSwordVisual(JobSkillData data)
     {
-        Material swordMaterial = data != null ? data.SwordMaterial : null;
-        bool active = swordMaterial != null;
-
-        if (!active && !_isSkillSwordVisualActive)
-            return;
-
-        if (active && _isSkillSwordVisualActive && _activeSkillSwordMaterial == swordMaterial)
-            return;
-
-        ResolveSkillSwordRenderers();
-
-        if (_skillSwordRenderers == null || _skillSwordRenderers.Length == 0)
-            return;
-
-        if (_isSkillSwordVisualActive)
-            RestoreSkillSwordMaterials();
-
-        if (active)
+        if (data == null)
         {
-            _skillSwordOriginalMaterials = new Material[_skillSwordRenderers.Length][];
-            for (int i = 0; i < _skillSwordRenderers.Length; i++)
-            {
-                Renderer rendererComponent = _skillSwordRenderers[i];
-                if (rendererComponent == null)
-                    continue;
-
-                Material[] originalMaterials = rendererComponent.sharedMaterials;
-                _skillSwordOriginalMaterials[i] = originalMaterials;
-
-                int count = Mathf.Max(1, originalMaterials != null ? originalMaterials.Length : 0);
-                Material[] skillMaterials = new Material[count];
-                for (int j = 0; j < count; j++)
-                    skillMaterials[j] = swordMaterial;
-
-                rendererComponent.sharedMaterials = skillMaterials;
-            }
-
-            _isSkillSwordVisualActive = true;
-            _activeSkillSwordMaterial = swordMaterial;
+            _skillPresentation?.Cancel();
             return;
         }
-
-        RestoreSkillSwordMaterials();
-    }
-
-    private void RestoreSkillSwordMaterials()
-    {
-        if (_skillSwordOriginalMaterials != null)
-        {
-            for (int i = 0; i < _skillSwordRenderers.Length; i++)
-            {
-                Renderer rendererComponent = _skillSwordRenderers[i];
-                if (rendererComponent != null && i < _skillSwordOriginalMaterials.Length && _skillSwordOriginalMaterials[i] != null)
-                    rendererComponent.sharedMaterials = _skillSwordOriginalMaterials[i];
-            }
-        }
-
-        _skillSwordOriginalMaterials = null;
-        _activeSkillSwordMaterial = null;
-        _isSkillSwordVisualActive = false;
+        if (_handSwordVisual == null) ResolveWeaponVisualReferences();
+        SkillPresentation.SetSwordMaterial(_handSwordVisual, data.SwordMaterial);
     }
 
     private void RefreshSkillSwordVisualFromState()
@@ -2284,28 +2123,34 @@ public class PlayerCombat : NetworkBehaviour
         RefreshSkillSwordVisualFromState();
     }
 
-    private void ResolveSkillSwordRenderers()
-    {
-        if (_skillSwordRenderers != null && _skillSwordRenderers.Length > 0)
-            return;
-
-        if (_handSwordVisual == null)
-            ResolveWeaponVisualReferences();
-
-        _skillSwordRenderers = _handSwordVisual != null
-            ? _handSwordVisual.GetComponentsInChildren<Renderer>(true)
-            : Array.Empty<Renderer>();
-    }
-
     private void PlaySkillAnimationNetworked(JobSkillData data, double acceptedStartTime, uint sequence)
     {
+        RecordAcceptedOwnerAction(data, acceptedStartTime);
         if (!HasSkillCastAnimation(data))
             return;
 
         PlaySkillAnimationLocal(data.CastAnimationStateName, data.CastAnimationLayer, acceptedStartTime);
+        // Read the played state's effective duration, so clip names and controller overrides remain supported.
+        if (animator != null && animator.layerCount > 0 &&
+            _acceptedSkillAnimationKey == (int)data.SkillKind && _acceptedSkillStartedAt == acceptedStartTime)
+        {
+            int layer = Mathf.Clamp(data.CastAnimationLayer, 0, animator.layerCount - 1);
+            AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(layer);
+            if (state.IsName(data.CastAnimationStateName))
+                AcceptedOwnerAction = AcceptedOwnerAction.WithAnimation(state.length);
+        }
 
         if (NetworkServer.active)
             RpcPlaySkillAnimation(data.CastAnimationStateName, data.CastAnimationLayer, sequence, acceptedStartTime);
+    }
+
+    private void RecordAcceptedOwnerAction(JobSkillData data, double startedAt)
+    {
+        if (data == null) return;
+        bool advanced = data.SkillKind != JobSkillKind.MonostatStrLifesteal && data.SkillKind != JobSkillKind.MonostatAgiPoison;
+        AcceptedOwnerAction = CombatOwnerAction.Begin((int)data.SkillKind, startedAt,
+            advanced ? (int)data.InputLockFlags : 0, advanced ? data.ResolveInputLockSeconds() : 0d);
+        ApplyAcceptedOwnerInputLock();
     }
 
     private void PlaySkillAnimationLocal(JobSkillData data)
@@ -2321,7 +2166,7 @@ public class PlayerCombat : NetworkBehaviour
         while (SkillTime < _monostatAgiSkillCastCompleteAt)
             yield return null;
 
-        _isCastingMonostatAgiSkill = false;
+        AgilityExecution = AgilityExecution.FinishCast();
         PublishSkillHudState();
 
         if (_healthSystem == null)
@@ -2339,14 +2184,19 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        _monostatAgiSkillActiveUntil = SkillTime + MonostatAgiDurationSeconds;
+        if (!AgilityExecution.TryActivate(SkillTime, MonostatAgiDurationSeconds, out CombatSkillExecution active))
+        {
+            _monostatAgiSkillRoutine = null;
+            yield break;
+        }
+        AgilityExecution = active;
         SetSkillSwordVisual(MonostatAgiSkillData);
         PublishSkillHudState();
 
         while (SkillTime < _monostatAgiSkillActiveUntil)
             yield return null;
 
-        _monostatAgiSkillActiveUntil = 0d;
+        AgilityExecution = AgilityExecution.EndActive();
         SetSkillSwordVisual(null);
         _monostatAgiSkillRoutine = null;
         PublishSkillHudState();
@@ -2382,10 +2232,10 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (!CanUseSkillInput()) return false;
         if (data == null) return false;
-        if (_advancedCastingSkillKey >= 0) return false;
-        if (_advancedActiveSkillKey == (int)data.SkillKind && SkillTime < _advancedActiveUntil) return false;
-        if (TryGetAdvancedCooldownUntil((int)data.SkillKind, out double cooldownUntil) &&
-            SkillTime < cooldownUntil) return false;
+        TryGetAdvancedCooldownUntil((int)data.SkillKind, out double cooldownUntil);
+        var execution = new CombatSkillExecution(_advancedCastingSkillKey >= 0, _advancedCastCompleteAt,
+            _advancedActiveSkillKey == (int)data.SkillKind ? _advancedActiveUntil : 0d, cooldownUntil);
+        if (!execution.CanBegin(SkillTime)) return false;
 
         return ResolveAdvancedSkillData((int)data.SkillKind) == data;
     }
@@ -2411,9 +2261,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool CanStartMonostatStrSkill(double now)
     {
-        if (_isCastingMonostatStrSkill) return false;
-        if (now < _monostatStrSkillActiveUntil) return false;
-        if (now < _monostatStrSkillCooldownUntil) return false;
+        if (!StrengthExecution.CanBegin(now)) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
         if (!IsMonostatStr()) return false;
 
@@ -2422,9 +2270,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool CanStartMonostatAgiSkill(double now)
     {
-        if (_isCastingMonostatAgiSkill) return false;
-        if (now < _monostatAgiSkillActiveUntil) return false;
-        if (now < _monostatAgiSkillCooldownUntil) return false;
+        if (!AgilityExecution.CanBegin(now)) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
         if (!IsMonostatAgi()) return false;
 
@@ -2433,15 +2279,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool IsSkillCastingOrAttackLocked()
     {
-        if (_isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
-            _localSkillAnimationAttackLocked)
-            return true;
-
-        double now = SkillTime;
-        return now < _localMonostatStrSkillAttackLockUntil ||
-               now < _localMonostatAgiSkillAttackLockUntil ||
-               now < _localAdvancedAttackLockUntil;
-
+        return _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
+               AcceptedOwnerAction.HasAnimation(SkillTime) || _actionLocks.IsLocked(SkillTime);
     }
 
     private bool IsMonostatStr()
@@ -2485,72 +2324,32 @@ public class PlayerCombat : NetworkBehaviour
 
     private JobSkillData ResolveSelectedAdvancedSkillData()
     {
-        if (_statManager == null)
+        if (_statManager == null ||
+            !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, _selectedSkillIndex, out JobSkillKind kind))
             return null;
-        Identity identity = _statManager.CurrentIdentity;
-        if (identity.Type == IdentityType.Monostat)
-        {
-            if (identity.PrimaryStat == StatKind.CON) return MonostatConSkillData;
-            if (identity.PrimaryStat == StatKind.DEF) return MonostatDefSkillData;
-            return null;
-        }
-        if (identity.Type == IdentityType.Strategist)
-            return _selectedSkillIndex == 0
-                ? (IsSkillDataKind(_strategistRollSkillData, JobSkillKind.StrategistRoll) ? _strategistRollSkillData : null)
-                : (IsSkillDataKind(_strategistPresetSkillData, JobSkillKind.StrategistPresetChange) ? _strategistPresetSkillData : null);
-        if (identity.Type == IdentityType.Polymath)
-        {
-            if (_selectedSkillIndex == 0) return IsSkillDataKind(_polymathRollSkillData, JobSkillKind.PolymathRoll) ? _polymathRollSkillData : null;
-            if (_selectedSkillIndex == 1) return IsSkillDataKind(_polymathWeaponSwapSkillData, JobSkillKind.PolymathWeaponSwap) ? _polymathWeaponSwapSkillData : null;
-            return null;
-        }
-        return null;
+        return ResolveAssignedAdvancedSkillData((int)kind);
     }
 
     private JobSkillData ResolveAdvancedSkillData(int skillKey)
     {
         if (_statManager == null)
             return null;
-        Identity identity = _statManager.CurrentIdentity;
         JobSkillKind kind = (JobSkillKind)skillKey;
-        if (identity.Type == IdentityType.Monostat)
-        {
-            if (identity.PrimaryStat == StatKind.CON && kind == JobSkillKind.MonostatConKick) return MonostatConSkillData;
-            if (identity.PrimaryStat == StatKind.DEF && kind == JobSkillKind.MonostatDefTaunt) return MonostatDefSkillData;
-            return null;
-        }
-        if (identity.Type == IdentityType.Strategist)
-        {
-            if (kind == JobSkillKind.StrategistRoll && IsSkillDataKind(_strategistRollSkillData, kind)) return _strategistRollSkillData;
-            if (kind == JobSkillKind.StrategistPresetChange && IsSkillDataKind(_strategistPresetSkillData, kind)) return _strategistPresetSkillData;
-            return null;
-        }
-        if (identity.Type == IdentityType.Polymath)
-        {
-            if (kind == JobSkillKind.PolymathRoll && IsSkillDataKind(_polymathRollSkillData, kind)) return _polymathRollSkillData;
-            if (kind == JobSkillKind.PolymathWeaponSwap && IsSkillDataKind(_polymathWeaponSwapSkillData, kind)) return _polymathWeaponSwapSkillData;
-        }
-        return null;
+        return CombatSkillRules.Allows(_statManager.CurrentIdentity, kind)
+            ? ResolveAssignedAdvancedSkillData(skillKey) : null;
     }
 
     private JobSkillData ResolveAssignedAdvancedSkillData(int skillKey)
     {
         JobSkillKind kind = (JobSkillKind)skillKey;
-        return kind switch
-        {
-            JobSkillKind.MonostatConKick => MonostatConSkillData,
-            JobSkillKind.MonostatDefTaunt => MonostatDefSkillData,
-            JobSkillKind.StrategistRoll => IsSkillDataKind(_strategistRollSkillData, kind) ? _strategistRollSkillData : null,
-            JobSkillKind.StrategistPresetChange => IsSkillDataKind(_strategistPresetSkillData, kind) ? _strategistPresetSkillData : null,
-            JobSkillKind.PolymathRoll => IsSkillDataKind(_polymathRollSkillData, kind) ? _polymathRollSkillData : null,
-            JobSkillKind.PolymathPresetChange => IsSkillDataKind(_polymathPresetSkillData, kind) ? _polymathPresetSkillData : null,
-            JobSkillKind.PolymathWeaponSwap => IsSkillDataKind(_polymathWeaponSwapSkillData, kind) ? _polymathWeaponSwapSkillData : null,
-            _ => null
-        };
+        if (CombatSkillRules.EffectOf(kind) == AdvancedSkillEffect.None) return null;
+        JobSkillData data = ResolveSkillData(skillKey);
+        return IsSkillDataKind(data, kind) ? data : null;
     }
 
     private void HandleBowAttackInput(bool pressed)
     {
+        if (IsServerTaunted) return;
         JobSkillData bow = _polymathWeaponSwapSkillData;
         if (bow == null)
             return;
@@ -2623,53 +2422,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_statManager == null)
             return 0;
 
-        Identity identity = _statManager.CurrentIdentity;
-        if (identity.Type == IdentityType.Monostat)
-            return 1;
-
-        if (identity.Type == IdentityType.Strategist)
-            return 2;
-
-        if (identity.Type == IdentityType.Polymath)
-            return 2;
-
-        return 0;
-    }
-
-    private string ResolveSelectedSkillName()
-    {
-        if (IsMonostatStr())
-            return ResolveMonostatStrDisplayName();
-
-        if (IsMonostatAgi())
-            return ResolveMonostatAgiDisplayName();
-
-        JobSkillData advanced = ResolveSelectedAdvancedSkillData();
-        if (advanced != null && !string.IsNullOrWhiteSpace(advanced.DisplayName))
-            return advanced.DisplayName;
-
-        if (_statManager == null)
-            return string.Empty;
-
-        Identity identity = _statManager.CurrentIdentity;
-        if (identity.Type == IdentityType.Strategist)
-            return _selectedSkillIndex == 0 ? "구르기" : "프리셋";
-
-        if (identity.Type == IdentityType.Polymath)
-        {
-            if (_selectedSkillIndex == 0) return "구르기";
-            return "무기";
-        }
-
-        return string.Empty;
-    }
-
-    private string ResolveMonostatStrDisplayName()
-    {
-        if (MonostatStrSkillData != null && !string.IsNullOrWhiteSpace(MonostatStrSkillData.DisplayName))
-            return MonostatStrSkillData.DisplayName;
-
-        return "흡혈";
+        return CombatSkillRules.SlotCount(_statManager.CurrentIdentity);
     }
 
     private float ResolveMonostatStrLifestealRatio()
@@ -2677,14 +2430,6 @@ public class PlayerCombat : NetworkBehaviour
         return MonostatStrSkillData != null && MonostatStrSkillData.LifestealRatio > 0f
             ? MonostatStrSkillData.LifestealRatio
             : MonostatStrSkillHealRatio;
-    }
-
-    private string ResolveMonostatAgiDisplayName()
-    {
-        if (MonostatAgiSkillData != null && !string.IsNullOrWhiteSpace(MonostatAgiSkillData.DisplayName))
-            return MonostatAgiSkillData.DisplayName;
-
-        return "독 바르기";
     }
 
     private void ClampSelectedSkillIndex()
@@ -2703,131 +2448,61 @@ public class PlayerCombat : NetworkBehaviour
     {
         ClampSelectedSkillIndex();
         int count = ResolveAvailableSkillCount();
-        if (count <= 0)
-            return new SkillHudState(false, string.Empty, 0, 0, SkillHudPhase.Hidden, 0f, 0f);
-
-        SkillHudPhase phase = SkillHudPhase.Ready;
-        float fill = 0f;
-        float remaining = 0f;
-        Sprite iconSprite = null;
+        JobSkillData data;
+        bool casting = false;
+        double castCompleteAt = 0d, activeUntil = 0d, cooldownUntil = 0d;
+        float castSeconds = 0f, cooldownSeconds = 0f;
 
         if (IsMonostatStr() && _selectedSkillIndex == 0)
         {
-            if (MonostatStrSkillData != null)
-                iconSprite = MonostatStrSkillData.IconSprite;
-
-            double now = SkillTime;
-            if (_isCastingMonostatStrSkill)
-            {
-                phase = SkillHudPhase.Casting;
-                remaining = Mathf.Max(0f, (float)(_monostatStrSkillCastCompleteAt - now));
-                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatStrCastSeconds));
-            }
-            else if (now < _monostatStrSkillActiveUntil)
-            {
-                phase = SkillHudPhase.Active;
-                remaining = Mathf.Max(0f, (float)(_monostatStrSkillActiveUntil - now));
-                fill = 1f;
-            }
-            else if (now < _monostatStrSkillCooldownUntil)
-            {
-                phase = SkillHudPhase.Cooldown;
-                remaining = Mathf.Max(0f, (float)(_monostatStrSkillCooldownUntil - now));
-                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatStrCooldownSeconds));
-            }
+            data = MonostatStrSkillData;
+            casting = _isCastingMonostatStrSkill;
+            castCompleteAt = _monostatStrSkillCastCompleteAt;
+            activeUntil = _monostatStrSkillActiveUntil;
+            cooldownUntil = _monostatStrSkillCooldownUntil;
+            castSeconds = MonostatStrCastSeconds;
+            cooldownSeconds = MonostatStrCooldownSeconds;
         }
         else if (IsMonostatAgi() && _selectedSkillIndex == 0)
         {
-            if (MonostatAgiSkillData != null)
-                iconSprite = MonostatAgiSkillData.IconSprite;
-
-            double now = SkillTime;
-            if (_isCastingMonostatAgiSkill)
-            {
-                phase = SkillHudPhase.Casting;
-                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillCastCompleteAt - now));
-                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatAgiCastSeconds));
-            }
-            else if (now < _monostatAgiSkillActiveUntil)
-            {
-                phase = SkillHudPhase.Active;
-                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillActiveUntil - now));
-                fill = 1f;
-            }
-            else if (now < _monostatAgiSkillCooldownUntil)
-            {
-                phase = SkillHudPhase.Cooldown;
-                remaining = Mathf.Max(0f, (float)(_monostatAgiSkillCooldownUntil - now));
-                fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, MonostatAgiCooldownSeconds));
-            }
+            data = MonostatAgiSkillData;
+            casting = _isCastingMonostatAgiSkill;
+            castCompleteAt = _monostatAgiSkillCastCompleteAt;
+            activeUntil = _monostatAgiSkillActiveUntil;
+            cooldownUntil = _monostatAgiSkillCooldownUntil;
+            castSeconds = MonostatAgiCastSeconds;
+            cooldownSeconds = MonostatAgiCooldownSeconds;
         }
         else
         {
-            JobSkillData data = ResolveSelectedAdvancedSkillData();
+            data = ResolveSelectedAdvancedSkillData();
             if (data != null)
             {
                 int key = (int)data.SkillKind;
-                iconSprite = data.IconSprite;
-                double now = SkillTime;
-                if (_advancedCastingSkillKey == key)
-                {
-                    phase = SkillHudPhase.Casting;
-                    remaining = Mathf.Max(0f, (float)(_advancedCastCompleteAt - now));
-                    fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, data.CastSeconds));
-                }
-                else if (_advancedActiveSkillKey == key && now < _advancedActiveUntil)
-                {
-                    phase = SkillHudPhase.Active;
-                    remaining = Mathf.Max(0f, (float)(_advancedActiveUntil - now));
-                    fill = 1f;
-                }
-                else if (TryGetAdvancedCooldownUntil(key, out double cooldownUntil) && now < cooldownUntil)
-                {
-                    phase = SkillHudPhase.Cooldown;
-                    remaining = Mathf.Max(0f, (float)(cooldownUntil - now));
-                    fill = Mathf.Clamp01(remaining / Mathf.Max(0.001f, data.CooldownSeconds));
-                }
+                casting = _advancedCastingSkillKey == key;
+                castCompleteAt = _advancedCastCompleteAt;
+                activeUntil = _advancedActiveSkillKey == key ? _advancedActiveUntil : 0d;
+                TryGetAdvancedCooldownUntil(key, out cooldownUntil);
+                castSeconds = data.CastSeconds;
+                cooldownSeconds = data.CooldownSeconds;
             }
         }
 
-        return new SkillHudState(true, ResolveSelectedSkillName(), _selectedSkillIndex, count, phase, fill, remaining, iconSprite);
+        string name = SkillHudPresenter.ResolveName(
+            _statManager != null ? _statManager.CurrentIdentity : (Identity?)null,
+            _selectedSkillIndex, data != null ? data.DisplayName : null);
+        var snapshot = new SkillHudSnapshot(name, data != null ? data.IconSprite : null,
+            _selectedSkillIndex, count, casting, castCompleteAt, activeUntil, cooldownUntil,
+            castSeconds, cooldownSeconds);
+        return SkillHudPresenter.Build(snapshot, SkillTime);
     }
 
     private void PublishSkillHudState(bool force = true)
     {
-        if (NetworkClient.active && !isLocalPlayer)
-            return;
-
+        if (NetworkClient.active && !isLocalPlayer) return;
         SkillHudState state = GetSkillHudState();
-
-        if (!force)
-        {
-            float now = Time.unscaledTime;
-            if (_hasPublishedSkillHudState &&
-                now < _nextSkillHudPublishTime &&
-                IsEquivalentSkillHudState(_lastPublishedSkillHudState, state))
-            {
-                return;
-            }
-
-            _nextSkillHudPublishTime = now + SkillHudUpdateIntervalSeconds;
-        }
-
-        _lastPublishedSkillHudState = state;
-        _hasPublishedSkillHudState = true;
-        SkillHudChanged?.Invoke(state);
-    }
-
-    private static bool IsEquivalentSkillHudState(SkillHudState a, SkillHudState b)
-    {
-        return a.Visible == b.Visible &&
-               a.Name == b.Name &&
-               a.SelectedIndex == b.SelectedIndex &&
-               a.SkillCount == b.SkillCount &&
-               a.Phase == b.Phase &&
-               a.IconSprite == b.IconSprite &&
-               Mathf.Abs(a.NormalizedFill - b.NormalizedFill) < 0.02f &&
-               Mathf.CeilToInt(a.RemainingSeconds) == Mathf.CeilToInt(b.RemainingSeconds);
+        if (_skillHudPresenter.ShouldPublish(state, force, Time.unscaledTime))
+            SkillHudChanged?.Invoke(state);
     }
 
     private void PlaySkillSfx(int skillId)
@@ -2849,16 +2524,11 @@ public class PlayerCombat : NetworkBehaviour
 
     private void PlaySkillSfxLocal(int skillId)
     {
-        JobSkillData skillData = ResolveSkillDataForSfx(skillId);
-        AudioClip clip = skillData != null ? skillData.UseSfx : null;
-        if (clip == null || _audioSource == null)
-            return;
-
-        float volume = skillData != null ? skillData.SfxVolume : 1f;
-        _audioSource.PlayOneShot(clip, volume);
+        JobSkillData data = ResolveSkillData(skillId);
+        if (data != null) SkillPresentation.PlaySound(data.UseSfx, data.SfxVolume);
     }
 
-    private JobSkillData ResolveSkillDataForSfx(int skillId)
+    private JobSkillData ResolveSkillData(int skillId)
     {
         return skillId switch
         {
@@ -2883,25 +2553,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!IsValidPoisonTarget(target))
             return;
 
-        PoisonStackState state = null;
-        for (int i = 0; i < _monostatAgiPoisonStacks.Count; i++)
-        {
-            if (_monostatAgiPoisonStacks[i].Target == target)
-            {
-                state = _monostatAgiPoisonStacks[i];
-                break;
-            }
-        }
-
-        if (state == null)
-        {
-            state = new PoisonStackState { Target = target };
-            _monostatAgiPoisonStacks.Add(state);
-        }
-
-        state.StackCount = Mathf.Min(state.StackCount + 1, MonostatAgiPoisonMaxStackCount);
-        state.ExpiresAt = SkillTime + MonostatAgiPoisonStackDurationSecondsValue;
-        state.LastHitPosition = hitPosition;
+        if (!_poisonStacks.Add(target, hitPosition, SkillTime, MonostatAgiPoisonStackDurationSecondsValue,
+                MonostatAgiPoisonMaxStackCount)) return;
 
         if (_monostatAgiPoisonRoutine == null)
             _monostatAgiPoisonRoutine = StartCoroutine(CoMonostatAgiPoisonTick());
@@ -2910,31 +2563,23 @@ public class PlayerCombat : NetworkBehaviour
     private System.Collections.IEnumerator CoMonostatAgiPoisonTick()
     {
         var wait = new WaitForSeconds(1f);
-        while (_monostatAgiPoisonStacks.Count > 0)
+        while (_poisonStacks.Count > 0)
         {
-            double now = SkillTime;
-            float damagePerStack = MonostatAgiPoisonDamagePerStackPerSecondValue;
-
-            for (int i = _monostatAgiPoisonStacks.Count - 1; i >= 0; i--)
+            _poisonStacks.CollectTicks(SkillTime, MonostatAgiPoisonDamagePerStackPerSecondValue,
+                IsValidPoisonTarget, _poisonTicks);
+            for (int i = 0; i < _poisonTicks.Count; i++)
             {
-                PoisonStackState state = _monostatAgiPoisonStacks[i];
-                if (state == null || !IsValidPoisonTarget(state.Target) || now >= state.ExpiresAt)
-                {
-                    _monostatAgiPoisonStacks.RemoveAt(i);
-                    continue;
-                }
-
-                float damage = state.StackCount * damagePerStack;
-                if (damage <= 0f)
-                    continue;
+                PoisonTick<IDamageReceiver, Vector3> tick = _poisonTicks[i];
+                // A preceding damage callback may have killed or removed another target.
+                if (!IsValidPoisonTarget(tick.Target)) continue;
 
                 if (_healthSystem == null)
                     _healthSystem = GetComponent<HealthSystem>();
 
-                if (state.Target is IDamageReceiverWithContext ctx)
-                    ctx.ApplyDamage(damage, DamageSource.Poison, 0f, _healthSystem, state.LastHitPosition);
+                if (tick.Target is IDamageReceiverWithContext ctx)
+                    ctx.ApplyDamage(tick.Damage, DamageSource.Poison, 0f, _healthSystem, tick.HitPosition);
                 else
-                    state.Target.ApplyDamage(damage, DamageSource.Poison, state.LastHitPosition);
+                    tick.Target.ApplyDamage(tick.Damage, DamageSource.Poison, tick.HitPosition);
             }
 
             yield return wait;
@@ -2962,13 +2607,15 @@ public class PlayerCombat : NetworkBehaviour
 
     private void HandleDied()
     {
+        ClearServerTauntControl();
         ClearLocalTauntControl();
-        CancelCurrentAttack();
+        CancelAllCombatActions();
         SetSkillSwordVisual(null);
     }
 
     private void HandleRevived()
     {
+        CancelAllCombatActions();
         if (animator != null)
             animator.speed = 1.0f;
 
@@ -2979,8 +2626,11 @@ public class PlayerCombat : NetworkBehaviour
         currentComboIndex = 0;
     }
 
-    private void StopCombo()
+    private void StopCombo(bool allowDelayedContinuation = false)
     {
+        if (isServer && allowDelayedContinuation)
+            _serverCombo.Complete(currentComboIndex, comboList != null ? comboList.Length : 0, SkillTime);
+        else _serverCombo.Reset();
         isAttacking = false;
         currentComboIndex = 0;
         hasComboReserved = false;
@@ -2991,7 +2641,6 @@ public class PlayerCombat : NetworkBehaviour
         if (pm != null)
             pm.SetMovementLock(false);
 
-        Debug.Log("Combo ended.");
     }
 
     private Vector3 GetCurrentAimDirection()
@@ -3014,6 +2663,60 @@ public class PlayerCombat : NetworkBehaviour
             return;
         _tauntedByNetId = taunterNetId;
         _tauntedUntil = SkillTime + durationSeconds;
+        CancelAllCombatActions();
+        UpdateServerTauntControl();
+    }
+
+    private void UpdateServerTauntControl()
+    {
+        if (!isServer) return;
+        if ((_healthSystem != null && _healthSystem.IsDead) || _tauntedByNetId == 0 ||
+            SkillTime >= _tauntedUntil || !TryResolveTauntTarget(out Transform taunter))
+        {
+            ClearServerTauntControl();
+            return;
+        }
+
+        float stopDistance = MonostatDefSkillData != null ? MonostatDefSkillData.TauntStopDistance : 1.8f;
+        _playerManager?.SetForcedTauntControl(true, taunter.position, stopDistance);
+        if (!HasAuthoritativeCombatStats || IsBattleLoadingOrNotStarted()) return;
+        Vector3 direction = taunter.position - transform.position;
+        direction.y = 0f;
+        direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
+        if (_isBowEquipped)
+        {
+            _serverTauntBowActive = true;
+            _bowAttackController?.ServerTickTauntAttack(direction);
+            return;
+        }
+        if (isAttacking) return;
+        uint sequence = CombatRequestSequences.Next(_lastServerAttackSequence);
+        _currentAttackSequence = sequence;
+        StartAttack(0, false, direction, true);
+        if (!isAttacking) return;
+        _lastServerAttackSequence = sequence;
+        RpcStartAttackFast(0, direction, sequence);
+        RpcStartAttack(0, direction, sequence);
+        if (connectionToClient != null) TargetStartTauntAttack(connectionToClient, direction, sequence);
+    }
+
+    private void ClearServerTauntControl()
+    {
+        if (netIdentity == null || !isServer) return;
+        if (_serverTauntBowActive) _bowAttackController?.ServerEndTauntAttack();
+        _serverTauntBowActive = false;
+        _tauntedByNetId = 0;
+        _tauntedUntil = 0d;
+        _playerManager?.SetForcedTauntControl(false, Vector3.zero, 0f);
+    }
+
+    [TargetRpc]
+    private void TargetStartTauntAttack(NetworkConnectionToClient target, Vector3 direction, uint sequence)
+    {
+        if (isServer) return;
+        _currentAttackSequence = sequence;
+        _nextLocalAttackSequence = CombatRequestSequences.RestoreOwner(_nextLocalAttackSequence, sequence);
+        StartRemoteAttackVisual(0, direction);
     }
 
     private void UpdateLocalTauntControl()
@@ -3036,18 +2739,12 @@ public class PlayerCombat : NetworkBehaviour
             _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
 
         float stopDistance = MonostatDefSkillData != null ? MonostatDefSkillData.TauntStopDistance : 1.8f;
-        if (!_localTauntControlActive)
+        if (!_localTauntControlActive && !isServer && _bowAttackController != null && _bowAttackController.IsCharging)
             _bowAttackController?.CancelCharge();
-        _playerManager?.SetForcedTauntControl(true, taunter.position, stopDistance);
+        if (!isServer) _playerManager?.SetForcedTauntControl(true, taunter.position, stopDistance);
         _followCamera?.SetForcedLookTarget(taunter);
         _localTauntControlActive = true;
 
-        if (!isAttacking)
-        {
-            Vector3 direction = taunter.position - transform.position;
-            direction.y = 0f;
-            StartAttack(0, true, direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward, true);
-        }
     }
 
     public void NotifyConfirmedHit(bool isHeadshot)
@@ -3068,43 +2765,12 @@ public class PlayerCombat : NetworkBehaviour
     [TargetRpc]
     private void TargetShowHitFeedback(NetworkConnectionToClient target, bool isHeadshot)
     {
-        PrunePredictedHitFeedback();
-        if (_predictedHitFeedbackExpiries.Count > 0)
-        {
-            _predictedHitFeedbackExpiries.Dequeue();
-            return;
-        }
-
         PlayHitFeedbackLocal(isHeadshot);
-    }
-
-    public void PlayPredictedHitFeedback(bool isHeadshot)
-    {
-        if (!isLocalPlayer)
-            return;
-
-        PrunePredictedHitFeedback();
-        _predictedHitFeedbackExpiries.Enqueue(Time.unscaledTime + 1.5f);
-        PlayHitFeedbackLocal(isHeadshot);
-    }
-
-    private void PrunePredictedHitFeedback()
-    {
-        while (_predictedHitFeedbackExpiries.Count > 0 &&
-               _predictedHitFeedbackExpiries.Peek() < Time.unscaledTime)
-        {
-            _predictedHitFeedbackExpiries.Dequeue();
-        }
     }
 
     private void PlayHitFeedbackLocal(bool isHeadshot)
     {
-        if (_hitFeedback == null)
-            _hitFeedback = GetComponent<CombatHitFeedback>();
-        if (_hitFeedback == null)
-            _hitFeedback = gameObject.AddComponent<CombatHitFeedback>();
-
-        _hitFeedback.Play(isHeadshot);
+        SkillPresentation.PlayConfirmedHit(isHeadshot);
     }
 
     private void ClearLocalTauntControl()
@@ -3112,7 +2778,7 @@ public class PlayerCombat : NetworkBehaviour
         if (!_localTauntControlActive)
             return;
 
-        _playerManager?.SetForcedTauntControl(false, Vector3.zero, 0f);
+        if (!isServer) _playerManager?.SetForcedTauntControl(false, Vector3.zero, 0f);
         _followCamera?.SetForcedLookTarget(null);
         _localTauntControlActive = false;
     }
@@ -3144,90 +2810,5 @@ public class PlayerCombat : NetworkBehaviour
         Vector3 direction = target.position - transform.position;
         direction.y = 0f;
         return direction.sqrMagnitude > 0.001f ? direction.normalized : fallback;
-    }
-}
-
-internal sealed class ServerPoseHistory : MonoBehaviour
-{
-    private const int Capacity = 64;
-    private const double RecordInterval = 1d / 30d;
-
-    private readonly double[] _times = new double[Capacity];
-    private readonly Vector3[] _positions = new Vector3[Capacity];
-    private int _nextIndex;
-    private int _count;
-    private double _lastRecordTime = double.NegativeInfinity;
-
-    private void Update()
-    {
-        if (!NetworkServer.active)
-            return;
-
-        RecordPose(NetworkTime.time, transform.position, false);
-    }
-
-    public void RecordNetworkPose(double time, Vector3 position)
-    {
-        if (!NetworkServer.active || double.IsNaN(time) || double.IsInfinity(time))
-            return;
-
-        RecordPose(time, position, true);
-    }
-
-    private void RecordPose(double time, Vector3 position, bool force)
-    {
-        if (!force && time - _lastRecordTime < RecordInterval)
-            return;
-
-        _times[_nextIndex] = time;
-        _positions[_nextIndex] = position;
-        _nextIndex = (_nextIndex + 1) % Capacity;
-        _count = Math.Min(_count + 1, Capacity);
-        _lastRecordTime = Math.Max(_lastRecordTime, time);
-    }
-
-    public bool TrySample(double time, out Vector3 position)
-    {
-        position = transform.position;
-        if (_count == 0)
-            return false;
-
-        int beforeIndex = -1;
-        int afterIndex = -1;
-        double beforeTime = double.NegativeInfinity;
-        double afterTime = double.PositiveInfinity;
-
-        for (int i = 0; i < _count; i++)
-        {
-            double sampleTime = _times[i];
-            if (sampleTime <= time && sampleTime > beforeTime)
-            {
-                beforeTime = sampleTime;
-                beforeIndex = i;
-            }
-
-            if (sampleTime >= time && sampleTime < afterTime)
-            {
-                afterTime = sampleTime;
-                afterIndex = i;
-            }
-        }
-
-        if (beforeIndex < 0)
-            beforeIndex = afterIndex;
-        if (afterIndex < 0)
-            afterIndex = beforeIndex;
-        if (beforeIndex < 0 || afterIndex < 0)
-            return false;
-
-        if (beforeIndex == afterIndex || afterTime <= beforeTime)
-        {
-            position = _positions[beforeIndex];
-            return true;
-        }
-
-        float t = Mathf.Clamp01((float)((time - beforeTime) / (afterTime - beforeTime)));
-        position = Vector3.Lerp(_positions[beforeIndex], _positions[afterIndex], t);
-        return true;
     }
 }

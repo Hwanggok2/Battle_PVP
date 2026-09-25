@@ -1,7 +1,6 @@
 using UnityEngine;
 using BattlePvp.Stats;
 using UnityEngine.SceneManagement;
-using Mirror;
 using BattlePvp.Networking;
 
 namespace BattlePvp.Managers
@@ -60,8 +59,14 @@ namespace BattlePvp.Managers
         [SerializeField] private int _cumulativeDeaths;
         private bool _hasLoadedPlayerStats;
         private bool _isPlayerStatsLoadInFlight;
-        private bool _isCombatRecordLoadInFlight;
         private bool _hasLoadedCombatRecord;
+        private int _pendingKills;
+        private int _pendingDeaths;
+        private int _profileSession;
+        private int _profileLoadRequest;
+        private int _profileStateVersion;
+        private readonly System.Collections.Generic.List<System.Action<bool>> _profileLoadCallbacks =
+            new System.Collections.Generic.List<System.Action<bool>>();
 
         /// <summary>
         /// 로그인 시 설정된 플레이어 닉네임. 씬 전환 후에도 유지됩니다.
@@ -77,6 +82,7 @@ namespace BattlePvp.Managers
         }
         
         public event System.Action<StatContainer> OnSavedStatsUpdated;
+        public event System.Action PlayerBindingRequested;
         public event System.Action<int, StatContainer, bool> OnStatPresetSlotChanged;
         public event System.Action<StatContainer, bool> OnStrategistTargetPresetChanged;
         public event System.Action<int, int> OnCombatRecordUpdated;
@@ -86,6 +92,45 @@ namespace BattlePvp.Managers
         public float CumulativeKillsPerDeath => _cumulativeDeaths <= 0 ? _cumulativeKills : _cumulativeKills / (float)_cumulativeDeaths;
         public bool HasLoadedPlayerStats => _hasLoadedPlayerStats;
         public bool IsPlayerStatsLoadInFlight => _isPlayerStatsLoadInFlight;
+        public bool HasLoadedCombatRecord => _hasLoadedCombatRecord;
+        public int ProfileSessionVersion => _profileSession;
+        public bool IsCurrentActiveInstance => _instance == this && isActiveAndEnabled;
+
+        public PlayerProfileSnapshot CaptureProfileSnapshot()
+        {
+            EnsureStatPresetArrays();
+            return new PlayerProfileSnapshot
+            {
+                Stats = _savedStats,
+                Slots = (StatContainer[])_statPresetSlots.Clone(),
+                SlotUsed = (bool[])_statPresetSlotUsed.Clone(),
+                SelectedSlot = _selectedStatPresetSlot,
+                StrategistPreset = _strategistTargetPreset,
+                HasStrategistPreset = _hasStrategistTargetPreset
+            };
+        }
+
+        public void BeginPlayerSession()
+        {
+            _profileSession++;
+            _profileLoadRequest++;
+            var callbacks = TakeProfileLoadCallbacks();
+            _hasLoadedPlayerStats = false;
+            _hasLoadedCombatRecord = false;
+            _isPlayerStatsLoadInFlight = false;
+            _savedStats = default;
+            _statPresetSlots = new StatContainer[DefaultStatPresetSlotCount];
+            _statPresetSlotUsed = new bool[DefaultStatPresetSlotCount];
+            _selectedStatPresetSlot = 0;
+            _strategistTargetPreset = default;
+            _hasStrategistTargetPreset = false;
+            _cumulativeKills = _cumulativeDeaths = _pendingKills = _pendingDeaths = 0;
+            int session = _profileSession;
+            int stateVersion = ++_profileStateVersion;
+            PublishPresetState(session, stateVersion);
+            NotifySubscribers(OnCombatRecordUpdated, subscriber => ((System.Action<int, int>)subscriber)(0, 0), session, stateVersion);
+            CompleteProfileLoadCallbacks(callbacks, false, session);
+        }
 
         public StatContainer SavedStats 
         { 
@@ -166,6 +211,13 @@ namespace BattlePvp.Managers
             StatContainer strategistTargetPreset,
             bool hasStrategistTargetPreset)
         {
+            SetLoadedStatPresetData(slots, slotUsed, selectedSlot, strategistTargetPreset, hasStrategistTargetPreset);
+            PublishPresetState(_profileSession, _profileStateVersion);
+        }
+
+        private void SetLoadedStatPresetData(StatContainer[] slots, bool[] slotUsed, int selectedSlot,
+            StatContainer strategistTargetPreset, bool hasStrategistTargetPreset)
+        {
             EnsureStatPresetArrays();
 
             int copyCount = slots != null ? Mathf.Min(slots.Length, _statPresetSlots.Length) : 0;
@@ -179,11 +231,22 @@ namespace BattlePvp.Managers
             _savedStats = _statPresetSlotUsed[_selectedStatPresetSlot] ? _statPresetSlots[_selectedStatPresetSlot] : default;
             _strategistTargetPreset = ClampStatBudget(strategistTargetPreset, 30);
             _hasStrategistTargetPreset = hasStrategistTargetPreset;
-
-            OnStatPresetSlotChanged?.Invoke(_selectedStatPresetSlot, _savedStats, _statPresetSlotUsed[_selectedStatPresetSlot]);
-            OnStrategistTargetPresetChanged?.Invoke(_strategistTargetPreset, _hasStrategistTargetPreset);
-            OnSavedStatsUpdated?.Invoke(_savedStats);
             _hasLoadedPlayerStats = true;
+            _profileStateVersion++;
+        }
+
+        private void PublishPresetState(int session, int stateVersion)
+        {
+            int selected = _selectedStatPresetSlot;
+            StatContainer saved = _savedStats;
+            bool used = _statPresetSlotUsed[selected];
+            StatContainer strategist = _strategistTargetPreset;
+            bool hasStrategist = _hasStrategistTargetPreset;
+            NotifySubscribers(OnStatPresetSlotChanged,
+                subscriber => ((System.Action<int, StatContainer, bool>)subscriber)(selected, saved, used), session, stateVersion);
+            NotifySubscribers(OnStrategistTargetPresetChanged,
+                subscriber => ((System.Action<StatContainer, bool>)subscriber)(strategist, hasStrategist), session, stateVersion);
+            NotifySubscribers(OnSavedStatsUpdated, subscriber => ((System.Action<StatContainer>)subscriber)(saved), session, stateVersion);
         }
 
         public void ApplyLoadedPlayerStats(StatContainer stats)
@@ -211,7 +274,7 @@ namespace BattlePvp.Managers
             SaveStatPresetSlot(_selectedStatPresetSlot, stats, selectAfterSave: true);
         }
 
-        public void SaveStatPresetSlot(int slotIndex, StatContainer stats, bool selectAfterSave)
+        public void SaveStatPresetSlot(int slotIndex, StatContainer stats, bool selectAfterSave, bool applyToPlayer = true)
         {
             EnsureStatPresetArrays();
             if (slotIndex < 0 || slotIndex >= _statPresetSlots.Length)
@@ -226,7 +289,7 @@ namespace BattlePvp.Managers
                 _selectedStatPresetSlot = slotIndex;
                 _savedStats = clamped;
                 OnSavedStatsUpdated?.Invoke(_savedStats);
-                TryInjectToPlayer();
+                if (applyToPlayer) TryInjectToPlayer();
             }
 
             OnStatPresetSlotChanged?.Invoke(slotIndex, clamped, true);
@@ -259,6 +322,12 @@ namespace BattlePvp.Managers
 
         public void AddCombatRecord(int killsDelta, int deathsDelta)
         {
+            if (!_hasLoadedCombatRecord)
+            {
+                _pendingKills += Mathf.Max(0, killsDelta);
+                _pendingDeaths += Mathf.Max(0, deathsDelta);
+                return;
+            }
             SetCombatRecord(_cumulativeKills + killsDelta, _cumulativeDeaths + deathsDelta);
         }
 
@@ -288,21 +357,24 @@ namespace BattlePvp.Managers
             _instance = this;
             DontDestroyOnLoad(gameObject);
 
-            // 씬 로드 시마다 플레이어를 찾아 데이터 주입
-            SceneManager.sceneLoaded += OnSceneLoaded;
+            if (GetComponent<LocalPlayerProfileBinding>() == null)
+                gameObject.AddComponent<LocalPlayerProfileBinding>();
         }
 
         private void OnDestroy()
         {
-            SceneManager.sceneLoaded -= OnSceneLoaded;
+            if (_instance == this) _instance = null;
+            CancelProfileLoad();
         }
 
-        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        private void OnDisable() => CancelProfileLoad();
+
+        private void CancelProfileLoad()
         {
-            Debug.Log($"[GlobalDataManager] Scene Loaded: {scene.name}. Attempting to inject stats.");
-            EnsurePlayerStatsLoadedForScene(scene.name);
-            EnsureCombatRecordLoadedForScene(scene.name);
-            TryInjectToPlayer();
+            _profileSession++;
+            _profileLoadRequest++;
+            _isPlayerStatsLoadInFlight = false;
+            CompleteProfileLoadCallbacks(TakeProfileLoadCallbacks(), false, _profileSession);
         }
 
         public void EnsurePlayerStatsLoadedForCurrentScene()
@@ -315,75 +387,118 @@ namespace BattlePvp.Managers
         /// </summary>
         public void TryInjectToPlayer()
         {
-            // "Player"라는 태그를 가진 오브젝트나 StatManager가 붙은 오브젝트를 찾습니다.
-            var statManager = StatManager.Local;
-            if (statManager == null && NetworkClient.localPlayer != null)
-                statManager = NetworkClient.localPlayer.GetComponent<StatManager>();
-            if (statManager != null)
-            {
-                Debug.Log($"[GlobalDataManager] Found StatManager in scene {SceneManager.GetActiveScene().name}. Injecting stats: STR={_savedStats.STR.Invested}");
-                statManager.ApplyStats(_savedStats, recalculateIdentity: true);
-                BattlePvp.UI.PlayerHUD.BindToPlayer(statManager);
-            }
-            else
-            {
-                Debug.Log("[GlobalDataManager] No StatManager found in current scene to inject stats.");
-            }
+            if (!_hasLoadedPlayerStats) return;
+            PlayerBindingRequested?.Invoke();
         }
 
         private void EnsurePlayerStatsLoadedForScene(string sceneName)
         {
-            if (!IsPlayerStatScene(sceneName) || _hasLoadedPlayerStats || _isPlayerStatsLoadInFlight)
-                return;
-
-            if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn())
-                return;
-
-            PlayFabBattleManager battleManager = PlayFabBattleManager.Instance;
-            if (battleManager == null)
-                battleManager = FindFirstObjectByType<PlayFabBattleManager>();
-
-            if (battleManager == null)
-            {
-                Debug.LogWarning("[GlobalDataManager] PlayFabBattleManager not found. Player stats cannot be loaded for this scene yet.");
-                return;
-            }
-
-            _isPlayerStatsLoadInFlight = true;
-            battleManager.LoadPlayerStats(stats =>
-            {
-                _isPlayerStatsLoadInFlight = false;
-                ApplyLoadedPlayerStats(stats);
-                TryInjectToPlayer();
-                Debug.Log("[GlobalDataManager] Player stats loaded automatically for scene entry.");
-            });
+            if (IsPlayerStatScene(sceneName)) LoadProfileForCurrentAccount();
         }
 
-        private void EnsureCombatRecordLoadedForScene(string sceneName)
+        public void LoadProfileForCurrentAccount(System.Action<bool> completed = null)
         {
-            if (!IsPlayerStatScene(sceneName) || _hasLoadedCombatRecord || _isCombatRecordLoadInFlight)
-                return;
-
-            if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn())
-                return;
-
-            PlayFabBattleManager battleManager = PlayFabBattleManager.Instance;
-            if (battleManager == null)
-                battleManager = FindFirstObjectByType<PlayFabBattleManager>();
-
-            if (battleManager == null)
+            if (this == null || !isActiveAndEnabled)
             {
-                Debug.LogWarning("[GlobalDataManager] PlayFabBattleManager not found. Combat record cannot be loaded for this scene yet.");
+                NotifyProfileCallback(completed, false);
+                return;
+            }
+            if (_hasLoadedPlayerStats && _hasLoadedCombatRecord)
+            {
+                NotifyProfileCallback(completed, true);
+                return;
+            }
+            if (PlayFabAuthManager.Instance == null || !PlayFabAuthManager.Instance.IsLoggedIn() ||
+                PlayFabBattleManager.Instance == null)
+            {
+                NotifyProfileCallback(completed, false);
                 return;
             }
 
-            _isCombatRecordLoadInFlight = true;
-            battleManager.LoadCombatRecord((kills, deaths) =>
+            BeginProfileLoad(PlayFabBattleManager.Instance.LoadPlayerProfile, completed);
+        }
+
+        private void BeginProfileLoad(System.Action<System.Action<PlayerProfileLoadResult>> load, System.Action<bool> completed)
+        {
+            if (completed != null) _profileLoadCallbacks.Add(completed);
+            if (_isPlayerStatsLoadInFlight) return;
+            _isPlayerStatsLoadInFlight = true;
+            int session = _profileSession;
+            int request = ++_profileLoadRequest;
+            try { load(result => FinishProfileLoad(session, request, result)); }
+            catch (System.Exception error)
             {
-                _isCombatRecordLoadInFlight = false;
-                SetCombatRecord(kills, deaths);
-                Debug.Log("[GlobalDataManager] Combat record loaded automatically for scene entry.");
-            });
+                Debug.LogException(error);
+                FinishProfileLoad(session, request, new PlayerProfileLoadResult(ProfileLoadStatus.Failure));
+            }
+        }
+
+        private void FinishProfileLoad(int session, int request, PlayerProfileLoadResult result)
+        {
+            if (session != _profileSession || request != _profileLoadRequest || !_isPlayerStatsLoadInFlight) return;
+            // Detach this request's waiters before state notifications can reset the session or
+            // start another request. A reentrant request owns a different callback collection.
+            var callbacks = TakeProfileLoadCallbacks();
+            _isPlayerStatsLoadInFlight = false;
+            bool succeeded = result != null && result.Succeeded && result.Profile != null;
+            if (succeeded)
+            {
+                PlayerProfileSnapshot profile = result.Profile;
+                SetLoadedStatPresetData(profile.Slots, profile.SlotUsed, profile.SelectedSlot,
+                    profile.StrategistPreset, profile.HasStrategistPreset);
+                bool hasPendingRecord = _pendingKills != 0 || _pendingDeaths != 0;
+                _cumulativeKills = Mathf.Max(0, result.Kills + _pendingKills);
+                _cumulativeDeaths = Mathf.Max(0, result.Deaths + _pendingDeaths);
+                _pendingKills = _pendingDeaths = 0;
+                _hasLoadedCombatRecord = true;
+                int stateVersion = _profileStateVersion;
+                int kills = _cumulativeKills;
+                int deaths = _cumulativeDeaths;
+                if (hasPendingRecord)
+                {
+                    try { PlayFabBattleManager.Instance?.SaveCombatRecord(kills, deaths); }
+                    catch (System.Exception error) { Debug.LogException(error); }
+                }
+                PublishPresetState(session, stateVersion);
+                NotifySubscribers(OnCombatRecordUpdated,
+                    subscriber => ((System.Action<int, int>)subscriber)(kills, deaths), session, stateVersion);
+                NotifySubscribers(PlayerBindingRequested, subscriber => ((System.Action)subscriber)(), session, stateVersion);
+            }
+            else
+            {
+                // Keep cached data and remain retryable. A network error is not an empty account.
+                Debug.LogWarning("[GlobalDataManager] Profile load failed: " + result?.Error);
+            }
+            CompleteProfileLoadCallbacks(callbacks, succeeded, session);
+        }
+
+        private System.Action<bool>[] TakeProfileLoadCallbacks()
+        {
+            var callbacks = _profileLoadCallbacks.ToArray();
+            _profileLoadCallbacks.Clear();
+            return callbacks;
+        }
+
+        private void CompleteProfileLoadCallbacks(System.Action<bool>[] callbacks, bool succeeded, int session)
+        {
+            foreach (var callback in callbacks) NotifyProfileCallback(callback, succeeded && session == _profileSession);
+        }
+
+        private static void NotifyProfileCallback(System.Action<bool> callback, bool succeeded)
+        {
+            try { callback?.Invoke(succeeded); }
+            catch (System.Exception error) { Debug.LogException(error); }
+        }
+
+        private void NotifySubscribers(System.Delegate subscribers, System.Action<System.Delegate> notify, int session, int stateVersion)
+        {
+            if (subscribers == null) return;
+            foreach (System.Delegate subscriber in subscribers.GetInvocationList())
+            {
+                if (session != _profileSession || stateVersion != _profileStateVersion) return;
+                try { notify(subscriber); }
+                catch (System.Exception error) { Debug.LogException(error); }
+            }
         }
 
         private static bool IsPlayerStatScene(string sceneName)

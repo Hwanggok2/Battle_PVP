@@ -6,6 +6,12 @@ namespace BattlePvp.Stats
     public sealed class StatBalanceConfig : ScriptableObject
     {
         public static event System.Action BalanceChanged;
+        private int _revision;
+        public int Revision => System.Threading.Volatile.Read(ref _revision);
+
+#if UNITY_EDITOR
+        private static int _pendingEditorValidation;
+#endif
 
         [Header("STR")]
         [Min(0f)] [SerializeField] private float _baseAttackPower = 22f;
@@ -76,8 +82,30 @@ namespace BattlePvp.Stats
 
         private void OnValidate()
         {
+            // Asset validation may run on Unity's loading thread. Preview readers can
+            // invalidate their caches immediately, but runtime subscribers must wait.
+            System.Threading.Interlocked.Increment(ref _revision);
+#if UNITY_EDITOR
+            System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1);
+#endif
+        }
+
+        public void NotifyChanged()
+        {
+#if UNITY_EDITOR
+            System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0);
+#endif
+            System.Threading.Interlocked.Increment(ref _revision);
             BalanceChanged?.Invoke();
         }
+
+#if UNITY_EDITOR
+        internal static void PublishPendingEditorValidation()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0) != 0)
+                BalanceChanged?.Invoke();
+        }
+#endif
     }
 
     public readonly struct DerivedCombatStats
@@ -153,16 +181,25 @@ namespace BattlePvp.Stats
 
         public static DerivedCombatStats Calculate(StatContainer stats, Identity identity)
         {
+            return Calculate(stats, identity, Config);
+        }
+
+        public static DerivedCombatStats Calculate(StatContainer stats, Identity identity, StatBalanceConfig config)
+        {
             float str = StatMath.FinalTotal(stats.STR);
             float con = StatMath.FinalTotal(stats.CON);
             float agi = StatMath.FinalTotal(stats.AGI);
             float def = StatMath.FinalTotal(stats.DEF);
-            return Calculate(str, con, agi, def, identity);
+            return Calculate(str, con, agi, def, identity, config);
         }
 
         public static DerivedCombatStats Calculate(float str, float con, float agi, float def, Identity identity)
         {
-            StatBalanceConfig config = Config;
+            return Calculate(str, con, agi, def, identity, Config);
+        }
+
+        private static DerivedCombatStats Calculate(float str, float con, float agi, float def, Identity identity, StatBalanceConfig config)
+        {
             float attackPower = config.BaseAttackPower
                 + Mathf.Max(0f, str - config.BaseStatTotal) * config.AttackPowerPerStr;
             float penetration = str * config.PenetrationPerStr;

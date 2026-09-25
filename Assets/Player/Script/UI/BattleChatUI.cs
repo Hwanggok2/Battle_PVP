@@ -19,7 +19,7 @@ namespace BattlePvp.UI
         private static extern void BattlePvpWebGlIme_Close();
 #endif
 
-        private readonly List<string> _lines = new List<string>();
+        private readonly Queue<string> _lines = new Queue<string>();
 
         [Header("UI References")]
         [SerializeField] private RectTransform _panelRect;
@@ -40,7 +40,8 @@ namespace BattlePvp.UI
         private bool _isTyping;
         private int _lastSubmitFrame = -1;
         private Coroutine _submitRoutine;
-        private Coroutine _scrollRoutine;
+        private bool _layoutDirty;
+        private bool _logDirty;
         private bool _inputSubmitHooked;
         private bool _isSubmitting;
         private bool _webGlImeActive;
@@ -57,14 +58,21 @@ namespace BattlePvp.UI
         private void OnEnable()
         {
             BattleChatNetwork.MessageReceived += AddMessage;
+            GameInputController.TextInputCancelled += CancelTyping;
+            QueueScrollToBottom();
         }
 
         private void OnDisable()
         {
             BattleChatNetwork.MessageReceived -= AddMessage;
+            GameInputController.TextInputCancelled -= CancelTyping;
+            StopAllCoroutines();
+            _submitRoutine = null;
+            _isSubmitting = false;
             CloseWebGlImeInput();
             UnhookInputSubmit();
             _isTyping = false;
+            Input.imeCompositionMode = IMECompositionMode.Off;
             GameInputController.SetTextInputActive(false);
             ClearInputField();
             ClearUiSelection();
@@ -72,19 +80,16 @@ namespace BattlePvp.UI
 
         private void Update()
         {
-            BattleChatNetwork.EnsureRegistered();
-
             var keyboard = UnityEngine.InputSystem.Keyboard.current;
             if (keyboard == null)
                 return;
 
             if (_isTyping)
             {
-                GameInputController.SetTextInputActive(true);
-
                 if (keyboard.escapeKey.wasPressedThisFrame)
                 {
-                    SetTyping(false);
+                    GameInputController.HandleEscape();
+                    CancelTyping();
                     return;
                 }
             }
@@ -94,6 +99,8 @@ namespace BattlePvp.UI
 
             if (!_isTyping)
             {
+                if (BattlePvp.Networking.BattleStateMachine.Instance != null &&
+                    BattlePvp.Networking.BattleStateMachine.Instance.IsResultPanelVisible) return;
                 ClearUiSelection();
                 SetTyping(true);
                 return;
@@ -143,6 +150,7 @@ namespace BattlePvp.UI
 
         private void QueueSubmitCurrentText()
         {
+            GameInputController.ConsumeSubmit();
             if (_submitRoutine != null || _isSubmitting)
                 return;
 
@@ -151,6 +159,7 @@ namespace BattlePvp.UI
 
         private void QueueSubmittedText(string submittedText)
         {
+            GameInputController.ConsumeSubmit();
             if (!_isTyping)
                 return;
 
@@ -232,6 +241,27 @@ namespace BattlePvp.UI
             }
         }
 
+        private void CancelTyping()
+        {
+            if (!_isTyping) return;
+            if (_submitRoutine != null) StopCoroutine(_submitRoutine);
+            _submitRoutine = null;
+            _isSubmitting = false;
+            SetTyping(false);
+        }
+
+        private void LateUpdate()
+        {
+            if (!_layoutDirty) return;
+            _layoutDirty = false;
+            if (_logDirty && _logText != null)
+            {
+                _logDirty = false;
+                UserTextPresentation.SetPlain(_logText, string.Join("\n", _lines));
+            }
+            RefreshLogLayoutAndStickToBottom();
+        }
+
         private void OpenWebGlImeInput()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -282,7 +312,10 @@ namespace BattlePvp.UI
         public void OnWebGlInputCancelled(string _)
         {
             if (_isTyping)
-                SetTyping(false);
+            {
+                GameInputController.HandleEscape();
+                CancelTyping();
+            }
         }
 
         private void ClearInputField()
@@ -314,12 +347,12 @@ namespace BattlePvp.UI
             if (_logText == null || _scrollRect == null)
                 return;
 
-            _lines.Add($"[{sender}] {text}");
-            while (_lines.Count > _maxLines)
-                _lines.RemoveAt(0);
-
-            _logText.text = string.Join("\n", _lines);
-            RefreshLogLayoutAndStickToBottom();
+            string name = UserDisplayText.SingleLine(sender, UserDisplayText.NameLimit, "Unknown");
+            string message = UserDisplayText.SingleLine(text, UserDisplayText.MessageLimit);
+            _lines.Enqueue($"[{name}] {message}");
+            while (_lines.Count > Mathf.Max(1, _maxLines)) _lines.Dequeue();
+            _logDirty = true;
+            QueueScrollToBottom();
         }
 
         private void UpdateContentHeight()
@@ -339,7 +372,7 @@ namespace BattlePvp.UI
 
             Canvas.ForceUpdateCanvases();
             UpdateContentHeight();
-            Canvas.ForceUpdateCanvases();
+            _scrollRect.Rebuild(CanvasUpdate.PostLayout);
 
             _scrollRect.velocity = Vector2.zero;
             _scrollRect.verticalNormalizedPosition = 0f;
@@ -347,17 +380,7 @@ namespace BattlePvp.UI
 
         private void QueueScrollToBottom()
         {
-            if (_scrollRoutine != null)
-                StopCoroutine(_scrollRoutine);
-
-            _scrollRoutine = StartCoroutine(CoScrollToBottomAfterLayout());
-        }
-
-        private IEnumerator CoScrollToBottomAfterLayout()
-        {
-            yield return null;
-            RefreshLogLayoutAndStickToBottom();
-            _scrollRoutine = null;
+            _layoutDirty = true;
         }
 
         private void ResolveReferences()
@@ -431,7 +454,7 @@ namespace BattlePvp.UI
                     float delta = pointer.position.y - _dragStartPointerY;
                     float height = Mathf.Clamp(_dragStartHeight + delta, _minHeight, _maxHeight);
                     _panelRect.sizeDelta = new Vector2(_panelRect.sizeDelta.x, height);
-                    RefreshLogLayoutAndStickToBottom();
+                    QueueScrollToBottom();
                 });
                 AddDragTrigger(trigger, EventTriggerType.EndDrag, data =>
                 {

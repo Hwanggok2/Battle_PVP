@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <RestoreSources></RestoreSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="RoomAndPerformanceRegression.cs" />
+    <Compile Include="PerformanceCaptureAnalysis.cs" />
+    <Compile Include="MatchLedgerRegression.cs" />
+    <Compile Include="RoomFlowRegression.cs" />
+    <Compile Include="HostRoomLeaseRegression.cs" />
+    <Compile Include="BattleRuntimeRegression.cs" />
+    <Compile Include="RoomServiceTimeoutRegression.cs" />
+    <Compile Include="CombatExecutionRegression.cs" />
+    <Compile Include="ProfileRequestQueueRegression.cs" />
+    <Compile Include="MovementPermissionRegression.cs" />
+    <Compile Include="ChatPermissionRegression.cs" />
+    <Compile Include="AuthenticationFlowRegression.cs" />
+    <Compile Include="ForcedMotionRegression.cs" />
+    <Compile Include="ProfileWriteLifetimeRegression.cs" />
+    <Compile Include="UserDisplayTextRegression.cs" />
+    <Compile Include="CombatSkillPlanRegression.cs" />
+    <Compile Include="RoomSessionCacheRegression.cs" />
+    <Compile Include="GameplayFollowUpRegression.cs" />
+    <Compile Include="../../../Assets/Player/Script/ServerComboSequence.cs" Link="ServerComboSequence.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/ReliableSendBacklog.cs" Link="ReliableSendBacklog.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomServiceLifetime.cs" Link="RoomServiceLifetime.cs" />
+    <Compile Include="../../../Assets/Player/Script/CombatSkillRules.cs" Link="CombatSkillRules.cs" />
+    <Compile Include="../../../Assets/Player/Script/CombatPresetPlan.cs" Link="CombatPresetPlan.cs" />
+    <Compile Include="../../../Assets/Player/Script/Stats/Identity.cs" Link="Identity.cs" />
+    <Compile Include="../../../Assets/Player/Script/Stats/IdentityType.cs" Link="IdentityType.cs" />
+    <Compile Include="../../../Assets/Player/Script/Stats/StatKind.cs" Link="StatKind.cs" />
+    <Compile Include="../../../Assets/Player/Script/Stats/StatContainer.cs" Link="StatContainer.cs" />
+    <Compile Include="../../../Assets/Player/Script/Stats/StatSlot.cs" Link="StatSlot.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomSessionState.cs" Link="RoomSessionState.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomListSnapshotState.cs" Link="RoomListSnapshotState.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/UserDisplayText.cs" Link="UserDisplayText.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/BattleResultData.cs" Link="BattleResultData.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/ProfileWriteCoordinator.cs" Link="ProfileWriteCoordinator.cs" />
+    <Compile Include="../../../Assets/Player/Script/AuthenticationAttemptState.cs" Link="AuthenticationAttemptState.cs" />
+    <Compile Include="../../../Assets/Player/Script/ServerForcedMotion.cs" Link="ServerForcedMotion.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/ChatRateLimiter.cs" Link="ChatRateLimiter.cs" />
+    <Compile Include="../../../Assets/Player/Script/MovementControlHistory.cs" Link="MovementControlHistory.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/ProfileRequestQueue.cs" Link="ProfileRequestQueue.cs" />
+    <Compile Include="../../../Assets/Player/Script/CombatSkillExecution.cs" Link="CombatSkillExecution.cs" />
+    <Compile Include="../../../Assets/Player/Script/CombatRequestSequences.cs" Link="CombatRequestSequences.cs" />
+    <Compile Include="../../../Assets/Player/Script/PoisonStackCollection.cs" Link="PoisonStackCollection.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomServiceResponseGate.cs" Link="RoomServiceResponseGate.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/MatchClock.cs" Link="MatchClock.cs" />
+    <Compile Include="../../../Assets/Player/Script/InputModeRules.cs" Link="InputModeRules.cs" />
+    <Compile Include="../../../Assets/Player/Script/FixedRingBuffer.cs" Link="FixedRingBuffer.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/PopupPredictionCache.cs" Link="PopupPredictionCache.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/CompetitionRanking.cs" Link="CompetitionRanking.cs" />
+    <Compile Include="../../../Assets/Player/Script/HealthUiLifeRules.cs" Link="HealthUiLifeRules.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/PlayerRespawnCountdown.cs" Link="PlayerRespawnCountdown.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomIdentity.cs" Link="RoomIdentity.cs" />
+    <Compile Include="../../../Assets/Player/Script/Diagnostics/PerformanceCaptureRules.cs" Link="PerformanceCaptureRules.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/MatchLedger.cs" Link="MatchLedger.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomAuthenticationRules.cs" Link="RoomAuthenticationRules.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/RoomFlowGeneration.cs" Link="RoomFlowGeneration.cs" />
+    <Compile Include="../../../Assets/Player/Script/UI/RoomBannerRequestState.cs" Link="RoomBannerRequestState.cs" />
+    <Compile Include="../../../Assets/Player/Script/Managers/HostRoomLease.cs" Link="HostRoomLease.cs" />
+  </ItemGroup>
+</Project>

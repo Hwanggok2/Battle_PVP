@@ -13,19 +13,6 @@ namespace BattlePvp.Combat
         Crouch = 1 << 3
     }
 
-    public enum JobSkillKind
-    {
-        MonostatStrLifesteal = 0,
-        MonostatAgiPoison = 1,
-        MonostatConKick = 2,
-        MonostatDefTaunt = 3,
-        StrategistRoll = 10,
-        StrategistPresetChange = 11,
-        PolymathRoll = 20,
-        PolymathPresetChange = 21,
-        PolymathWeaponSwap = 22
-    }
-
     [CreateAssetMenu(fileName = "NewJobSkillData", menuName = "Combat/Job Skill Data")]
     public sealed class JobSkillData : ScriptableObject
     {

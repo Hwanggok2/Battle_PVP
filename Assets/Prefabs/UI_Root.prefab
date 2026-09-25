@@ -1668,6 +1668,7 @@ GameObject:
   - component: {fileID: 3809587485292398559}
   - component: {fileID: 4397279502102798791}
   - component: {fileID: 726439310811673686}
+  - component: {fileID: 4047175530114321241}
   m_Layer: 5
   m_Name: UI_Root
   m_TagString: Untagged
@@ -1765,6 +1766,20 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &4047175530114321241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1048452422640487731}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c09c85086221471681ebcff6b88526c2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.UiInitialVisibility
+  _initiallyHidden:
+  - {fileID: 6214497566353804593}
 --- !u!1 &1048615454732142325
 GameObject:
   m_ObjectHideFlags: 0
@@ -7594,10 +7609,10 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 8474268447492421889}
+  - {fileID: 2380201966161230312}
   - {fileID: 8194405218882166886}
   - {fileID: 5560283871614236017}
-  - {fileID: 2380201966161230312}
-  - {fileID: 8474268447492421889}
   m_Father: {fileID: 7836847264717192825}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}

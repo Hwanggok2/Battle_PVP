@@ -16,7 +16,8 @@ namespace BattlePvp.Combat
         private Collider _collider;
         private BoxCollider _boxCollider;
         private readonly HashSet<IDamageReceiver> _hitTargets = new HashSet<IDamageReceiver>();
-        private readonly Collider[] _sweepResults = new Collider[32];
+        private readonly CombatPhysicsQuery _sweepQuery = new CombatPhysicsQuery();
+        [SerializeField] private LayerMask _targetLayers = ~0;
 
         [Header("Swept Hit Detection")]
         [SerializeField] private bool _useSweptHitDetection = true;
@@ -41,6 +42,20 @@ namespace BattlePvp.Combat
         private Vector3 _aimDirection = Vector3.forward;
         private bool _isCrouching;
         private PlayerCombat _playerCombat;
+        private readonly CombatHitPoseHistory _serverHitPoses = new CombatHitPoseHistory();
+
+        public bool ValidateServerHit(Vector3 point, double hitTime, Vector3 attackerPosition)
+        {
+            if (!NetworkServer.active) return false;
+            if (_hitBoxActive && _boxCollider != null)
+            {
+                Vector3 scale = Abs(transform.lossyScale);
+                Quaternion rotation = GetHitRotation(transform.rotation);
+                _serverHitPoses.Record(NetworkTime.time, GetHitCenter(transform.position, rotation, scale) - transform.root.position,
+                    Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding, rotation);
+            }
+            return _serverHitPoses.Contains(hitTime, point - attackerPosition, 0.25d);
+        }
 
         private readonly List<DebugHitBoxPose> _debugHitBoxPoses = new List<DebugHitBoxPose>(128);
         private readonly List<DebugHitBoxRenderer> _debugHitBoxRenderers = new List<DebugHitBoxRenderer>(128);
@@ -106,8 +121,6 @@ namespace BattlePvp.Combat
 
         private void Awake()
         {
-            CleanupOrphanedDebugHitBoxPaths();
-
             _collider = GetComponent<Collider>();
             _boxCollider = _collider as BoxCollider;
             if (_collider != null)
@@ -145,6 +158,7 @@ namespace BattlePvp.Combat
         public void SetAttackData(AttackData data)
         {
             _currentAttackData = data;
+            _serverHitPoses.Clear();
         }
 
         public void SetAttackContext(Vector3 aimDirection, bool isCrouching)
@@ -175,12 +189,14 @@ namespace BattlePvp.Combat
 
         private void OnDisable()
         {
+            DisableHitBox();
             CleanupOwnedDebugHitBoxRenderers();
         }
 
         private void OnDestroy()
         {
             CleanupOwnedDebugHitBoxRenderers();
+            if (_debugHitPathMaterial != null) Destroy(_debugHitPathMaterial);
         }
 
         private void OnTriggerEnter(Collider other)
@@ -203,16 +219,10 @@ namespace BattlePvp.Combat
             }
 
             Bounds bounds = _collider.bounds;
-            int count = Physics.OverlapBoxNonAlloc(
-                bounds.center,
-                bounds.extents,
-                _sweepResults,
-                transform.rotation,
-                ~0,
-                QueryTriggerInteraction.Collide);
+            int count = _sweepQuery.OverlapBox(bounds.center, bounds.extents, Quaternion.identity, _targetLayers);
 
             for (int i = 0; i < count; i++)
-                TryProcessHit(_sweepResults[i]);
+                TryProcessHit(_sweepQuery.Colliders[i]);
         }
 
         private void ProcessSweptBox()
@@ -243,17 +253,13 @@ namespace BattlePvp.Combat
             Vector3 halfExtents = Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding;
 
             RecordDebugHitBoxPose(center, halfExtents, hitRotation);
+            if (NetworkServer.active)
+                _serverHitPoses.Record(NetworkTime.time, center - transform.root.position, halfExtents, hitRotation);
 
-            int count = Physics.OverlapBoxNonAlloc(
-                center,
-                halfExtents,
-                _sweepResults,
-                hitRotation,
-                ~0,
-                QueryTriggerInteraction.Collide);
+            int count = _sweepQuery.OverlapBox(center, halfExtents, hitRotation, _targetLayers);
 
             for (int i = 0; i < count; i++)
-                TryProcessHit(_sweepResults[i]);
+                TryProcessHit(_sweepQuery.Colliders[i]);
         }
 
         private void CaptureCurrentPose()
@@ -288,19 +294,14 @@ namespace BattlePvp.Combat
 
         private void TryProcessHit(Collider other)
         {
-            if (other == null || other.transform.root == transform.root)
+            if (!_hitBoxActive || !isActiveAndEnabled || other == null || other.transform.root == transform.root)
                 return;
 
             if (_playerCombat != null && NetworkClient.active && !NetworkServer.active && !_playerCombat.isLocalPlayer)
                 return;
 
-            HitBodyPart bodyPart = other.GetComponent<HitBodyPart>();
-            if (bodyPart == null)
-                bodyPart = other.GetComponentInParent<HitBodyPart>();
-
-            IDamageReceiver defender = other.GetComponent<IDamageReceiver>();
-            if (defender == null)
-                defender = other.GetComponentInParent<IDamageReceiver>();
+            CombatHitTargets.Resolve(other, out IDamageReceiver defender,
+                out StatManager defenderStats, out HitBodyPart bodyPart);
 
             if (defender == null || _hitTargets.Contains(defender))
                 return;
@@ -309,10 +310,6 @@ namespace BattlePvp.Combat
             // For players, only colliders marked with HitBodyPart can receive melee damage.
             if (defender is HealthSystem && bodyPart == null)
                 return;
-
-            StatManager defenderStats = other.GetComponent<StatManager>();
-            if (defenderStats == null)
-                defenderStats = other.GetComponentInParent<StatManager>();
 
             if (defenderStats == null || _attackProcessor == null)
                 return;
@@ -324,23 +321,16 @@ namespace BattlePvp.Combat
                 hitQueryPosition += Vector3.up * _crouchVerticalOffset;
 
             Vector3 hitPosition = other.ClosestPoint(hitQueryPosition);
+            if (NetworkServer.active && !CombatValidation.HasClearPath(
+                _playerCombat != null ? _playerCombat.transform.position + Vector3.up : transform.position,
+                hitPosition, transform, other.transform))
+                return;
 
-            if (NetworkClient.active && !NetworkServer.active && defender is HealthSystem targetHealth)
+            if (NetworkClient.active && !NetworkServer.active && defender is HealthSystem)
             {
                 if (_playerCombat != null && !_playerCombat.TryRegisterHitTarget(defender))
                     return;
 
-                float predictedBuffMultiplier = _playerCombat != null ? _playerCombat.ConsumeNextAttackDamageMultiplier() : 1f;
-                float predictedDamage = _attackProcessor.PredictHitDamage(
-                    _currentAttackData,
-                    defenderStats,
-                    bodyPartMultiplier * predictedBuffMultiplier);
-                _playerCombat?.PlayPredictedHitFeedback(bodyPart != null && bodyPart.Part == BodyPart.Head);
-                targetHealth.ShowPredictedPhysicalDamagePopup(
-                    hitPosition,
-                    predictedDamage,
-                    _playerCombat != null ? _playerCombat.netId : 0,
-                    _playerCombat != null ? _playerCombat.CurrentAttackPredictionId : 0);
                 _playerCombat?.RequestServerMeleeHit(
                     defender,
                     bodyPart != null ? bodyPart.Part : BodyPart.Body,
@@ -366,7 +356,7 @@ namespace BattlePvp.Combat
 
         private void RecordDebugHitBoxPose(Vector3 center, Vector3 halfExtents, Quaternion rotation)
         {
-            if (!_drawDebugHitPath || _debugHitPathDuration <= 0f)
+            if (!Debug.isDebugBuild || !_drawDebugHitPath || _debugHitPathDuration <= 0f)
                 return;
 
             float expireTime = Time.time + _debugHitPathDuration;
@@ -386,9 +376,11 @@ namespace BattlePvp.Combat
         {
             DebugHitBoxRenderer debugRenderer = GetOrCreateCurrentDebugHitBoxRenderer(expireTime);
             debugRenderer.ExpireTime = expireTime;
+            int previousCount = debugRenderer.Positions.Count;
             AppendBoxLinePositions(debugRenderer.Positions, center, halfExtents, rotation);
             debugRenderer.Renderer.positionCount = debugRenderer.Positions.Count;
-            debugRenderer.Renderer.SetPositions(debugRenderer.Positions.ToArray());
+            for (int i = previousCount; i < debugRenderer.Positions.Count; i++)
+                debugRenderer.Renderer.SetPosition(i, debugRenderer.Positions[i]);
         }
 
         private DebugHitBoxRenderer GetOrCreateCurrentDebugHitBoxRenderer(float expireTime)
@@ -470,10 +462,12 @@ namespace BattlePvp.Combat
 
         private void UpdateDebugHitBoxRenderers()
         {
+            float now = Time.time;
+            for (int i = _debugHitBoxPoses.Count - 1; i >= 0; i--)
+                if (_debugHitBoxPoses[i].ExpireTime <= now) _debugHitBoxPoses.RemoveAt(i);
             if (_debugHitBoxRenderers.Count == 0)
                 return;
 
-            float now = Time.time;
             for (int i = _debugHitBoxRenderers.Count - 1; i >= 0; i--)
             {
                 DebugHitBoxRenderer debugRenderer = _debugHitBoxRenderers[i];

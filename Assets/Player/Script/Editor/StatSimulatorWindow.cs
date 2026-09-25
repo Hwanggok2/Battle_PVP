@@ -160,11 +160,9 @@ namespace BattlePvp.EditorTools
             Identity attackerIdentity = _identityCalculator.ResolveIdentity(_attackerStats, out attackerIdentityDebug);
             Identity defenderIdentity = _identityCalculator.ResolveIdentity(_defenderStats, out defenderIdentityDebug);
 
-            // NOTE:
-            // - 공격력/방어율 매핑은 "현재 프로젝트에 구체 스펙이 없어" reference-formulae.md에 맞춘 가장 단순한 기준으로 잡는다.
-            // - 공격력 = Attacker STR FinalTotal
-            // - 방어율(CurrentDEF) = Defender DEF FinalTotal / 100
-            float attackerAtkPower = StatMath.FinalTotal(StatKind.STR, _attackerStats);
+            // The attack stat uses the same balance calculation as live combat.
+            // The simulator's explicit penetration/defense controls remain test overrides.
+            float attackerAtkPower = StatBalanceCalculator.Calculate(_attackerStats, attackerIdentity).AttackPower;
             float defenderCurrentDefNormalized = StatMath.FinalTotal(StatKind.DEF, _defenderStats) / 100f;
 
             float baseDamage = _damageCalculator.PredictFinalDamage(
@@ -189,7 +187,7 @@ namespace BattlePvp.EditorTools
             sb.AppendLine($"Defender Identity: {defenderIdentity} | MaxPure={defenderIdentityDebug.MaxPureTotal:0.##}, MinPure={defenderIdentityDebug.MinPureTotal:0.##}, PrimaryPure={defenderIdentityDebug.PrimaryPureTotal:0.##}");
             sb.AppendLine();
             sb.AppendLine("[StatSimulator] === Damage Calc ===");
-            sb.AppendLine($"AttackPower(STR FinalTotal) = {attackerAtkPower:0.##}");
+            sb.AppendLine($"AttackPower(Current Balance) = {attackerAtkPower:0.##}");
             sb.AppendLine($"CurrentDEF = {defenderCurrentDefNormalized:0.###} (DEF FinalTotal / 100)");
             sb.AppendLine($"Defense BonusEff = {_defenseBonusEffNormalized:0.###}");
             sb.AppendLine($"FinalDEF_Eff(후 HardCap 적용) = {finalDefenseEff:0.###} (-> DefenseRate%={finalDefenseEff * 100f:0.##})");

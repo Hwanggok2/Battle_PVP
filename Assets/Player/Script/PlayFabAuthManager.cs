@@ -2,6 +2,7 @@ using PlayFab;
 using PlayFab.ClientModels;
 using UnityEngine;
 using System;
+using BattlePvp.Managers;
 
 namespace BattlePvp.Networking
 {
@@ -11,6 +12,7 @@ namespace BattlePvp.Networking
     public class PlayFabAuthManager : MonoBehaviour
     {
         public static PlayFabAuthManager Instance { get; private set; }
+        public static event Action<PlayFabAuthManager> InstanceChanged;
 
         [Header("Settings")]
         public string TitleId = "133DF7"; // 사용자님의 Title ID
@@ -20,10 +22,33 @@ namespace BattlePvp.Networking
         public event Action<string> OnLoginFailure;
         public event Action OnRegisterSuccess;
         public event Action<string> OnRegisterFailure;
+        public event Action<bool> OnAuthenticationStateChanged;
+
+        private readonly AuthenticationAttemptState _attempts = new AuthenticationAttemptState();
+        private PlayFabAuthenticationContext _selectedContext;
+        private GlobalDataManager _selectedProfile;
+        private int _selectedProfileVersion;
+        private Func<double> _clock = () => Time.realtimeSinceStartupAsDouble;
+        // SDK login follow-ups (including device info) must use this request's session
+        // before our success callback decides whether to adopt it as the selected account.
+        private Action<LoginWithPlayFabRequest, Action<LoginResult>, Action<PlayFabError>> _sendLogin =
+            (request, success, failure) => new PlayFabClientInstanceAPI(request.AuthenticationContext)
+                .LoginWithPlayFab(request, success, failure);
+        private Action<RegisterPlayFabUserRequest, Action<RegisterPlayFabUserResult>, Action<PlayFabError>> _sendRegister =
+            (request, success, failure) => new PlayFabClientInstanceAPI(request.AuthenticationContext)
+                .RegisterPlayFabUser(request, success, failure);
+        private Action<Action<bool>> _loadProfile = completed => GlobalDataManager.Instance.LoadProfileForCurrentAccount(completed);
+
+        public bool IsBusy => _attempts.IsBusy;
+        public long CurrentRequestId => _attempts.Current?.Id ?? 0;
+        public long ApprovedLoginRequestId => _attempts.Current != null &&
+            _attempts.Current.Operation == AuthenticationOperation.Login &&
+            _attempts.Current.Stage == AuthenticationStage.Succeeded && IsSelectedProfileCurrent()
+                ? _attempts.Current.Id : 0;
 
         private void Awake()
         {
-            if (Instance == null)
+            if (Instance == null || Instance == this)
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
@@ -33,6 +58,7 @@ namespace BattlePvp.Networking
                 {
                     PlayFabSettings.staticSettings.TitleId = TitleId;
                 }
+                NotifyInstanceChanged(this);
             }
             else
             {
@@ -45,24 +71,26 @@ namespace BattlePvp.Networking
         /// </summary>
         public void Register(string username, string email, string password)
         {
+            AuthenticationAttempt attempt = BeginAttempt(AuthenticationOperation.Register, username);
+            if (attempt == null) return;
             var request = new RegisterPlayFabUserRequest
             {
-                Username = username,
+                Username = attempt.Username,
                 Email = email,
                 Password = password,
-                DisplayName = username // 처음 가입 시 닉네임을 유저명과 동일하게 설정
+                DisplayName = attempt.Username,
+                AuthenticationContext = new PlayFabAuthenticationContext()
             };
-
-            PlayFabClientAPI.RegisterPlayFabUser(request, 
-                result => {
-                    Debug.Log("회원가입 성공!");
-                    OnRegisterSuccess?.Invoke();
-                }, 
-                error => {
-                    Debug.LogError($"회원가입 실패: {error.GenerateErrorReport()}");
-                    OnRegisterFailure?.Invoke(error.ErrorMessage);
-                }
-            );
+            try
+            {
+                _sendRegister(request, result =>
+                {
+                    ExpireAttempt();
+                    // Registration's SDK-created session is deliberately never adopted.
+                    if (_attempts.ResolveResponse(attempt, result != null, _clock())) PublishOutcome(attempt);
+                }, _ => FailResponse(attempt));
+            }
+            catch (Exception) { FailResponse(attempt); }
         }
 
         /// <summary>
@@ -70,62 +98,154 @@ namespace BattlePvp.Networking
         /// </summary>
         public void Login(string username, string password)
         {
+            AuthenticationAttempt attempt = BeginAttempt(AuthenticationOperation.Login, username);
+            if (attempt == null) return;
             var request = new LoginWithPlayFabRequest
             {
-                Username = username,
-                Password = password
+                Username = attempt.Username,
+                Password = password,
+                AuthenticationContext = new PlayFabAuthenticationContext()
             };
+            try
+            {
+                _sendLogin(request, result => AcceptLoginResponse(attempt, request.AuthenticationContext, result),
+                    _ => FailResponse(attempt));
+            }
+            catch (Exception) { FailResponse(attempt); }
+        }
 
-            PlayFabClientAPI.LoginWithPlayFab(request, 
-                result => {
-                    Debug.Log("로그인 성공!");
-                    
-                    // 로그인 시 사용한 아이디를 임시 닉네임으로 저장
-                    if (BattlePvp.Managers.GlobalDataManager.Instance != null)
-                    {
-                        BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname = username;
-                    }
-                    
-                    // [추가] 로그인 성공 시 서버에서 플레이어 스텟 정보를 불러오도록 연동합니다.
-                    var battleManager = PlayFabBattleManager.Instance;
-                    if (battleManager == null)
-                    {
-                        battleManager = FindFirstObjectByType<PlayFabBattleManager>();
-                    }
+        private AuthenticationAttempt BeginAttempt(AuthenticationOperation operation, string username)
+        {
+            if (!isActiveAndEnabled) return null;
+            ExpireAttempt();
+            AuthenticationAttempt attempt = _attempts.Begin(operation, username, _clock());
+            if (attempt == null) return null;
+            Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(true), attempt);
+            return _attempts.IsCurrent(attempt) && _attempts.IsBusy ? attempt : null;
+        }
 
-                    if (battleManager != null)
-                    {
-                        battleManager.LoadPlayerStats(stats => {
-                            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
-                            {
-                                BattlePvp.Managers.GlobalDataManager.Instance.ApplyLoadedPlayerStats(stats);
-                                // 현재 씬에 캐싱된 플레이어가 있다면 즉시 데이터 주입
-                                BattlePvp.Managers.GlobalDataManager.Instance.TryInjectToPlayer();
-                                Debug.Log("[AuthManager] Stats loaded and synced via BattleManager.");
-                            }
-                            OnLoginSuccess?.Invoke();
-                        });
+        private void AcceptLoginResponse(AuthenticationAttempt attempt, PlayFabAuthenticationContext context, LoginResult result)
+        {
+            ExpireAttempt();
+            bool valid = result != null && context != null && context.IsClientLoggedIn() &&
+                !string.IsNullOrWhiteSpace(context.PlayFabId) && context.PlayFabId == result.PlayFabId &&
+                context.ClientSessionTicket == result.SessionTicket;
+            if (!_attempts.ResolveResponse(attempt, valid, _clock())) return;
+            if (!valid) { PublishOutcome(attempt); return; }
 
-                        battleManager.LoadCombatRecord((kills, deaths) => {
-                            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
-                            {
-                                BattlePvp.Managers.GlobalDataManager.Instance.SetCombatRecord(kills, deaths);
-                                Debug.Log("[AuthManager] Combat record loaded and cached.");
-                            }
-                        });
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[AuthManager] PlayFabBattleManager not found in scene. Stats will not be loaded automatically.");
-                        OnLoginSuccess?.Invoke();
-                    }
+            // SDK callbacks mutate only their request context. Commit a copy once, after the
+            // attempt check, so late or duplicate SDK responses cannot replace the selected user.
+            _selectedContext = new PlayFabAuthenticationContext();
+            _selectedContext.CopyFrom(context);
+            PlayFabSettings.staticPlayer.CopyFrom(_selectedContext);
+            _selectedProfile = null;
+            _selectedProfileVersion = 0;
+            try
+            {
+                _selectedProfile = GlobalDataManager.Instance;
+                _selectedProfile.PlayerNickname = attempt.Username;
+                // Freeze the version this login owns before reset notifications can reenter.
+                _selectedProfileVersion = unchecked(_selectedProfile.ProfileSessionVersion + 1);
+                _selectedProfile.BeginPlayerSession();
+                if (!IsCurrentProfileAttempt(attempt)) { FinishProfileAttempt(attempt); return; }
+                PlayFabBattleManager.Instance?.BeginProfileSession();
+                if (!IsCurrentProfileAttempt(attempt)) { FinishProfileAttempt(attempt); return; }
+                _loadProfile(_ => FinishProfileAttempt(attempt));
+            }
+            catch (Exception)
+            {
+                // A profile consumer may fail after authentication. Preserve a valid selected
+                // session for the lobby's existing retry path, but never approve a reset session.
+                FinishProfileAttempt(attempt);
+            }
+        }
 
-                }, 
-                error => {
-                    Debug.LogError($"로그인 실패: {error.GenerateErrorReport()}");
-                    OnLoginFailure?.Invoke(error.ErrorMessage);
-                }
-            );
+        private void FinishProfileAttempt(AuthenticationAttempt attempt)
+        {
+            ExpireAttempt();
+            if (_attempts.ResolveProfile(attempt, IsSelectedProfileCurrent(), _clock())) PublishOutcome(attempt);
+        }
+
+        private bool IsCurrentProfileAttempt(AuthenticationAttempt attempt) =>
+            _attempts.IsCurrent(attempt) && _attempts.Current.Stage == AuthenticationStage.Profile &&
+            IsSelectedProfileCurrent();
+
+        private bool IsSelectedContextCurrent() => _selectedContext != null &&
+            PlayFabSettings.staticPlayer.PlayFabId == _selectedContext.PlayFabId &&
+            PlayFabSettings.staticPlayer.ClientSessionTicket == _selectedContext.ClientSessionTicket;
+
+        private bool IsSelectedProfileCurrent() => IsSelectedContextCurrent() && _selectedProfile != null &&
+            _selectedProfile.IsCurrentActiveInstance && _selectedProfile.ProfileSessionVersion == _selectedProfileVersion;
+
+        private void FailResponse(AuthenticationAttempt attempt)
+        {
+            ExpireAttempt();
+            if (_attempts.ResolveResponse(attempt, false, _clock())) PublishOutcome(attempt);
+        }
+
+        private void Update() => ExpireAttempt();
+
+        private void OnEnable() => Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(IsBusy), _attempts.Current);
+
+        private void ExpireAttempt()
+        {
+            AuthenticationAttempt expired = _attempts.Expire(_clock(), IsSelectedProfileCurrent());
+            if (expired != null) PublishOutcome(expired);
+        }
+
+        public void CancelPendingAuthentication()
+        {
+            AuthenticationAttempt attempt = _attempts.Current;
+            _attempts.Cancel();
+            Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(false), attempt);
+        }
+
+        private void OnDisable() => CancelPendingAuthentication();
+
+        private void OnDestroy()
+        {
+            _attempts.Cancel();
+            if (Instance != this) return;
+            Instance = null;
+            NotifyInstanceChanged(null);
+        }
+
+        private void PublishOutcome(AuthenticationAttempt attempt)
+        {
+            bool success = attempt.Stage == AuthenticationStage.Succeeded;
+            if (attempt.Operation == AuthenticationOperation.Login)
+            {
+                if (success) Notify(OnLoginSuccess, subscriber => ((Action)subscriber)(), attempt);
+                else Notify(OnLoginFailure, subscriber => ((Action<string>)subscriber)("로그인 요청을 완료하지 못했습니다. 다시 시도해 주세요."), attempt);
+            }
+            else
+            {
+                if (success) Notify(OnRegisterSuccess, subscriber => ((Action)subscriber)(), attempt);
+                else Notify(OnRegisterFailure, subscriber => ((Action<string>)subscriber)("회원가입 요청을 완료하지 못했습니다. 다시 시도해 주세요."), attempt);
+            }
+            Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(false), attempt);
+        }
+
+        private void Notify(Delegate subscribers, Action<Delegate> invoke, AuthenticationAttempt attempt)
+        {
+            if (subscribers == null) return;
+            AuthenticationStage? stage = attempt?.Stage;
+            foreach (Delegate subscriber in subscribers.GetInvocationList())
+            {
+                if (attempt != null && (!_attempts.IsCurrent(attempt) || attempt.Stage != stage)) return;
+                try { invoke(subscriber); }
+                catch (Exception) { Debug.LogWarning("[PlayFabAuth] An authentication listener failed."); }
+            }
+        }
+
+        private static void NotifyInstanceChanged(PlayFabAuthManager instance)
+        {
+            if (InstanceChanged == null) return;
+            foreach (Action<PlayFabAuthManager> subscriber in InstanceChanged.GetInvocationList())
+            {
+                try { subscriber(instance); }
+                catch (Exception) { Debug.LogWarning("[PlayFabAuth] An authentication service listener failed."); }
+            }
         }
 
         /// <summary>

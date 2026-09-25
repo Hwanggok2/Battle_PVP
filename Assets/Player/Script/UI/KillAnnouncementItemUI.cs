@@ -13,10 +13,10 @@ namespace BattlePvp.UI
         public void SetData(string killerName, string victimName, Sprite icon = null)
         {
             if (_killerNameText != null)
-                _killerNameText.text = string.IsNullOrWhiteSpace(killerName) ? "Unknown" : killerName;
+                UserTextPresentation.SetPlain(_killerNameText, UserDisplayText.SingleLine(killerName, UserDisplayText.NameLimit, "Unknown"));
 
             if (_victimNameText != null)
-                _victimNameText.text = string.IsNullOrWhiteSpace(victimName) ? "Unknown" : victimName;
+                UserTextPresentation.SetPlain(_victimNameText, UserDisplayText.SingleLine(victimName, UserDisplayText.NameLimit, "Unknown"));
 
             if (_killIcon != null && icon != null)
                 _killIcon.sprite = icon;

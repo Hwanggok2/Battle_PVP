@@ -28,34 +28,43 @@ namespace BattlePvp.UI
         [SerializeField] private SkillHudPhase _lastPhase = SkillHudPhase.Hidden;
         [SerializeField] private float _lastFill;
         [SerializeField] private float _lastRemainingSeconds;
+        private bool _initialized;
+        private bool _hasState;
+        private bool _hasReceivedState;
+        private int _displayedSeconds = -1;
+        private int _displayedIndex = -1;
+        private int _displayedCount = -1;
 
         private void Awake()
         {
-            ResolveReferences();
-            ConfigureOverlayImage(SkillHudPhase.Hidden);
+            if (!_initialized) InitializeDisplay();
+            if (!_hasReceivedState)
+                SetState(new SkillHudState(false, string.Empty, 0, 0, SkillHudPhase.Hidden, 0f, 0f));
             ApplyPreview();
         }
 
         private void OnValidate()
         {
-            ResolveReferences();
-            ConfigureOverlayImage(SkillHudPhase.Hidden);
+            InitializeDisplay();
             ApplyPreview();
         }
 
         public void SetState(SkillHudState state)
         {
+            // SetActive below can invoke our first Awake. That Awake must preserve this request,
+            // including an explicit Hidden state, instead of restoring an editor preview.
+            _hasReceivedState = true;
+            if (!_initialized) InitializeDisplay();
+            bool phaseChanged = !_hasState || _lastPhase != state.Phase;
             _lastPhase = state.Phase;
             _lastFill = state.NormalizedFill;
             _lastRemainingSeconds = state.RemainingSeconds;
-
-            ResolveReferences();
 
             RectTransform root = ResolveRoot();
             if (root == null)
                 return;
 
-            root.gameObject.SetActive(state.Visible);
+            if (root.gameObject.activeSelf != state.Visible) root.gameObject.SetActive(state.Visible);
             if (!state.Visible)
                 return;
 
@@ -63,14 +72,16 @@ namespace BattlePvp.UI
                 ? state.IconSprite
                 : (_fallbackIconSprite != null ? _fallbackIconSprite : GetRuntimeWhiteSprite());
 
-            if (_baseImage != null)
-                ConfigureImage(_baseImage, iconSprite, Image.Type.Simple, Color.white);
+            if (_baseImage != null && _baseImage.sprite != iconSprite)
+                _baseImage.sprite = iconSprite;
 
-            if (_nameText != null)
+            if (_nameText != null && _nameText.text != state.Name)
                 _nameText.text = state.Name;
 
-            if (_indexText != null)
+            if (_indexText != null && (!_hasState || _displayedIndex != state.SelectedIndex || _displayedCount != state.SkillCount))
                 _indexText.text = state.SkillCount > 1 ? $"{state.SelectedIndex + 1}/{state.SkillCount}" : string.Empty;
+            _displayedIndex = state.SelectedIndex;
+            _displayedCount = state.SkillCount;
 
             bool showTimer = state.Phase == SkillHudPhase.Casting ||
                              state.Phase == SkillHudPhase.Active ||
@@ -78,20 +89,38 @@ namespace BattlePvp.UI
 
             if (_timerText != null)
             {
-                _timerText.gameObject.SetActive(showTimer);
-                _timerText.text = showTimer ? Mathf.CeilToInt(state.RemainingSeconds).ToString() : string.Empty;
+                if (_timerText.gameObject.activeSelf != showTimer) _timerText.gameObject.SetActive(showTimer);
+                int seconds = showTimer ? Mathf.CeilToInt(state.RemainingSeconds) : -1;
+                if (!_hasState || _displayedSeconds != seconds)
+                    _timerText.text = showTimer ? seconds.ToString() : string.Empty;
+                _displayedSeconds = seconds;
             }
-
+            _hasState = true;
             if (_overlayImage == null)
                 return;
 
-            ConfigureOverlayPanel(OverlayColorForPhase(state.Phase));
+            if (phaseChanged)
+            {
+                ConfigureOverlayPanel(OverlayColorForPhase(state.Phase));
+                ConfigureOverlayImage(state.Phase);
+            }
             _overlayImage.fillAmount = state.NormalizedFill;
 
-            ConfigureOverlayImage(state.Phase);
-            _overlayImage.gameObject.SetActive(showTimer);
-            ArrangeLayers();
+            if (_overlayImage.gameObject.activeSelf != showTimer) _overlayImage.gameObject.SetActive(showTimer);
         }
+
+        private void InitializeDisplay()
+        {
+            ResolveReferences();
+            if (_baseImage != null)
+                ConfigureImage(_baseImage, _baseImage.sprite, Image.Type.Simple, Color.white);
+            ConfigureOverlayImage(SkillHudPhase.Hidden);
+            ArrangeLayers();
+            _hasState = false;
+            _initialized = true;
+        }
+
+        private void OnTransformChildrenChanged() => _initialized = false;
 
         private void ApplyPreview()
         {

@@ -9,11 +9,12 @@ namespace BattlePvp.CameraLogic
     {
         [Header("Target Settings")]
         [SerializeField] private Transform _target;           // 추적할 대상 (플레이어)
+        public Transform Target => _target;
         
         /// <summary>
         /// 외부(CharacterScaler 등)에서 실시간으로 카메라 거리를 조절할 수 있도록 노출합니다.
         /// </summary>
-        public Vector3 Offset = new Vector3(0.4f, 0.2f, -1.4f); 
+        public Vector3 Offset = new Vector3(0.3f, 0.2f, -1.0f); 
 
         [Header("Mouse Settings")]
         [SerializeField] private float _mouseSensitivity = 2.0f; // Input System에서는 델타가 작으므로 약간 크게 설정
@@ -48,7 +49,10 @@ namespace BattlePvp.CameraLogic
         private void LateUpdate()
         {
             if (_target == null) return;
-            if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return;
+            if (!BattlePvp.Logic.InputModeRules.CanTrackCamera(
+                BattlePvp.Logic.GameInputController.CurrentMode,
+                BattlePvp.Logic.GameInputController.IsPaused,
+                BattlePvp.Logic.GameInputController.IsTextInputActive)) return;
 
             // 1. 마우스 입력 직접 가져오기 (Input System 사용)
             if (!IsLocked && _forcedLookTarget == null)

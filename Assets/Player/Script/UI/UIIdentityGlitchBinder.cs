@@ -92,8 +92,7 @@ namespace BattlePvp.UI
             SubscribeSources();
 
             // 시작 시점 즉시 반영(이벤트 대기 없이 초기 상태를 보장)
-            PullInitialOverlapFromHpReader();
-            ApplyAll();
+            PullCurrentHpFromReader();
 
             if (_identitySource == null || _statusSource == null)
                 _resolveSourcesRoutine = StartCoroutine(CoResolveSourcesWhenReady());
@@ -159,8 +158,7 @@ namespace BattlePvp.UI
                     UnsubscribeSources();
                     RefreshSourceInterfaces();
                     SubscribeSources();
-                    PullInitialOverlapFromHpReader();
-                    ApplyAll();
+                    PullCurrentHpFromReader();
                 }
 
                 yield return wait;
@@ -171,9 +169,9 @@ namespace BattlePvp.UI
 
         private void RefreshSourceInterfaces()
         {
-            _identitySource = _identitySourceBehaviour as IIdentitySource;
-            _statusSource = _statusSourceBehaviour as IPlayerStatusSource;
-            _hpReader = _statusSourceBehaviour as IDamageReceiver;
+            _identitySource = _identitySourceBehaviour != null ? _identitySourceBehaviour as IIdentitySource : null;
+            _statusSource = _statusSourceBehaviour != null ? _statusSourceBehaviour as IPlayerStatusSource : null;
+            _hpReader = _statusSourceBehaviour != null ? _statusSourceBehaviour as IDamageReceiver : null;
             _statManagerSource = _identitySourceBehaviour as StatManager;
             PullCurrentStatsFromStatManager();
         }
@@ -212,8 +210,8 @@ namespace BattlePvp.UI
                 _statusSourceBehaviour is not IDamageReceiver)
             {
                 HealthSystem localHealth = null;
-                if (_identitySourceBehaviour is Component identityComponent)
-                    localHealth = identityComponent.GetComponent<HealthSystem>();
+                if (_identitySourceBehaviour != null)
+                    localHealth = _identitySourceBehaviour.GetComponent<HealthSystem>();
                 if (localHealth == null)
                     localHealth = ResolveScopedHealthSystem();
 
@@ -357,16 +355,12 @@ namespace BattlePvp.UI
             _targetGraphic.material = _runtimeMaterial;
         }
 
-        private void PullInitialOverlapFromHpReader()
+        private void PullCurrentHpFromReader()
         {
-            if (_hpReader == null || _hpReader.MaxHp <= 0f)
-            {
-                _overlapPercent = 0f;
-                return;
-            }
-
-            float raw = (_hpReader.CurrentHp - _hpReader.MaxHp) / _hpReader.MaxHp;
-            _overlapPercent = Mathf.Clamp01(raw);
+            float current = _hpReader != null ? _hpReader.CurrentHp : 0f;
+            float max = _hpReader != null ? _hpReader.MaxHp : 0f;
+            _overlapPercent = max > 0f ? Mathf.Clamp01((current - max) / max) : 0f;
+            OnHpChanged(current, max);
         }
 
         private void ApplyAll()

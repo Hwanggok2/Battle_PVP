@@ -14,13 +14,18 @@ using UnityEngine.Events;
 namespace BattlePvp.UI
 {
     /// <summary>
-    /// Canvas_Customizer의 전반적인 관리자. 
-    /// "DB 수치와 UI 수치가 100% 일치할 때까지 끈질기게 업데이트 루프를 돌리는 추격(Catch-up) 시스템"이 핵심입니다.
+    /// 프리셋 로드/선택 이벤트를 편집 값과 미리보기에 반영하고 명시적인 적용을 요청한다.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class StatCustomizerController : MonoBehaviour
     {
         public static StatCustomizerController Instance { get; private set; }
+        public static event System.Action InstanceChanged;
+        public GameObject ViewRoot => transform.Find("Canvas_Customizer")?.gameObject;
+        private NetworkIdentity _ownerIdentity;
+        public bool CanOwnLocalUi => _ownerIdentity == null ||
+            (NetworkClient.active || NetworkServer.active ? _ownerIdentity.isLocalPlayer :
+                _configuredStatManager != null && _configuredStatManager == StatManager.Local);
 
         private const int TotalInvestedBudget = 30;
 
@@ -67,78 +72,44 @@ namespace BattlePvp.UI
 
         private readonly StringBuilder _sb = new StringBuilder(64);
         private readonly Dictionary<Graphic, Color> _presetGraphicDefaultColors = new Dictionary<Graphic, Color>();
+        private readonly Dictionary<Transform, StatPreviewPulse> _previewPulses = new Dictionary<Transform, StatPreviewPulse>();
+        private Coroutine _previewPulseRoutine;
 
-        private bool _isInitializedFromGlobal = false;
-        private Coroutine _syncCoroutine;
+        private GlobalDataManager _profileData;
+        private StatManager _configuredStatManager;
         private UnityAction[] _presetButtonActions;
         private UnityAction _strategistPresetButtonAction;
         private bool _editingStrategistTargetPreset;
+        private bool _isApplying;
+        private uint _applyGeneration;
 
         private void Awake()
         {
-            if (Instance == null) Instance = this;
-            else if (Instance != this) { Destroy(gameObject); return; }
-            
+            _ownerIdentity = GetComponentInParent<NetworkIdentity>(true);
             _identityCalculator = new IdentityCalculator();
-            if (_statManager == null) _statManager = GetComponentInParent<StatManager>();
-            if (_playerHealth == null) _playerHealth = GetComponentInParent<HealthSystem>();
+            if (_statManager == null) _statManager = GetComponentInParent<StatManager>(true);
+            _configuredStatManager = _statManager;
+            RefreshLocalOwnership();
+            if (_playerHealth == null) _playerHealth = GetComponentInParent<HealthSystem>(true);
             ResolveIdentityPreviewReferences();
             if (_floatingMessageCanvasGroup != null) _floatingMessageCanvasGroup.alpha = 0f;
         }
 
-        private IEnumerator CoInitialSyncWithDB()
-        {
-            // [최적화] Update 대신 일회성 코루틴으로 슬라이더-DB 동기화를 수행합니다.
-            // 성공 시 즉시 종료(yield break)하여 CPU 사용량을 절감합니다.
-            while (true)
-            {
-                if (_statManager == null) TryFindTarget();
-                if (_statManager != null && GlobalDataManager.Instance != null)
-                {
-                    var saved = GlobalDataManager.Instance.SavedStats;
-                    float totalDB = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
-
-                    // DB 데이터가 아직 채워지지 않았다면 대기
-                    if (totalDB > 0.1f && !_editingStrategistTargetPreset)
-                    {
-                        if (IsUISyncedWithSavedData(saved))
-                        {
-                            _isInitializedFromGlobal = true;
-                            Debug.Log($"[StatCustomizer] SYNC SUCCESS! Sliders matched DB. Stopping routine.");
-                            yield break; // 동기화 성공 시 루틴 완전히 종료
-                        }
-                        
-                        // 아직 일치하지 않는다면 초기화 루프 수행 (로직 흐름 유지)
-                        _baseStats = saved;
-                        _virtualStats = _baseStats;
-                        RefreshSliderVisuals();
-                        RebuildBudgetAndPreview();
-                    }
-                }
-                yield return new WaitForSecondsRealtime(0.5f); // 0.5초마다 1회 체크하여 부하 최소화
-            }
-        }
-
-        private bool IsUISyncedWithSavedData(StatContainer saved)
-        {
-            // 슬라이더의 현재 값이 DB의 투자값과 정수 단위로 일치하는지 확인합니다.
-            bool s = _str != null && Mathf.RoundToInt(_str.Invested) == Mathf.RoundToInt(saved.STR.Invested);
-            bool a = _agi != null && Mathf.RoundToInt(_agi.Invested) == Mathf.RoundToInt(saved.AGI.Invested);
-            bool c = _con != null && Mathf.RoundToInt(_con.Invested) == Mathf.RoundToInt(saved.CON.Invested);
-            bool d = _def != null && Mathf.RoundToInt(_def.Invested) == Mathf.RoundToInt(saved.DEF.Invested);
-            return s && a && c && d;
-        }
-
         private void OnEnable()
         {
+            RefreshLocalOwnership();
             StatBalanceConfig.BalanceChanged += RebuildBudgetAndPreview;
 
-            if (GlobalDataManager.Instance != null)
-                GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+            _profileData = GlobalDataManager.Instance;
+            if (_profileData != null)
+            {
+                _profileData.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+                _profileData.OnStrategistTargetPresetChanged += OnStrategistPresetUpdated;
+            }
+            StatManager.LocalChanged += OnLocalPlayerChanged;
 
             TryFindTarget();
             ResolveIdentityPreviewReferences();
-            _isInitializedFromGlobal = false;
 
             Hook(_str); Hook(_agi); Hook(_con); Hook(_def);
 
@@ -150,18 +121,22 @@ namespace BattlePvp.UI
 
             LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
-
-            // [추가] 초기 DB 스멀스멀 동기화 루틴 시작
-            if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
-            _syncCoroutine = StartCoroutine(CoInitialSyncWithDB());
         }
 
         private void OnDisable()
         {
+            if (Instance == this) { Instance = null; InstanceChanged?.Invoke(); }
+            _applyGeneration++;
+            SetApplying(false);
             StatBalanceConfig.BalanceChanged -= RebuildBudgetAndPreview;
 
-            if (GlobalDataManager.Instance != null)
-                GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+            StatManager.LocalChanged -= OnLocalPlayerChanged;
+            if (_profileData != null)
+            {
+                _profileData.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+                _profileData.OnStrategistTargetPresetChanged -= OnStrategistPresetUpdated;
+            }
+            _profileData = null;
 
             Unhook(_str); Unhook(_agi); Unhook(_con); Unhook(_def);
             if (_applyButton != null) _applyButton.onClick.RemoveListener(Apply);
@@ -169,8 +144,11 @@ namespace BattlePvp.UI
             UnhookStrategistPresetButton();
 
             // [추가] 참조 명시적 초기화 및 코루틴 중단으로 안정성 확보
-            if (_syncCoroutine != null) StopCoroutine(_syncCoroutine);
             StopAllCoroutines();
+            _previewPulseRoutine = null;
+            foreach (var entry in _previewPulses)
+                if (entry.Key != null) entry.Key.localScale = entry.Value.OriginalScale;
+            _previewPulses.Clear();
             _statManager = null;
             _playerHealth = null;
         }
@@ -178,9 +156,7 @@ namespace BattlePvp.UI
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
         {
             if (this == null) return;
-            _isInitializedFromGlobal = false;
 
-            // [핵심 해결] 전역 데이터가 로드되면 동기화용 루틴을 다시 구동하여 UI를 강제 갱신합니다.
             if (gameObject.activeInHierarchy && !_editingStrategistTargetPreset)
             {
                 _baseStats = updatedStats;
@@ -189,6 +165,46 @@ namespace BattlePvp.UI
                 RebuildBudgetAndPreview();
                 RefreshPresetSelectionVisuals();
             }
+        }
+
+        private void OnStrategistPresetUpdated(StatContainer stats, bool hasPreset)
+        {
+            if (!isActiveAndEnabled || !_editingStrategistTargetPreset) return;
+            _baseStats = hasPreset ? stats : default;
+            _virtualStats = _baseStats;
+            RefreshSliderVisuals();
+            RebuildBudgetAndPreview();
+            RefreshPresetSelectionVisuals();
+        }
+
+        private void OnLocalPlayerChanged(StatManager stats)
+        {
+            RefreshLocalOwnership();
+            if (!CanOwnLocalUi) return;
+            SetTarget(stats != null ? stats : (!NetworkClient.active ? _configuredStatManager : null));
+            if (_profileData == null || !_profileData.HasLoadedPlayerStats) LoadFromSavedStatsOrTarget();
+            RebuildBudgetAndPreview();
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) { Instance = null; InstanceChanged?.Invoke(); }
+        }
+
+        private void RefreshLocalOwnership()
+        {
+            if (!CanOwnLocalUi)
+            {
+                if (ViewRoot != null) ViewRoot.SetActive(false);
+                if (Instance == this) { Instance = null; InstanceChanged?.Invoke(); }
+                return;
+            }
+            // A player-owned view supersedes a standalone lobby view, regardless of Awake order.
+            if (Instance == this || (Instance != null && _ownerIdentity == null)) return;
+            if (Instance != null && Instance.ViewRoot != null) Instance.ViewRoot.SetActive(false);
+            Instance = this;
+            if (ViewRoot != null) ViewRoot.SetActive(false);
+            InstanceChanged?.Invoke();
         }
 
         private void RefreshSliderVisuals()
@@ -201,44 +217,35 @@ namespace BattlePvp.UI
 
         private void TryFindTarget()
         {
-            // [개선] 스태틱 주소(StatManager.Local)가 있다면 즉시 참조
-            if (StatManager.Local != null)
-            {
-                _statManager = StatManager.Local;
-            }
-            else if (NetworkClient.localPlayer != null)
-            {
-                _statManager = NetworkClient.localPlayer.GetComponent<StatManager>();
-            }
-            
-            // [폴백] 로비 등 네트워크 비활성 상태에서 부모 객체로부터 찾기
-            if (_statManager == null)
-            {
-                _statManager = GetComponentInParent<StatManager>();
-            }
+            if (!CanOwnLocalUi) { SetTarget(null); return; }
+            StatManager target = NetworkClient.active
+                ? (NetworkClient.localPlayer != null ? NetworkClient.localPlayer.GetComponent<StatManager>() : null)
+                : StatManager.Local != null ? StatManager.Local : _configuredStatManager;
+            if (target == null && !NetworkClient.active) target = GetComponentInParent<StatManager>();
+            SetTarget(target);
+        }
 
-            if (_statManager != null && _playerHealth == null)
-                _playerHealth = _statManager.GetComponent<HealthSystem>();
-
-            PlayerHUD.BindToPlayer(_statManager, _playerHealth);
+        private void SetTarget(StatManager target)
+        {
+            _statManager = target;
+            _playerHealth = target != null ? target.GetComponent<HealthSystem>() : null;
         }
 
         private void LoadFromTarget()
         {
-            if (_statManager == null) return;
-            _baseStats = _statManager.GetStatsCopy();
+            _baseStats = _statManager != null ? _statManager.GetStatsCopy() : default;
             _virtualStats = _baseStats;
             RefreshSliderVisuals();
         }
 
         private bool TryLoadFromSavedStats()
         {
-            if (GlobalDataManager.Instance == null)
+            if (_profileData == null || !_profileData.HasLoadedPlayerStats)
                 return false;
 
-            int slotIndex = GlobalDataManager.Instance.SelectedStatPresetSlot;
-            StatContainer saved = GlobalDataManager.Instance.HasStatPresetSlot(slotIndex)
-                ? GlobalDataManager.Instance.GetStatPresetSlot(slotIndex)
+            int slotIndex = _profileData.SelectedStatPresetSlot;
+            StatContainer saved = _profileData.HasStatPresetSlot(slotIndex)
+                ? _profileData.GetStatPresetSlot(slotIndex)
                 : default;
 
             _baseStats = saved;
@@ -249,6 +256,12 @@ namespace BattlePvp.UI
 
         private void LoadFromSavedStatsOrTarget()
         {
+            if (_editingStrategistTargetPreset)
+            {
+                OnStrategistPresetUpdated(_profileData != null ? _profileData.StrategistTargetPreset : default,
+                    _profileData != null && _profileData.HasStrategistTargetPreset);
+                return;
+            }
             if (TryLoadFromSavedStats())
                 return;
 
@@ -345,11 +358,11 @@ namespace BattlePvp.UI
 
         private void SelectPresetSlot(int slotIndex)
         {
-            if (GlobalDataManager.Instance == null)
+            if (_profileData == null)
                 return;
 
             _editingStrategistTargetPreset = false;
-            GlobalDataManager.Instance.SelectStatPresetSlot(slotIndex);
+            _profileData.SelectStatPresetSlot(slotIndex);
             LoadFromSavedStatsOrTarget();
             RebuildBudgetAndPreview();
             TryFindTarget();
@@ -360,8 +373,8 @@ namespace BattlePvp.UI
         {
             _editingStrategistTargetPreset = true;
 
-            if (GlobalDataManager.Instance != null && GlobalDataManager.Instance.HasStrategistTargetPreset)
-                _baseStats = GlobalDataManager.Instance.StrategistTargetPreset;
+            if (_profileData != null && _profileData.HasStrategistTargetPreset)
+                _baseStats = _profileData.StrategistTargetPreset;
             else
                 _baseStats = default;
 
@@ -389,7 +402,7 @@ namespace BattlePvp.UI
             if (_presetButtons != null)
             {
                 for (int i = 0; i < _presetButtons.Length; i++)
-                    SetPresetButtonSelected(_presetButtons[i], !_editingStrategistTargetPreset && GlobalDataManager.Instance != null && GlobalDataManager.Instance.SelectedStatPresetSlot == i);
+                    SetPresetButtonSelected(_presetButtons[i], !_editingStrategistTargetPreset && _profileData != null && _profileData.SelectedStatPresetSlot == i);
             }
 
             SetPresetButtonSelected(_strategistPresetButton, _editingStrategistTargetPreset);
@@ -451,7 +464,6 @@ namespace BattlePvp.UI
             
             SyncVirtualFromSliders();
             RebuildBudgetAndPreview();
-            _isInitializedFromGlobal = true;
         }
 
         private int GetTotalInvested()
@@ -513,7 +525,7 @@ namespace BattlePvp.UI
                 UpdatePreviewText(_previewMoveSpdText, $"이동속도 : {moveSpd:F2}");
                 UpdatePreviewText(_previewAtkSpdText, $"공격속도 : {atkSpd:F2}");
             }
-            if (_applyButton != null) _applyButton.interactable = remain >= 0;
+            if (_applyButton != null) _applyButton.interactable = remain >= 0 && !_isApplying;
         }
 
         private void UpdatePreviewText(TMP_Text textRef, string newValue)
@@ -522,7 +534,16 @@ namespace BattlePvp.UI
             if (textRef.text != newValue)
             {
                 textRef.text = newValue;
-                StartCoroutine(JuiceTextEffect(textRef.transform));
+                Transform target = textRef.transform;
+                if (!_previewPulses.TryGetValue(target, out StatPreviewPulse pulse))
+                {
+                    pulse = new StatPreviewPulse(target.localScale);
+                    _previewPulses.Add(target, pulse);
+                }
+                pulse.Restart();
+                target.localScale = pulse.Scale;
+                if (_previewPulseRoutine == null)
+                    _previewPulseRoutine = StartCoroutine(AnimatePreviewPulses());
             }
         }
 
@@ -597,19 +618,23 @@ namespace BattlePvp.UI
             return null;
         }
 
-        private IEnumerator JuiceTextEffect(Transform t)
+        private IEnumerator AnimatePreviewPulses()
         {
-            Vector3 originalScale = Vector3.one;
-            t.localScale = originalScale * 1.2f;
-            float elapsed = 0f;
-            float duration = 0.2f;
-            while(elapsed < duration)
+            yield return null;
+            while (true)
             {
-                elapsed += Time.unscaledDeltaTime;
-                t.localScale = Vector3.Lerp(originalScale * 1.2f, originalScale, elapsed / duration);
+                bool active = false;
+                foreach (var entry in _previewPulses)
+                {
+                    if (entry.Key == null || !entry.Value.IsActive) continue;
+                    entry.Value.Advance(Time.unscaledDeltaTime);
+                    entry.Key.localScale = entry.Value.Scale;
+                    active |= entry.Value.IsActive;
+                }
+                if (!active) break;
                 yield return null;
             }
-            t.localScale = originalScale;
+            _previewPulseRoutine = null;
         }
 
         private Coroutine _floatingMessageRoutine;
@@ -636,6 +661,7 @@ namespace BattlePvp.UI
 
         private void Apply()
         {
+            if (_isApplying || Instance != this || !CanOwnLocalUi) return;
             // [추가] 적용 순간에 한 번 더 타겟 유효성을 검사하고 시도합니다.
             if (_editingStrategistTargetPreset)
             {
@@ -651,17 +677,7 @@ namespace BattlePvp.UI
                     return;
                 }
 
-                GlobalDataManager.Instance?.SaveStrategistTargetPreset(_virtualStats);
-                PlayFabBattleManager.Instance?.SavePlayerStatPresetData();
-                _baseStats = _virtualStats;
-                RefreshSliderVisuals();
-                RebuildBudgetAndPreview();
-
-                if (LobbyUIManager.Instance != null)
-                    LobbyUIManager.Instance.SetCustomizerActive(false);
-                else
-                    gameObject.SetActive(false);
-
+                ApplyPreset(_virtualStats, true);
                 return;
             }
 
@@ -694,33 +710,44 @@ namespace BattlePvp.UI
             currentStats.CON.Invested = _virtualStats.CON.Invested;
             currentStats.DEF.Invested = _virtualStats.DEF.Invested;
 
-            _statManager.ApplyStats(currentStats, recalculateIdentity: true);
-            if (_playerHealth != null) _playerHealth.RefillHealth();
-            PlayerHUD.BindToPlayer(_statManager, _playerHealth);
+            ApplyPreset(currentStats, false);
+        }
 
-            GlobalDataManager.Instance.SaveSelectedStatPresetSlot(currentStats);
-            if (PlayFabBattleManager.Instance != null)
-            {
-                _statManager.CalculatePreviewStats(currentStats, out float atk, out float defP, out float hp, out float pene, out float regen, out float move, out float atkSpd);
-                PlayFabBattleManager.Instance.SavePlayerStats(currentStats, atk, hp, defP, pene, regen, move, atkSpd);
-            }
+        private void ApplyPreset(StatContainer stats, bool strategistTarget)
+        {
+            SetApplying(true);
+            uint generation = ++_applyGeneration;
+            StatPresetApplication.Apply(_statManager, _profileData, PlayFabBattleManager.Instance,
+                stats, strategistTarget, (succeeded, error) =>
+                {
+                    if (this == null || !isActiveAndEnabled || generation != _applyGeneration) return;
+                    SetApplying(false);
+                    if (!succeeded)
+                    {
+                        ShowFloatingMessage(error);
+                        return;
+                    }
+                    _baseStats = stats;
+                    _virtualStats = stats;
+                    RefreshSliderVisuals();
+                    RebuildBudgetAndPreview();
+                    if (LobbyUIManager.Instance != null) LobbyUIManager.Instance.SetCustomizerActive(false);
+                    else gameObject.SetActive(false);
+                });
+        }
 
-            // [수정] _statManager = null; 처리를 제거하여 Apply 직후 참조 유실로 인한 예외를 방지합니다.
-            // 대신 데이터 갱신만 수행합니다.
-            _baseStats = currentStats;
-            _virtualStats = _baseStats;
-            RefreshSliderVisuals();
-            RebuildBudgetAndPreview();
-            
-            // 적용 완료 후 패널을 닫아 부활 대기 상태(AnyKey)로 진입할 수 있게 합니다.
-            if (LobbyUIManager.Instance != null)
-            {
-                LobbyUIManager.Instance.SetCustomizerActive(false);
-            }
-            else
-            {
-                gameObject.SetActive(false);
-            }
+        private void SetApplying(bool applying)
+        {
+            _isApplying = applying;
+            _str?.SetInteractable(!applying);
+            _agi?.SetInteractable(!applying);
+            _con?.SetInteractable(!applying);
+            _def?.SetInteractable(!applying);
+            if (_presetButtons != null)
+                foreach (Button button in _presetButtons)
+                    if (button != null) button.interactable = !applying;
+            if (_strategistPresetButton != null) _strategistPresetButton.interactable = !applying;
+            if (_applyButton != null) _applyButton.interactable = !applying && GetRemainPoints() >= 0;
         }
     }
 }

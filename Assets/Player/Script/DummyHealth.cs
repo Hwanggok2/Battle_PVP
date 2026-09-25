@@ -10,7 +10,7 @@ namespace BattlePvp.Combat
     /// 플레이어와 동일한 StatManager를 통해 방어력 및 간접 수치(피해 감소 등)를 적용받습니다.
     /// </summary>
     [RequireComponent(typeof(StatManager))]
-    public class DummyHealth : MonoBehaviour, IDamageReceiverWithContext
+    public class DummyHealth : MonoBehaviour, IDamageReceiverWithResult
     {
         private static readonly Color PoisonPopupColor = new Color(0.25f, 1f, 0.25f, 1f);
         private const float PoisonPopupFontSizeDelta = -16f;
@@ -33,7 +33,6 @@ namespace BattlePvp.Combat
         public float MaxHp => _maxHp;
 
         private StatManager _statManager;
-        private IDamageReceiver _lastAttacker;
 
         private void Awake()
         {
@@ -104,13 +103,21 @@ namespace BattlePvp.Combat
 
         public void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition)
         {
-            if (attacker != null)
-            {
-                _lastAttacker = attacker;
-            }
+            ApplyDamage(new DamageRequest(amount, source, attackerAttackPower, attacker, hitPosition));
+        }
+
+        public DamageResult ApplyDamage(DamageRequest request)
+        {
+            float amount = request.Amount;
+            DamageSource source = request.Source;
+            Vector3 hitPosition = request.HitPosition;
+            if (!float.IsFinite(amount) || amount <= 0f || !CombatValidation.IsFinite(hitPosition))
+                return default;
 
             // 실제 체력 차감
+            float hpBeforeDamage = _currentHp;
             _currentHp = Mathf.Clamp(_currentHp - amount, 0f, _maxHp);
+            DamageResult result = new DamageResult(true, Mathf.Max(0f, hpBeforeDamage - _currentHp), 0f, _currentHp <= 0f);
             
             // 데미지 팝업을 피격 지점에 띄웁니다.
             Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
@@ -121,36 +128,18 @@ namespace BattlePvp.Combat
                 else
                     DamagePopupManager.Instance.CreatePopup(popupPosition, amount);
             }
-            CombatHitFeedback.PlayStatusDamageForAttacker(source, attacker);
+            CombatHitFeedback.PlayStatusDamageForAttacker(source, request.Attacker);
 
             Debug.Log($"[Dummy] Received {amount} damage from {source} at {hitPosition}. Current HP: {_currentHp}/{_maxHp}");
 
-            // 더미가 사망 시 점수 부여 및 부활 처리
+            // 훈련용 더미는 점수를 주지 않고 즉시 회복합니다. 결과는 회복 전 피해를 유지합니다.
             if (_currentHp <= 0f)
             {
-                if (_lastAttacker != null && _lastAttacker is MonoBehaviour attackerMb && attackerMb != null)
-                {
-                    var attackerScore = attackerMb.GetComponent<ScoreSystem>();
-                    if (attackerScore != null)
-                    {
-                        // 서버라면 직접 AddPoint, 클라이언트라면 Command를 통해 서버에 요청
-                        if (Mirror.NetworkServer.active)
-                        {
-                            attackerScore.AddPoint(0);
-                        }
-                        else
-                        {
-                            attackerScore.CmdAddPoint(0);
-                        }
-                        Debug.Log($"[DummyHealth] {attackerMb.gameObject.name} killed Dummy. No score awarded.");
-                    }
-                }
-
                 // 사망 후 즉시 체력 회복 (훈련용 더미 특성)
                 _currentHp = _maxHp;
-                _lastAttacker = null;
                 Debug.Log("[DummyHealth] Dummy respawned (HP restored).");
             }
+            return result;
         }
     }
 }

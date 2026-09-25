@@ -41,13 +41,22 @@ namespace BattlePvp.UI
         [SerializeField] private TMP_Text _killsPerDeathText;
 
         private ScoreSystem _scoreSystem;
+        private bool _initialPanelStateApplied;
 
         private void Awake()
         {
+            ApplyInitialPanelState();
             if (_playerIconButton != null)
             {
                 _playerIconButton.onClick.AddListener(ToggleInfoPanel);
             }
+        }
+
+        private void ApplyInitialPanelState()
+        {
+            if (_initialPanelStateApplied) return;
+            _initialPanelStateApplied = true;
+            if (_infoPanel != null) _infoPanel.SetActive(false);
         }
 
         private void OnEnable()
@@ -167,6 +176,7 @@ namespace BattlePvp.UI
         /// </summary>
         public void ToggleInfoPanel()
         {
+            ApplyInitialPanelState();
             if (_infoPanel == null) return;
             
             bool isActive = _infoPanel.activeSelf;
@@ -189,7 +199,8 @@ namespace BattlePvp.UI
             // 로그인 ID 표시
             if (_loginIdText != null && BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
-                _loginIdText.text = BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname;
+                UserTextPresentation.SetPlain(_loginIdText, UserDisplayText.SingleLine(
+                    BattlePvp.Managers.GlobalDataManager.Instance.PlayerNickname, UserDisplayText.NameLimit));
             }
 
             UpdateBattleRecordDisplay();

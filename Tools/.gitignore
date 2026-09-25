@@ -1,0 +1,4 @@
+# Tool projects are maintained by hand; the root Unity rules ignore generated csproj files.
+!**/*.csproj
+**/bin/
+**/obj/

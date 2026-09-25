@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
 using BattlePvp.Networking;
@@ -19,13 +18,22 @@ namespace BattlePvp.Combat
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Mirror.NetworkIdentity))]
-    public sealed class HealthSystem : Mirror.NetworkBehaviour, IDamageReceiverWithContext, IPlayerStatusSource
+    public sealed class HealthSystem : Mirror.NetworkBehaviour, IDamageReceiverWithResult, IPlayerStatusSource
     {
         [Header("Networking")]
         [SyncVar] public bool isInvincible = false;
         [Header("References")]
         [SerializeField] private StatManager _statManager;
-        [SerializeField] private Animator _animator; // [추가] 캐릭터 애니메이터
+        [SerializeField] private Animator _animator; // 기존 프리팹의 생명 연출 참조를 바인딩에 전달한다.
+        internal Animator LifeAnimator
+        {
+            get
+            {
+                // PlayerManager.Awake가 먼저 실행되어도 기존 자식 Animator 참조를 전달한다.
+                if (_animator == null) _animator = GetComponentInChildren<Animator>(true);
+                return _animator;
+            }
+        }
 
         [Header("Runtime")]
         [SyncVar(hook = nameof(OnHpChangedInternal))]
@@ -35,14 +43,22 @@ namespace BattlePvp.Combat
         {
             RaiseHpChanged();
             UpdateOverflowState();
-            EvaluateDeath(); // [추가] 네트워크 동기화 시에도 사망 판정
         }
 
         public float CurrentHp => _currentHp;
         public float MaxHp => _maxHp;
         public float CurrentRegen => _currentRegen;
         public float CurrentShield => _currentShield;
-        public bool IsDead { get; private set; }
+        [SyncVar] private double _reviveAllowedAt;
+        public double ReviveAllowedAt => _reviveAllowedAt;
+        [SyncVar(hook = nameof(OnLifeStateSynced))]
+        private bool _isDead;
+        private bool _lastNotifiedIsDead;
+        public bool IsDead => _isDead;
+        public uint DeathSequence { get; private set; }
+        // Mirror binds netIdentity in NetworkIdentity.Awake, after deserialization/OnValidate.
+        private bool CanChangeHealth => netIdentity != null &&
+            (isServer || (!NetworkServer.active && !NetworkClient.active));
 
         public event Action<float, float> HpChanged;
         public event Action<float> ShieldChanged;
@@ -73,68 +89,67 @@ namespace BattlePvp.Combat
         private Coroutine _shieldRoutine;
 
         private IDamageReceiver _lastAttacker;
-        private static readonly Color DealtDamagePopupColor = new Color(1f, 0.12f, 0.12f, 1f);
-        private static readonly Color PoisonPopupColor = new Color(0.25f, 1f, 0.25f, 1f);
-        private static readonly Color ThornsPopupColor = new Color(0.25f, 0.65f, 1f, 1f);
-        private const float ReceivedDamagePopupFontSize = 5f;
-        private const float PoisonDealtPopupFontSizeDelta = -16f;
-        private const float AroundCharacterPopupRadius = 0.65f;
-        private const float AroundCharacterPopupHeight = 1.35f;
-        private static readonly Vector3 ThornsPopupOffset = new Vector3(0.65f, 1.25f, 0f);
-        private static readonly Dictionary<(uint attacker, uint victim, uint prediction), float> DisplayedPhysicalPopupExpiries =
-            new Dictionary<(uint, uint, uint), float>();
-        private static readonly List<(uint attacker, uint victim, uint prediction)> ExpiredPopupKeys =
-            new List<(uint, uint, uint)>();
-        private const float PopupCorrelationLifetimeSeconds = 30f;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        internal static void ClearPopupPredictions() => HealthDamagePresentation.ClearCorrelations();
 
         private void Awake()
         {
             if (_statManager == null)
                 _statManager = GetComponent<StatManager>();
 
-            if (_animator == null)
-                _animator = GetComponentInChildren<Animator>();
-
             _damageCalculator = new DamageCalculator();
             _strategistRules = new StrategistRules();
         }
 
-        private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
-        {
-            // HP 갱신은 StatManager.CmdUpdateStats → StatsChanged 이벤트 체인으로 처리됩니다.
-            // 씬 로드 직후 별도 처리 불필요.
-        }
-
         private void OnEnable()
         {
-            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
-
-            // 로비 혹은 비네트워크 개체라면 초기 HP를 실시간 최대치로 강제 동기화 (100 고정 방지)
-            bool isNetworkActive = Mirror.NetworkServer.active || Mirror.NetworkClient.active;
-            
-            // [수정] 로비의 경우 무조건 초기화 시 최대 체력으로 가득 채웁니다.
-            bool isLobbyScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
-            bool shouldForceRefill = !isNetworkActive || isLobbyScene || _currentHp <= 1000f;
-            
-            RefreshFromStats(keepCurrentHpFlat: !shouldForceRefill);
-            if (shouldForceRefill) SetCurrentHp(_maxHp);
+            RefreshFromStats(keepCurrentHpFlat: true);
+            if (!NetworkServer.active && !NetworkClient.active && !IsDead)
+                SetCurrentHp(_maxHp);
 
             if (_statManager != null)
+            {
                 _statManager.StatsChanged += OnStatsChanged;
+                _statManager.DerivedStatsChanged += OnDerivedStatsChanged;
+            }
 
             EnsureRegenRoutine();
+            if (CanChangeHealth && _currentShield > 0f && _shieldRoutine == null)
+                _shieldRoutine = StartCoroutine(CoDecayShield());
+        }
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            RefreshFromStats(keepCurrentHpFlat: true);
+            if (!IsDead)
+                SetCurrentHp(_maxHp);
+            EnsureRegenRoutine();
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            RefreshFromStats(keepCurrentHpFlat: true);
+            PublishLifeState();
         }
 
         private void OnDisable()
         {
-            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
-
             if (_statManager != null)
+            {
                 _statManager.StatsChanged -= OnStatsChanged;
+                _statManager.DerivedStatsChanged -= OnDerivedStatsChanged;
+            }
 
             StopRegenRoutine();
             StopOverflowRoutine();
+            if (_shieldRoutine != null)
+                StopCoroutine(_shieldRoutine);
+            _shieldRoutine = null;
         }
+
+        private void OnDerivedStatsChanged() => RefreshFromStats(keepCurrentHpFlat: true);
 
         private void OnStatsChanged(StatContainer newStats)
         {
@@ -147,8 +162,7 @@ namespace BattlePvp.Combat
             RefreshFromStats(keepCurrentHpFlat: true);
 
             // 스탯 변경 시 체력 수치 보정 (로비 더미 플레이어 포함)
-            bool isNetworkActive = Mirror.NetworkServer.active || Mirror.NetworkClient.active;
-            if (isServer || isLocalPlayer || !isNetworkActive)
+            if (CanChangeHealth && !IsDead)
             {
                 if (isStrategist)
                 {
@@ -187,7 +201,7 @@ namespace BattlePvp.Combat
                 _defenseRate = _statManager.GetFinalTotal(StatKind.DEF);
             }
 
-            if (!keepCurrentHpFlat)
+            if (!keepCurrentHpFlat && CanChangeHealth && !IsDead)
                 _currentHp = Mathf.Min(_currentHp, _maxHp);
 
             RaiseHpChanged();
@@ -199,6 +213,8 @@ namespace BattlePvp.Combat
         /// </summary>
         public void SetCurrentHp(float hp)
         {
+            if (!CanChangeHealth || IsDead || !float.IsFinite(hp))
+                return;
             _currentHp = hp < 0f ? 0f : hp;
             RaiseHpChanged();
             UpdateOverflowState();
@@ -207,10 +223,7 @@ namespace BattlePvp.Combat
 
         public void Heal(float amount)
         {
-            if (amount <= 0f || IsDead)
-                return;
-
-            if (NetworkClient.active && !NetworkServer.active)
+            if (!CanChangeHealth || !float.IsFinite(amount) || amount <= 0f || IsDead)
                 return;
 
             float next = Mathf.Min(_currentHp + amount, _maxHp);
@@ -224,7 +237,8 @@ namespace BattlePvp.Combat
 
         public void GrantDecayingShield(float amount, float durationSeconds)
         {
-            if (amount <= 0f || durationSeconds <= 0f || IsDead)
+            if (!CanChangeHealth || !float.IsFinite(amount) || !float.IsFinite(durationSeconds) ||
+                amount <= 0f || durationSeconds <= 0f || IsDead)
                 return;
 
             if (_shieldRoutine != null)
@@ -242,11 +256,17 @@ namespace BattlePvp.Combat
 
         public void SetSkillInvulnerable(float durationSeconds)
         {
+            if (!CanChangeHealth || IsDead || !float.IsFinite(durationSeconds))
+                return;
             _skillInvulnerableUntil = Math.Max(_skillInvulnerableUntil, NetworkTime.time + Math.Max(0f, durationSeconds));
         }
 
         public void SetTauntDefense(float durationSeconds, float incomingDamageMultiplier, float reflectMultiplier, float reflectHealthCapRatio)
         {
+            if (!CanChangeHealth || IsDead || !float.IsFinite(durationSeconds) ||
+                !float.IsFinite(incomingDamageMultiplier) || !float.IsFinite(reflectMultiplier) ||
+                !float.IsFinite(reflectHealthCapRatio))
+                return;
             _tauntDefenseUntil = NetworkTime.time + Math.Max(0f, durationSeconds);
             _tauntIncomingDamageMultiplier = Mathf.Clamp01(incomingDamageMultiplier);
             _tauntReflectMultiplier = Mathf.Max(0f, reflectMultiplier);
@@ -255,7 +275,7 @@ namespace BattlePvp.Combat
 
         private IEnumerator CoDecayShield()
         {
-            while (_currentShield > 0f && NetworkTime.time < _shieldExpiresAt)
+            while (CanChangeHealth && _currentShield > 0f && NetworkTime.time < _shieldExpiresAt)
             {
                 float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - NetworkTime.time));
                 float deltaSeconds = Mathf.Max(Time.deltaTime, _shieldSyncIntervalSeconds);
@@ -264,9 +284,12 @@ namespace BattlePvp.Combat
                 yield return new WaitForSeconds(Mathf.Max(0.01f, _shieldSyncIntervalSeconds));
             }
 
-            _currentShield = 0f;
-            _shieldExpiresAt = 0d;
-            RaiseShieldChanged();
+            if (CanChangeHealth)
+            {
+                _currentShield = 0f;
+                _shieldExpiresAt = 0d;
+                RaiseShieldChanged();
+            }
             _shieldRoutine = null;
         }
 
@@ -280,18 +303,27 @@ namespace BattlePvp.Combat
             ApplyDamageWithPopupSource(amount, source, attackerAttackPower, attacker, hitPosition, source);
         }
 
-        public void ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
+        public DamageResult ApplyDamage(DamageRequest request)
         {
-            if (NetworkClient.active && !NetworkServer.active)
-                return;
+            return ApplyDamageWithPopupSource(request.Amount, request.Source, request.AttackerAttackPower,
+                request.Attacker, request.HitPosition, request.PopupSource, request.PopupPredictionId);
+        }
 
-            if (isInvincible || NetworkTime.time < _skillInvulnerableUntil || amount <= 0f)
-                return;
+        public DamageResult ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
+        {
+            if (!CanChangeHealth || IsDead || isInvincible || NetworkTime.time < _skillInvulnerableUntil ||
+                (NetworkServer.active && _statManager != null && !_statManager.HasServerStats) ||
+                (NetworkServer.active && connectionToClient != null && !connectionToClient.isReady) ||
+                !float.IsFinite(amount) || amount <= 0f || !float.IsFinite(attackerAttackPower) ||
+                attackerAttackPower < 0f || !CombatValidation.IsFinite(hitPosition))
+                return default;
 
             float hpBeforeDamage = _currentHp;
             bool tauntDefenseActive = NetworkTime.time < _tauntDefenseUntil;
             if (tauntDefenseActive)
                 amount *= _tauntIncomingDamageMultiplier;
+            if (amount <= 0f)
+                return default;
 
             if (attacker != null)
             {
@@ -311,7 +343,10 @@ namespace BattlePvp.Combat
             }
 
             _currentHp = next < 0f ? 0f : next;
-            RecordMatchDamage(Mathf.Max(0f, hpBeforeDamage - _currentHp), attacker);
+            float actualHpDamage = Mathf.Max(0f, hpBeforeDamage - _currentHp);
+            DamageResult result = new DamageResult(true, actualHpDamage, absorbedByShield, _currentHp <= 0f);
+            if (isServer)
+                RecordMatchDamage(actualHpDamage, attacker);
             ShowDamagePopup(hitPosition, amount, popupSource, attacker, popupPredictionId);
 
             EvaluateDeath(); // [공통 로직으로 교체]
@@ -337,14 +372,15 @@ namespace BattlePvp.Combat
                     {
                         // attacker가 context 인터페이스를 구현하면 그대로, 아니면 기본 ApplyDamage로 적용
                         if (attacker is IDamageReceiverWithContext ctx)
-                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: this, GetThornsPopupPosition(attackerMb));
+                            ctx.ApplyDamage(thorns, DamageSource.Thorns, attackerAttackPower: 0f, attacker: this, HealthDamagePresentation.GetThornsPosition(attackerMb.transform));
                         else
-                            attacker.ApplyDamage(thorns, DamageSource.Thorns, GetThornsPopupPosition(attackerMb));
+                            attacker.ApplyDamage(thorns, DamageSource.Thorns, HealthDamagePresentation.GetThornsPosition(attackerMb.transform));
                     }
                 }
             }
 
             UpdateOverflowState();
+            return result;
         }
 
         [Server]
@@ -375,7 +411,7 @@ namespace BattlePvp.Combat
 
         private void ShowDamagePopup(Vector3 hitPosition, float amount, DamageSource source, IDamageReceiver attacker, uint predictionId)
         {
-            Vector3 popupPosition = ResolveDamagePopupPosition(hitPosition, source);
+            Vector3 popupPosition = HealthDamagePresentation.ResolvePosition(transform, hitPosition, source);
             uint attackerNetId = GetDamageReceiverNetId(attacker);
             uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
 
@@ -402,112 +438,11 @@ namespace BattlePvp.Combat
             uint victimNetId,
             uint predictionId)
         {
-            DamagePopupManager popupManager = DamagePopupManager.Instance;
-            if (popupManager == null)
-                return;
-
-            Color popupColor = GetDamagePopupColor(source);
             bool localVictim = IsLocalPlayerNetId(victimNetId) || isLocalPlayer;
             bool localAttacker = attackerNetId != 0
                 && IsLocalPlayerNetId(attackerNetId);
-
-            if (localAttacker && source == DamageSource.Physical && predictionId != 0 &&
-                !TryClaimPhysicalPopup(attackerNetId, victimNetId, predictionId))
-                return;
-
-            if (localVictim)
-            {
-                if (source == DamageSource.Physical)
-                    popupManager.CreateReceivedDamagePopup(amount, popupColor, ReceivedDamagePopupFontSize, transform.position + Vector3.up);
-                else
-                    popupManager.CreatePopup(GetAroundCharacterPopupPosition(), amount, false, popupColor, ReceivedDamagePopupFontSize);
-                return;
-            }
-
-            if (localAttacker)
-            {
-                TryPlayLocalStatusDamageFeedback(source);
-
-                if (source == DamageSource.Poison)
-                    popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
-                else
-                    popupManager.CreatePopup(position, amount, false, popupColor);
-                return;
-            }
-
-            if (source == DamageSource.Poison)
-                popupManager.CreatePopupWithFontDelta(position, amount, false, popupColor, PoisonDealtPopupFontSizeDelta);
-            else
-                popupManager.CreatePopup(position, amount, false, popupColor);
-        }
-
-        private static void TryPlayLocalStatusDamageFeedback(DamageSource source)
-        {
-            CombatHitFeedback.PlayStatusDamageForLocalPlayer(source);
-        }
-
-        public void ShowPredictedPhysicalDamagePopup(Vector3 position, float amount, uint attackerNetId, uint predictionId)
-        {
-            if (amount <= 0f || attackerNetId == 0 || predictionId == 0 || !IsLocalPlayerNetId(attackerNetId))
-                return;
-
-            uint victimNetId = netIdentity != null ? netIdentity.netId : 0;
-            if (victimNetId == 0)
-                return;
-
-            CreateDamagePopupLocal(position, amount, DamageSource.Physical, attackerNetId, victimNetId, predictionId);
-        }
-
-        private static bool TryClaimPhysicalPopup(
-            uint attackerNetId,
-            uint victimNetId,
-            uint predictionId)
-        {
-            PrunePopupCorrelations(DisplayedPhysicalPopupExpiries);
-            var key = (attackerNetId, victimNetId, predictionId);
-            if (DisplayedPhysicalPopupExpiries.ContainsKey(key))
-                return false;
-
-            DisplayedPhysicalPopupExpiries[key] = Time.unscaledTime + PopupCorrelationLifetimeSeconds;
-            return true;
-        }
-
-        private static void PrunePopupCorrelations(
-            Dictionary<(uint attacker, uint victim, uint prediction), float> correlations)
-        {
-            ExpiredPopupKeys.Clear();
-            foreach (var pair in correlations)
-            {
-                if (Time.unscaledTime > pair.Value)
-                    ExpiredPopupKeys.Add(pair.Key);
-            }
-
-            foreach (var key in ExpiredPopupKeys)
-                correlations.Remove(key);
-        }
-
-        private Vector3 ResolveDamagePopupPosition(Vector3 hitPosition, DamageSource source)
-        {
-            if (source == DamageSource.Poison || source == DamageSource.Thorns)
-                return GetAroundCharacterPopupPosition();
-
-            return hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
-        }
-
-        private Vector3 GetAroundCharacterPopupPosition()
-        {
-            Vector2 random = UnityEngine.Random.insideUnitCircle * AroundCharacterPopupRadius;
-            return transform.position + transform.right * random.x + transform.forward * random.y + Vector3.up * AroundCharacterPopupHeight;
-        }
-
-        private static Color GetDamagePopupColor(DamageSource source)
-        {
-            return source switch
-            {
-                DamageSource.Poison => PoisonPopupColor,
-                DamageSource.Thorns => ThornsPopupColor,
-                _ => DealtDamagePopupColor
-            };
+            HealthDamagePresentation.ShowLocal(transform, position, amount, source,
+                attackerNetId, victimNetId, predictionId, localVictim, localAttacker);
         }
 
         private static uint GetDamageReceiverNetId(IDamageReceiver receiver)
@@ -523,15 +458,6 @@ namespace BattlePvp.Combat
             return netId != 0
                 && NetworkClient.localPlayer != null
                 && NetworkClient.localPlayer.netId == netId;
-        }
-
-        private static Vector3 GetThornsPopupPosition(MonoBehaviour attackerMb)
-        {
-            Transform attackerTransform = attackerMb.transform;
-            return attackerTransform.position
-                + (attackerTransform.right * ThornsPopupOffset.x)
-                + (Vector3.up * ThornsPopupOffset.y)
-                + (attackerTransform.forward * ThornsPopupOffset.z);
         }
 
         private float PredictMaxHp()
@@ -587,7 +513,7 @@ namespace BattlePvp.Combat
 
         private void EnsureOverflowRoutine()
         {
-            if (_overflowRoutineRunning)
+            if (!CanChangeHealth || IsDead || !isActiveAndEnabled || _overflowRoutineRunning)
                 return;
             _overflowRoutineRunning = true;
             _overflowRoutine = StartCoroutine(CoOverflowTick());
@@ -607,7 +533,7 @@ namespace BattlePvp.Combat
             while (true)
             {
                 // overflow가 해소되었으면 종료
-                if (_maxHp <= 0f || _currentHp <= _maxHp || !IsStrategist())
+                if (!CanChangeHealth || IsDead || _maxHp <= 0f || _currentHp <= _maxHp || !IsStrategist())
                 {
                     _overflowRoutineRunning = false;
                     _overflowRoutine = null;
@@ -628,7 +554,7 @@ namespace BattlePvp.Combat
 
         private void EnsureRegenRoutine()
         {
-            if (_regenRoutine != null) return;
+            if (!CanChangeHealth || !isActiveAndEnabled || _regenRoutine != null) return;
             _regenRoutine = StartCoroutine(CoRegenTick());
         }
 
@@ -641,17 +567,17 @@ namespace BattlePvp.Combat
 
         private IEnumerator CoRegenTick()
         {
-            float lastFullHealTime = 0f;
-
             while (true)
             {
+                if (!CanChangeHealth || IsDead)
+                {
+                    yield return null;
+                    continue;
+                }
                 string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                // "Battle_wait" 또는 "Battle_waiting" 모두 대응하도록 수정
-                bool isWaitingScene = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
                 bool isPreMatch = (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.PreMatch);
                 
                 float effectiveRegen = _currentRegen;
-                bool isLobby = sceneName.Contains("Lobby");
                 // [수정] 초강력 재생은 오직 Battle_waiting 또는 Battle_wait 씬에서만 작동합니다.
                 bool isWaitingSceneOnly = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
 
@@ -664,13 +590,12 @@ namespace BattlePvp.Combat
                 if (effectiveRegen > 0f && _currentHp < _maxHp)
                 {
                     // 일반 재생 로직 (로비도 로컬 환경이므로 허용)
-                    if (isServer || isLobby || isWaitingSceneOnly)
+                    if (CanChangeHealth)
                     {
                         float next = _currentHp + (effectiveRegen * Time.deltaTime);
                         _currentHp = Mathf.Min(next, _maxHp);
                         
-                        // UI 즉시 반영을 위한 강제 호출 (로비/대기실)
-                        if (isLobby || isWaitingSceneOnly) RaiseHpChanged();
+                        RaiseHpChanged();
                     }
                 }
                 yield return null;
@@ -698,14 +623,13 @@ namespace BattlePvp.Combat
         /// </summary>
         private void EvaluateDeath()
         {
-            if (_currentHp <= 0f && !IsDead)
+            if (CanChangeHealth && _currentHp <= 0f && !IsDead)
             {
-                IsDead = true;
-                if (_animator != null)
-                {
-                    _animator.SetTrigger("Die");
-                    Debug.Log($"[HealthSystem:{gameObject.name}] Die trigger set on Animator.");
-                }
+                unchecked { DeathSequence++; }
+                _reviveAllowedAt = NetworkTime.time + HealthUiLifeRules.RespawnDelaySeconds;
+                _isDead = true;
+                StopOverflowRoutine();
+                PublishLifeState();
                 
                 // 막타 점수 부여 로직
                 if (isServer && _lastAttacker != null)
@@ -726,101 +650,89 @@ namespace BattlePvp.Combat
                     }
                 }
 
-                var combat = GetComponent<PlayerCombat>();
-                if (combat != null)
-                    combat.CancelCurrentAttack();
-
-                OnDied?.Invoke();
                 if (isServer)
                 {
                     var playerManager = GetComponent<PlayerManager>();
                     if (playerManager != null)
                         playerManager.NotifyDeathFromServer();
 
-                    if (connectionToClient != null)
-                        TargetForceDeath(connectionToClient);
                 }
                 Debug.Log($"[HealthSystem:{gameObject.name}] IsDead set to true.");
             }
-            else if (_currentHp > 0f && IsDead)
-            {
-                // [선택 사항] 체력이 다시 생겼을 때 자동으로 IsDead를 해제할 수도 있으나, 
-                // 보통 Revive()를 호출하므로 여기서는 명시적으로 로그만 남깁니다.
-                // IsDead = false; 
-            }
         }
 
-        [TargetRpc]
-        private void TargetForceDeath(NetworkConnection target)
+        private void OnLifeStateSynced(bool oldValue, bool newValue)
         {
-            if (_currentHp > 0f)
-                _currentHp = 0f;
+            PublishLifeState();
+        }
 
-            if (!IsDead)
-            {
-                EvaluateDeath();
-            }
-            else
+        private void PublishLifeState()
+        {
+            // Host SyncVar hooks and the server setter can both enter this path.
+            if (_lastNotifiedIsDead == _isDead)
+                return;
+            _lastNotifiedIsDead = _isDead;
+            if (_isDead)
             {
                 OnDied?.Invoke();
             }
-
+            else
+            {
+                OnRevived?.Invoke();
+            }
             RaiseHpChanged();
         }
 
         public void Revive(float ratio = 1f)
         {
-            IsDead = false;
-            _currentHp = _maxHp * Mathf.Clamp01(ratio);
+            if (!CanChangeHealth || !float.IsFinite(ratio) || ratio <= 0f || ratio > 1f)
+                return;
+            _currentHp = _maxHp * ratio;
+            _lastAttacker = null;
+            _reviveAllowedAt = 0d;
+            _isDead = false;
             RaiseHpChanged();
             UpdateOverflowState();
-            OnRevived?.Invoke();
-
-            var playerManager = GetComponent<PlayerManager>();
-            if (playerManager != null)
-            {
-                playerManager.PlayReviveVisual();
-                if (isServer)
-                    playerManager.RpcPlayReviveVisual();
-            }
-
-            if (isServer && connectionToClient != null)
-                TargetForceRevive(connectionToClient, _currentHp);
+            PublishLifeState();
         }
 
         public void RequestRevive(float ratio = 1f)
         {
-            if (isServer)
+            if (netIdentity == null) return;
+            if (!NetworkServer.active && !NetworkClient.active)
             {
                 Revive(ratio);
+                return;
+            }
+            if (isServer)
+            {
+                TryReviveFromRequest(ratio);
                 return;
             }
 
             if (!isLocalPlayer)
                 return;
 
-            Revive(ratio);
             CmdRequestRevive(ratio);
         }
 
         [Command]
         private void CmdRequestRevive(float ratio)
         {
-            Revive(ratio);
+            TryReviveFromRequest(ratio);
         }
 
-        [TargetRpc]
-        private void TargetForceRevive(NetworkConnection target, float hp)
+        [Server]
+        private void TryReviveFromRequest(float ratio)
         {
-            IsDead = false;
-            _currentHp = hp;
-            RaiseHpChanged();
-            UpdateOverflowState();
-            OnRevived?.Invoke();
-
+            bool isInBattle = BattleStateMachine.Instance != null &&
+                              BattleStateMachine.Instance.CurrentState == BattleState.InBattle;
+            if (!HealthUiLifeRules.CanRequestRevive(IsDead, NetworkTime.time, _reviveAllowedAt, ratio, isInBattle))
+                return;
             var playerManager = GetComponent<PlayerManager>();
-            if (playerManager != null)
-                playerManager.PlayReviveVisual();
+            if (playerManager == null || !playerManager.ServerTeleportToSpawn())
+                return;
+            Revive(ratio);
         }
 
         /// <summary>
@@ -828,28 +740,34 @@ namespace BattlePvp.Combat
         /// </summary>
         public void RefillHealth()
         {
-            if (isServer)
-            {
-                _currentHp = _maxHp;
-            }
-            else if (isLocalPlayer)
-            {
-                _currentHp = _maxHp;
-                RaiseHpChanged();
-            }
-            Debug.Log($"[HealthSystem] Health refilled to {_maxHp} (Server={isServer}, Local={isLocalPlayer})");
+            if (!CanChangeHealth || IsDead)
+                return;
+            _currentHp = _maxHp;
+            RaiseHpChanged();
+            UpdateOverflowState();
         }
 
 #if UNITY_EDITOR
-        private void OnValidate()
+        private int _pendingEditorValidation;
+
+        protected override void OnValidate()
         {
-            // 인스펙터에서 수동으로 체력을 깎았을 때 UI 및 사망 애니메이션이 즉시 반영되도록 합니다.
-            if (Application.isPlaying)
-            {
-                EvaluateDeath();
-                RaiseHpChanged();
-                UpdateOverflowState();
-            }
+            base.OnValidate();
+            // Validation also runs during scene loading, before Awake and potentially off-thread.
+            System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1);
+        }
+
+        private void Update()
+        {
+            if (!Application.IsPlaying(gameObject) || !isActiveAndEnabled || netIdentity == null)
+                return;
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0) == 0)
+                return;
+
+            // Preserve live Inspector HP edits, applying runtime side effects on the player loop.
+            EvaluateDeath();
+            RaiseHpChanged();
+            UpdateOverflowState();
         }
 #endif
     }

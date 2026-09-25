@@ -2,30 +2,11 @@ using Mirror;
 using UnityEngine;
 using System.Collections.Generic;
 using BattlePvp.Networking;
-using System.Linq;
 
 namespace BattlePvp.Combat
 {
     /// <summary>
-    /// 점수와 XP 보상을 관리하는 인터페이스입니다. 추후 공식을 유연하게 변경할 수 있도록 디자인했습니다.
-    /// </summary>
-    public interface IXpDistributor
-    {
-        int CalculateXp(int rank, int points);
-    }
-
-    public class SimpleXpDistributor : IXpDistributor
-    {
-        public int CalculateXp(int rank, int points)
-        {
-            if (rank == 1) return 100 + (points * 10);
-            if (rank == 2) return 50 + (points * 5);
-            return 20 + (points * 2);
-        }
-    }
-
-    /// <summary>
-    /// 플레이어의 킬 점수를 동기화하고 경기 종료 후 PlayFab에 결과를 반영하는 클래스입니다.
+    /// 서버 경기 기록의 점수를 동기화하고 개인 결과를 표시합니다. 영속 보상은 별도 백엔드의 책임입니다.
     /// </summary>
     [RequireComponent(typeof(NetworkIdentity))]
     public class ScoreSystem : NetworkBehaviour
@@ -41,72 +22,130 @@ namespace BattlePvp.Combat
 
         [SyncVar] public float MatchDamageDealt;
         [SyncVar] public float MatchDamageTaken;
+        [SyncVar(hook = nameof(OnConnectionChanged))] private bool _isConnected = true;
+        public bool IsConnected => _isConnected;
 
         public static event System.Action<ScoreSystem> OnScoreUpdated;
 
         public static readonly List<ScoreSystem> ActiveScores = new List<ScoreSystem>();
+        public static readonly System.Func<ScoreSystem, int> PointsOf =
+            score => score != null ? score.CurrentPoints : int.MinValue;
+
+        public static int CompareForDisplay(ScoreSystem left, ScoreSystem right)
+        {
+            int points = right.CurrentPoints.CompareTo(left.CurrentPoints);
+            if (points != 0) return points;
+            int name = string.CompareOrdinal(left.PlayerName, right.PlayerName);
+            return name != 0 ? name : left.netId.CompareTo(right.netId);
+        }
 
         public int CurrentKills => CurrentPoints;
         public float KillsPerDeath => CurrentDeaths <= 0 ? CurrentKills : CurrentKills / (float)CurrentDeaths;
 
-        private IXpDistributor _xpDistributor = new SimpleXpDistributor();
-        private readonly Dictionary<uint, int> _killsByVictim = new Dictionary<uint, int>();
-        private readonly Dictionary<uint, int> _deathsByKiller = new Dictionary<uint, int>();
+        private MatchLedger _matchLedger;
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            BattleStateMachine.Instance?.TryRegisterMatchParticipant(this);
+        }
+
+        public override void OnStopServer()
+        {
+            _matchLedger?.Detach(netId);
+            _matchLedger = null;
+            base.OnStopServer();
+        }
 
         [Server]
-        public void AddPoint(int amount)
+        public bool AttachToMatch(MatchLedger ledger, string roomId)
         {
-            CurrentPoints += amount;
+            var identity = connectionToClient?.authenticationData as AuthenticatedRoomPlayer;
+            if (identity == null || identity.RoomId != roomId || ledger == null ||
+                !ledger.TryAttach(netId, identity.PlayFabId, PlayerName, out MatchTotals totals))
+                return false;
+            _matchLedger = ledger;
+            ApplyMatchTotals(totals);
+            return true;
+        }
+
+        [Server]
+        public void ServerSetConnected(bool connected)
+        {
+            _isConnected = connected;
+            _matchLedger?.SetConnectionState(netId, connected);
+            if (isClient) RefreshConnectedRoster();
+        }
+
+        private void OnConnectionChanged(bool previous, bool current) => RefreshConnectedRoster();
+
+        private void RefreshConnectedRoster()
+        {
+            bool wasListed = ActiveScores.Contains(this);
+            int removed = ActiveScores.RemoveAll(score => score == null || score == this || (score.netId == netId && score != this));
+            bool shouldList = _isConnected && GetComponent<PlayerManager>() != null;
+            if (shouldList) ActiveScores.Add(this);
+            // Host SyncVar hook and explicit server update can both call this in one transition.
+            if (wasListed != shouldList || removed > (wasListed ? 1 : 0)) OnScoreUpdated?.Invoke(this);
         }
 
         [Server]
         public void ResetMatchStats()
         {
+            // The active ledger owns these values. A public server helper must not diverge from it.
+            if (_matchLedger != null && _matchLedger.IsRecording) return;
+            _matchLedger = null;
             CurrentPoints = 0;
             CurrentDeaths = 0;
             MatchDamageDealt = 0f;
             MatchDamageTaken = 0f;
-            _killsByVictim.Clear();
-            _deathsByKiller.Clear();
         }
 
         [Server]
         public void RecordDamageDealt(float amount)
         {
-            MatchDamageDealt += Mathf.Max(0f, amount);
+            if (_matchLedger != null && _matchLedger.RecordDamage(netId, amount, 0f))
+                RefreshMatchTotals();
         }
 
         [Server]
         public void RecordDamageTaken(float amount)
         {
-            MatchDamageTaken += Mathf.Max(0f, amount);
+            if (_matchLedger != null && _matchLedger.RecordDamage(netId, 0f, amount))
+                RefreshMatchTotals();
         }
 
         [Server]
         public void RecordKillAgainst(ScoreSystem victim)
         {
-            if (victim == null || victim == this)
+            if (victim == null || victim == this || _matchLedger == null || victim._matchLedger != _matchLedger)
                 return;
 
-            AddPoint(1);
-            Increment(_killsByVictim, victim.netId);
-            victim.RecordDeathFrom(this);
+            HealthSystem victimHealth = victim.GetComponent<HealthSystem>();
+            if (victimHealth == null || !_matchLedger.RecordKill(netId, victim.netId,
+                victimHealth.DeathSequence, victimHealth.IsDead))
+                return;
+
+            RefreshMatchTotals();
+            victim.RefreshMatchTotals();
 
             if (connectionToClient != null)
                 TargetAddCumulativeKill(connectionToClient);
+            if (victim.connectionToClient != null)
+                victim.TargetAddCumulativeDeath(victim.connectionToClient);
         }
 
-        [Server]
-        private void RecordDeathFrom(ScoreSystem killer)
+        private void RefreshMatchTotals()
         {
-            if (killer == null || killer == this)
-                return;
+            if (_matchLedger.TryGetTotals(netId, out MatchTotals totals)) ApplyMatchTotals(totals);
+        }
 
-            Increment(_deathsByKiller, killer.netId);
-            CurrentDeaths++;
-
-            if (connectionToClient != null)
-                TargetAddCumulativeDeath(connectionToClient);
+        private void ApplyMatchTotals(MatchTotals totals)
+        {
+            CurrentPoints = totals.Points;
+            CurrentDeaths = totals.Deaths;
+            MatchDamageDealt = totals.DamageDealt;
+            MatchDamageTaken = totals.DamageTaken;
         }
 
         [TargetRpc]
@@ -129,95 +168,25 @@ namespace BattlePvp.Combat
 
             gdm.AddCombatRecord(killsDelta, deathsDelta);
 
-            if (PlayFabBattleManager.Instance != null)
+            if (gdm.HasLoadedCombatRecord && PlayFabBattleManager.Instance != null)
                 PlayFabBattleManager.Instance.SaveCombatRecord(gdm.CumulativeKills, gdm.CumulativeDeaths);
 
             OnScoreUpdated?.Invoke(this);
         }
 
-        public string GetMostKilledEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
+        public static bool TryClaimDeathSequence(uint deathSequence, bool isDead, ref uint lastProcessed)
         {
-            GetMostKilledEnemy(allPlayers, out string name, out _);
-            return name;
-        }
-
-        public string GetMostKilledByEnemyName(IReadOnlyList<ScoreSystem> allPlayers)
-        {
-            GetMostKilledByEnemy(allPlayers, out string name, out _);
-            return name;
-        }
-
-        public void GetMostKilledEnemy(IReadOnlyList<ScoreSystem> allPlayers, out string name, out int count)
-        {
-            ResolveTopOpponent(_killsByVictim, allPlayers, out name, out count);
-        }
-
-        public void GetMostKilledByEnemy(IReadOnlyList<ScoreSystem> allPlayers, out string name, out int count)
-        {
-            ResolveTopOpponent(_deathsByKiller, allPlayers, out name, out count);
-        }
-
-        private static void Increment(Dictionary<uint, int> values, uint netId)
-        {
-            if (values.ContainsKey(netId))
-                values[netId]++;
-            else
-                values[netId] = 1;
-        }
-
-        private static void ResolveTopOpponent(
-            Dictionary<uint, int> values,
-            IReadOnlyList<ScoreSystem> allPlayers,
-            out string name,
-            out int count)
-        {
-            name = "None";
-            count = 0;
-            if (values == null || values.Count == 0)
-                return;
-
-            uint topNetId = 0;
-            int topCount = int.MinValue;
-            foreach (var pair in values)
-            {
-                if (pair.Value > topCount)
-                {
-                    topNetId = pair.Key;
-                    topCount = pair.Value;
-                }
-            }
-
-            count = Mathf.Max(0, topCount);
-
-            if (allPlayers != null)
-            {
-                for (int i = 0; i < allPlayers.Count; i++)
-                {
-                    var player = allPlayers[i];
-                    if (player != null && player.netId == topNetId)
-                    {
-                        name = string.IsNullOrEmpty(player.PlayerName) ? "Unknown" : player.PlayerName;
-                        return;
-                    }
-                }
-            }
-
-            name = "Unknown";
-        }
-
-        /// <summary>
-        /// 클라이언트에서 서버로 점수 추가를 요청합니다.
-        /// </summary>
-        [Command]
-        public void CmdAddPoint(int amount)
-        {
-            AddPoint(amount);
+            if (!isDead || deathSequence == 0 ||
+                (lastProcessed != 0 && unchecked((int)(deathSequence - lastProcessed)) <= 0)) return false;
+            lastProcessed = deathSequence;
+            return true;
         }
 
         [Server]
         public void SetPlayerName(string newName)
         {
-            PlayerName = newName;
+            PlayerName = MatchLedger.NormalizeName(newName);
+            _matchLedger?.Rename(netId, PlayerName);
         }
 
         /// <summary>
@@ -246,10 +215,7 @@ namespace BattlePvp.Combat
             if (GetComponent("PlayerManager") == null)
                 return;
 
-            ActiveScores.RemoveAll(score => score == null || (score != this && score.netId == netId));
-            if (!ActiveScores.Contains(this))
-                ActiveScores.Add(this);
-            OnScoreUpdated?.Invoke(this);
+            RefreshConnectedRoster();
         }
 
         public override void OnStopClient()
@@ -276,32 +242,19 @@ namespace BattlePvp.Combat
 
         #region [Match Result Logic]
 
-        /// <summary>
-        /// 서버에서 호출하여 모든 생존자의 랭킹을 산출하고 XP를 분배합니다.
-        /// </summary>
         [Server]
-        public void DistributeRewards(List<ScoreSystem> allPlayers)
+        public void PresentMatchReward(int xp, int points)
         {
-            var sortedList = allPlayers.OrderByDescending(p => p.CurrentPoints).ToList();
-
-            for (int i = 0; i < sortedList.Count; i++)
-            {
-                int rank = i + 1;
-                int points = sortedList[i].CurrentPoints;
-                int xp = _xpDistributor.CalculateXp(rank, points);
-
-                // PlayFab에 점수(리더보드용) 및 XP 업데이트 호출을 요청할 수 있습니다.
-                TargetUpdatePlayFabData(sortedList[i].connectionToClient, xp, points);
-            }
+            if (connectionToClient != null)
+                TargetUpdatePlayFabData(connectionToClient, xp, points);
         }
 
         [TargetRpc]
         private void TargetUpdatePlayFabData(NetworkConnection target, int xp, int points)
         {
-            Debug.Log($"경기 결과: {xp} XP 획득, {points} 점 기록!");
-            PlayFabBattleManager.Instance.UpdateStatistics(points);
-            // XP는 Internal User Data에 관리하므로, 클라이언트에서 업데이트 요청을 보낼 수도 있고
-            // 보안을 위해서는 CloudScript 혹은 서버에서 직접 처리해야 합니다.
+            Debug.Log($"경기 결과: {points}점, 예상 XP {xp} (백엔드 보상 미반영)");
+            // Competitive persistence must be submitted by the authenticated trusted host.
+            // A TargetRpc is presentation, and cannot authorize client leaderboard writes.
         }
 
         #endregion

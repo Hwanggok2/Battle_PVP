@@ -1,0 +1,39 @@
+{
+  "Statements": [
+    {
+      "Resource": "pfrn:api--/Client/UpdatePlayerStatistics",
+      "Action": "*",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Comment": "Competitive statistics require validated server results."
+    },
+    {
+      "Resource": "pfrn:api--/Client/CreateSharedGroup",
+      "Action": "*",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Comment": "CloudScript owns room and registry creation."
+    },
+    {
+      "Resource": "pfrn:api--/Client/UpdateSharedGroupData",
+      "Action": "*",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Comment": "CloudScript validates room mutations."
+    },
+    {
+      "Resource": "pfrn:api--/Client/AddSharedGroupMembers",
+      "Action": "*",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Comment": "CloudScript validates room admission and reserved groups."
+    },
+    {
+      "Resource": "pfrn:api--/Client/RemoveSharedGroupMembers",
+      "Action": "*",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Comment": "CloudScript validates room departures."
+    }
+  ]
+}

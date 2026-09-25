@@ -13,7 +13,19 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     [SyncVar] private double _spawnedAt;
 
     private bool _hasHit;
-    private bool _hasPredictedHit;
+    private BoxCollider _shape;
+    private readonly CombatPhysicsQuery _query = new CombatPhysicsQuery();
+
+    private struct Impact
+    {
+        public Collider Collider;
+        public IDamageReceiver Target;
+        public StatManager Stats;
+        public HitBodyPart BodyPart;
+        public Vector3 Point;
+        public float Distance;
+        public bool IsEnvironment => Target == null;
+    }
 
     public void Initialize(uint ownerNetId, Vector3 direction, float speed, float lifeSeconds, float damageMultiplier)
     {
@@ -23,17 +35,24 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         _lifeSeconds = Mathf.Max(0.1f, lifeSeconds);
         _damageMultiplier = Mathf.Max(0f, damageMultiplier);
         _spawnedAt = NetworkTime.time;
+        _hasHit = false;
     }
 
     private void Update()
     {
+        if (_hasHit) return;
+        if (isServer && NetworkTime.time - _spawnedAt >= _lifeSeconds)
+        {
+            _hasHit = true;
+            NetworkServer.Destroy(gameObject);
+            return;
+        }
         Vector3 direction = _direction.sqrMagnitude > 0.001f ? _direction.normalized : transform.forward;
-        transform.position += direction * (_speed * Time.deltaTime);
         if (direction.sqrMagnitude > 0.001f)
             transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
-
-        if (isServer && NetworkTime.time - _spawnedAt >= _lifeSeconds)
-            NetworkServer.Destroy(gameObject);
+        Vector3 displacement = direction * (_speed * Time.deltaTime);
+        if (isServer) AdvanceServer(displacement, ResolveOwner());
+        else transform.position += displacement;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -48,75 +67,104 @@ public sealed class BowArrowProjectile : NetworkBehaviour
 
     private void HandleCollision(Collider other)
     {
-        if (isServer)
-            TryHit(other);
-        else if (isClient)
-            TryPredictHit(other);
+        // Resolve the complete overlap instead of trusting callback order at a wall/body boundary.
+        if (isServer && other != null && !_hasHit)
+            AdvanceServer(Vector3.zero, ResolveOwner());
     }
 
-    [Server]
-    private void TryHit(Collider other)
+    private void AdvanceServer(Vector3 displacement, NetworkIdentity owner)
     {
-        if (_hasHit || other == null)
+        if (_hasHit || !isActiveAndEnabled || !CombatValidation.IsFinite(displacement)) return;
+        if (!TryFindFirstImpact(displacement, owner != null ? owner.transform : null, out Impact impact))
+        {
+            transform.position += displacement;
             return;
-
-        PlayerCombat ownerCombat = ResolveOwnerCombat();
-        if (ownerCombat != null && other.transform.root == ownerCombat.transform.root)
-            return;
-
-        IDamageReceiver target = other.GetComponentInParent<IDamageReceiver>();
-        StatManager targetStats = other.GetComponentInParent<StatManager>();
-        HitBodyPart bodyPart = ResolveBodyPart(other);
-        if (target == null || targetStats == null)
-            return;
-        if (target is HealthSystem && bodyPart == null)
-            return;
-
+        }
+        transform.position += displacement.sqrMagnitude > 0f ? displacement.normalized * impact.Distance : Vector3.zero;
         _hasHit = true;
-        Vector3 hitPoint = other.ClosestPoint(transform.position);
-        float bodyPartMultiplier = bodyPart != null ? bodyPart.DamageMultiplier : 1f;
-        BodyPart part = bodyPart != null ? bodyPart.Part : BodyPart.Body;
-        ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, targetStats, target, hitPoint, bodyPartMultiplier, part, netId);
-        NetworkServer.Destroy(gameObject);
+        try
+        {
+            if (impact.Target != null && owner != null)
+            {
+                PlayerCombat ownerCombat = owner.GetComponent<PlayerCombat>();
+                ownerCombat?.ProcessBowProjectileHit(_damageMultiplier, impact.Stats, impact.Target, impact.Point,
+                    impact.BodyPart != null ? impact.BodyPart.DamageMultiplier : 1f,
+                    impact.BodyPart != null ? impact.BodyPart.Part : BodyPart.Body, netId);
+            }
+        }
+        finally
+        {
+            if (isServer) NetworkServer.Destroy(gameObject);
+        }
     }
 
-    [Server]
-    private PlayerCombat ResolveOwnerCombat()
+    private bool TryFindFirstImpact(Vector3 displacement, Transform owner, out Impact closest)
+    {
+        if (_shape == null) _shape = GetComponent<BoxCollider>();
+        Vector3 center = _shape != null ? _shape.transform.TransformPoint(_shape.center) : transform.position;
+        Vector3 scale = _shape != null ? _shape.transform.lossyScale : Vector3.one;
+        scale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+        Vector3 extents = _shape != null ? Vector3.Scale(_shape.size * 0.5f, scale) : Vector3.one * 0.01f;
+        Quaternion rotation = _shape != null ? _shape.transform.rotation : transform.rotation;
+        closest = default;
+        bool found = false;
+
+        // Casts do not reliably report colliders containing the starting volume.
+        int overlaps = _query.OverlapBox(center, extents, rotation);
+        for (int i = 0; i < overlaps; i++)
+        {
+            Collider collider = _query.Colliders[i];
+            if (collider != null && TryCreateImpact(collider, collider.ClosestPoint(center), 0f, owner, out Impact candidate))
+                SelectClosest(candidate, ref found, ref closest);
+        }
+        if (found) return true;
+
+        float distance = displacement.magnitude;
+        if (distance <= 0f) return false;
+        int hits = _query.BoxCast(center, extents, rotation, displacement / distance, distance);
+        for (int i = 0; i < hits; i++)
+        {
+            RaycastHit hit = _query.Hits[i];
+            if (TryCreateImpact(hit.collider, hit.point, hit.distance, owner, out Impact candidate))
+                SelectClosest(candidate, ref found, ref closest);
+        }
+        return found;
+    }
+
+    private bool TryCreateImpact(Collider other, Vector3 point, float distance, Transform owner, out Impact impact)
+    {
+        impact = default;
+        if (other == null || !other.enabled || !other.gameObject.activeInHierarchy ||
+            other.transform.IsChildOf(transform) || (owner != null && other.transform.IsChildOf(owner)) ||
+            Physics.GetIgnoreLayerCollision(gameObject.layer, other.gameObject.layer) ||
+            (_shape != null && Physics.GetIgnoreCollision(_shape, other))) return false;
+
+        CombatHitTargets.Resolve(other, out IDamageReceiver target, out StatManager stats, out HitBodyPart bodyPart);
+        // Player controllers and weapon triggers are not damage regions. Keep authored body-part rules.
+        if (target is HealthSystem && bodyPart == null) return false;
+        if (target is Behaviour behaviour && !behaviour.isActiveAndEnabled) target = null;
+        if (stats == null) target = null;
+        if (target == null && other.isTrigger) return false;
+        impact = new Impact { Collider = other, Target = target, Stats = stats, BodyPart = bodyPart,
+            Point = point, Distance = distance };
+        return true;
+    }
+
+    private static void SelectClosest(Impact candidate, ref bool found, ref Impact closest)
+    {
+        if (!found || candidate.Distance < closest.Distance ||
+            (candidate.Distance == closest.Distance && candidate.IsEnvironment && !closest.IsEnvironment))
+        {
+            closest = candidate;
+            found = true;
+        }
+    }
+
+    private NetworkIdentity ResolveOwner()
     {
         if (_ownerNetId == 0 || !NetworkServer.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity))
             return null;
-
-        return ownerIdentity.GetComponent<PlayerCombat>();
+        return ownerIdentity;
     }
 
-    [Client]
-    private void TryPredictHit(Collider other)
-    {
-        if (_hasPredictedHit || other == null || _ownerNetId == 0)
-            return;
-        if (!NetworkClient.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity) || !ownerIdentity.isLocalPlayer)
-            return;
-        if (other.transform.root == ownerIdentity.transform.root)
-            return;
-
-        HealthSystem targetHealth = other.GetComponentInParent<HealthSystem>();
-        StatManager targetStats = other.GetComponentInParent<StatManager>();
-        AttackProcessor attackProcessor = ownerIdentity.GetComponent<AttackProcessor>();
-        HitBodyPart bodyPart = ResolveBodyPart(other);
-        if (targetHealth == null || targetStats == null || attackProcessor == null)
-            return;
-        if (bodyPart == null)
-            return;
-
-        float predictedDamage = attackProcessor.PredictSkillHitDamage(_damageMultiplier, targetStats, bodyPart.DamageMultiplier);
-        Vector3 hitPoint = other.ClosestPoint(transform.position);
-        targetHealth.ShowPredictedPhysicalDamagePopup(hitPoint, predictedDamage, _ownerNetId, netId);
-        _hasPredictedHit = true;
-    }
-
-    private static HitBodyPart ResolveBodyPart(Collider other)
-    {
-        HitBodyPart bodyPart = other.GetComponent<HitBodyPart>();
-        return bodyPart != null ? bodyPart : other.GetComponentInParent<HitBodyPart>();
-    }
 }

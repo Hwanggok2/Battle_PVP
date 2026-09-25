@@ -37,6 +37,52 @@ namespace BattlePvp.Combat
         void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, UnityEngine.Vector3 hitPosition);
     }
 
+    public readonly struct DamageRequest
+    {
+        public float Amount { get; }
+        public DamageSource Source { get; }
+        public float AttackerAttackPower { get; }
+        public IDamageReceiver Attacker { get; }
+        public UnityEngine.Vector3 HitPosition { get; }
+        public DamageSource PopupSource { get; }
+        public uint PopupPredictionId { get; }
+
+        public DamageRequest(float amount, DamageSource source, float attackerAttackPower,
+            IDamageReceiver attacker, UnityEngine.Vector3 hitPosition,
+            DamageSource? popupSource = null, uint popupPredictionId = 0)
+        {
+            Amount = amount;
+            Source = source;
+            AttackerAttackPower = attackerAttackPower;
+            Attacker = attacker;
+            HitPosition = hitPosition;
+            PopupSource = popupSource ?? source;
+            PopupPredictionId = popupPredictionId;
+        }
+    }
+
+    public readonly struct DamageResult
+    {
+        public bool Accepted { get; }
+        public bool Applied => Accepted;
+        public float HpDamage { get; }
+        public float ShieldDamage { get; }
+        public bool Killed { get; }
+
+        public DamageResult(bool accepted, float hpDamage, float shieldDamage, bool killed = false)
+        {
+            Accepted = accepted;
+            HpDamage = hpDamage;
+            ShieldDamage = shieldDamage;
+            Killed = killed;
+        }
+    }
+
+    public interface IDamageReceiverWithResult : IDamageReceiverWithContext
+    {
+        DamageResult ApplyDamage(DamageRequest request);
+    }
+
     /// <summary>
     /// (선택) 가드 파괴를 위한 인터페이스입니다.
     /// </summary>

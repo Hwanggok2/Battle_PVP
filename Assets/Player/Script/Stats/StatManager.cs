@@ -10,10 +10,36 @@ namespace BattlePvp.Stats
     public sealed class StatManager : Mirror.NetworkBehaviour, IIdentitySource
     {
         public static StatManager Local { get; private set; }
+        public static event Action<StatManager> LocalChanged;
+        private BattlePvp.Managers.GlobalDataManager _profileData;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetLocalBinding()
+        {
+            Local = null;
+            LocalChanged = null;
+        }
+
+        private static void SetLocal(StatManager player)
+        {
+            if (ReferenceEquals(Local, player)) return;
+            Local = player;
+            LocalChanged?.Invoke(player);
+        }
 
         [Header("Stat Data")]
         [SyncVar(hook = nameof(OnStatsSynced))]
         [SerializeField] private StatContainer _stats;
+        [SyncVar] private bool _serverStatsInitialized;
+        private double _nextStatRequestAt;
+        private double _initialStatsDeadline;
+        public bool HasServerStats => _serverStatsInitialized;
+        private uint _nextApplyRequestId;
+        private uint _pendingApplyRequestId;
+        private Action<bool, string> _pendingApplyCallback;
+        private double _pendingApplyDeadline;
+        private Coroutine _applyTimeoutRoutine;
+        private const double ApplyRequestTimeoutSeconds = 10d;
 
         /// <summary>
         /// 캐릭터가 특정 한 스탯에만 투자했는지(몰빵형) 확인하는 유틸리티 메서드입니다.
@@ -47,6 +73,13 @@ namespace BattlePvp.Stats
         /// 커스터마이저/UI/HealthSystem 등이 Update 없이 동기화할 수 있다.
         /// </summary>
         public event Action<StatContainer> StatsChanged;
+        public event Action DerivedStatsChanged;
+
+        private DerivedCombatStats _cachedDerivedStats;
+        private StatBalanceConfig _cachedBalanceConfig;
+        private int _cachedBalanceRevision = -1;
+        private bool _derivedStatsDirty = true;
+        private int _derivedCalculationCount;
 
         private IdentityCalculator _identityCalculator;
         private IdentityCalculator.IdentityDebug _lastDebug;
@@ -71,14 +104,17 @@ namespace BattlePvp.Stats
         /// </summary>
         public void RecalculateIdentity()
         {
+            _derivedStatsDirty = true;
             var next = Calculator.ResolveIdentity(_stats, out var debug);
+            _lastDebug = debug;
 
             // 불필요한 이벤트 방출 방지
             if (next.Type == CurrentIdentity.Type && next.PrimaryStat == CurrentIdentity.PrimaryStat)
                 return;
 
             CurrentIdentity = next;
-            _lastDebug = debug;
+            _derivedStatsDirty = true;
+            GetDerivedStats();
             IdentityChanged?.Invoke(CurrentIdentity);
         }
 
@@ -104,7 +140,16 @@ namespace BattlePvp.Stats
 
         public DerivedCombatStats GetDerivedStats()
         {
-            return StatBalanceCalculator.Calculate(_stats, CurrentIdentity);
+            StatBalanceConfig config = StatBalanceCalculator.Config;
+            if (_derivedStatsDirty || _cachedBalanceConfig != config || _cachedBalanceRevision != config.Revision)
+            {
+                _cachedDerivedStats = StatBalanceCalculator.Calculate(_stats, CurrentIdentity, config);
+                _cachedBalanceConfig = config;
+                _cachedBalanceRevision = config.Revision;
+                _derivedStatsDirty = false;
+                _derivedCalculationCount++;
+            }
+            return _cachedDerivedStats;
         }
 
         /// <summary>
@@ -126,26 +171,33 @@ namespace BattlePvp.Stats
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
         private static readonly Vector3 DefaultCameraOffset = new Vector3(0.3f, 0.2f, -1.0f);
         private static readonly Vector3 MonostatCameraOffset = new Vector3(0.35f, 0.4f, -1.0f);
+        private bool _cameraInitialized = false;
+        private bool OwnsFollowCamera => (netIdentity != null && isLocalPlayer) ||
+            (!NetworkServer.active && !NetworkClient.active && _followCamera != null &&
+             _followCamera.Target != null &&
+             (_followCamera.Target == transform || _followCamera.Target.IsChildOf(transform)));
 
         private void OnEnable()
         {
+            if (netIdentity != null && isLocalPlayer) SetLocal(this);
             StatBalanceConfig.BalanceChanged += OnBalanceChanged;
-
+            _derivedStatsDirty = true;
             if (_autoRecalculateOnEnable)
                 RecalculateIdentity();
+            GetDerivedStats();
 
             if (netIdentity != null)
                 return;
 
             // [추가] 글로벌 데이터 업데이트 구독 (더미/로컬 플레이어 모두 대응)
-            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
+            _profileData = BattlePvp.Managers.GlobalDataManager.Instance;
+            if (_profileData != null)
             {
-                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated += OnGlobalStatsUpdated;
+                _profileData.OnSavedStatsUpdated += OnGlobalStatsUpdated;
                 
                 // 이미 데이터가 로드되어 있다면 즉시 주입
-                var saved = BattlePvp.Managers.GlobalDataManager.Instance.SavedStats;
-                float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
-                if (total > 0.1f)
+                var saved = _profileData.SavedStats;
+                if (_profileData.HasLoadedPlayerStats)
                 {
                     HandleInitialInjection(saved);
                 }
@@ -154,25 +206,16 @@ namespace BattlePvp.Stats
 
         private void OnDisable()
         {
+            FinishPendingApply(false, "플레이어가 비활성화되어 스탯 적용을 확인하지 못했습니다.");
             StatBalanceConfig.BalanceChanged -= OnBalanceChanged;
-
-            if (Local == this) Local = null;
-
-            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
-            {
-                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
-            }
-        }
-
-        private void OnBalanceChanged()
-        {
-            StatsChanged?.Invoke(_stats);
+            if (Local == this) SetLocal(null);
+            UnsubscribeProfile();
         }
 
         public override void OnStartLocalPlayer()
         {
             base.OnStartLocalPlayer();
-            Local = this;
+            SetLocal(this);
             
             Debug.Log("[StatManager] OnStartLocalPlayer: Initializing stats for Local Player.");
             
@@ -188,12 +231,19 @@ namespace BattlePvp.Stats
 
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
         {
+            if (SameSlot(_stats.STR, updatedStats.STR) && SameSlot(_stats.CON, updatedStats.CON) &&
+                SameSlot(_stats.AGI, updatedStats.AGI) && SameSlot(_stats.DEF, updatedStats.DEF))
+                return;
             Debug.Log($"[StatManager] Global stats updated asynchronously. STR={updatedStats.STR.Invested}");
             HandleInitialInjection(updatedStats);
         }
 
+        private static bool SameSlot(StatSlot a, StatSlot b) => a.Invested == b.Invested && a.Item == b.Item;
+
         private void HandleInitialInjection(StatContainer saved)
         {
+            // A reconnect restores the server's current build. Only explicit preset application may change it.
+            if (NetworkClient.active && HasServerStats) return;
             // 스탯 합계가 0이면(신규 유저 등) 기본값 10/10/10/10 부여
             float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
             
@@ -205,10 +255,10 @@ namespace BattlePvp.Stats
                 bool selectedSlotIsEmpty = globalData != null && !globalData.HasStatPresetSlot(globalData.SelectedStatPresetSlot);
                 if (!selectedSlotIsEmpty)
                 {
-                    saved.STR.Invested = 10;
-                    saved.AGI.Invested = 10;
-                    saved.CON.Invested = 10;
-                    saved.DEF.Invested = 10;
+                    saved.STR.Invested = 8;
+                    saved.AGI.Invested = 8;
+                    saved.CON.Invested = 7;
+                    saved.DEF.Invested = 7;
                 }
             }
 
@@ -235,10 +285,36 @@ namespace BattlePvp.Stats
 
         private void OnDestroy()
         {
-            if (BattlePvp.Managers.GlobalDataManager.Instance != null)
-            {
-                BattlePvp.Managers.GlobalDataManager.Instance.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
-            }
+            FinishPendingApply(false, "플레이어가 제거되어 스탯 적용을 확인하지 못했습니다.");
+            if (Local == this) SetLocal(null);
+            UnsubscribeProfile();
+        }
+
+        public override void OnStopLocalPlayer()
+        {
+            FinishPendingApply(false, "로컬 플레이어가 변경되어 스탯 적용을 확인하지 못했습니다.");
+            if (Local == this) SetLocal(null);
+            base.OnStopLocalPlayer();
+        }
+
+        private void UnsubscribeProfile()
+        {
+            if (_profileData != null) _profileData.OnSavedStatsUpdated -= OnGlobalStatsUpdated;
+            _profileData = null;
+        }
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            _initialStatsDeadline = NetworkTime.time + 10d;
+            StartCoroutine(DisconnectUninitializedPlayer());
+        }
+
+        private System.Collections.IEnumerator DisconnectUninitializedPlayer()
+        {
+            yield return new WaitForSecondsRealtime(10f);
+            if (isServer && !_serverStatsInitialized && connectionToClient != null)
+                connectionToClient.Disconnect();
         }
 
         private void OnStatsSynced(StatContainer oldStats, StatContainer newStats)
@@ -248,41 +324,153 @@ namespace BattlePvp.Stats
         }
 
         [Command]
-        public void CmdUpdateStats(StatContainer stats)
+        public void CmdUpdateStats(StatContainer stats, uint requestId)
         {
-            _stats = stats;
-            // 서버에서도 Identity 재계산 및 StatsChanged 이벤트 발생
-            // → HealthSystem.OnStatsChanged가 서버에서 실행되어 HP SyncVar가 정확한 값으로 동기화됩니다.
-            RecalculateIdentity();
-            StatsChanged?.Invoke(_stats);
+            bool accepted = TryAcceptClientStats(stats);
+            if (requestId != 0 && connectionToClient != null)
+                TargetStatsRequestCompleted(connectionToClient, requestId, accepted, _stats);
+        }
+
+        private bool TryAcceptClientStats(StatContainer stats)
+        {
+            if ((!_serverStatsInitialized && NetworkTime.time > _initialStatsDeadline) ||
+                NetworkTime.time < _nextStatRequestAt)
+                return false;
+            _nextStatRequestAt = NetworkTime.time + 0.2d;
+            if (!StatValidation.TryValidateClientStats(stats, _stats, out StatContainer validated))
+                return false;
+            var health = GetComponent<BattlePvp.Combat.HealthSystem>();
+            Identity next = Calculator.ResolveIdentity(validated, out _);
+            bool battleScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle";
+            if (!StatValidation.CanChangeClientPreset(_serverStatsInitialized, battleScene,
+                    health != null && health.IsDead, next.Type))
+                return false;
+
+            _serverStatsInitialized = true;
+            InternalApplyStats(validated, true);
+            return true;
+        }
+
+        public void RequestApplyStats(StatContainer stats, Action<bool, string> completed)
+        {
+            if (_pendingApplyRequestId != 0)
+            {
+                completed?.Invoke(false, "이전 스탯 적용 응답을 기다리는 중입니다.");
+                return;
+            }
+            if (isLocalPlayer)
+            {
+                if (!isActiveAndEnabled)
+                {
+                    completed?.Invoke(false, "비활성화된 플레이어의 스탯은 적용할 수 없습니다.");
+                    return;
+                }
+                unchecked { _nextApplyRequestId++; }
+                if (_nextApplyRequestId == 0) _nextApplyRequestId++;
+                _pendingApplyRequestId = _nextApplyRequestId;
+                _pendingApplyCallback = completed;
+                _pendingApplyDeadline = Time.realtimeSinceStartupAsDouble + ApplyRequestTimeoutSeconds;
+                _applyTimeoutRoutine = StartCoroutine(WaitForApplyResponse());
+                CmdUpdateStats(stats, _pendingApplyRequestId);
+                return;
+            }
+            if (!NetworkClient.active && !NetworkServer.active)
+            {
+                bool valid = StatValidation.IsValidPreset(stats);
+                if (valid) InternalApplyStats(stats, true);
+                completed?.Invoke(valid, valid ? null : "스탯 범위 또는 총 투자량을 확인하십시오.");
+                return;
+            }
+            bool accepted = isServer && TryApplyServerPreset(stats);
+            completed?.Invoke(accepted, accepted ? null : "현재 플레이어의 스탯을 적용할 수 없습니다.");
+        }
+
+        [TargetRpc]
+        private void TargetStatsRequestCompleted(NetworkConnection target, uint requestId, bool accepted, StatContainer serverStats)
+        {
+            CompleteApplyResponse(requestId, accepted, serverStats);
+        }
+
+        private void CompleteApplyResponse(uint requestId, bool accepted, StatContainer serverStats)
+        {
+            ExpirePendingApplyRequest(Time.realtimeSinceStartupAsDouble);
+            if (requestId == 0 || _pendingApplyRequestId != requestId) return;
+            if (accepted && !isServer)
+            {
+                _serverStatsInitialized = true;
+                InternalApplyStats(serverStats, true);
+            }
+            FinishPendingApply(accepted, accepted ? null : "서버가 스탯 변경을 거절했습니다. 변경 가능 상태와 투자량을 확인하십시오.");
+        }
+
+        public override void OnStopClient()
+        {
+            base.OnStopClient();
+            FinishPendingApply(false, "연결이 종료되어 스탯 적용을 확인하지 못했습니다.");
+        }
+
+        private System.Collections.IEnumerator WaitForApplyResponse()
+        {
+            yield return new WaitForSecondsRealtime((float)ApplyRequestTimeoutSeconds);
+            _applyTimeoutRoutine = null;
+            ExpirePendingApplyRequest(Time.realtimeSinceStartupAsDouble);
+        }
+
+        private void ExpirePendingApplyRequest(double now)
+        {
+            if (_pendingApplyRequestId != 0 && (double.IsNaN(now) || double.IsInfinity(now) || now >= _pendingApplyDeadline))
+                FinishPendingApply(false, "스탯 적용 확인 시간이 초과되었습니다. 현재 스탯을 확인하고 다시 시도하십시오.");
+        }
+
+        private void FinishPendingApply(bool accepted, string error)
+        {
+            if (_applyTimeoutRoutine != null) StopCoroutine(_applyTimeoutRoutine);
+            _applyTimeoutRoutine = null;
+            Action<bool, string> callback = _pendingApplyCallback;
+            _pendingApplyCallback = null;
+            _pendingApplyRequestId = 0;
+            _pendingApplyDeadline = 0d;
+            callback?.Invoke(accepted, error);
+        }
+
+        [Server]
+        public bool TryApplyServerPreset(StatContainer stats)
+        {
+            if (!StatValidation.TryValidateClientStats(stats, _stats, out StatContainer validated))
+                return false;
+            _serverStatsInitialized = true;
+            InternalApplyStats(validated, true);
+            return true;
         }
 
         private void InitializeCameraReference()
         {
+            if ((netIdentity == null || !isLocalPlayer) && (NetworkServer.active || NetworkClient.active))
+                return;
             if (_followCamera == null)
                 _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+            if (OwnsFollowCamera && _followCamera != null && !_cameraInitialized)
+            {
+                _followCamera.Offset = DefaultCameraOffset;
+                _cameraInitialized = true;
+            }
         }
 
         private void ApplyVisualScaling()
         {
-            // Dummy and other stat-bearing network objects have their own authored scale.
-            // Identity-based character scaling only belongs to actual player objects.
-            if (!TryGetComponent<PlayerManager>(out _))
-                return;
-
             InitializeCameraReference();
 
             // 조건: STR 또는 CON 몰빵(Monostat) 상태일 때만 1.2배 (Task 3 수정)
             // 전에는 AGI/DEF가 0이기만 하면 커졌으나, 이제는 확실히 한 스탯에 몰빵된 경우만 체크.
             // 0. 네트워크 컴포넌트 안전망 (netIdentity가 없으면 로컬 전력이 아님)
-            bool isGiant = (CurrentIdentity.Type == IdentityType.Monostat) && 
+            bool isGiant = (CurrentIdentity.Type == IdentityType.Monostat) &&
                            (CurrentIdentity.PrimaryStat == StatKind.STR || CurrentIdentity.PrimaryStat == StatKind.CON);
             
             float targetScale = isGiant ? 1.2f : 1.0f;
             transform.localScale = new Vector3(targetScale, targetScale, targetScale);
 
             // 카메라 오프셋 비례 조정 (Task 5)
-            if (_followCamera != null)
+            if (OwnsFollowCamera && _cameraInitialized && _followCamera != null)
             {
                 _followCamera.Offset = isGiant ? MonostatCameraOffset : DefaultCameraOffset;
                 Debug.Log($"[StatManager] Scale applied: {targetScale}, Camera Offset: {_followCamera.Offset}");
@@ -301,7 +489,14 @@ namespace BattlePvp.Stats
             if (netIdentity != null && isLocalPlayer)
             {
                 Debug.Log($"[StatManager:{gameObject.name}] localPlayer requesting CmdUpdateStats to Server.");
-                CmdUpdateStats(stats);
+                CmdUpdateStats(stats, 0);
+                return; // Only a server-accepted snapshot changes the live player.
+            }
+
+            if (netIdentity != null && isServer)
+            {
+                TryApplyServerPreset(stats);
+                return;
             }
             
             // 즉각적인 피드백을 위해 로컬에서 먼저 적용
@@ -320,10 +515,12 @@ namespace BattlePvp.Stats
         private void InternalApplyStats(StatContainer stats, bool recalculateIdentity)
         {
             _stats = stats;
+            _derivedStatsDirty = true;
 
             if (recalculateIdentity)
                 RecalculateIdentity();
 
+            GetDerivedStats();
             ApplyVisualScaling();
             StatsChanged?.Invoke(_stats);
         }
@@ -341,6 +538,55 @@ namespace BattlePvp.Stats
             ApplyStats(next, recalculateIdentity);
         }
 
+        private void OnBalanceChanged()
+        {
+#if UNITY_EDITOR
+            // A different player's Update can publish an asset validation before
+            // this component has received its NetworkIdentity binding.
+            if (!CanPublishValidatedStats)
+            {
+                System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1);
+                return;
+            }
+            if (ApplyPendingEditorValidation()) return;
+#endif
+            GetDerivedStats();
+            DerivedStatsChanged?.Invoke();
+        }
+
+#if UNITY_EDITOR
+        private int _pendingEditorValidation;
+        private bool CanPublishValidatedStats => netIdentity != null ||
+            (!NetworkServer.active && !NetworkClient.active &&
+             GetComponentInParent<NetworkIdentity>(true) == null);
+
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+            _derivedStatsDirty = true;
+            System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1);
+        }
+
+        private void Update()
+        {
+            if (!Application.IsPlaying(gameObject) || !isActiveAndEnabled || !CanPublishValidatedStats)
+                return;
+
+            StatBalanceConfig.PublishPendingEditorValidation();
+            ApplyPendingEditorValidation();
+        }
+
+        private bool ApplyPendingEditorValidation()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0) == 0)
+                return false;
+
+            RecalculateIdentity();
+            GetDerivedStats();
+            DerivedStatsChanged?.Invoke();
+            return true;
+        }
+#endif
     }
 }
 

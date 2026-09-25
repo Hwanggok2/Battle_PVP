@@ -1,0 +1,11 @@
+<Project>
+  <!-- Unity regenerates csproj files; include newly added owned sources for CLI validation before editor import. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp'">
+    <Compile Remove="Assets\Player\Script\**\*.cs" />
+    <Compile Include="Assets\Player\Script\**\*.cs" Exclude="Assets\Player\Script\**\Editor\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Assembly-CSharp-Editor'">
+    <Compile Remove="Assets\Player\Script\Editor\**\*.cs" />
+    <Compile Include="Assets\Player\Script\Editor\**\*.cs" />
+  </ItemGroup>
+</Project>

@@ -51,6 +51,7 @@ namespace BattlePvp.UI
         private float _receivedDamageShownAt;
         private float _receivedDamageHideAt;
         private Color _receivedDamageColor;
+        private bool _initialHiddenStateApplied;
         private readonly StringBuilder _textBuilder = new StringBuilder(32);
 
         public GameObject ViewRoot
@@ -67,14 +68,21 @@ namespace BattlePvp.UI
 
         private void Awake()
         {
-            ResolveReferences();
+            ApplyInitialHiddenState();
         }
 
-        private void Start()
+        private void ApplyInitialHiddenState()
         {
+            if (_initialHiddenStateApplied) return;
+            // A health/loading callback can reach an inactive view before its first Awake.
+            // Establish defaults before that callback's requested state, never afterward in Start.
+            _initialHiddenStateApplied = true;
+            ResolveReferences();
             if (_deathCountdownText != null)
                 _defaultDeathTextColor = _deathCountdownText.color;
-
+            SetCountdown(string.Empty, false);
+            SetDeathOverlay(false);
+            SetLoadingOverlay(false);
             HideReceivedDamageText();
         }
 
@@ -116,6 +124,7 @@ namespace BattlePvp.UI
 
         public bool ShowReceivedDamage(float damage, Color color)
         {
+            ApplyInitialHiddenState();
             ResolveReferences();
             if (_receivedDamageText == null)
                 return false;
@@ -230,6 +239,7 @@ namespace BattlePvp.UI
 
         public void SetCountdown(string text, bool active)
         {
+            ApplyInitialHiddenState();
             if (_countdownText == null)
                 return;
 
@@ -239,6 +249,7 @@ namespace BattlePvp.UI
 
         public void SetDeathOverlay(bool active, string text = "", Color? textColor = null)
         {
+            ApplyInitialHiddenState();
             if (_deathDimObject != null)
                 _deathDimObject.SetActive(active);
 
@@ -257,6 +268,7 @@ namespace BattlePvp.UI
 
         public void SetLoadingOverlay(bool active)
         {
+            ApplyInitialHiddenState();
             if (_loadingDimObject != null)
             {
                 _loadingDimObject.SetActive(active);

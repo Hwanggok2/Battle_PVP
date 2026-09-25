@@ -14,7 +14,7 @@ namespace BattlePvp.UI
         private readonly List<RankingEntryUI> _activeEntries = new List<RankingEntryUI>();
         private readonly List<ScoreSystem> _sortedScores = new List<ScoreSystem>();
         private readonly HashSet<uint> _seenNetIds = new HashSet<uint>();
-        private static readonly Comparison<ScoreSystem> ScoreComparison = CompareScores;
+        private static readonly Comparison<ScoreSystem> ScoreComparison = ScoreSystem.CompareForDisplay;
 
         private void OnEnable()
         {
@@ -35,11 +35,13 @@ namespace BattlePvp.UI
             BuildSortedScores();
             ResizeEntries(_sortedScores.Count);
 
-            for (int i = 0; i < _sortedScores.Count; i++)
+            for (int i = 0; i < _sortedScores.Count && i < _activeEntries.Count; i++)
             {
                 ScoreSystem score = _sortedScores[i];
-                _activeEntries[i].SetData(i + 1, score.PlayerName, score.CurrentPoints, score.CurrentDeaths);
-                _activeEntries[i].transform.SetSiblingIndex(i);
+                int rank = CompetitionRanking.GetRank(score.CurrentPoints, _sortedScores, ScoreSystem.PointsOf);
+                _activeEntries[i].SetData(rank, score.PlayerName, score.CurrentPoints, score.CurrentDeaths);
+                if (_activeEntries[i].transform.GetSiblingIndex() != i)
+                    _activeEntries[i].transform.SetSiblingIndex(i);
             }
         }
 
@@ -51,7 +53,7 @@ namespace BattlePvp.UI
             for (int i = 0; i < ScoreSystem.ActiveScores.Count; i++)
             {
                 ScoreSystem score = ScoreSystem.ActiveScores[i];
-                if (score == null || score.netId == 0 || score.GetComponent("PlayerManager") == null)
+                if (score == null || score.netId == 0)
                     continue;
 
                 if (_seenNetIds.Add(score.netId))
@@ -78,21 +80,12 @@ namespace BattlePvp.UI
                 break;
             }
 
-            while (_activeEntries.Count > targetCount)
+            for (int i = 0; i < _activeEntries.Count; i++)
             {
-                RankingEntryUI entry = _activeEntries[_activeEntries.Count - 1];
-                _activeEntries.RemoveAt(_activeEntries.Count - 1);
-                Destroy(entry.gameObject);
+                bool active = i < targetCount;
+                if (_activeEntries[i].gameObject.activeSelf != active)
+                    _activeEntries[i].gameObject.SetActive(active);
             }
-        }
-
-        private static int CompareScores(ScoreSystem left, ScoreSystem right)
-        {
-            int pointCompare = right.CurrentPoints.CompareTo(left.CurrentPoints);
-            if (pointCompare != 0)
-                return pointCompare;
-
-            return string.CompareOrdinal(left.PlayerName, right.PlayerName);
         }
     }
 }

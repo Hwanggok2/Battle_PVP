@@ -22,11 +22,16 @@ namespace BattlePvp.UI
 
         private string _roomId;
         private string _roomName;
+        private string _masterName;
+        private int _playerCount;
+        private bool _hasInfo;
+        public bool IsSelected => _selectedItem == this;
         private Action<string> _onSelected;
         private Action<string> _onDeleteRequested;
 
         private void Awake()
         {
+            if (_selectButton != null) _selectButton.onClick.AddListener(OnItemClicked);
             MakeSelectButtonOverlayTransparent();
             EnsureSelectionOutline();
             SetSelected(false);
@@ -34,6 +39,8 @@ namespace BattlePvp.UI
 
         private void OnDestroy()
         {
+            if (_selectButton != null) _selectButton.onClick.RemoveListener(OnItemClicked);
+            if (_deleteButton != null) _deleteButton.onClick.RemoveListener(OnDeleteClicked);
             if (_selectedItem == this)
                 _selectedItem = null;
         }
@@ -59,29 +66,27 @@ namespace BattlePvp.UI
             bool showDeleteButton)
         {
             _roomId = roomId;
-            _roomName = roomName;
             _onSelected = onSelected;
             _onDeleteRequested = onDeleteRequested;
             SetSelected(_selectedItem == this);
 
-            if (_roomNameText != null) _roomNameText.text = roomName;
-            if (_masterNameText != null)
+            if (_roomNameText != null && (!_hasInfo || _roomName != roomName))
+                UserTextPresentation.SetPlain(_roomNameText, UserDisplayText.SingleLine(roomName, UserDisplayText.RoomNameLimit));
+            if (_masterNameText != null && (!_hasInfo || _masterName != masterName))
             {
                 _masterNameText.gameObject.SetActive(true);
-                _masterNameText.text = $"Master : {masterName}";
+                UserTextPresentation.SetPlain(_masterNameText, $"Master : {UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit)}");
             }
-            if (_playerCountText != null)
+            if (_playerCountText != null && (!_hasInfo || _playerCount != playerCount))
             {
                 _playerCountText.gameObject.SetActive(true);
                 _playerCountText.text = $"Player : {playerCount}";
             }
 
-            if (_selectButton != null)
-            {
-                _selectButton.onClick.RemoveAllListeners();
-                _selectButton.onClick.AddListener(OnItemClicked);
-            }
-
+            _roomName = roomName;
+            _masterName = masterName;
+            _playerCount = playerCount;
+            _hasInfo = true;
             ConfigureDeleteButton(showDeleteButton);
         }
 
@@ -141,7 +146,7 @@ namespace BattlePvp.UI
             {
                 if (_deleteButton != null)
                 {
-                    _deleteButton.onClick.RemoveAllListeners();
+                    _deleteButton.onClick.RemoveListener(OnDeleteClicked);
                     _deleteButton.gameObject.SetActive(false);
                 }
 
@@ -155,7 +160,7 @@ namespace BattlePvp.UI
                 return;
 
             _deleteButton.gameObject.SetActive(true);
-            _deleteButton.onClick.RemoveAllListeners();
+            _deleteButton.onClick.RemoveListener(OnDeleteClicked);
             _deleteButton.onClick.AddListener(OnDeleteClicked);
         }
 

@@ -1,5 +1,6 @@
 using BattlePvp.Combat;
 using BattlePvp.Managers;
+using BattlePvp.Networking;
 using Mirror;
 using UnityEngine;
 
@@ -22,6 +23,10 @@ namespace BattlePvp.UI
     {
         private const int MaxNameLength = 24;
         private const int MaxMessageLength = 120;
+        private static bool _clientRegistered;
+        private static bool _serverRegistered;
+        private static readonly ChatRateLimiter<NetworkConnectionToClient> _rateLimiter =
+            new ChatRateLimiter<NetworkConnectionToClient>();
 
         public static event System.Action<string, string, double> MessageReceived;
 
@@ -29,12 +34,14 @@ namespace BattlePvp.UI
         private static void ResetStatics()
         {
             MessageReceived = null;
+            _clientRegistered = _serverRegistered = false;
+            _rateLimiter.Clear();
         }
 
         public static void EnsureRegistered()
         {
-            RegisterClientHandler();
-            RegisterServerHandler();
+            if (NetworkClient.active && !_clientRegistered) RegisterClientHandler();
+            if (NetworkServer.active && !_serverRegistered) RegisterServerHandler();
         }
 
         public static void Send(string text)
@@ -77,32 +84,39 @@ namespace BattlePvp.UI
             MessageReceived?.Invoke(sender, cleanedText, Time.unscaledTimeAsDouble);
         }
 
-        private static void RegisterClientHandler()
+        public static void RegisterClientHandler()
         {
             NetworkClient.ReplaceHandler<BattleChatBroadcastMessage>(OnClientChatMessage, false);
+            _clientRegistered = true;
         }
 
-        private static void RegisterServerHandler()
+        public static void RegisterServerHandler()
         {
-            NetworkServer.ReplaceHandler<BattleChatSubmitMessage>(OnServerChatMessage, false);
+            NetworkServer.ReplaceHandler<BattleChatSubmitMessage>(OnServerChatMessage, requireAuthentication: true);
+            _serverRegistered = true;
         }
+
+        public static void UnregisterClientHandler()
+        {
+            NetworkClient.UnregisterHandler<BattleChatBroadcastMessage>();
+            _clientRegistered = false;
+        }
+
+        public static void UnregisterServerHandler()
+        {
+            NetworkServer.UnregisterHandler<BattleChatSubmitMessage>();
+            _serverRegistered = false;
+            _rateLimiter.Clear();
+        }
+
+        public static void OnServerDisconnected(NetworkConnectionToClient connection) => _rateLimiter.Remove(connection);
 
         private static void OnServerChatMessage(NetworkConnectionToClient conn, BattleChatSubmitMessage message)
         {
             try
             {
-                string text = Sanitize(message.Text, MaxMessageLength);
-                if (string.IsNullOrWhiteSpace(text))
-                    return;
-
-                string sender = ResolveServerPlayerName(conn, message.SenderName);
-                var broadcast = new BattleChatBroadcastMessage
-                {
-                    SenderName = sender,
-                    Text = text,
-                    ServerTime = NetworkTime.time
-                };
-
+                if (!TryCreateBroadcast(conn, PlayFabBattleManager.Instance?.CurrentRoomId, message,
+                    NetworkTime.time, out BattleChatBroadcastMessage broadcast)) return;
                 NetworkServer.SendToAll(broadcast, Channels.Reliable, true);
             }
             catch (System.Exception ex)
@@ -119,17 +133,35 @@ namespace BattlePvp.UI
                 message.ServerTime);
         }
 
-        private static string ResolveServerPlayerName(NetworkConnectionToClient conn, string fallback)
+        private static bool TryCreateBroadcast(NetworkConnectionToClient conn, string currentRoom,
+            BattleChatSubmitMessage message, double now, out BattleChatBroadcastMessage broadcast)
         {
-            if (conn != null && conn.identity != null)
-            {
-                var score = conn.identity.GetComponent<ScoreSystem>();
-                if (score != null && !string.IsNullOrWhiteSpace(score.PlayerName))
-                    return Sanitize(score.PlayerName, MaxNameLength);
-            }
+            broadcast = default;
+            if (conn == null || !conn.isAuthenticated || !conn.isReady ||
+                !(conn.authenticationData is AuthenticatedRoomPlayer account) ||
+                !RoomIdentity.IsValid(currentRoom) || account.RoomId != currentRoom ||
+                !NetworkServer.connections.TryGetValue(conn.connectionId, out NetworkConnectionToClient current) ||
+                !ReferenceEquals(current, conn)) return false;
 
-            string cleanedFallback = Sanitize(fallback, MaxNameLength);
-            return string.IsNullOrWhiteSpace(cleanedFallback) ? "Unknown" : cleanedFallback;
+            NetworkIdentity identity = conn.identity;
+            if (identity == null || identity.netId == 0 || identity.connectionToClient != conn ||
+                !NetworkServer.spawned.TryGetValue(identity.netId, out NetworkIdentity spawned) || spawned != identity ||
+                !identity.TryGetComponent(out PlayerManager _) ||
+                !identity.TryGetComponent(out ScoreSystem score) || !score.IsConnected) return false;
+
+            // Apply the budget before sanitizing/allocating attacker-controlled strings.
+            if (!_rateLimiter.TryConsume(conn, now) || string.IsNullOrWhiteSpace(message.Text) ||
+                message.Text.Length > MaxMessageLength) return false;
+
+            string sender = Sanitize(score.PlayerName, MaxNameLength);
+            broadcast = new BattleChatBroadcastMessage
+            {
+                SenderName = string.IsNullOrWhiteSpace(sender) ? "Unknown" : sender,
+                Text = Sanitize(message.Text, MaxMessageLength),
+                ServerTime = now
+            };
+            // SenderName stays in the wire message for compatibility, but is never trusted here.
+            return true;
         }
 
         private static string Sanitize(string value, int maxLength)
@@ -139,7 +171,11 @@ namespace BattlePvp.UI
 
             value = value.Replace("\r", " ").Replace("\n", " ").Trim();
             if (value.Length > maxLength)
-                value = value.Substring(0, maxLength);
+            {
+                int length = maxLength;
+                if (length > 0 && char.IsHighSurrogate(value[length - 1]) && char.IsLowSurrogate(value[length])) length--;
+                value = value.Substring(0, length);
+            }
 
             return value;
         }

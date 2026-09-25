@@ -1,6 +1,7 @@
 using System;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
+using Mirror;
 using UnityEngine;
 
 /// <summary>
@@ -56,6 +57,7 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_attackerStats != null)
         {
             _attackerStats.StatsChanged += OnStatsChanged;
+            _attackerStats.DerivedStatsChanged += RefreshFromStats;
             RefreshFromStats();
         }
     }
@@ -63,7 +65,10 @@ public sealed class AttackProcessor : MonoBehaviour
     private void OnDisable()
     {
         if (_attackerStats != null)
+        {
             _attackerStats.StatsChanged -= OnStatsChanged;
+            _attackerStats.DerivedStatsChanged -= RefreshFromStats;
+        }
     }
 
     private void OnStatsChanged(StatContainer _)
@@ -94,6 +99,8 @@ public sealed class AttackProcessor : MonoBehaviour
             return;
         if (_attackerStats == null || defenderStats == null)
             return;
+        if (NetworkServer.active && !_attackerStats.HasServerStats)
+            return;
         if (defender == null || (defender is MonoBehaviour mb && mb == null))
             return;
         if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
@@ -109,13 +116,6 @@ public sealed class AttackProcessor : MonoBehaviour
         float penetrationPercent = attackerDerived.PenetrationPercent;
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
-
-        if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR)
-        {
-            // Monostat STR: 가드 파괴 (선택적 훅)
-            if (defenderGuard != null && defenderGuard.IsGuarding)
-                defenderGuard.BreakGuard();
-        }
 
         penetrationPercent = Clamp(penetrationPercent, 0f, 100f);
 
@@ -151,65 +151,23 @@ public sealed class AttackProcessor : MonoBehaviour
 
         // 5) 물리 피해 적용 (+ 컨텍스트 전달 가능하면 전달)
         // Thorns 반사는 HealthSystem이 "Physical 피해 수신 시" 처리한다.
-        float defenderHpBefore = defender.CurrentHp;
         if (_playerCombat == null)
             _playerCombat = GetComponent<PlayerCombat>();
-
-        if (defender is HealthSystem healthSystem)
-        {
-            healthSystem.ApplyDamageWithPopupSource(
-                finalDamage,
-                DamageSource.Physical,
-                attackPower,
-                _attackerDamageReceiver,
-                hitPosition,
-                DamageSource.Physical,
-                popupPredictionId);
-        }
-        else if (defender is IDamageReceiverWithContext ctx)
-        {
-            // defender가 여전히 유효한지 확인
-            if (ctx is MonoBehaviour defenderMb && defenderMb == null) return;
-            ctx.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver, hitPosition);
-        }
-        else
-        {
-            defender.ApplyDamage(finalDamage, DamageSource.Physical, hitPosition);
-        }
-
-        float actualDamage = Mathf.Max(0f, defenderHpBefore - defender.CurrentHp);
+        DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId);
+        if (!result.Accepted) return;
+        if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR &&
+            defenderGuard != null && defenderGuard.IsGuarding)
+            defenderGuard.BreakGuard();
         _playerCombat?.NotifyConfirmedHit(bodyPart == BodyPart.Head);
-        _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
-    }
-
-    public float PredictHitDamage(AttackData attackData, StatManager defenderStats, float bodyPartMultiplier = 1f)
-    {
-        if (attackData == null || _attackerStats == null || defenderStats == null)
-            return 0f;
-
-        DerivedCombatStats attackerDerived = _attackerStats.GetDerivedStats();
-        float attackPower = attackerDerived.AttackPower * attackData.damage;
-        float penetrationPercent = attackerDerived.PenetrationPercent;
-        if (_playerCombat != null)
-            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
-
-        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
-        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
-        float bonusDefense = defenderDerived.DefenseBonusNormalized;
-        float finalDamage = _damageCalculator.PredictFinalDamage(
-            attackPower,
-            defenderDef,
-            bonusDefense,
-            Clamp(penetrationPercent, 0f, 100f));
-
-        finalDamage *= defenderDerived.IncomingDamageMultiplier;
-
-        return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
+        _playerCombat?.NotifyPhysicalDamageDealt(result.HpDamage, defender, hitPosition);
     }
 
     public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0)
     {
-        if (damageMultiplier <= 0f || defenderStats == null || defender == null)
+        if (_attackerStats == null || (NetworkServer.active && !_attackerStats.HasServerStats))
+            return false;
+        if (!float.IsFinite(damageMultiplier) || damageMultiplier <= 0f || defenderStats == null || defender == null ||
+            (defender is MonoBehaviour defenderBehaviour && defenderBehaviour == null))
             return false;
         if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
             return false;
@@ -228,55 +186,30 @@ public sealed class AttackProcessor : MonoBehaviour
         if (finalDamage <= 0f)
             return false;
 
-        float hpBefore = defender.CurrentHp;
-        if (defender is HealthSystem healthSystem)
-        {
-            healthSystem.ApplyDamageWithPopupSource(
-                finalDamage,
-                DamageSource.Physical,
-                attackPower,
-                _attackerDamageReceiver,
-                hitPosition,
-                DamageSource.Physical,
-                popupPredictionId);
-        }
-        else if (defender is IDamageReceiverWithContext context)
-        {
-            context.ApplyDamage(finalDamage, DamageSource.Physical, attackPower, _attackerDamageReceiver, hitPosition);
-        }
-        else
-        {
-            defender.ApplyDamage(finalDamage, DamageSource.Physical, hitPosition);
-        }
-
-        float actualDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
+        DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId);
+        if (!result.Accepted) return false;
         _playerCombat?.NotifyConfirmedHit(bodyPart == BodyPart.Head);
-        _playerCombat?.NotifyPhysicalDamageDealt(actualDamage, defender, hitPosition);
+        _playerCombat?.NotifyPhysicalDamageDealt(result.HpDamage, defender, hitPosition);
         return true;
     }
 
-    public float PredictSkillHitDamage(float damageMultiplier, StatManager defenderStats, float bodyPartMultiplier = 1f)
+    private DamageResult ApplyPhysicalDamage(IDamageReceiver defender, float damage, float power,
+        Vector3 hitPosition, uint predictionId)
     {
-        if (damageMultiplier <= 0f || defenderStats == null)
-            return 0f;
-
-        float attackPower = _currentAtk * damageMultiplier;
-        if (_playerCombat != null)
-            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
-
-        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
-        DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
-        float bonusDefense = defenderDerived.DefenseBonusNormalized;
-        float finalDamage = _damageCalculator.PredictFinalDamage(
-            attackPower,
-            defenderDef,
-            bonusDefense,
-            Mathf.Clamp(_currentPene, 0f, 100f));
-
-        finalDamage *= defenderDerived.IncomingDamageMultiplier;
-
-        return Mathf.Max(0f, finalDamage * Mathf.Max(0f, bodyPartMultiplier));
+        if (!float.IsFinite(damage) || damage <= 0f || !CombatValidation.IsFinite(hitPosition))
+            return default;
+        if (defender is IDamageReceiverWithResult receiver)
+            return receiver.ApplyDamage(new DamageRequest(damage, DamageSource.Physical, power,
+                _attackerDamageReceiver, hitPosition, popupPredictionId: predictionId));
+        float hpBefore = defender.CurrentHp;
+        if (defender is IDamageReceiverWithContext context)
+            context.ApplyDamage(damage, DamageSource.Physical, power, _attackerDamageReceiver, hitPosition);
+        else
+            defender.ApplyDamage(damage, DamageSource.Physical, hitPosition);
+        float hpDamage = Mathf.Max(0f, hpBefore - defender.CurrentHp);
+        return new DamageResult(hpDamage > 0f, hpDamage, 0f, hpBefore > 0f && defender.CurrentHp <= 0f);
     }
+
 
     private static float Clamp(float v, float min, float max)
     {

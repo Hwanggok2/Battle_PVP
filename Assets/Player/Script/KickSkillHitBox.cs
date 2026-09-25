@@ -1,4 +1,5 @@
 using UnityEngine;
+using BattlePvp.Combat;
 
 [RequireComponent(typeof(Collider))]
 public sealed class KickSkillHitBox : MonoBehaviour
@@ -7,7 +8,8 @@ public sealed class KickSkillHitBox : MonoBehaviour
 
     private Collider _collider;
     private BoxCollider _boxCollider;
-    private readonly Collider[] _overlapResults = new Collider[32];
+    private readonly CombatPhysicsQuery _overlapQuery = new CombatPhysicsQuery();
+    [SerializeField] private LayerMask _targetLayers = ~0;
 
     private void Awake()
     {
@@ -52,16 +54,10 @@ public sealed class KickSkillHitBox : MonoBehaviour
         if (!TryGetOverlapBox(out Vector3 center, out Vector3 halfExtents, out Quaternion rotation))
             return;
 
-        int count = Physics.OverlapBoxNonAlloc(
-            center,
-            halfExtents,
-            _overlapResults,
-            rotation,
-            ~0,
-            QueryTriggerInteraction.Collide);
+        int count = _overlapQuery.OverlapBox(center, halfExtents, rotation, _targetLayers);
 
         for (int i = 0; i < count; i++)
-            _owner.TryProcessKickHit(_overlapResults[i]);
+            _owner.TryProcessKickHit(_overlapQuery.Colliders[i]);
     }
 
     public bool TryGetOverlapBox(out Vector3 center, out Vector3 halfExtents, out Quaternion rotation)
@@ -85,7 +81,7 @@ public sealed class KickSkillHitBox : MonoBehaviour
             Bounds bounds = _collider.bounds;
             center = bounds.center;
             halfExtents = bounds.extents;
-            rotation = transform.rotation;
+            rotation = Quaternion.identity;
             return true;
         }
 
@@ -99,6 +95,8 @@ public sealed class KickSkillHitBox : MonoBehaviour
     {
         return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
     }
+
+    private void OnDisable() => SetActive(false);
 
     private void OnTriggerEnter(Collider other)
     {

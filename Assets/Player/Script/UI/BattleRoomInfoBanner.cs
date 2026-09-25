@@ -1,7 +1,9 @@
 using BattlePvp.Networking;
+using BattlePvp.Combat;
 using Mirror;
 using TMPro;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -18,6 +20,9 @@ namespace BattlePvp.UI
         [SerializeField] private Button _leaveButton;
 
         private const string LobbySceneName = "Lobby";
+        private readonly HashSet<uint> _seenNetIds = new HashSet<uint>();
+        private readonly RoomBannerRequestState _metadataRequests = new RoomBannerRequestState();
+        private PlayFabBattleManager _roomManager;
 
         [ContextMenu("Create Editable Scene UI")]
         private void CreateEditableSceneUI()
@@ -27,37 +32,55 @@ namespace BattlePvp.UI
 
         private void OnEnable()
         {
+            _metadataRequests.SetActive(true);
             SceneManager.sceneLoaded += OnSceneLoaded;
+            ScoreSystem.OnScoreUpdated += OnRosterUpdated;
             SubscribeRoomEvents();
             RefreshVisibilityAndInfo();
         }
 
         private void OnDisable()
         {
+            _metadataRequests.SetActive(false);
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            ScoreSystem.OnScoreUpdated -= OnRosterUpdated;
             UnsubscribeRoomEvents();
         }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            SubscribeRoomEvents();
             RefreshVisibilityAndInfo();
         }
 
-        private void SubscribeRoomEvents()
+        private bool SubscribeRoomEvents()
         {
-            if (PlayFabBattleManager.Instance == null) return;
-            PlayFabBattleManager.Instance.OnRoomRegistryChanged -= RefreshVisibilityAndInfo;
-            PlayFabBattleManager.Instance.OnRoomRegistryChanged += RefreshVisibilityAndInfo;
+            var manager = PlayFabBattleManager.Instance;
+            if (ReferenceEquals(_roomManager, manager)) return false;
+            UnsubscribeRoomEvents();
+            _roomManager = manager;
+            if (_roomManager != null) _roomManager.OnRoomRegistryChanged += RefreshVisibilityAndInfo;
+            return true;
         }
 
         private void UnsubscribeRoomEvents()
         {
-            if (PlayFabBattleManager.Instance == null) return;
-            PlayFabBattleManager.Instance.OnRoomRegistryChanged -= RefreshVisibilityAndInfo;
+            if (!ReferenceEquals(_roomManager, null)) _roomManager.OnRoomRegistryChanged -= RefreshVisibilityAndInfo;
+            _roomManager = null;
+        }
+
+        private void OnRosterUpdated(ScoreSystem _)
+        {
+            // A manager initialized after this view is bound at the next roster event.
+            if (SubscribeRoomEvents()) RefreshVisibilityAndInfo();
+            else RefreshPlayerCount();
         }
 
         private void RefreshVisibilityAndInfo()
         {
+            var manager = _roomManager;
+            uint request = _metadataRequests.BeginRequest(manager != null ? manager.CurrentRoomId : null);
+            RefreshPlayerCount();
             bool shouldShow = IsBattleWaitingScene();
             if (!shouldShow)
             {
@@ -70,15 +93,19 @@ namespace BattlePvp.UI
             if (_bannerRoot == null) return;
             _bannerRoot.gameObject.SetActive(true);
             
-            var manager = PlayFabBattleManager.Instance;
             if (manager == null)
             {
-                SetInfo("Unknown Room", 0, "Unknown");
+                SetInfo("Unknown Room", "Unknown");
                 return;
             }
 
             SetInfo(manager.CurrentRoomInfo);
-            manager.RefreshCurrentRoomInfo(SetInfo);
+            manager.RefreshCurrentRoomInfo(info =>
+            {
+                if (this == null || !isActiveAndEnabled || manager == null || !ReferenceEquals(_roomManager, manager) ||
+                    !_metadataRequests.IsCurrent(request, manager.CurrentRoomId)) return;
+                SetInfo(info);
+            });
         }
 
         private bool IsBattleWaitingScene()
@@ -276,20 +303,30 @@ namespace BattlePvp.UI
 
         private void SetInfo(PlayFabBattleManager.RoomInfo info)
         {
-            SetInfo(info.RoomName, info.PlayerCount, info.MasterName);
+            // Room membership can outlive a disconnected player. Metadata never owns live occupancy.
+            SetInfo(info.RoomName, info.MasterName);
         }
 
-        private void SetInfo(string roomName, int playerCount, string masterName)
+        private void SetInfo(string roomName, string masterName)
         {
             if (_roomNameText == null || _playerCountText == null || _masterNameText == null)
                 return;
 
-            string safeRoomName = string.IsNullOrWhiteSpace(roomName) ? "Unknown Room" : roomName.Trim();
-            string safeMasterName = string.IsNullOrWhiteSpace(masterName) ? "Unknown" : masterName.Trim();
+            string safeRoomName = UserDisplayText.SingleLine(roomName, UserDisplayText.RoomNameLimit, "Unknown Room");
+            string safeMasterName = UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit, "Unknown");
 
-            _roomNameText.text = $"Room: {safeRoomName}";
-            _playerCountText.text = $"Players: {Mathf.Max(0, playerCount)}";
-            _masterNameText.text = $"Master: {safeMasterName}";
+            UserTextPresentation.SetPlain(_roomNameText, $"Room: {safeRoomName}");
+            UserTextPresentation.SetPlain(_masterNameText, $"Master: {safeMasterName}");
+            RefreshPlayerCount();
+        }
+
+        private void RefreshPlayerCount()
+        {
+            if (_playerCountText == null) return;
+            _seenNetIds.Clear();
+            foreach (ScoreSystem score in ScoreSystem.ActiveScores)
+                if (score != null && score.netId != 0) _seenNetIds.Add(score.netId);
+            _playerCountText.text = $"Players: {_seenNetIds.Count}";
         }
     }
 }

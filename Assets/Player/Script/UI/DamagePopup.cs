@@ -17,6 +17,36 @@ namespace BattlePvp.UI
         private float _disappearTimer;
         private float _defaultFontSize;
         private Color _defaultColor;
+        private System.Action<DamagePopup> _release;
+        private System.Action<DamagePopup> _destroyed;
+        private bool _returned;
+        private Camera _camera;
+
+        internal void SetPoolRelease(System.Action<DamagePopup> release, System.Action<DamagePopup> destroyed = null)
+        {
+            _release = release;
+            _destroyed = destroyed;
+        }
+
+        private void OnDisable()
+        {
+            if (_release != null) ReturnToPool();
+        }
+
+        private void OnDestroy()
+        {
+            _destroyed?.Invoke(this);
+            _release = null;
+            _destroyed = null;
+        }
+
+        internal void ReturnToPool()
+        {
+            if (_returned) return;
+            _returned = true;
+            if (_release != null) _release(this);
+            else Destroy(gameObject);
+        }
  
         [Header("Critical Hit Settings")]
         [SerializeField] private float _criticalFontScale = 1.6f;
@@ -63,6 +93,8 @@ namespace BattlePvp.UI
 
         private void Setup(float damageAmount, bool isCritical, bool useColorOverride, Color colorOverride, float fontSizeOverride)
         {
+            _returned = false;
+            _disappearTimer = Mathf.Max(0f, _lifetime);
             if (_textMesh == null)
             {
                 Debug.LogError($"[DamagePopup] _textMesh가 할당되지 않았습니다! 프리팹을 확인해 주세요.", gameObject);
@@ -100,7 +132,7 @@ namespace BattlePvp.UI
 
                 if (_textColor.a < 0)
                 {
-                    Destroy(gameObject);
+                    ReturnToPool();
                 }
             }
         }
@@ -108,10 +140,12 @@ namespace BattlePvp.UI
         private void LateUpdate()
         {
             // 빌보드 기능: 카메라를 항상 정면으로 바라보게 함
-            if (Camera.main != null)
+            if (_camera == null || !_camera.isActiveAndEnabled || !_camera.CompareTag("MainCamera"))
+                _camera = Camera.main;
+            if (_camera != null)
             {
-                transform.LookAt(transform.position + Camera.main.transform.rotation * Vector3.forward,
-                                 Camera.main.transform.rotation * Vector3.up);
+                transform.LookAt(transform.position + _camera.transform.rotation * Vector3.forward,
+                                 _camera.transform.rotation * Vector3.up);
             }
         }
     }

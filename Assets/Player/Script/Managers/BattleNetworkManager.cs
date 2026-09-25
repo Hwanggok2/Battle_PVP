@@ -1,6 +1,8 @@
 using Mirror;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
+using BattlePvp.Combat;
 
 namespace BattlePvp.Networking
 {
@@ -10,25 +12,42 @@ namespace BattlePvp.Networking
     /// </summary>
     public class BattleNetworkManager : NetworkManager
     {
-        [Header("Battle Settings")]
-        [Tooltip("배틀이 시작될 때 활성화할 씬 이름입니다. (Online Scene과 동일하게 설정 권장)")]
-        [SerializeField] private string _battleSceneName = "Battle_waiting";
+        public const int PlayerCapacity = 8;
+        public BattlePvp.Combat.MatchResultSnapshot LastCompletedMatch { get; private set; }
+        private readonly Dictionary<string, NetworkIdentity> _disconnectedPlayers =
+            new Dictionary<string, NetworkIdentity>(System.StringComparer.OrdinalIgnoreCase);
+        private bool _serverStopping;
+        private bool _changingServerScene;
 
+        public void RememberCompletedMatch(BattlePvp.Combat.MatchResultSnapshot result)
+        {
+            if (NetworkServer.active && result != null) LastCompletedMatch = result;
+        }
         public override void Awake()
         {
+            maxConnections = PlayerCapacity;
+            RoomNetworkAuthenticator roomAuthenticator = GetComponent<RoomNetworkAuthenticator>();
+            if (roomAuthenticator == null) roomAuthenticator = gameObject.AddComponent<RoomNetworkAuthenticator>();
+            roomAuthenticator.enabled = true;
+            authenticator = roomAuthenticator;
             base.Awake();
             Debug.Log($"[BattleNetworkManager] Awake - Singleton check: {singleton == this}");
         }
 
         public override void OnStartServer()
         {
+            _serverStopping = false;
+            _changingServerScene = false;
             base.OnStartServer();
+            BattlePvp.UI.BattleChatNetwork.RegisterServerHandler();
             Debug.Log("[BattleNetworkManager] Server Started.");
         }
 
         public override void OnStartClient()
         {
             base.OnStartClient();
+            BattlePvp.Combat.HealthSystem.ClearPopupPredictions();
+            BattlePvp.UI.BattleChatNetwork.RegisterClientHandler();
             Debug.Log("[BattleNetworkManager] Client Started.");
         }
 
@@ -37,7 +56,54 @@ namespace BattlePvp.Networking
         /// </summary>
         public override void OnServerAddPlayer(NetworkConnectionToClient conn)
         {
+            // A frozen result has no late-join initialization. Rejoin after the host starts the next round.
+            if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.MatchEnded)
+            {
+                Debug.LogWarning("[BattleNetworkManager] The match has ended; join after the next round starts.");
+                conn.Disconnect();
+                return;
+            }
+            if (numPlayers >= PlayerCapacity || !conn.isAuthenticated || !(conn.authenticationData is AuthenticatedRoomPlayer identity) ||
+                PlayFabBattleManager.Instance == null || identity.RoomId != PlayFabBattleManager.Instance.CurrentRoomId)
+            {
+                conn.Disconnect();
+                return;
+            }
             Debug.Log($"[BattleNetworkManager] OnServerAddPlayer called for connection: {conn.connectionId}");
+
+            if (_disconnectedPlayers.TryGetValue(identity.PlayFabId, out NetworkIdentity retained))
+            {
+                if (retained == null || retained.connectionToClient != null)
+                {
+                    conn.Disconnect();
+                    return;
+                }
+                retained.GetComponent<PlayerManager>()?.ServerPrepareReconnect();
+                if (!NetworkServer.AddPlayerForConnection(conn, retained.gameObject))
+                {
+                    retained.GetComponent<PlayerManager>()?.ServerBeginDisconnectedControl();
+                    conn.Disconnect();
+                    return;
+                }
+                _disconnectedPlayers.Remove(identity.PlayFabId);
+                ScoreSystem score = retained.GetComponent<ScoreSystem>();
+                if (score == null || BattleStateMachine.Instance == null ||
+                    !BattleStateMachine.Instance.TryRegisterMatchParticipant(score))
+                {
+                    conn.Disconnect();
+                    return;
+                }
+                score.ServerSetConnected(true);
+                retained.GetComponent<PlayerManager>()?.ServerSendReconnectState();
+                return;
+            }
+
+            // Disconnected bodies reserve their match slot, so cycling accounts cannot create unbounded targets.
+            if (numPlayers + _disconnectedPlayers.Count >= PlayerCapacity)
+            {
+                conn.Disconnect();
+                return;
+            }
 
             if (playerPrefab == null)
             {
@@ -63,8 +129,44 @@ namespace BattlePvp.Networking
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
+            BattlePvp.UI.BattleChatNetwork.OnServerDisconnected(conn);
+            (authenticator as RoomNetworkAuthenticator)?.OnServerDisconnected(conn);
             Debug.Log($"[BattleNetworkManager] Player disconnected: {conn.connectionId}");
+            NetworkIdentity player = conn.identity;
+            var account = conn.authenticationData as AuthenticatedRoomPlayer;
+            if (NetworkServer.active && !_serverStopping && !_changingServerScene &&
+                conn != NetworkServer.localConnection && player != null && account != null &&
+                player.TryGetComponent(out BattlePvp.Stats.StatManager stats) && stats.HasServerStats &&
+                BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.InBattle &&
+                PlayFabBattleManager.Instance != null && account.RoomId == PlayFabBattleManager.Instance.CurrentRoomId)
+            {
+                player.GetComponent<ScoreSystem>()?.ServerSetConnected(false);
+                player.GetComponent<BowAttackController>()?.CancelCharge();
+                player.GetComponent<PlayerManager>()?.ServerBeginDisconnectedControl();
+                NetworkServer.RemovePlayerForConnection(conn, RemovePlayerOptions.KeepActive);
+                _disconnectedPlayers[account.PlayFabId] = player;
+            }
             base.OnServerDisconnect(conn);
+        }
+
+        public void ClearDisconnectedPlayers()
+        {
+            foreach (NetworkIdentity player in _disconnectedPlayers.Values)
+                if (player != null) NetworkServer.Destroy(player.gameObject);
+            _disconnectedPlayers.Clear();
+        }
+
+        public override void OnServerChangeScene(string newSceneName)
+        {
+            _changingServerScene = true;
+            ClearDisconnectedPlayers();
+            base.OnServerChangeScene(newSceneName);
+        }
+
+        public override void OnServerSceneChanged(string sceneName)
+        {
+            _changingServerScene = false;
+            base.OnServerSceneChanged(sceneName);
         }
 
         public override void OnClientConnect()
@@ -76,13 +178,33 @@ namespace BattlePvp.Networking
 
         public override void OnClientDisconnect()
         {
-            PlayFabBattleManager.Instance?.LeaveCurrentRoom();
+            bool preserveMembership = authenticator is RoomNetworkAuthenticator roomAuthenticator &&
+                roomAuthenticator.PreserveRoomMembershipOnDisconnect;
+            bool authenticationFailed = NetworkClient.connection == null || !NetworkClient.connection.isAuthenticated;
+            PlayFabBattleManager.Instance?.NotifyRoomNetworkDisconnected(preserveMembership, authenticationFailed);
             base.OnClientDisconnect();
             Debug.Log("[BattleNetworkManager] Client disconnected from server.");
         }
 
+        public override void OnStopServer()
+        {
+            _serverStopping = true;
+            ClearDisconnectedPlayers();
+            LastCompletedMatch = null;
+            BattlePvp.UI.BattleChatNetwork.UnregisterServerHandler();
+            base.OnStopServer();
+        }
+
+        public override void OnStopClient()
+        {
+            BattlePvp.Combat.HealthSystem.ClearPopupPredictions();
+            BattlePvp.UI.BattleChatNetwork.UnregisterClientHandler();
+            base.OnStopClient();
+        }
+
         public override void OnValidate()
         {
+            maxConnections = PlayerCapacity;
             base.OnValidate();
             
             // 인스펙터에서 Online Scene이 비어있으면 경고

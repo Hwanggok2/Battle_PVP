@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using BattlePvp.Networking;
 using BattlePvp.Stats;
 using BattlePvp.Managers;
+using BattlePvp.Logic;
 using Mirror;
 using System.Text.RegularExpressions;
 using System.Collections;
@@ -39,12 +40,16 @@ namespace BattlePvp.UI
         [SerializeField] private Button _saveRoomButtonComp;        // 방 설정 저장(생성) 버튼 (중복 선언 방지: _saveRoomButton과 동일)
 
         private GameObject _battlePanelCached;
-        private Coroutine _discoveryRoutine;
-        private Coroutine _statUpdateRoutine;
+        private StatManager _localStatManager;
+        private PlayFabBattleManager _roomService;
         private BattlePvp.Combat.HealthSystem _localHealthSystem;
         private TextMeshProUGUI _roomFlowStatusText;
         private TextMeshProUGUI _latencyText;
         private Coroutine _latencyDisplayRoutine;
+        public bool HasOpenInputPanel => isActiveAndEnabled &&
+            ((_canvas_Customizer != null && _canvas_Customizer.activeInHierarchy) ||
+             (_room_UI != null && _room_UI.activeInHierarchy) ||
+             (_roomSettingPanel != null && _roomSettingPanel.activeInHierarchy));
 
         private static readonly Color GoodLatencyColor = new Color(0.25f, 0.9f, 0.35f, 1f);
         private static readonly Color FairLatencyColor = new Color(1f, 0.82f, 0.2f, 1f);
@@ -55,20 +60,8 @@ namespace BattlePvp.UI
             if (Instance == null) Instance = this;
             else { Destroy(gameObject); return; }
 
-            if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
-
             if (_lobby_UI == null)
-            {
-                var allLobbyUIs = Resources.FindObjectsOfTypeAll<GameObject>();
-                foreach (var go in allLobbyUIs)
-                {
-                    if (go.name == "Lobby_UI" && go.scene.isLoaded)
-                    {
-                        _lobby_UI = go;
-                        break;
-                    }
-                }
-            }
+                _lobby_UI = FindLoadedSceneObject("Lobby_UI");
             
             if (_lobby_UI != null)
             {
@@ -85,6 +78,7 @@ namespace BattlePvp.UI
             }
             
             FindCanvasCustomizer();
+            CloseStartupPanels();
             RefreshVisibility();
             UpgradeHangulLegacyText();
             EnsureLobbyButtonTextVisible();
@@ -101,15 +95,13 @@ namespace BattlePvp.UI
             if (_joinRoomButton != null) _joinRoomButton.onClick.AddListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.AddListener(OnSaveRoomButtonClicked);
             if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.AddListener(OnSaveRoomButtonClicked);
-            if (PlayFabBattleManager.Instance != null)
-                PlayFabBattleManager.Instance.OnRoomFlowStateChanged += OnRoomFlowStateChanged;
-
-            // [최적화] 코루틴 기반 지속적 탐색 루틴 시작
-            if (_discoveryRoutine != null) StopCoroutine(_discoveryRoutine);
-            _discoveryRoutine = StartCoroutine(CoAutoDiscovery());
-
-            if (_statUpdateRoutine != null) StopCoroutine(_statUpdateRoutine);
-            _statUpdateRoutine = StartCoroutine(CoSubscribeToLocalPlayerStats());
+            PlayFabBattleManager.InstanceChanged += BindRoomService;
+            BindRoomService(PlayFabBattleManager.Instance);
+            StatManager.LocalChanged += BindLocalPlayer;
+            StatCustomizerController.InstanceChanged += FindCanvasCustomizer;
+            BindLocalPlayer(StatManager.Local);
+            FindCanvasCustomizer();
+            RefreshVisibility();
 
             if (_latencyDisplayRoutine != null) StopCoroutine(_latencyDisplayRoutine);
             _latencyDisplayRoutine = StartCoroutine(CoUpdateLatencyDisplay());
@@ -125,27 +117,34 @@ namespace BattlePvp.UI
             if (_joinRoomButton != null) _joinRoomButton.onClick.RemoveListener(OnJoinRoomButtonClicked);
             if (_saveRoomButton != null) _saveRoomButton.onClick.RemoveListener(OnSaveRoomButtonClicked);
             if (_saveRoomButtonComp != null && _saveRoomButtonComp != _saveRoomButton) _saveRoomButtonComp.onClick.RemoveListener(OnSaveRoomButtonClicked);
-            if (PlayFabBattleManager.Instance != null)
-                PlayFabBattleManager.Instance.OnRoomFlowStateChanged -= OnRoomFlowStateChanged;
-
-            if (Mirror.NetworkClient.localPlayer != null)
-            {
-                var statMgr = Mirror.NetworkClient.localPlayer.GetComponent<StatManager>();
-                if (statMgr != null) statMgr.StatsChanged -= OnLocalStatsChanged;
-            }
-
-            if (_localHealthSystem != null)
-            {
-                _localHealthSystem.OnDied -= OnLocalPlayerDied;
-                _localHealthSystem.OnRevived -= OnLocalPlayerRevived;
-                _localHealthSystem = null;
-            }
+            PlayFabBattleManager.InstanceChanged -= BindRoomService;
+            BindRoomService(null);
+            StatManager.LocalChanged -= BindLocalPlayer;
+            StatCustomizerController.InstanceChanged -= FindCanvasCustomizer;
+            UnsubscribeLocalPlayer();
 
             // [최적화] 모든 루틴 정지
             StopAllCoroutines();
-            _discoveryRoutine = null;
-            _statUpdateRoutine = null;
             _latencyDisplayRoutine = null;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+
+        private void BindRoomService(PlayFabBattleManager service)
+        {
+            if (ReferenceEquals(_roomService, service)) return;
+            if (_roomService != null) _roomService.OnRoomFlowStateChanged -= OnRoomFlowStateChanged;
+            _roomService = service;
+            if (_roomService == null)
+            {
+                OnRoomFlowStateChanged(string.Empty, false);
+                return;
+            }
+            _roomService.OnRoomFlowStateChanged += OnRoomFlowStateChanged;
+            OnRoomFlowStateChanged(_roomService.LastRoomNotice, false);
         }
 
         private void EnsureLatencyText()
@@ -262,46 +261,37 @@ namespace BattlePvp.UI
 
         // Update() 제거 (이벤트 기반으로 전환)
 
-        private IEnumerator CoAutoDiscovery()
-        {
-            while (true)
-            {
-                if (this == null) yield break;
-                FindCanvasCustomizer();
-                yield return new WaitForSeconds(1f); // 1초 주기로 탐색 (최적화)
-            }
-        }
-
         private void FindCanvasCustomizer()
         {
             if (this == null) return;
 
-            // Unity bool 캐스팅: Missing(파괴된) 오브젝트도 false로 올바르게 감지
-            if (_canvas_Customizer && _canvas_Customizer.name.Contains("_Root"))
-                _canvas_Customizer = null;
-            if (_canvas_Customizer) return;
+            var owner = StatCustomizerController.Instance;
+            GameObject next = owner != null && owner.CanOwnLocalUi ? owner.ViewRoot : null;
+            if (_canvas_Customizer == next) return;
+            if (_canvas_Customizer != null) _canvas_Customizer.SetActive(false);
+            _canvas_Customizer = next;
+            if (_canvas_Customizer != null) _canvas_Customizer.SetActive(false);
+            GameInputController.RefreshCursorState();
+        }
 
-            _canvas_Customizer = null; // Missing 참조 완전 제거
+        private void CloseStartupPanels()
+        {
+            if (_room_UI != null) _room_UI.SetActive(false);
+            if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
+            SetCustomizerActive(false);
+        }
 
-            var allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
-            foreach (var go in allObjects)
+        private static GameObject FindLoadedSceneObject(string objectName)
+        {
+            for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
             {
-                if (go.name == "Canvas_Customizer" && go.scene.isLoaded)
-                {
-                    _canvas_Customizer = go;
-                    return;
-                }
+                var scene = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+                if (!scene.isLoaded) continue;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                    foreach (Transform candidate in root.GetComponentsInChildren<Transform>(true))
+                        if (candidate.name == objectName) return candidate.gameObject;
             }
-
-            var controllers = Resources.FindObjectsOfTypeAll<StatCustomizerController>();
-            foreach (var controller in controllers)
-            {
-                if (controller == null || !controller.gameObject.scene.isLoaded)
-                    continue;
-
-                _canvas_Customizer = controller.gameObject;
-                return;
-            }
+            return null;
         }
 
         public void RefreshVisibility()
@@ -315,6 +305,8 @@ namespace BattlePvp.UI
 
             if (isLobby || isBattleWaiting)
             {
+                // Lobby 씬에는 입력 매니저가 없어도 이전 전투의 커서 잠금을 해제한다.
+                GameInputController.RefreshCursorState();
                 if (_lobby_UI != null) _lobby_UI.SetActive(true);
                 if (_battlePanelCached != null) _battlePanelCached.SetActive(true);
             }
@@ -337,12 +329,7 @@ namespace BattlePvp.UI
 
             if (isBattle)
             {
-                bool isDead = false;
-                if (Mirror.NetworkClient.localPlayer != null)
-                {
-                    var hpSys = Mirror.NetworkClient.localPlayer.GetComponent<BattlePvp.Combat.HealthSystem>();
-                    if (hpSys != null) isDead = hpSys.IsDead;
-                }
+                bool isDead = _localHealthSystem != null && _localHealthSystem.IsDead;
 
                 if (isDead)
                 {
@@ -353,6 +340,7 @@ namespace BattlePvp.UI
                 }
                 else
                 {
+                    SetCustomizerActive(false);
                     if (_battleButton != null) _battleButton.gameObject.SetActive(false);
                     if (_statSettingButton != null) _statSettingButton.gameObject.SetActive(false);
                 }
@@ -501,71 +489,61 @@ namespace BattlePvp.UI
             return label;
         }
 
-        private IEnumerator CoSubscribeToLocalPlayerStats()
+        private void BindLocalPlayer(StatManager stats)
         {
-            while (Mirror.NetworkClient.localPlayer == null) yield return null;
-            if (this == null) yield break;
-
-            var statMgr = Mirror.NetworkClient.localPlayer.GetComponent<StatManager>();
-            if (statMgr != null)
-                statMgr.StatsChanged += OnLocalStatsChanged;
-
-            // HealthSystem 이벤트 구독 (사망/부활 시 가시성 갱신)
-            var hs = Mirror.NetworkClient.localPlayer.GetComponent<BattlePvp.Combat.HealthSystem>();
-            if (hs != null)
+            if (ReferenceEquals(_localStatManager, stats)) return;
+            UnsubscribeLocalPlayer();
+            _localStatManager = stats;
+            if (_localStatManager != null)
             {
-                _localHealthSystem = hs;
-                hs.OnDied += OnLocalPlayerDied;
-                hs.OnRevived += OnLocalPlayerRevived;
+                _localStatManager.StatsChanged += OnLocalStatsChanged;
+                _localHealthSystem = _localStatManager.GetComponent<BattlePvp.Combat.HealthSystem>();
+                if (_localHealthSystem != null)
+                {
+                    _localHealthSystem.OnDied += OnLocalPlayerDied;
+                    _localHealthSystem.OnRevived += OnLocalPlayerRevived;
+                }
+                FindCanvasCustomizer();
             }
-
             RefreshVisibility();
         }
 
+        private void UnsubscribeLocalPlayer()
+        {
+            if (_localStatManager != null) _localStatManager.StatsChanged -= OnLocalStatsChanged;
+            if (_localHealthSystem != null)
+            {
+                _localHealthSystem.OnDied -= OnLocalPlayerDied;
+                _localHealthSystem.OnRevived -= OnLocalPlayerRevived;
+            }
+            _localStatManager = null;
+            _localHealthSystem = null;
+        }
+
         private void OnLocalPlayerDied() => RefreshVisibility();
-        private void OnLocalPlayerRevived() => RefreshVisibility();
+        private void OnLocalPlayerRevived()
+        {
+            SetCustomizerActive(false);
+            RefreshVisibility();
+        }
 
         private void OnLocalStatsChanged(StatContainer _) => RefreshVisibility();
 
         private void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
             if (this == null) return;
-            if (_room_UI != null) _room_UI.SetActive(false);
-            if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
-            
-            StartCoroutine(CoWaitAndRefreshVisibility(scene.name));
-        }
-
-        private IEnumerator CoWaitAndRefreshVisibility(string sceneName)
-        {
-            yield return new WaitForSeconds(0.1f);
-            if (this == null) yield break;
-
-            bool isWaitingScene = sceneName.Contains("Battle_wait") || sceneName.Contains("Battle_waiting");
-            if (isWaitingScene)
-            {
-                float timeout = 2.0f;
-                while (Mirror.NetworkClient.localPlayer == null && timeout > 0) { timeout -= 0.1f; yield return new WaitForSeconds(0.1f); }
-                if (this == null) yield break;
-
-                RefreshVisibility();
-                if (_canvas_Customizer != null) _canvas_Customizer.SetActive(true);
-            }
-            else
-            {
-                if (_canvas_Customizer != null) _canvas_Customizer.SetActive(false);
-                RefreshVisibility();
-            }
+            FindCanvasCustomizer();
+            CloseStartupPanels();
+            BindRoomService(PlayFabBattleManager.Instance);
+            BindLocalPlayer(StatManager.Local);
+            RefreshVisibility();
         }
 
         private bool IsCurrentlyMonostat()
         {
             IdentityType currentType = IdentityType.Polymath;
-            if (Mirror.NetworkClient.localPlayer != null)
-            {
-                var statMgr = Mirror.NetworkClient.localPlayer.GetComponent<StatManager>();
-                if (statMgr != null) currentType = statMgr.CurrentIdentity.Type;
-            }
+            if (_localStatManager != null)
+                currentType = _localStatManager.CurrentIdentity.Type;
             else if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
                 Identity id = new IdentityCalculator().ResolveIdentity(BattlePvp.Managers.GlobalDataManager.Instance.SavedStats, out _);
@@ -683,13 +661,14 @@ namespace BattlePvp.UI
 
         public void SetCustomizerActive(bool active)
         {
-            if (_canvas_Customizer == null) FindCanvasCustomizer();
+            FindCanvasCustomizer();
             if (_canvas_Customizer == null) return;
 
             if (active)
                 EnsureCustomizerHierarchyVisible(_canvas_Customizer.transform);
 
             _canvas_Customizer.SetActive(active);
+            GameInputController.RefreshCursorState();
         }
 
         private bool IsCustomizerVisible()

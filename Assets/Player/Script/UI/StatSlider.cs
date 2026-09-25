@@ -34,6 +34,11 @@ namespace BattlePvp.UI
 
         public event Action<StatSlider, float> InvestedChanged;
 
+        public void SetInteractable(bool interactable)
+        {
+            if (_slider != null) _slider.interactable = interactable;
+        }
+
         private float _item;
 
         private void Awake()

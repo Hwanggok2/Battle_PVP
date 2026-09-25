@@ -450,7 +450,7 @@ MonoBehaviour:
   _shieldRoot: {fileID: 4118535570843940576}
   _shieldFillImage: {fileID: 5670929459785210737}
   _shieldStartOffset: {x: -10, y: 0}
-  _overflowEffect: {fileID: 5879526804884891222}
+  _overflowEffect: {fileID: 0}
   _receivedDamageText: {fileID: 1435385340721839771}
   _receivedDamageTextLifetime: 1
   _identityText: {fileID: 8790693547785515446}
@@ -2863,6 +2863,7 @@ MonoBehaviour:
   rotationSpeed: 720
   _transformSyncInterval: 0.033
   _rotationOnlyTransformSyncInterval: 0.1
+  _reliableTransformKeyframeInterval: 0.25
   _jumpBufferSeconds: 0.15
   _coyoteTimeSeconds: 0.08
   _groundSnapDistance: 0.2
@@ -2950,6 +2951,7 @@ MonoBehaviour:
   _remoteHitPositionTolerance: 3
   _maxActionRewindSeconds: 0.25
   _maxFutureActionLeadSeconds: 0.05
+  _serverAttackReportGraceSeconds: 2
   _strategistStrAuraMaterial: {fileID: 2100000, guid: 8ce6b9ec521cbf440bf5c16e18e65e02, type: 2}
   _strategistAgiAuraMaterial: {fileID: -876546973899608171, guid: 66fb401d65865284dade3038040b0e68, type: 3}
   _strategistConAuraMaterial: {fileID: -876546973899608171, guid: 6f3d00eb45a29fd4dbc228fdcda693a2, type: 3}

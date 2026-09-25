@@ -83,6 +83,7 @@ namespace BattlePvp.UI
         private IPlayerHudView _hudView;
         private NetworkIdentity _ownerIdentity;
         private bool _isSubscribed;
+        private Coroutine _bindRoutine;
         private bool _hasExplicitTarget;
         private bool _hasLoadingOverlayState;
         private bool _lastLoadingOverlayActive;
@@ -137,6 +138,35 @@ namespace BattlePvp.UI
             return true;
         }
 
+        public static void UnbindFromPlayer(StatManager statManager)
+        {
+            if (ReferenceEquals(statManager, null)) return;
+            if (statManager != null) statManager.GetComponent<PlayerHUD>()?.ClearTargetIfMatches(statManager);
+            Instance?.ClearTargetIfMatches(statManager);
+            _globalHud?.ClearTargetIfMatches(statManager);
+        }
+
+        private void ClearTargetIfMatches(StatManager statManager)
+        {
+            if (!ReferenceEquals(_statManager, statManager)) return;
+            UnsubscribeCurrent();
+            if (_bindRoutine != null) StopCoroutine(_bindRoutine);
+            _bindRoutine = null;
+            _statManager = null;
+            _healthSource = null;
+            _status = null;
+            _damageReceiver = null;
+            _shieldSource = null;
+            _combatSource = null;
+            _hasExplicitTarget = false;
+            _hudView?.SetHp(0f, 0f);
+            _hudView?.SetShield(0f);
+            _hudView?.SetOverflow(false, 0f);
+            _hudView?.SetSkill(new SkillHudState(false, string.Empty, 0, 0, SkillHudPhase.Hidden, 0f, 0f));
+            _hudView?.SetDeathOverlay(false);
+            SetViewActive(false);
+        }
+
         private void Awake()
         {
             _ownerIdentity = GetComponentInParent<NetworkIdentity>();
@@ -168,7 +198,6 @@ namespace BattlePvp.UI
 
         private void Start()
         {
-            StartCoroutine(CoBindLocalHud());
             SetViewActive(ShouldDisplayThisHud());
             SyncLoadingOverlayFromBattleState();
         }
@@ -176,16 +205,23 @@ namespace BattlePvp.UI
         private void OnEnable()
         {
             TryBindLocalPlayerImmediate();
-            if (IsBoundToLocalPlayer() && _hudView != null && _damageReceiver != null)
-            {
-                _hudView.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
-                _hudView.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
-            }
+            SubscribeNew();
+            OnStatsChanged(default);
+            _bindRoutine = StartCoroutine(CoBindLocalHud());
         }
 
         private void OnDisable()
         {
+            if (_bindRoutine != null) StopCoroutine(_bindRoutine);
+            _bindRoutine = null;
             UnsubscribeCurrent();
+        }
+
+        private void OnDestroy()
+        {
+            UnsubscribeCurrent();
+            if (Instance == this) Instance = null;
+            if (_globalHud == this) _globalHud = null;
         }
 
         private void Update()
@@ -298,6 +334,7 @@ namespace BattlePvp.UI
             }
 
             _combatSource = GetComponentInParent<PlayerCombat>();
+            _shieldSource = _status as HealthSystem;
 
             SubscribeNew();
         }
@@ -372,7 +409,7 @@ namespace BattlePvp.UI
                 _hudView?.SetHp(_damageReceiver.CurrentHp, _damageReceiver.MaxHp);
             _hudView?.SetShield(_shieldSource != null ? _shieldSource.CurrentShield : 0f);
 
-            _hudView?.SetOverflow(false, 0f);
+            SyncOverflowSnapshot();
             if (_combatSource != null)
                 OnSkillHudChanged(_combatSource.GetSkillHudState());
             else
@@ -381,13 +418,14 @@ namespace BattlePvp.UI
 
         private void SubscribeNew()
         {
-            if (_isSubscribed || !CanBindThisHud())
+            if (_isSubscribed || !isActiveAndEnabled || !CanBindThisHud())
                 return;
 
             if (_statManager != null)
             {
                 _statManager.IdentityChanged += OnIdentityChanged;
                 _statManager.StatsChanged += OnStatsChanged;
+                _statManager.DerivedStatsChanged += OnDerivedStatsChanged;
             }
 
             if (_status != null)
@@ -414,6 +452,7 @@ namespace BattlePvp.UI
             {
                 _statManager.IdentityChanged -= OnIdentityChanged;
                 _statManager.StatsChanged -= OnStatsChanged;
+                _statManager.DerivedStatsChanged -= OnDerivedStatsChanged;
             }
 
             if (_status != null)
@@ -596,6 +635,17 @@ namespace BattlePvp.UI
             _hudView.SetOverflow(isOverflow, overlapPercent);
         }
 
+        private void OnDerivedStatsChanged() => OnStatsChanged(default);
+
+        private void SyncOverflowSnapshot()
+        {
+            bool overflow = _damageReceiver != null && _damageReceiver.MaxHp > 0f &&
+                _damageReceiver.CurrentHp > _damageReceiver.MaxHp;
+            float overlap = overflow
+                ? Mathf.Clamp01((_damageReceiver.CurrentHp - _damageReceiver.MaxHp) / _damageReceiver.MaxHp) : 0f;
+            _hudView?.SetOverflow(overflow, overlap);
+        }
+
         private void OnStatsChanged(StatContainer _)
         {
             if (this == null || _hudView == null || !IsBoundToLocalPlayer() || !ShouldDisplayThisHud())
@@ -609,6 +659,7 @@ namespace BattlePvp.UI
 
             if (_statManager != null)
                 _hudView.SetIdentity(_statManager.CurrentIdentity);
+            SyncOverflowSnapshot();
 
             PlayerCombat combat = ResolveCurrentCombatSource();
 

@@ -51,7 +51,6 @@ public sealed class BowAttackController : NetworkBehaviour
     private JobSkillData _activeChargeData;
     private Vector3 _pendingDirection;
     private Vector3 _pendingAimPoint;
-    private float _pendingDamageMultiplier;
     private bool _hasPendingShot;
     private bool _hasPendingAimPoint;
     private bool _captureAimPointPending;
@@ -63,15 +62,46 @@ public sealed class BowAttackController : NetworkBehaviour
     private bool _isReleaseLocked;
     private bool _chargeRingVisible;
     private Coroutine _releaseLockFallbackRoutine;
+    private readonly BowShotAuthority _serverShotAuthority = new BowShotAuthority();
+    private float _serverReleaseLockSeconds;
+    private bool _serverOwnsTauntVisual;
 
     public bool IsCharging => _chargeStartedAt >= 0d;
     public bool IsBusy => IsCharging || _isVisuallyCharging || _releaseQueued || _isReleaseLocked;
+
+    [Server]
+    public void ServerTickTauntAttack(Vector3 direction)
+    {
+        if (_playerCombat == null || !_playerCombat.IsServerTaunted) return;
+        JobSkillData data = _playerCombat.ServerBowData;
+        if (data == null) return;
+        if (!IsBusy) HandleAttackInput(true, data, direction);
+        else if (IsCharging && SkillTime - _chargeStartedAt >= data.MinimumBowChargeSeconds)
+            HandleAttackInput(false, data, direction);
+    }
+
+    [Server]
+    public void ServerEndTauntAttack()
+    {
+        CancelCharge();
+        RpcEndTauntBowVisual();
+    }
+
+    [ClientRpc]
+    private void RpcEndTauntBowVisual()
+    {
+        if (isServer) return;
+        _serverOwnsTauntVisual = true;
+        CancelCharge();
+        _serverOwnsTauntVisual = false;
+    }
 
     private double SkillTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
 
     private void Awake()
     {
         ResolveReferences();
+        _serverReleaseLockSeconds = ResolveServerReleaseLockSeconds();
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
         if (!NetworkClient.active && !NetworkServer.active)
@@ -148,7 +178,7 @@ public sealed class BowAttackController : NetworkBehaviour
             _releaseQueued = false;
             _isAimHoldReady = false;
             _isVisuallyCharging = true;
-            _playerManager?.ApplySkillMoveMultiplier(bowData.BowChargeMoveMultiplier, 86400f);
+            _playerManager?.SetMovementEffect(CombatEffectSources.BowCharge, bowData.BowChargeMoveMultiplier, 86400f);
             SetHandArrowVisible(false);
             ApplyBowAimDirection(aimDirection);
             SetBowAimRigActive(true);
@@ -163,14 +193,23 @@ public sealed class BowAttackController : NetworkBehaviour
         _chargeStartedAt = -1d;
         _activeChargeData = null;
         SetChargeRingVisible(false);
-        _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
+        _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
+        if (isClient && isLocalPlayer && !isServer)
+            CmdPrepareBowShot();
+        else if (NetworkServer.active && !PrepareServerShot())
+        {
+            CancelCharge();
+            return;
+        }
         QueueShot(bowData, chargeSeconds, aimDirection);
     }
 
     public void CancelCharge()
     {
-        if (IsCharging)
-            _playerManager?.ApplySkillMoveMultiplier(1f, 0f);
+        if (!_serverOwnsTauntVisual && isClient && isLocalPlayer && !isServer && NetworkClient.ready && (IsBusy || _hasPendingShot))
+            CmdCancelBowCharge();
+        _serverShotAuthority.Cancel();
+        _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
 
         _chargeStartedAt = -1d;
         _activeChargeData = null;
@@ -235,14 +274,7 @@ public sealed class BowAttackController : NetworkBehaviour
         // LateUpdate captures the release-frame camera ray after FollowCamera applies mouse input.
         _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _hasPendingAimPoint = false;
-        _captureAimPointPending = isLocalPlayer;
-        float denominator = Mathf.Max(0.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds);
-        float t = chargeSeconds < bowData.MinimumBowChargeSeconds
-            ? 0f
-            : Mathf.Clamp01((chargeSeconds - bowData.MinimumBowChargeSeconds) / denominator);
-        float multiplier = Mathf.Lerp(bowData.MinimumBowDamageMultiplier, bowData.MaximumBowDamageMultiplier, t);
-
-        _pendingDamageMultiplier = multiplier * (_playerCombat != null ? _playerCombat.ConsumeNextAttackDamageMultiplier() : 1f);
+        _captureAimPointPending = isLocalPlayer && (_playerCombat == null || !_playerCombat.IsServerTaunted);
         _hasPendingShot = true;
         if (!_isAimHoldReady)
         {
@@ -256,8 +288,70 @@ public sealed class BowAttackController : NetworkBehaviour
     [Command]
     private void CmdPlayBowAnimation(string stateName, Vector3 aimDirection)
     {
+        if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
+        if (stateName != DrawAnimationStateName || !TryBeginServerCharge(aimDirection))
+        {
+            TargetRejectBowAction(connectionToClient);
+            return;
+        }
         RpcPlayBowAnimation(stateName, aimDirection);
     }
+
+    private bool TryBeginServerCharge(Vector3 aimDirection)
+    {
+        bool accepted = _playerCombat != null && _playerCombat.CanServerUseBow &&
+            CombatValidation.IsFinite(aimDirection) && aimDirection.sqrMagnitude > 0.001f &&
+            _serverShotAuthority.TryBegin(NetworkTime.time);
+        if (accepted)
+            _playerManager?.SetMovementEffect(CombatEffectSources.BowCharge,
+                _playerCombat.ServerBowData.BowChargeMoveMultiplier, 86400f);
+        return accepted;
+    }
+
+    [Command]
+    private void CmdPrepareBowShot()
+    {
+        if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
+        if (!PrepareServerShot()) TargetRejectBowAction(connectionToClient);
+    }
+
+    private bool PrepareServerShot()
+    {
+        if (_playerCombat == null || !_playerCombat.CanServerUseBow)
+        {
+            _serverShotAuthority.Cancel();
+            _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
+            return false;
+        }
+        JobSkillData data = _playerCombat.ServerBowData;
+        bool accepted = _serverShotAuthority.TryRelease(NetworkTime.time, data.MinimumBowChargeSeconds,
+            data.MaximumBowDamageChargeSeconds, data.MinimumBowDamageMultiplier,
+            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds);
+        if (accepted) _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
+        return accepted;
+    }
+
+    private float ResolveServerReleaseLockSeconds()
+    {
+        // Preserve the authored release lock; the fallback only applies when no event exists.
+        if (_animator != null && _animator.runtimeAnimatorController != null)
+            foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
+                foreach (AnimationEvent animationEvent in clip.events)
+                    if (animationEvent.functionName == nameof(OnBowReleaseFinished))
+                        return Mathf.Max(0.1f, Mathf.Min(animationEvent.time, ReleaseInputLockFallbackSeconds));
+        return Mathf.Max(0.1f, ReleaseInputLockFallbackSeconds);
+    }
+
+    [Command]
+    private void CmdCancelBowCharge()
+    {
+        if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
+        _serverShotAuthority.Cancel();
+        _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
+    }
+
+    [TargetRpc]
+    private void TargetRejectBowAction(NetworkConnectionToClient target) => CancelCharge();
 
     [ClientRpc(includeOwner = false)]
     private void RpcPlayBowAnimation(string stateName, Vector3 aimDirection)
@@ -274,13 +368,21 @@ public sealed class BowAttackController : NetworkBehaviour
 
         if (isClient && isLocalPlayer && !isServer)
             CmdPlayBowAnimation(stateName, aimDirection);
-        else if (NetworkServer.active)
+        else if (NetworkServer.active && TryBeginServerCharge(aimDirection))
+        {
             RpcPlayBowAnimation(stateName, aimDirection);
+            if (_playerCombat.IsServerTaunted && connectionToClient != null)
+                TargetTauntBowVisual(connectionToClient, false, aimDirection);
+        }
     }
 
     [Command]
     private void CmdTriggerBowRelease()
     {
+        if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
+        if (_playerCombat == null || !_playerCombat.CanServerUseBow ||
+            !_serverShotAuthority.HasPendingShot(NetworkTime.time))
+            return;
         RpcTriggerBowRelease();
     }
 
@@ -297,7 +399,20 @@ public sealed class BowAttackController : NetworkBehaviour
         if (isClient && isLocalPlayer && !isServer)
             CmdTriggerBowRelease();
         else if (NetworkServer.active)
+        {
             RpcTriggerBowRelease();
+            if (_playerCombat != null && _playerCombat.IsServerTaunted && connectionToClient != null)
+                TargetTauntBowVisual(connectionToClient, true, _pendingDirection);
+        }
+    }
+
+    [TargetRpc]
+    private void TargetTauntBowVisual(NetworkConnectionToClient target, bool release, Vector3 direction)
+    {
+        if (isServer) return;
+        _serverOwnsTauntVisual = true;
+        if (release) TriggerBowReleaseLocal();
+        else PlayBowAnimationLocal(DrawAnimationStateName, direction);
     }
 
     private void TriggerBowReleaseLocal()
@@ -353,32 +468,36 @@ public sealed class BowAttackController : NetworkBehaviour
         if (direction.sqrMagnitude <= 0.001f)
             direction = transform.forward;
 
-        float damageMultiplier = _pendingDamageMultiplier;
         _hasPendingShot = false;
         _hasPendingAimPoint = false;
 
         if (isClient && isLocalPlayer && !isServer)
-            CmdSpawnBowArrow(spawnPosition, direction.normalized, damageMultiplier);
+            CmdSpawnBowArrow(spawnPosition, direction.normalized);
         else if (NetworkServer.active)
-            SpawnBowArrow(spawnPosition, direction.normalized, damageMultiplier);
+            SpawnBowArrow(spawnPosition, direction.normalized);
     }
 
     [Command]
-    private void CmdSpawnBowArrow(Vector3 spawnPosition, Vector3 direction, float damageMultiplier)
+    private void CmdSpawnBowArrow(Vector3 spawnPosition, Vector3 direction)
     {
-        SpawnBowArrow(spawnPosition, direction, damageMultiplier);
+        if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
+        SpawnBowArrow(spawnPosition, direction);
     }
 
-    private void SpawnBowArrow(Vector3 requestedSpawnPosition, Vector3 direction, float damageMultiplier)
+    private void SpawnBowArrow(Vector3 requestedSpawnPosition, Vector3 direction)
     {
         BowArrowProjectile projectilePrefab = ProjectilePrefab;
-        if (!NetworkServer.active || projectilePrefab == null || damageMultiplier <= 0f)
+        if (!NetworkServer.active || projectilePrefab == null || _playerCombat == null ||
+            !_playerCombat.CanServerUseBow || !CombatValidation.IsFinite(direction) ||
+            direction.sqrMagnitude <= 0.001f || !IsValidRequestedSpawnPosition(requestedSpawnPosition))
             return;
 
         Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
-        Vector3 spawnPosition = IsValidRequestedSpawnPosition(requestedSpawnPosition)
-            ? requestedSpawnPosition
-            : spawnPoint.position;
+        Vector3 spawnPosition = spawnPoint.position;
+        if (!CombatValidation.HasClearPath(transform.position + Vector3.up, spawnPosition, transform, transform) ||
+            !_serverShotAuthority.TryConsume(NetworkTime.time, out float damageMultiplier))
+            return;
+        damageMultiplier *= _playerCombat.ConsumeNextAttackDamageMultiplier();
         Vector3 normalizedDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         Quaternion rotation = Quaternion.LookRotation(normalizedDirection, Vector3.up);
         BowArrowProjectile arrow = Instantiate(projectilePrefab, spawnPosition, rotation);

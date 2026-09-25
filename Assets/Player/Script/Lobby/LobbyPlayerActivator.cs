@@ -136,25 +136,23 @@ namespace BattlePvp.Lobby
 
         private void ApplySavedStatsToTarget()
         {
-            if (_targetPlayer == null || GlobalDataManager.Instance == null)
+            GlobalDataManager profile = GlobalDataManager.Instance;
+            if (_targetPlayer == null || profile == null)
                 return;
-
-            StatContainer saved = GlobalDataManager.Instance.SavedStats;
-            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
 
             StatManager statManager = _targetPlayer.GetComponent<StatManager>();
             if (statManager == null)
                 return;
 
-            if (total <= 0.1f)
+            // A loaded empty slot is valid data; only an unfinished load preserves the scene values.
+            if (profile.HasLoadedPlayerStats)
             {
-                PlayerHUD.BindToPlayer(statManager);
-                return;
+                StatContainer saved = profile.SavedStats;
+                statManager.ApplyLocalSceneStats(saved, recalculateIdentity: true);
+                Debug.Log($"[LobbyPlayerActivator] Applied saved stats to lobby player. STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
             }
 
-            statManager.ApplyLocalSceneStats(saved, recalculateIdentity: true);
             PlayerHUD.BindToPlayer(statManager);
-            Debug.Log($"[LobbyPlayerActivator] Applied saved stats to lobby player. STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
         }
     }
 }

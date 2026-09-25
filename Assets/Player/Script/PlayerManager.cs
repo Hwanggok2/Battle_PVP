@@ -2,9 +2,9 @@ using UnityEngine;
 using UnityEngine.InputSystem; // 신형 시스템 네임스페이스
 using BattlePvp.Stats;
 using BattlePvp.Combat;
+using BattlePvp.UI;
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using Mirror;
 using UnityEngine.SceneManagement;
 using BattlePvp.Logic; // 추가
@@ -21,6 +21,7 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
     [SerializeField] private float _rotationOnlyTransformSyncInterval = 0.1f;
+    [SerializeField, Range(0.1f, 0.5f)] private float _reliableTransformKeyframeInterval = 0.25f;
     [SerializeField] private float _jumpBufferSeconds = 0.15f;
     [SerializeField] private float _coyoteTimeSeconds = 0.08f;
     [SerializeField] private float _groundSnapDistance = 0.2f;
@@ -72,15 +73,25 @@ public class PlayerManager : NetworkBehaviour
     private ushort _networkLocomotionState;
 
     private HealthSystem _healthSystem;
+    private PlayerCombat _combat;
     private Coroutine _respawnRoutine;
+    private PlayerLifePresentation _lifePresentation;
+    private PlayerRespawnCountdown _respawnCountdown;
+    private bool _hasMatchEndPresentation;
+    private Transform _matchEndWinnerTarget;
+    private bool _isMatchWinner;
     private float _nextTransformSyncTime;
     private float _nextRotationOnlySyncTime;
+    private float _nextReliableTransformSyncTime;
     private Vector3 _lastSentPosition;
     private Quaternion _lastSentRotation;
+    private Vector3 _lastReliableSentPosition;
+    private Quaternion _lastReliableSentRotation;
+    private bool _hasSentReliableTransform;
     private Vector3 _remoteTargetPosition;
     private Quaternion _remoteTargetRotation;
     private bool _hasRemoteTransformTarget;
-    private readonly List<RemoteTransformSnapshot> _remoteTransformSnapshots = new List<RemoteTransformSnapshot>(32);
+    private readonly FixedRingBuffer<RemoteTransformSnapshot> _remoteTransformSnapshots = new FixedRingBuffer<RemoteTransformSnapshot>(64);
     private double _latestRemoteSnapshotTime = double.NegativeInfinity;
     private double _remoteSnapshotDelayEstimate;
     private double _remoteSnapshotDelayDeviation;
@@ -92,12 +103,25 @@ public class PlayerManager : NetworkBehaviour
     private float _nextLocomotionSyncTime;
     private float _standingControllerHeight;
     private Vector3 _standingControllerCenter;
-    private float _skillMoveMultiplier = 1f;
-    private double _skillMoveMultiplierUntil;
+    private readonly MovementEffects _movementEffects = new MovementEffects();
+    private readonly ServerMovementValidator _serverMovement = new ServerMovementValidator();
+    private readonly MovementControlHistory _serverControlHistory = new MovementControlHistory();
+    private readonly CombatPhysicsQuery _movementQuery = new CombatPhysicsQuery();
+    private double _nextMovementCorrectionAt;
+    [SyncVar] private uint _movementEpoch;
     private Coroutine _forcedMoveRoutine;
-    private bool _skillMovementLocked;
-    private SkillInputLockFlags _skillInputLockFlags;
-    private double _skillInputLockUntil;
+    private bool _disconnectedServerControl;
+    private readonly ServerForcedMotion _serverForcedMotion = new ServerForcedMotion();
+    [SyncVar] private bool _serverMotionActive;
+    private bool _ownerServerMotionActive;
+    private uint _forcedJumpSequence;
+    private uint _forcedInputEpoch;
+    private double _nextForcedInputAt;
+    private double _nextForcedPoseAt;
+    private Quaternion _serverInputRotation;
+    private readonly InputLockEffects _inputLocks = new InputLockEffects();
+    private bool _wasMoveInputLocked;
+    private bool _skillMovementLocked => IsSkillInputLocked(SkillInputLockFlags.Move);
     private double _jumpRequestedUntil;
     private double _lastGroundedAt = double.NegativeInfinity;
     private bool _forcedTauntActive;
@@ -114,6 +138,8 @@ public class PlayerManager : NetworkBehaviour
     }
 
     public bool IsMatchEndLocked => _matchEndLocked;
+    private bool IsFollowingServerMotion => _serverMotionActive || _ownerServerMotionActive;
+    public double RemotePoseRenderTime => isLocalPlayer ? NetworkTime.time : NetworkTime.time - _remoteRenderDelay;
     public bool IsCrouching => isCrouching;
     public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
     public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
@@ -144,43 +170,85 @@ public class PlayerManager : NetworkBehaviour
 
     public void ApplySkillMoveMultiplier(float multiplier, float durationSeconds)
     {
-        _skillMoveMultiplier = Mathf.Max(0f, multiplier);
-        _skillMoveMultiplierUntil = MovementTime + Mathf.Max(0f, durationSeconds);
+        SetMovementEffect(0, multiplier, durationSeconds);
+    }
+
+    public void SetMovementEffect(int sourceId, float multiplier, float durationSeconds)
+    {
+        _movementEffects.Set(sourceId, multiplier, durationSeconds, MovementTime);
+        RecordServerMovementControls();
+    }
+
+    public void RemoveMovementEffect(int sourceId)
+    {
+        _movementEffects.Remove(sourceId);
+        RecordServerMovementControls();
+    }
+
+    [Server]
+    public void ServerAuthorizeForcedMove(Vector3 direction, float distance, float durationSeconds)
+    {
+        if (!CombatValidation.IsFinite(direction) || !float.IsFinite(distance) ||
+            !float.IsFinite(durationSeconds) || distance <= 0f || durationSeconds <= 0f ||
+            !float.IsFinite(distance / durationSeconds) || (_healthSystem != null && _healthSystem.IsDead)) return;
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.00001f) direction = transform.forward;
+        double now = NetworkTime.time;
+        bool wasActive = _serverForcedMotion.IsActive;
+        if (wasActive) UpdateServerForcedMovement(now, false);
+        else if (!isLocalPlayer)
+        {
+            ApplyRemotePose(_serverMovement.Position, transform.rotation);
+            if (!_disconnectedServerControl) velocityY = _serverMovement.GetServerVerticalVelocity(gravity);
+        }
+        if (!_serverForcedMotion.TryBegin(direction.x, direction.z, distance, durationSeconds, now)) return;
+        _serverMotionActive = true;
+        _movementEpoch++;
+        _forcedJumpSequence = 0u;
+        _forcedInputEpoch = _movementEpoch;
+        _nextForcedInputAt = _nextForcedPoseAt = 0d;
+        _serverInputRotation = transform.rotation;
+        _remoteTransformSnapshots.Clear();
+        _hasRemoteTransformTarget = false;
+        StopPredictedForcedMovement();
+        CommitServerMovementPose(now);
+        RpcServerMotionState(true, transform.position, transform.rotation, velocityY, _movementEpoch, now);
     }
 
     public void SetSkillMovementLock(bool locked)
     {
-        bool wasLocked = _skillMovementLocked;
-        _skillMovementLocked = locked;
-        if (locked)
-        {
-            inputVector = Vector2.zero;
-        }
-        else if (wasLocked)
-        {
-            RefreshMoveInputFromCurrentAction();
-        }
+        if (locked) SetInputLock(CombatEffectSources.LegacySkillMovement, SkillInputLockFlags.Move, float.PositiveInfinity);
+        else RemoveInputLock(CombatEffectSources.LegacySkillMovement);
     }
 
     public void ApplySkillInputLock(SkillInputLockFlags flags, float durationSeconds)
     {
-        _skillInputLockFlags = flags;
-        _skillInputLockUntil = MovementTime + Mathf.Max(0f, durationSeconds);
-
-        if ((flags & SkillInputLockFlags.Move) != 0)
-            inputVector = Vector2.zero;
+        SetInputLock(CombatEffectSources.LegacySkillInput, flags, durationSeconds);
     }
 
-    public void ClearSkillInputLock()
+    public void SetInputLock(int source, SkillInputLockFlags flags, float durationSeconds)
     {
-        _skillInputLockFlags = SkillInputLockFlags.None;
-        _skillInputLockUntil = 0d;
+        bool wasMoveLocked = _wasMoveInputLocked || IsSkillInputLocked(SkillInputLockFlags.Move);
+        _inputLocks.Set(source, flags, durationSeconds, MovementTime);
+        _wasMoveInputLocked = IsSkillInputLocked(SkillInputLockFlags.Move);
+        RecordServerMovementControls();
+        if (_wasMoveInputLocked) inputVector = Vector2.zero;
+        else if (wasMoveLocked && ShouldHandleLocalInput) RefreshMoveInputFromCurrentAction();
     }
 
-    public bool IsSkillInputLocked(SkillInputLockFlags flag)
+    public void RemoveInputLock(int source)
     {
-        return (_skillInputLockFlags & flag) != 0 && MovementTime < _skillInputLockUntil;
+        bool wasMoveLocked = _wasMoveInputLocked || IsSkillInputLocked(SkillInputLockFlags.Move);
+        _inputLocks.Remove(source);
+        if (wasMoveLocked && !IsSkillInputLocked(SkillInputLockFlags.Move) && ShouldHandleLocalInput)
+            RefreshMoveInputFromCurrentAction();
+        _wasMoveInputLocked = IsSkillInputLocked(SkillInputLockFlags.Move);
+        RecordServerMovementControls();
     }
+
+    public void ClearSkillInputLock() => RemoveInputLock(CombatEffectSources.LegacySkillInput);
+
+    public bool IsSkillInputLocked(SkillInputLockFlags flag) => (_inputLocks.Evaluate(MovementTime) & flag) != 0;
 
     public void SetForcedTauntControl(bool active, Vector3 targetPosition, float stopDistance)
     {
@@ -188,6 +256,28 @@ public class PlayerManager : NetworkBehaviour
         _forcedTauntActive = active;
         _forcedTauntTargetPosition = targetPosition;
         _forcedTauntStopDistance = Mathf.Max(0f, stopDistance);
+
+        if (isServer && active != wasActive)
+        {
+            // Reuse the forced-motion epoch and owner correction stream for taunt authority.
+            if (active && !_serverMotionActive)
+            {
+                if (!isLocalPlayer)
+                {
+                    ApplyRemotePose(_serverMovement.Position, transform.rotation);
+                    velocityY = _serverMovement.GetServerVerticalVelocity(gravity);
+                }
+                _serverMotionActive = true;
+                _movementEpoch++;
+                StopPredictedForcedMovement();
+                _remoteTransformSnapshots.Clear();
+                _hasRemoteTransformTarget = false;
+                CommitServerMovementPose(NetworkTime.time);
+                RpcServerMotionState(true, transform.position, transform.rotation, velocityY, _movementEpoch, NetworkTime.time);
+            }
+            else if (!active && !_serverForcedMotion.IsActive && _serverMotionActive)
+                FinishServerForcedMovement(NetworkTime.time);
+        }
 
         if (active)
         {
@@ -254,7 +344,7 @@ public class PlayerManager : NetworkBehaviour
         }
 
         _activeEmote = emote;
-        ApplySkillInputLock(emote.InputLockFlags, emote.ResolveDurationSeconds());
+        SetInputLock(CombatEffectSources.EmoteInput, emote.InputLockFlags, emote.ResolveDurationSeconds());
 
         PlayEmoteVisual(emote);
 
@@ -289,7 +379,7 @@ public class PlayerManager : NetworkBehaviour
         _activeEmote = null;
 
         ResetEmoteVisual(active);
-        ClearSkillInputLock();
+        RemoveInputLock(CombatEffectSources.EmoteInput);
 
         _emoteRoutine = null;
     }
@@ -339,8 +429,23 @@ public class PlayerManager : NetworkBehaviour
     [Command]
     private void CmdPlayEmote(int emoteIndex)
     {
+        EmoteData emote = ResolveEmote(emoteIndex);
+        if (emoteIndex < 0 || _emotes == null || emoteIndex >= _emotes.Length || emote == null ||
+            _activeEmote != null || (_healthSystem != null && _healthSystem.IsDead) ||
+            (_statManager != null && !_statManager.HasServerStats) || IsBattleLoadingOrNotStarted() ||
+            (_combat != null && _combat.IsBusyForEmote))
+        {
+            if (connectionToClient != null) TargetRejectEmote(connectionToClient);
+            return;
+        }
+        _activeEmote = emote;
+        SetInputLock(CombatEffectSources.EmoteInput, emote.InputLockFlags, emote.ResolveDurationSeconds());
+        _emoteRoutine = StartCoroutine(CoEmote(emote.ResolveDurationSeconds(), emote));
         RpcPlayEmote(emoteIndex);
     }
+
+    [TargetRpc]
+    private void TargetRejectEmote(NetworkConnection target) => StopEmote(_activeEmote);
 
     [ClientRpc(includeOwner = false)]
     private void RpcPlayEmote(int emoteIndex)
@@ -415,6 +520,11 @@ public class PlayerManager : NetworkBehaviour
 
     public void MoveBySkill(Vector3 direction, float distance, float durationSeconds)
     {
+        // Network skill movement is committed by the server. This path is only for offline preview.
+        if (NetworkClient.active || NetworkServer.active || isClient || isServer) return;
+        if (!ShouldHandleLocalInput || !isActiveAndEnabled || isDead ||
+            !CombatValidation.IsFinite(direction) || !float.IsFinite(distance) || !float.IsFinite(durationSeconds))
+            return;
         if (_forcedMoveRoutine != null)
             StopCoroutine(_forcedMoveRoutine);
         _forcedMoveRoutine = StartCoroutine(CoMoveBySkill(direction, distance, durationSeconds));
@@ -429,6 +539,7 @@ public class PlayerManager : NetworkBehaviour
         float elapsed = 0f;
         while (elapsed < duration)
         {
+            if (!ShouldHandleLocalInput || isDead || !isActiveAndEnabled) break;
             float step = Mathf.Min(Time.deltaTime, duration - elapsed);
             if (controller != null && controller.enabled)
                 controller.Move(direction * speed * step);
@@ -438,12 +549,30 @@ public class PlayerManager : NetworkBehaviour
         _forcedMoveRoutine = null;
     }
 
+    private void CancelMovementActions()
+    {
+        if (isServer && _serverMotionActive)
+        {
+            _forcedTauntActive = false;
+            FinishServerForcedMovement(NetworkTime.time);
+        }
+        _serverForcedMotion.Cancel();
+        if (isServer || !isClient) _serverMotionActive = false;
+        StopPredictedForcedMovement();
+        _movementEffects.Clear();
+        _inputLocks.Clear();
+        _wasMoveInputLocked = false;
+        _jumpRequestedUntil = 0d;
+        inputVector = Vector2.zero;
+        isAttacking = false;
+        SetForcedTauntControl(false, Vector3.zero, 0f);
+        inputVector = Vector2.zero;
+        RecordServerMovementControls();
+    }
+
     private readonly int speedHash = Animator.StringToHash("Speed");
     private readonly int moveXHash = Animator.StringToHash("MoveX");
     private readonly int moveYHash = Animator.StringToHash("MoveY");
-    private readonly int dieHash = Animator.StringToHash("Die");
-    private readonly int isDeadHash = Animator.StringToHash("IsDead");
-    private readonly int movementStateHash = Animator.StringToHash("Movement");
     private readonly int isCrouchingHash = Animator.StringToHash("IsCrouching");
 
     private void Awake()
@@ -454,6 +583,12 @@ public class PlayerManager : NetworkBehaviour
         rb = GetComponent<Rigidbody>();
         _playerInput = GetComponent<PlayerInput>();
         _healthSystem = GetComponent<HealthSystem>();
+        _combat = GetComponent<PlayerCombat>();
+        _lifePresentation = GetComponent<PlayerLifePresentation>();
+        if (_lifePresentation == null) _lifePresentation = gameObject.AddComponent<PlayerLifePresentation>();
+        _lifePresentation.Initialize(transform,
+            _healthSystem != null && _healthSystem.LifeAnimator != null ? _healthSystem.LifeAnimator : animator,
+            _respawnPromptText, _deathOverlayTextColor);
         if (controller != null)
         {
             _standingControllerHeight = controller.height;
@@ -497,11 +632,13 @@ public class PlayerManager : NetworkBehaviour
         {
             followCamera.SetTarget(this.transform);
         }
+        _lifePresentation.AttachCamera(followCamera);
 
         _lastSentLocomotionState = PackLocomotion(Vector2.zero);
         _hasSentLocomotionState = true;
         ApplyLocomotionAnimation(Vector2.zero, false);
         ResetLocalInputForPlayMode();
+        RestoreLifePresentation();
     }
 
     public override void OnStartClient()
@@ -511,38 +648,55 @@ public class PlayerManager : NetworkBehaviour
             _remoteLocomotionTarget = UnpackLocomotion(_networkLocomotionState);
     }
 
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+        _serverMovement.Reset(transform.position, NetworkTime.time);
+        _serverControlHistory.Clear();
+        RecordServerMovementControls();
+    }
+
     private void OnEnable()
     {
         if (_statManager != null)
         {
             _statManager.StatsChanged += OnStatsChanged;
+            _statManager.DerivedStatsChanged += UpdateMoveSpeed;
             UpdateMoveSpeed();
         }
         if (_healthSystem != null)
         {
             _healthSystem.OnDied += HandleDeath;
+            _healthSystem.OnRevived += HandleRevived;
         }
 
         if (ShouldHandleLocalInput)
             ResetLocalInputForPlayMode();
+        RestoreLifePresentation();
     }
 
     private void OnDisable()
     {
         if (_statManager != null)
+        {
             _statManager.StatsChanged -= OnStatsChanged;
+            _statManager.DerivedStatsChanged -= UpdateMoveSpeed;
+        }
         
         if (_healthSystem != null)
         {
             _healthSystem.OnDied -= HandleDeath;
+            _healthSystem.OnRevived -= HandleRevived;
         }
 
         if (_emoteRoutine != null)
             StopCoroutine(_emoteRoutine);
         _emoteRoutine = null;
         _activeEmote = null;
-        SetForcedTauntControl(false, Vector3.zero, 0f);
-        ClearSkillInputLock();
+        CancelMovementActions();
+        if (_respawnRoutine != null) StopCoroutine(_respawnRoutine);
+        _respawnRoutine = null;
+        _lifePresentation?.Suspend();
     }
 
     private void OnStatsChanged(StatContainer _)
@@ -555,6 +709,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (_statManager == null) return;
         moveSpeed = _statManager.GetDerivedStats().MoveSpeed;
+        RecordServerMovementControls();
     }
 
     // Input System 메시지 수신 (SendMessage 방식 또는 Player Input 컴포넌트 활용)
@@ -584,6 +739,39 @@ public class PlayerManager : NetworkBehaviour
 
     private void Update()
     {
+        RecordServerMovementControls();
+        if (isServer && _serverForcedMotion.IsActive)
+        {
+            if (isLocalPlayer) SubmitForcedMovementInput();
+            UpdateServerForcedMovement(NetworkTime.time, true);
+            UpdateRemoteLocomotionAnimation();
+            return;
+        }
+        if (isServer && _forcedTauntActive)
+        {
+            UpdateDisconnectedMovement();
+            if (NetworkTime.time >= _nextForcedPoseAt)
+            {
+                _nextForcedPoseAt = NetworkTime.time + Mathf.Max(0.01f, _transformSyncInterval);
+                RpcServerMotionPose(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+            }
+            UpdateRemoteLocomotionAnimation();
+            return;
+        }
+        if (!isServer && IsFollowingServerMotion && isLocalPlayer)
+        {
+            SubmitForcedMovementInput();
+            SmoothServerControlledOwner();
+            if (_forcedTauntActive) ApplyLocomotionAnimation(UnpackLocomotion(_networkLocomotionState), false);
+            else UpdateLocalLocomotion(inputVector);
+            return;
+        }
+        if (isServer && _disconnectedServerControl)
+        {
+            UpdateDisconnectedMovement();
+            UpdateRemoteLocomotionAnimation();
+            return;
+        }
         if (!ShouldHandleLocalInput)
         {
             SmoothRemoteTransform();
@@ -591,7 +779,12 @@ public class PlayerManager : NetworkBehaviour
             return;
         }
 
+        if (_hasMatchEndPresentation) _lifePresentation?.RefreshSpectateTarget();
+
         // 사망 상태이거나 ESC 메뉴(Pause) 상태일 때는 이동 처리를 하지 않음
+        bool moveLocked = IsSkillInputLocked(SkillInputLockFlags.Move);
+        if (_wasMoveInputLocked && !moveLocked) RefreshMoveInputFromCurrentAction();
+        _wasMoveInputLocked = moveLocked;
         if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive)
         {
             UpdateLocalLocomotion(Vector2.zero);
@@ -712,7 +905,10 @@ public class PlayerManager : NetworkBehaviour
 
     public void SetMovementLock(bool isLocked)
     {
+        // Legacy animation events may exit after the next combo has already acquired the lock.
+        if (!isLocked && _combat != null && _combat.IsAttackActive) return;
         isAttacking = isLocked;
+        RecordServerMovementControls();
     }
 
     private void SetCrouchState(bool crouching, bool notifyServer)
@@ -725,6 +921,7 @@ public class PlayerManager : NetworkBehaviour
 
         isCrouching = crouching;
         ApplyCrouchState(crouching);
+        RecordServerMovementControls();
 
         if (notifyServer && isClient && isLocalPlayer)
         {
@@ -762,9 +959,19 @@ public class PlayerManager : NetworkBehaviour
     [Command]
     private void CmdSetCrouchState(bool crouching)
     {
+        MovementControlState controls = RecordServerMovementControls();
+        if ((_healthSystem != null && _healthSystem.IsDead) ||
+            (_statManager != null && !_statManager.HasServerStats) || IsBattleLoadingOrNotStarted() || controls.CrouchLocked)
+        {
+            if (connectionToClient != null) TargetCorrectCrouchState(connectionToClient, isCrouching);
+            return;
+        }
         SetCrouchState(crouching, false);
         RpcSetCrouchState(crouching);
     }
+
+    [TargetRpc]
+    private void TargetCorrectCrouchState(NetworkConnection target, bool crouching) => SetCrouchState(crouching, false);
 
     [ClientRpc(includeOwner = false)]
     private void RpcSetCrouchState(bool crouching)
@@ -833,9 +1040,7 @@ public class PlayerManager : NetworkBehaviour
         float currentMoveSpeed = moveSpeed;
         if (_skillMovementLocked)
             currentMoveSpeed = 0f;
-        if (MovementTime >= _skillMoveMultiplierUntil)
-            _skillMoveMultiplier = 1f;
-        currentMoveSpeed *= _skillMoveMultiplier;
+        currentMoveSpeed *= _movementEffects.Evaluate(MovementTime);
         if (isAttacking)
             currentMoveSpeed *= 0.6f;
         if (isCrouching)
@@ -857,6 +1062,288 @@ public class PlayerManager : NetworkBehaviour
             locomotion = Vector2.zero;
 
         UpdateLocalLocomotion(locomotion);
+    }
+
+    [Server]
+    public void ServerBeginDisconnectedControl()
+    {
+        _disconnectedServerControl = true;
+        inputVector = Vector2.zero;
+        _networkLocomotionState = PackLocomotion(Vector2.zero);
+        _remoteLocomotionTarget = Vector2.zero;
+        _remoteTransformSnapshots.Clear();
+        _hasRemoteTransformTarget = false;
+        _movementEpoch++;
+        // The host's remote rendering may lag behind its accepted physics position.
+        ApplyRemotePose(_serverMovement.Position, transform.rotation);
+        _serverForcedMotion.ResetOwnerInput();
+        if (!_serverForcedMotion.IsActive) velocityY = _serverMovement.GetServerVerticalVelocity(gravity);
+        RpcResumeRetainedPose(transform.position, transform.rotation, _movementEpoch);
+    }
+
+    [Server]
+    public void ServerPrepareReconnect()
+    {
+        _disconnectedServerControl = false;
+        _movementEpoch++;
+        _serverMovement.Rebase(transform.position, NetworkTime.time, IsServerPositionGrounded(transform.position));
+        _serverForcedMotion.ResetOwnerInput();
+        _remoteTransformSnapshots.Clear();
+        _hasRemoteTransformTarget = false;
+        GetComponent<ServerPoseHistory>()?.ResetHistory();
+        RpcResumeRetainedPose(transform.position, transform.rotation, _movementEpoch);
+    }
+
+    [Server]
+    public void ServerSendReconnectState()
+    {
+        if (connectionToClient == null) return;
+        TargetRestoreMovement(connectionToClient, _movementEffects.Capture(NetworkTime.time),
+            _inputLocks.CaptureForReconnect(NetworkTime.time), _forcedTauntActive,
+            _forcedTauntTargetPosition, _forcedTauntStopDistance, velocityY);
+        TargetRestoreServerMotion(connectionToClient, _serverMotionActive,
+            transform.position, transform.rotation, velocityY, _movementEpoch, NetworkTime.time);
+    }
+
+    [TargetRpc]
+    private void TargetRestoreMovement(NetworkConnection target, MovementEffectSnapshot[] effects,
+        InputLockSnapshot[] locks, bool taunted, Vector3 tauntTarget, float stopDistance,
+        float verticalSpeed)
+    {
+        if (isServer) return;
+        _movementEffects.Restore(effects, NetworkTime.time);
+        _inputLocks.Restore(locks, NetworkTime.time);
+        SetForcedTauntControl(taunted, tauntTarget, stopDistance);
+        velocityY = verticalSpeed;
+    }
+
+    [ClientRpc]
+    private void RpcResumeRetainedPose(Vector3 position, Quaternion rotation, uint epoch)
+    {
+        if (isServer) return;
+        _movementEpoch = epoch;
+        _remoteTransformSnapshots.Clear();
+        _latestRemoteSnapshotTime = double.NegativeInfinity;
+        _hasRemoteTransformTarget = false;
+        _hasSentReliableTransform = false;
+        ApplyRemotePose(position, rotation);
+    }
+
+    private void UpdateDisconnectedMovement()
+    {
+        if (controller == null || !controller.enabled) return;
+        float step = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
+        velocityY = controller.isGrounded ? -0.5f : Mathf.Max(-50f, velocityY - gravity * step);
+        Vector3 movement = Vector3.up * velocityY;
+        if ((_healthSystem == null || !_healthSystem.IsDead) && !IsBattleLoadingOrNotStarted() &&
+            (_statManager == null || _statManager.HasServerStats))
+        {
+            if (_forcedTauntActive && !IsSkillInputLocked(SkillInputLockFlags.Move))
+            {
+                Vector3 direction = _forcedTauntTargetPosition - transform.position;
+                direction.y = 0f;
+                float distance = direction.magnitude;
+                if (distance > 0.001f)
+                    transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+                if (distance > _forcedTauntStopDistance)
+                    movement += direction.normalized * Mathf.Min(RecordServerMovementControls().Speed,
+                        (distance - _forcedTauntStopDistance) / Mathf.Max(step, 0.0001f));
+            }
+        }
+        Vector3 before = transform.position;
+        controller.Move(movement * step);
+        if (_forcedTauntActive)
+        {
+            Vector3 horizontal = transform.position - before;
+            horizontal.y = 0f;
+            Vector2 locomotion = horizontal.sqrMagnitude > 0.000001f ? Vector2.up : Vector2.zero;
+            SetServerLocomotionState(PackLocomotion(locomotion));
+            _remoteLocomotionTarget = locomotion;
+        }
+        _serverMovement.CommitServerMove(transform.position, NetworkTime.time, controller.isGrounded, velocityY);
+        GetComponent<ServerPoseHistory>()?.RecordNetworkPose(NetworkTime.time, transform.position, transform.rotation);
+        if (transform.position != before)
+            RpcSyncTransform(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+    }
+
+    private void StopPredictedForcedMovement()
+    {
+        if (_forcedMoveRoutine != null) StopCoroutine(_forcedMoveRoutine);
+        _forcedMoveRoutine = null;
+    }
+
+    private void SubmitForcedMovementInput()
+    {
+        double now = NetworkTime.time;
+        if (now < _nextForcedInputAt) return;
+        _nextForcedInputAt = now + Mathf.Max(0.01f, _transformSyncInterval);
+        bool blocked = isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() ||
+            GameInputController.IsPaused || GameInputController.IsTextInputActive;
+        Vector3 direction = !blocked && inputVector.sqrMagnitude > 0.001f ? GetSkillMoveDirection() : Vector3.zero;
+        direction.y = 0f;
+        Quaternion rotation = followCamera != null ? Quaternion.Euler(0f, followCamera.GetYaw(), 0f) : transform.rotation;
+        if (!blocked)
+        {
+            PollJumpInputFallback();
+            if (_jumpRequestedUntil > 0d && _jumpRequestedUntil >= LocalInputTime)
+            {
+                _forcedJumpSequence = CombatRequestSequences.Next(_forcedJumpSequence);
+                _jumpRequestedUntil = 0d;
+            }
+        }
+        if (isServer) AcceptServerMotionInput(direction, rotation, _forcedJumpSequence, now, _forcedInputEpoch);
+        else CmdServerMotionInput(direction, rotation, _forcedJumpSequence, now, _forcedInputEpoch);
+    }
+
+    [Command(channel = Channels.Unreliable)]
+    private void CmdServerMotionInput(Vector3 direction, Quaternion rotation, uint jumpSequence, double sampleTime, uint epoch)
+        => AcceptServerMotionInput(direction, rotation, jumpSequence, sampleTime, epoch);
+
+    private void AcceptServerMotionInput(Vector3 direction, Quaternion rotation, uint jumpSequence, double sampleTime, uint epoch)
+    {
+        if (epoch != _movementEpoch || !CombatValidation.IsFinite(direction) || Mathf.Abs(direction.y) > 0.001f ||
+            !ServerMovementValidator.IsValidRotation(rotation) ||
+            !_serverForcedMotion.TrySetOwnerInput(direction.x, direction.z, jumpSequence, sampleTime, NetworkTime.time)) return;
+        _serverInputRotation = rotation.normalized;
+    }
+
+    private void UpdateServerForcedMovement(double now, bool finishWhenComplete)
+    {
+        if (!_serverForcedMotion.IsActive) return;
+        if (controller == null || !controller.enabled || (_healthSystem != null && _healthSystem.IsDead))
+        {
+            FinishServerForcedMovement(now);
+            return;
+        }
+        double remainingStep = _serverForcedMotion.TakeStep(now);
+        if (remainingStep <= 0.0000001d)
+        {
+            if (_serverForcedMotion.HasFinished && finishWhenComplete) FinishServerForcedMovement(now);
+            return;
+        }
+        MovementControlState controls = RecordServerMovementControls();
+        Vector3 forcedVelocity = new Vector3(_serverForcedMotion.DirectionX, 0f, _serverForcedMotion.DirectionZ) * _serverForcedMotion.Speed;
+        Vector3 voluntaryDirection = Vector3.zero;
+        if (!controls.MoveLocked)
+        {
+            if (_forcedTauntActive)
+            {
+                Vector3 toTarget = _forcedTauntTargetPosition - transform.position;
+                toTarget.y = 0f;
+                if (toTarget.magnitude > _forcedTauntStopDistance) voluntaryDirection = toTarget.normalized;
+            }
+            else if (_serverForcedMotion.HasInput(now))
+                voluntaryDirection = new Vector3(_serverForcedMotion.InputX, 0f, _serverForcedMotion.InputZ);
+        }
+        bool grounded = controller.isGrounded || IsServerPositionGrounded(transform.position);
+        if (_serverForcedMotion.TryConsumeJump(now, grounded && !controls.JumpLocked && !_forcedTauntActive))
+        {
+            _serverMovement.BeginServerJump(jumpHeight, now);
+            velocityY = Mathf.Sqrt(2f * jumpHeight * gravity);
+        }
+        // Short collision steps retain wall sliding and step/slope handling even after a host hitch.
+        while (remainingStep > 0.0000001d)
+        {
+            float step = (float)Math.Min(remainingStep, 1d / 60d);
+            if (controller.isGrounded && velocityY < 0f) velocityY = -0.5f;
+            else velocityY = Mathf.Max(-50f, velocityY - gravity * step);
+            Vector3 voluntaryVelocity = voluntaryDirection * controls.Speed;
+            if (_forcedTauntActive)
+            {
+                Vector3 direction = _forcedTauntTargetPosition - transform.position;
+                direction.y = 0f;
+                float distance = direction.magnitude;
+                if (distance > 0.001f) transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+                voluntaryVelocity = controls.MoveLocked || distance <= _forcedTauntStopDistance ? Vector3.zero :
+                    direction.normalized * Mathf.Min(controls.Speed, (distance - _forcedTauntStopDistance) / step);
+            }
+            else if (_serverForcedMotion.HasInput(now))
+                transform.rotation = Quaternion.Slerp(transform.rotation, _serverInputRotation, rotationSpeed * step);
+            CollisionFlags collision = controller.Move((forcedVelocity + voluntaryVelocity + Vector3.up * velocityY) * step);
+            if ((collision & CollisionFlags.Above) != 0 && velocityY > 0f) velocityY = 0f;
+            if ((collision & CollisionFlags.Below) != 0 && velocityY < 0f) velocityY = -0.5f;
+            remainingStep -= step;
+        }
+        CommitServerMovementPose(now);
+        if (_serverForcedMotion.HasFinished && finishWhenComplete)
+        {
+            FinishServerForcedMovement(now);
+            return;
+        }
+        if (now >= _nextForcedPoseAt)
+        {
+            _nextForcedPoseAt = now + Mathf.Max(0.01f, _transformSyncInterval);
+            RpcServerMotionPose(transform.position, transform.rotation, now, _movementEpoch);
+        }
+    }
+
+    private void CommitServerMovementPose(double now)
+    {
+        _serverMovement.CommitServerMove(transform.position, now,
+            controller != null && controller.isGrounded, velocityY);
+        GetComponent<ServerPoseHistory>()?.RecordNetworkPose(now, transform.position, transform.rotation);
+    }
+
+    private void FinishServerForcedMovement(double now)
+    {
+        _serverForcedMotion.Cancel();
+        if (_forcedTauntActive && _healthSystem != null && !_healthSystem.IsDead) return;
+        _serverMotionActive = false;
+        _networkLocomotionState = 0;
+        _remoteLocomotionTarget = Vector2.zero;
+        _hasSentLocomotionState = false;
+        _movementEpoch++;
+        _serverMovement.Rebase(transform.position, now, controller != null && controller.isGrounded);
+        CommitServerMovementPose(now);
+        _remoteTransformSnapshots.Clear();
+        _hasRemoteTransformTarget = false;
+        if (NetworkServer.active && netId != 0u)
+            RpcServerMotionState(false, transform.position, transform.rotation, velocityY, _movementEpoch, now);
+    }
+
+    [ClientRpc]
+    private void RpcServerMotionState(bool active, Vector3 position, Quaternion rotation, float verticalSpeed, uint epoch, double sampleTime)
+        => ReceiveServerMotionState(active, position, rotation, verticalSpeed, epoch, sampleTime);
+
+    [TargetRpc]
+    private void TargetRestoreServerMotion(NetworkConnection target, bool active, Vector3 position,
+        Quaternion rotation, float verticalSpeed, uint epoch, double sampleTime)
+        => ReceiveServerMotionState(active, position, rotation, verticalSpeed, epoch, sampleTime);
+
+    private void ReceiveServerMotionState(bool active, Vector3 position, Quaternion rotation, float verticalSpeed, uint epoch, double sampleTime)
+    {
+        if (isServer) return;
+        _movementEpoch = epoch;
+        _serverMotionActive = active;
+        _ownerServerMotionActive = active;
+        _forcedJumpSequence = 0u;
+        _forcedInputEpoch = epoch;
+        _nextForcedInputAt = 0d;
+        velocityY = verticalSpeed;
+        StopPredictedForcedMovement();
+        _remoteTransformSnapshots.Clear();
+        _latestRemoteSnapshotTime = double.NegativeInfinity;
+        _hasRemoteTransformTarget = false;
+        _hasSentReliableTransform = false;
+        ApplyRemotePose(position, rotation);
+        if (active) AddRemoteTransformSnapshot(position, rotation, sampleTime);
+        else _hasSentLocomotionState = false;
+    }
+
+    [ClientRpc(channel = Channels.Unreliable)]
+    private void RpcServerMotionPose(Vector3 position, Quaternion rotation, double sampleTime, uint epoch)
+    {
+        if (isServer || !_serverMotionActive || epoch != _movementEpoch) return;
+        AddRemoteTransformSnapshot(position, rotation, sampleTime);
+    }
+
+    private void SmoothServerControlledOwner()
+    {
+        if (!_hasRemoteTransformTarget) return;
+        // Owners follow the newest collision result without the observer's deliberate interpolation delay.
+        float amount = 1f - Mathf.Exp(-Time.unscaledDeltaTime / Mathf.Max(0.01f, _transformSyncInterval * 0.5f));
+        ApplyRemotePose(Vector3.Lerp(transform.position, _remoteTargetPosition, amount),
+            Quaternion.Slerp(transform.rotation, _remoteTargetRotation, amount));
     }
 
     private void UpdateLocalLocomotion(Vector2 locomotion)
@@ -893,6 +1380,7 @@ public class PlayerManager : NetworkBehaviour
     [Command]
     private void CmdSetLocomotionState(ushort packedState)
     {
+        if (_forcedTauntActive) return;
         SetServerLocomotionState(packedState);
     }
 
@@ -974,45 +1462,115 @@ public class PlayerManager : NetworkBehaviour
 
     private void TrySyncTransform()
     {
-        if (!isLocalPlayer || !isClient || Time.time < _nextTransformSyncTime)
+        if (!isLocalPlayer || !isClient || IsFollowingServerMotion)
             return;
 
         float positionDeltaSqr = (_lastSentPosition - transform.position).sqrMagnitude;
         float rotationDelta = Quaternion.Angle(_lastSentRotation, transform.rotation);
         bool positionChanged = positionDeltaSqr >= 0.0001f;
         bool rotationChanged = rotationDelta >= 0.5f;
+        bool reliablePositionChanged = (_lastReliableSentPosition - transform.position).sqrMagnitude >= 0.0001f;
+        bool reliableRotationChanged = Quaternion.Angle(_lastReliableSentRotation, transform.rotation) >= 0.5f;
+        bool reliableKeyframeDue =
+            Time.time >= _nextReliableTransformSyncTime &&
+            (!_hasSentReliableTransform || reliablePositionChanged || reliableRotationChanged);
 
-        if (!positionChanged && !rotationChanged)
+        if (reliableKeyframeDue)
+        {
+            RecordSentTransform(true);
+            CmdSyncTransformReliable(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+            return;
+        }
+
+        if (Time.time < _nextTransformSyncTime || (!positionChanged && !rotationChanged))
             return;
 
         if (!positionChanged && Time.time < _nextRotationOnlySyncTime)
             return;
 
-        _nextTransformSyncTime = Time.time + _transformSyncInterval;
         if (!positionChanged)
             _nextRotationOnlySyncTime = Time.time + Mathf.Max(_transformSyncInterval, _rotationOnlyTransformSyncInterval);
-        _lastSentPosition = transform.position;
-        _lastSentRotation = transform.rotation;
-        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time);
+        RecordSentTransform(false);
+        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
     }
 
     private void ForceSyncTransform()
     {
-        if (!isLocalPlayer || !isClient)
+        if (!isLocalPlayer || !isClient || IsFollowingServerMotion)
             return;
 
+        RecordSentTransform(true);
+        CmdSyncTransformReliable(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+    }
+
+    private void RecordSentTransform(bool reliable)
+    {
         _nextTransformSyncTime = Time.time + _transformSyncInterval;
         _lastSentPosition = transform.position;
         _lastSentRotation = transform.rotation;
-        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time);
+
+        if (!reliable)
+            return;
+
+        _hasSentReliableTransform = true;
+        _nextReliableTransformSyncTime = Time.time + Mathf.Max(0.1f, _reliableTransformKeyframeInterval);
+        _lastReliableSentPosition = transform.position;
+        _lastReliableSentRotation = transform.rotation;
     }
 
     [Command(channel = Channels.Unreliable)]
-    private void CmdSyncTransform(Vector3 position, Quaternion rotation, double sampleTime)
+    private void CmdSyncTransform(Vector3 position, Quaternion rotation, double sampleTime, uint epoch)
+    {
+        if (_serverMotionActive || !_serverForcedMotion.AcceptsOwnerPose(epoch, _movementEpoch)) return;
+        ApplySyncedTransformOnServer(position, rotation, sampleTime, false);
+    }
+
+    [Command]
+    private void CmdSyncTransformReliable(Vector3 position, Quaternion rotation, double sampleTime, uint epoch)
+    {
+        if (_serverMotionActive || !_serverForcedMotion.AcceptsOwnerPose(epoch, _movementEpoch)) return;
+        ApplySyncedTransformOnServer(position, rotation, sampleTime, true);
+    }
+
+    [Server]
+    private void ApplySyncedTransformOnServer(
+        Vector3 position,
+        Quaternion rotation,
+        double sampleTime,
+        bool reliable)
     {
         double serverTime = NetworkTime.time;
+        if (!CombatValidation.IsFinite(position) || !ServerMovementValidator.IsValidRotation(rotation) ||
+            !double.IsFinite(sampleTime)) return;
+        if (!isLocalPlayer)
+        {
+            // Reliable and unreliable snapshots may arrive out of order.
+            if (sampleTime <= _serverMovement.LastSampleTime) return;
+            RecordServerMovementControls();
+            if (!_serverControlHistory.TrySample(sampleTime, out MovementControlState controls)) return;
+            float maximumSpeed = controls.Speed;
+            bool dead = _healthSystem != null && _healthSystem.IsDead;
+            bool blocked = dead || IsBattleLoadingOrNotStarted() ||
+                (_statManager != null && !_statManager.HasServerStats);
+            if ((blocked && (position - _serverMovement.Position).sqrMagnitude > 0.0025f) ||
+                !IsServerMovementPathClear(_serverMovement.Position, position) ||
+                !_serverMovement.TryAccept(position, rotation, sampleTime, serverTime,
+                    blocked ? 0f : maximumSpeed * 1.05f, jumpHeight, gravity,
+                    IsServerPositionGrounded(position), controller != null ? controller.slopeLimit : 45f,
+                    controls.MoveLocked, controls.JumpLocked, controls.JumpLockedSince,
+                    controls.DistanceBeforeMoveLock(_serverMovement.LastPositionTime, sampleTime) * 1.05f))
+            {
+                if (serverTime >= _nextMovementCorrectionAt && connectionToClient != null)
+                {
+                    _nextMovementCorrectionAt = serverTime + 0.2d;
+                    TargetCorrectMovement(connectionToClient, _serverMovement.Position, transform.rotation, _movementEpoch);
+                }
+                return;
+            }
+        }
         double acceptedSampleTime = Math.Clamp(sampleTime, serverTime - 0.5d, serverTime + 0.05d);
-        GetComponent<ServerPoseHistory>()?.RecordNetworkPose(acceptedSampleTime, position);
+        rotation = rotation.normalized;
+        GetComponent<ServerPoseHistory>()?.RecordNetworkPose(acceptedSampleTime, position, rotation);
 
         if (!isLocalPlayer)
         {
@@ -1022,13 +1580,131 @@ public class PlayerManager : NetworkBehaviour
                 ApplyRemotePose(position, rotation);
         }
 
-        RpcSyncTransform(position, rotation, acceptedSampleTime);
+        if (reliable)
+            RpcSyncTransformReliable(position, rotation, acceptedSampleTime, _movementEpoch);
+        else
+            RpcSyncTransform(position, rotation, acceptedSampleTime, _movementEpoch);
+    }
+
+    private MovementControlState RecordServerMovementControls()
+    {
+        if (!isServer) return default;
+        double now = NetworkTime.time;
+        SkillInputLockFlags flags = _inputLocks.Evaluate(now);
+        bool moveLocked = (flags & SkillInputLockFlags.Move) != 0 || IsEmoteBlockingMovement;
+        bool jumpLocked = _forcedTauntActive || moveLocked || (flags & SkillInputLockFlags.Jump) != 0 || IsEmoteBlockingJump;
+        bool crouchLocked = _forcedTauntActive || moveLocked || (flags & SkillInputLockFlags.Crouch) != 0 || IsEmoteBlockingJump;
+        float speed = moveSpeed * _movementEffects.Evaluate(now);
+        if (isAttacking) speed *= 0.6f;
+        if (isCrouching) speed *= Mathf.Max(0f, crouchSpeedMultiplier);
+        if (moveLocked) speed = 0f;
+        var state = new MovementControlState(speed, moveLocked, jumpLocked, crouchLocked);
+        _serverControlHistory.Record(now, state);
+        return state;
     }
 
     [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
-    private void RpcSyncTransform(Vector3 position, Quaternion rotation, double sampleTime)
+    private void RpcSyncTransform(Vector3 position, Quaternion rotation, double sampleTime, uint epoch)
     {
-        if (isServer || isLocalPlayer)
+        if (isServer || isLocalPlayer || epoch != _movementEpoch)
+            return;
+
+        AddRemoteTransformSnapshot(position, rotation, sampleTime);
+    }
+
+    private bool IsServerPositionGrounded(Vector3 position)
+    {
+        if (controller == null) return false;
+        float scale = Mathf.Abs(transform.lossyScale.y);
+        Vector3 center = position + Vector3.Scale(controller.center, transform.lossyScale);
+        float distance = controller.height * scale * 0.5f + Mathf.Max(0.05f, _groundSnapDistance);
+        int count = _movementQuery.Raycast(center, Vector3.down, distance);
+        for (int i = 0; i < count; i++)
+            if (!_movementQuery.Hits[i].transform.IsChildOf(transform) && _movementQuery.Hits[i].normal.y >= 0.5f)
+                return true;
+        return false;
+    }
+
+    private bool IsServerMovementPathClear(Vector3 from, Vector3 to)
+    {
+        if (controller == null) return false;
+        Vector3 delta = to - from;
+        float distance = delta.magnitude;
+        if (distance < 0.001f) return true;
+        float scale = Mathf.Abs(transform.lossyScale.y);
+        float radius = Mathf.Max(0.05f, controller.radius * scale - controller.skinWidth);
+        Vector3 center = from + Vector3.Scale(controller.center, transform.lossyScale);
+        float halfSegment = Mathf.Max(0f, controller.height * scale * 0.5f - radius);
+        Vector3 bottom = center - Vector3.up * halfSegment + Vector3.up * Mathf.Min(halfSegment, controller.stepOffset * scale);
+        Vector3 top = center + Vector3.up * halfSegment;
+        int count = _movementQuery.CapsuleCast(bottom, top, radius, delta / distance, distance);
+        for (int i = 0; i < count; i++)
+            if (!_movementQuery.Hits[i].transform.IsChildOf(transform)) return false;
+        return true;
+    }
+
+    [TargetRpc]
+    private void TargetCorrectMovement(NetworkConnection target, Vector3 position, Quaternion rotation, uint epoch)
+    {
+        if (epoch != _movementEpoch) return;
+        ApplyRemotePose(position, rotation);
+        velocityY = 0f;
+        _hasSentReliableTransform = false;
+    }
+
+    [Server]
+    public bool ServerTeleportToSpawn()
+    {
+        var starts = NetworkManager.startPositions;
+        if (starts == null || starts.Count == 0) return false;
+        Transform start = starts[UnityEngine.Random.Range(0, starts.Count)];
+        return start != null && ServerTeleport(start.position, start.rotation);
+    }
+
+    [Server]
+    public bool ServerTeleport(Vector3 position, Quaternion rotation)
+    {
+        if (!CombatValidation.IsFinite(position) || !ServerMovementValidator.IsValidRotation(rotation))
+            return false;
+        ApplyAuthoritativeTeleport(position, rotation.normalized);
+        RpcServerTeleport(position, rotation.normalized, _movementEpoch);
+        return true;
+    }
+
+    private void ApplyAuthoritativeTeleport(Vector3 position, Quaternion rotation)
+    {
+        _movementEpoch++;
+        _movementEffects.Clear();
+        ApplyServerTeleport(position, rotation, _movementEpoch);
+        // Cancelling an active force commits its old collision pose; the teleport owns the final reset.
+        _serverMovement.Reset(position, NetworkTime.time);
+        _serverControlHistory.Clear();
+        RecordServerMovementControls();
+        GetComponent<ServerPoseHistory>()?.ResetHistory();
+    }
+
+    [ClientRpc]
+    private void RpcServerTeleport(Vector3 position, Quaternion rotation, uint epoch)
+    {
+        if (!isServer) ApplyServerTeleport(position, rotation, epoch);
+    }
+
+    private void ApplyServerTeleport(Vector3 position, Quaternion rotation, uint epoch)
+    {
+        _movementEpoch = epoch;
+        CancelMovementActions();
+        _remoteTransformSnapshots.Clear();
+        _hasRemoteTransformTarget = false;
+        _latestRemoteSnapshotTime = double.NegativeInfinity;
+        _hasSentReliableTransform = false;
+        velocityY = 0f;
+        ApplyRemotePose(position, rotation);
+    }
+
+    [ClientRpc(includeOwner = false)]
+    private void RpcSyncTransformReliable(Vector3 position, Quaternion rotation, double sampleTime, uint epoch)
+    {
+        if (isServer || isLocalPlayer || epoch != _movementEpoch)
             return;
 
         AddRemoteTransformSnapshot(position, rotation, sampleTime);
@@ -1061,8 +1737,7 @@ public class PlayerManager : NetworkBehaviour
         });
 
         int maxSnapshots = Mathf.Clamp(_remoteSnapshotBufferSize, 4, 64);
-        while (_remoteTransformSnapshots.Count > maxSnapshots)
-            _remoteTransformSnapshots.RemoveAt(0);
+        _remoteTransformSnapshots.TrimToCount(maxSnapshots);
     }
 
     private void SmoothRemoteTransform()
@@ -1091,7 +1766,7 @@ public class PlayerManager : NetworkBehaviour
 
         double renderTime = NetworkTime.time - _remoteRenderDelay;
         while (_remoteTransformSnapshots.Count >= 3 && _remoteTransformSnapshots[1].Time <= renderTime)
-            _remoteTransformSnapshots.RemoveAt(0);
+            _remoteTransformSnapshots.RemoveFirst();
 
         RemoteTransformSnapshot from = _remoteTransformSnapshots[0];
         Vector3 nextPosition = from.Position;
@@ -1166,7 +1841,62 @@ public class PlayerManager : NetworkBehaviour
 
     private void HandleDeath()
     {
+        CancelMovementActions();
+        PlayDeathVisual();
         BeginLocalDeath();
+    }
+
+    private void HandleRevived()
+    {
+        CancelMovementActions();
+        PlayReviveVisual();
+        if (!isLocalPlayer) return;
+        if (_respawnRoutine != null) StopCoroutine(_respawnRoutine);
+        _respawnRoutine = null;
+        _respawnCountdown = default;
+        isDead = false;
+        SetCrouchState(false, true);
+        if (controller != null) controller.enabled = true;
+        if (_hasMatchEndPresentation)
+        {
+            _lifePresentation.ShowMatchEnd(_matchEndWinnerTarget, _isMatchWinner);
+            GameInputController.RefreshCursorState();
+            return;
+        }
+        _lifePresentation.ShowLocalRevived();
+        ResetLocalInputForPlayMode();
+    }
+
+    private void RestoreLifePresentation()
+    {
+        if (_lifePresentation == null) return;
+        bool healthIsDead = _healthSystem != null && _healthSystem.IsDead;
+        if (healthIsDead) PlayDeathVisual();
+        else if (_healthSystem != null) PlayReviveVisual();
+
+        if (!isLocalPlayer) return;
+        if (_hasMatchEndPresentation)
+        {
+            _lifePresentation.ShowMatchEnd(_matchEndWinnerTarget, _isMatchWinner);
+            return;
+        }
+        if (!healthIsDead)
+        {
+            if (isDead) HandleRevived();
+            else _lifePresentation.ShowLocalRevived();
+            return;
+        }
+        if (!isDead)
+        {
+            BeginLocalDeath();
+            return;
+        }
+
+        // Re-enabling never starts a second death or restarts an existing five-second wait.
+        if (!_respawnCountdown.HasStarted) _respawnCountdown = CreateRespawnCountdown();
+        if (controller != null) controller.enabled = false;
+        _lifePresentation.BeginLocalDeath(_respawnCountdown);
+        if (_respawnRoutine == null) _respawnRoutine = StartCoroutine(RespawnRoutine());
     }
 
     [Server]
@@ -1176,14 +1906,14 @@ public class PlayerManager : NetworkBehaviour
         RpcPlayDeathVisual();
 
         if (connectionToClient != null)
-            TargetBeginDeath(connectionToClient);
+            TargetBeginDeath(connectionToClient, _healthSystem != null ? _healthSystem.ReviveAllowedAt : NetworkTime.time + HealthUiLifeRules.RespawnDelaySeconds);
     }
 
     [TargetRpc]
-    private void TargetBeginDeath(NetworkConnection target)
+    private void TargetBeginDeath(NetworkConnection target, double readyAt)
     {
         PlayDeathVisual();
-        BeginLocalDeath();
+        BeginLocalDeath(readyAt);
     }
 
     [ClientRpc(includeOwner = false)]
@@ -1192,32 +1922,9 @@ public class PlayerManager : NetworkBehaviour
         PlayDeathVisual();
     }
 
-    private void PlayDeathVisual()
-    {
-        if (animator == null)
-            return;
+    private void PlayDeathVisual() => _lifePresentation?.PlayDeathAnimation();
 
-        animator.SetFloat(speedHash, 0f);
-        animator.SetFloat(moveXHash, 0f);
-        animator.SetFloat(moveYHash, 0f);
-        animator.SetBool(isDeadHash, true);
-        animator.ResetTrigger(dieHash);
-        animator.SetTrigger(dieHash);
-    }
-
-    public void PlayReviveVisual()
-    {
-        if (animator == null)
-            return;
-
-        animator.ResetTrigger(dieHash);
-        animator.SetBool(isDeadHash, false);
-        animator.SetFloat(speedHash, 0f);
-        animator.SetFloat(moveXHash, 0f);
-        animator.SetFloat(moveYHash, 0f);
-        animator.Play(movementStateHash, 0, 0f);
-        animator.Update(0f);
-    }
+    public void PlayReviveVisual() => _lifePresentation?.PlayReviveAnimation();
 
     [ClientRpc(includeOwner = false)]
     public void RpcPlayReviveVisual()
@@ -1225,23 +1932,41 @@ public class PlayerManager : NetworkBehaviour
         PlayReviveVisual();
     }
 
-    private void BeginLocalDeath()
+    private PlayerRespawnCountdown CreateRespawnCountdown(double readyAt = double.NaN)
+    {
+        if (!NetworkClient.active && !NetworkServer.active) return new PlayerRespawnCountdown(Time.timeAsDouble);
+        double deadline = double.IsFinite(readyAt) ? readyAt : _healthSystem != null ? _healthSystem.ReviveAllowedAt : NetworkTime.time + HealthUiLifeRules.RespawnDelaySeconds;
+        double receivedServerTime = !isServer && NetworkClient.connection != null
+            ? NetworkClient.connection.remoteTimeStamp : double.NaN;
+        return PlayerRespawnCountdown.FromServerDeadline(Time.timeAsDouble, NetworkTime.time, deadline, receivedServerTime);
+    }
+
+    private void BeginLocalDeath(double readyAt = double.NaN)
     {
         if (!isLocalPlayer) return;
-        if (isDead) return;
+        if (isDead)
+        {
+            if (double.IsFinite(readyAt))
+            {
+                _respawnCountdown = CreateRespawnCountdown(readyAt);
+                _lifePresentation.BeginLocalDeath(_respawnCountdown);
+            }
+            return;
+        }
 
         isDead = true;
         inputVector = Vector2.zero;
         UpdateLocalLocomotion(Vector2.zero);
         isAttacking = false;
         StopEmote(_activeEmote);
-        ClearSkillInputLock();
+        CancelMovementActions();
         SetCrouchState(false, true);
-
-        PlayDeathVisual();
 
         if (controller != null) controller.enabled = false;
 
+        _respawnCountdown = CreateRespawnCountdown(readyAt);
+        if (!isActiveAndEnabled) return;
+        _lifePresentation.BeginLocalDeath(_respawnCountdown);
         if (_respawnRoutine != null)
             StopCoroutine(_respawnRoutine);
         _respawnRoutine = StartCoroutine(RespawnRoutine());
@@ -1249,66 +1974,19 @@ public class PlayerManager : NetworkBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        // 1. 사망 즉시 5초 카운트다운 시작
-        for (int i = 5; i > 0; i--)
+        // 연출은 별도 수명으로 진행한다. 여기서는 입력과 승인 요청만 처리한다.
+        yield return null;
+        while (isDead)
         {
-            BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(true, $"{i}", _deathOverlayTextColor);
-            yield return new WaitForSeconds(1f);
-        }
-
-        // 2. 캐릭터 시각적/물리적 제거
-        ToggleCharacterVisibility(false);
-
-        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(true, _respawnPromptText, _deathOverlayTextColor);
-
-        // 3. Space 키 입력 대기
-        bool keyPressed = false;
-        while (!keyPressed)
-        {
-            if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) keyPressed = true;
-            yield return null;
-        }
-
-        // 5. 부활 및 랜덤 스폰 로직
-        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(false);
-
-        // 위치 이동 (NetworkManager의 시작지점 활용)
-        Vector3 spawnPos = Vector3.zero;
-        Quaternion spawnRot = Quaternion.identity;
-
-        var startPositions = Mirror.NetworkManager.startPositions;
-        if (startPositions != null && startPositions.Count > 0)
-        {
-            Transform start = startPositions[UnityEngine.Random.Range(0, startPositions.Count)];
-            spawnPos = start.position;
-            spawnRot = start.rotation;
-        }
-
-        transform.SetPositionAndRotation(spawnPos, spawnRot);
-        ForceSyncTransform();
-        
-        // 상태 복구
-        isDead = false;
-        SetCrouchState(false, true);
-        ToggleCharacterVisibility(true);
-        if (controller != null) controller.enabled = true;
-        
-        // 애니메이션 상태 강제 초기화
-        PlayReviveVisual();
-
-        // 카메라 및 입력을 게임 모드로 리셋
-        if (followCamera != null)
-        {
-            followCamera.SetTarget(this.transform);
-        }
-        
-        // [추가] 부활 시 강제로 게임 플레이 모드(커서 잠금 등)로 전환
-        ResetLocalInputForPlayMode();
-        
-        if (_healthSystem != null)
-        {
-            _healthSystem.RefreshFromStats(keepCurrentHpFlat: false);
-            _healthSystem.RequestRevive(1f);
+            if (!GameInputController.IsTextInputActive && _respawnCountdown.IsReady(Time.timeAsDouble) &&
+                Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                // 위치와 생존 상태는 서버 승인 시에만 바뀐다. 거절 후에는 다시 Space로 요청할 수 있다.
+                _healthSystem?.RequestRevive(1f);
+                yield return new WaitForSeconds(0.5f);
+            }
+            else
+                yield return null;
         }
     }
 
@@ -1322,7 +2000,7 @@ public class PlayerManager : NetworkBehaviour
         isAttacking = false;
         isDead = false;
         StopEmote(_activeEmote);
-        ClearSkillInputLock();
+        CancelMovementActions();
         SetCrouchState(false, true);
 
         if (_respawnRoutine != null)
@@ -1331,13 +2009,7 @@ public class PlayerManager : NetworkBehaviour
             _respawnRoutine = null;
         }
 
-        ToggleCharacterVisibility(true);
         if (controller != null) controller.enabled = true;
-
-        if (animator != null)
-        {
-            PlayReviveVisual();
-        }
 
         if (_healthSystem != null)
         {
@@ -1345,40 +2017,15 @@ public class PlayerManager : NetworkBehaviour
             _healthSystem.Revive(1f);
         }
 
-        BattlePvp.UI.PlayerHUD.UpdateLocalDeathOverlay(false);
-
         if (followCamera == null)
             followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        _hasMatchEndPresentation = true;
+        _matchEndWinnerTarget = winnerTarget;
+        _isMatchWinner = isWinner;
+        _respawnCountdown = default;
+        _lifePresentation.AttachCamera(followCamera);
+        _lifePresentation.ShowMatchEnd(winnerTarget, isWinner);
 
-        if (followCamera != null)
-        {
-            followCamera.SetTarget(isWinner ? transform : winnerTarget);
-            followCamera.IsLocked = !isWinner;
-        }
-
-        if (!isWinner)
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
-        else if (Application.platform != RuntimePlatform.WebGLPlayer)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
-    }
-
-    private void ToggleCharacterVisibility(bool visible)
-    {
-        // 렌더러 비활성화 (자식 객체 포함)
-        var renderers = GetComponentsInChildren<Renderer>();
-        foreach (var r in renderers) r.enabled = visible;
-
-        // 충돌체 비활성화 (트리거 제외)
-        var colliders = GetComponentsInChildren<Collider>();
-        foreach (var c in colliders) c.enabled = visible;
-        
-        // CharacterController는 별도로 관리
-        if (controller != null) controller.enabled = visible && !isDead;
+        GameInputController.RefreshCursorState();
     }
 }
