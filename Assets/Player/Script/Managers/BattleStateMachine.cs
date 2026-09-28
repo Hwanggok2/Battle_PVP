@@ -110,6 +110,8 @@ namespace BattlePvp.Networking
 
             if (sceneName == "Battle")
             {
+                if (NetworkManager.singleton is BattleNetworkManager manager)
+                    MatchDuration = manager.SelectedMatchDuration;
                 Debug.Log("[BattleStateMachine] Battle scene detected. StartMatch 호출.");
                 StartMatch();
             }

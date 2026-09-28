@@ -31,7 +31,9 @@ handlers.RegisterRoomToRegistry = function(args, context) {
         // Only a never-used ID receives its initial lease. Closed/expired IDs remain tombstoned.
         lease = writeRoomLease(roomId);
     }
-    var roomInfo = { roomName: roomName, masterName: masterName, playerCount: 1, relayJoinCode: relayJoinCode };
+    var roomInfo = existed ? readRegisteredRoomInfo(registryData, roomId) : null;
+    roomInfo = roomInfo || { roomName: roomName, masterName: masterName, playerCount: 1, relayJoinCode: relayJoinCode };
+    roomInfo.relayJoinCode = relayJoinCode;
     ensureSharedGroup(roomId);
     roomInfo.playerCount = joinRoomWithinCapacity(roomId);
     server.UpdateSharedGroupData({ SharedGroupId: roomId, Data: buildRoomData(roomInfo) });
@@ -96,6 +98,7 @@ handlers.ApproveRoomConnection = function(args, context) {
     if (playerId.length > 64) throw "A valid participant account is required.";
     var challenge = requireRoomChallenge(args);
     if (!getRoomInfo(roomId)) throw "Room does not exist.";
+    requireNotKicked(roomId, playerId);
     requireRoomMember(roomId, playerId);
     var proof = {
         version: 1, roomId: roomId, playerId: playerId, challenge: challenge,
@@ -114,6 +117,7 @@ handlers.VerifyRoomConnection = function(args, context) {
         throw "A valid participant account is required.";
     var challenge = requireRoomChallenge(args);
     if (!getRoomInfo(roomId)) throw "Room does not exist.";
+    requireNotKicked(roomId, playerId);
     requireRoomMember(roomId, requireAuthenticatedPlayerId());
     requireRoomMember(roomId, playerId);
     var response = server.GetUserInternalData({ PlayFabId: playerId, Keys: [ROOM_CONNECTION_PROOF_KEY] });
@@ -238,7 +242,12 @@ handlers.JoinRoom = function(args, context) {
         throw "Room does not exist: " + roomId;
     }
 
-    var nextCount = joinRoomWithinCapacity(roomId);
+    var playerId = requireAuthenticatedPlayerId();
+    var settings = readRoomSettings(roomId);
+    requireNotKicked(roomId, playerId);
+    if (playerId !== ROOM_ID_PATTERN.exec(roomId)[1] && settings.passwordHash &&
+        getString(args, "passwordHash", "") !== settings.passwordHash) throw "ROOM_PASSWORD_INVALID";
+    var nextCount = joinRoomWithinCapacity(roomId, settings.capacity);
     roomInfo.playerCount = nextCount;
 
     server.UpdateSharedGroupData({
@@ -253,6 +262,63 @@ handlers.JoinRoom = function(args, context) {
         roomId: roomId,
         roomInfo: roomInfo
     };
+};
+
+// Admission secrets and kick records are server-only; never copy them into room listings.
+function readRoomInternal(roomId, key) {
+    var owner = ROOM_ID_PATTERN.exec(roomId)[1];
+    var response = server.GetUserInternalData({ PlayFabId: owner, Keys: [key] });
+    var record = response && response.Data ? response.Data[key] : null;
+    return record ? record.Value : null;
+}
+function writeRoomInternal(roomId, key, value) {
+    var data = {}; data[key] = value;
+    server.UpdateUserInternalData({ PlayFabId: ROOM_ID_PATTERN.exec(roomId)[1], Data: data });
+}
+function readRoomSettings(roomId) {
+    var raw = readRoomInternal(roomId, "RoomSettings_" + roomId);
+    return raw ? JSON.parse(raw) : { capacity: 8, passwordHash: "" };
+}
+function requireNotKicked(roomId, playerId) {
+    if (readRoomInternal(roomId, "RoomKick_" + roomId + "_" + playerId)) throw "ROOM_KICKED";
+}
+handlers.UpdateRoomSettings = function(args, context) {
+    var roomId = requireOwnedRoomId(args);
+    var info = getRoomInfo(roomId);
+    if (!info) throw "Room does not exist.";
+    var title = requireString(args, "roomName");
+    var capacity = args.capacity;
+    if (title.length > 40 || typeof capacity !== "number" || capacity % 1 !== 0 || capacity < 2 || capacity > 8)
+        throw "Invalid room settings.";
+    var members = server.GetSharedGroupData({ SharedGroupId: roomId, GetMembers: true }).Members || [];
+    if (capacity < members.length) throw "ROOM_CAPACITY_BELOW_MEMBERS";
+    var settings = readRoomSettings(roomId);
+    var passwordHash = getString(args, "passwordHash", "");
+    if (args.isPrivate === true) {
+        if (!passwordHash) passwordHash = settings.passwordHash;
+        if (!/^[a-f0-9]{64}$/.test(passwordHash)) throw "ROOM_PASSWORD_REQUIRED";
+    } else passwordHash = "";
+    settings.capacity = capacity; settings.passwordHash = passwordHash;
+    // Persist the admission rule before advertising it. A failed write must never report success.
+    writeRoomInternal(roomId, "RoomSettings_" + roomId, JSON.stringify(settings));
+    info.roomName = title; info.capacity = capacity; info.isPrivate = !!passwordHash;
+    info.playerCount = members.length;
+    setRegistryRoomInfo(roomId, info);
+    return { ok: true, roomId: roomId, roomInfo: info };
+};
+handlers.KickRoomPlayer = function(args, context) {
+    var roomId = requireOwnedRoomId(args);
+    var playerId = requireString(args, "playerId").toLowerCase();
+    if (!/^[a-f0-9]{1,64}$/.test(playerId) || playerId === requireAuthenticatedPlayerId()) throw "Invalid kick target.";
+    var info = getRoomInfo(roomId);
+    if (!info) throw "Room does not exist.";
+    requireRoomMember(roomId, playerId);
+    writeRoomInternal(roomId, "RoomKick_" + roomId + "_" + playerId, "true");
+    server.RemoveSharedGroupMembers({ SharedGroupId: roomId, PlayFabIds: [playerId] });
+    info.playerCount = (server.GetSharedGroupData({ SharedGroupId: roomId, GetMembers: true }).Members || []).length;
+    server.UpdateSharedGroupData({ SharedGroupId: roomId, Data: buildRoomData(info) });
+    setRegistryRoomInfo(roomId, info);
+    return { ok: true, roomId: roomId, roomInfo: info };
 };
 
 handlers.LeaveRoom = function(args, context) {
@@ -378,18 +444,19 @@ function getRoomInfo(roomId) {
     return roomInfo ? withRoomLease(roomInfo, lease) : null;
 }
 
-function joinRoomWithinCapacity(roomId) {
+function joinRoomWithinCapacity(roomId, capacity) {
+    capacity = capacity || ROOM_PLAYER_CAPACITY;
     var before = server.GetSharedGroupData({ SharedGroupId: roomId, GetMembers: true });
     var members = before.Members || [];
     if (hasCurrentPlayer(members))
         return members.length;
-    if (members.length >= ROOM_PLAYER_CAPACITY)
+    if (members.length >= capacity)
         throw "Room is full (maximum 8 players).";
 
     addCurrentPlayerToRoom(roomId);
     var after = server.GetSharedGroupData({ SharedGroupId: roomId, GetMembers: true });
     var count = (after.Members || []).length;
-    if (count > ROOM_PLAYER_CAPACITY) {
+    if (count > capacity) {
         // Concurrent joins require backend transaction support for strict reservation semantics.
         // Roll back this admission; Mirror and Relay independently enforce the final session cap.
         server.RemoveSharedGroupMembers({ SharedGroupId: roomId, PlayFabIds: [currentPlayerId] });
@@ -443,8 +510,11 @@ function hasCurrentPlayer(members) {
 
 function isMissingSharedGroup(error) {
     var details = error && error.apiErrorInfo ? error.apiErrorInfo : error;
+    // Classic CloudScript wraps the API error object inside apiErrorInfo.apiError.
+    if (details && details.apiError && typeof details.apiError === "object")
+        details = details.apiError;
     if (details && (details.errorCode === 1088 || details.apiErrorCode === 1088))
-        return true; // PlayFab InvalidSharedGroupId, after a successful removal of a validated room ID.
+        return true; // InvalidSharedGroupId: absent on read, or an ID collision on create.
     var name = typeof details === "string" ? details :
         details && (details.error || details.apiError || details.message);
     return name === "InvalidSharedGroupId" || name === "SharedGroupNotFound";
@@ -505,17 +575,19 @@ function getSharedGroupData(groupId) {
 
 function ensureSharedGroup(groupId) {
     try {
-        server.CreateSharedGroup({
-            SharedGroupId: groupId
-        });
+        server.GetSharedGroupData({ SharedGroupId: groupId });
+        return;
     } catch (e) {
-        var message = getErrorText(e);
-        if (message.indexOf("already") === -1 &&
-            message.indexOf("exists") === -1 &&
-            message.indexOf("SharedGroupAlreadyExists") === -1 &&
-            message.indexOf("NameNotAvailable") === -1) {
-            throw e;
-        }
+        if (!isMissingSharedGroup(e)) throw e;
+    }
+
+    try {
+        server.CreateSharedGroup({ SharedGroupId: groupId });
+    } catch (e) {
+        // Create also returns InvalidSharedGroupId (1088) when another request created it first.
+        // Confirm it exists; never treat an invalid ID or a service failure as successful creation.
+        if (!isMissingSharedGroup(e)) throw e;
+        server.GetSharedGroupData({ SharedGroupId: groupId });
     }
 }
 
@@ -551,7 +623,9 @@ function normalizeRoomInfo(roomInfo, roomId) {
         roomName: roomInfo.roomName || roomId || "Unnamed Room",
         masterName: roomInfo.masterName || "Unknown",
         playerCount: Math.max(0, parseCount(roomInfo.playerCount, 0)),
-        relayJoinCode: roomInfo.relayJoinCode || ""
+        relayJoinCode: roomInfo.relayJoinCode || "",
+        capacity: Math.max(2, Math.min(8, parseCount(roomInfo.capacity, 8))),
+        isPrivate: roomInfo.isPrivate === true
     };
 }
 
@@ -631,7 +705,7 @@ function getErrorText(error) {
 var CLIENT_CLOUDSCRIPT_HANDLER_ALLOWLIST = [
     "RegisterRoomToRegistry", "UpdateRoomRelayJoinCode", "GetActiveRooms", "GetActiveRoomInfos",
     "JoinRoom", "LeaveRoom", "AdminValidateRoomKey", "AdminDeleteRoom", "AdminClearRoomRegistry",
-    "ApproveRoomConnection", "VerifyRoomConnection", "HeartbeatRoom"
+    "ApproveRoomConnection", "VerifyRoomConnection", "HeartbeatRoom", "UpdateRoomSettings", "KickRoomPlayer"
 ];
 for (var handlerName in handlers) {
     if (Object.prototype.hasOwnProperty.call(handlers, handlerName) &&

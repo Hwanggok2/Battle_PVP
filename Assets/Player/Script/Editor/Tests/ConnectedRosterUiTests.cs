@@ -24,44 +24,44 @@ namespace BattlePvp.EditorTests
             _previousScores.AddRange(ScoreSystem.ActiveScores);
             ScoreSystem.ActiveScores.Clear();
             _previousScene = SceneManager.GetActiveScene();
-            _testScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+            _testScene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             SceneManager.SetActiveScene(_testScene);
         }
 
         [TearDown]
         public void TearDown()
         {
-            foreach (GameObject root in _testScene.GetRootGameObjects()) Object.DestroyImmediate(root);
+            foreach (GameObject root in _testScene.IsValid() ? _testScene.GetRootGameObjects() : new GameObject[0]) Object.DestroyImmediate(root);
             ScoreSystem.ActiveScores.Clear();
             ScoreSystem.ActiveScores.AddRange(_previousScores);
             _previousScores.Clear();
             if (_previousScene.IsValid() && _previousScene.isLoaded) SceneManager.SetActiveScene(_previousScene);
-            EditorSceneManager.CloseScene(_testScene, true);
+            // Unity Test Runner restores the user scene after the isolated test scene.
         }
 
         [Test]
         public void BannerTracksJoinLeaveAndZeroWithoutAcceptingStaleMetadataCount()
         {
             BattleRoomInfoBanner banner = CreateBanner(out TextMeshProUGUI count);
-            banner.gameObject.SetActive(true);
-            Assert.That(count.text, Is.EqualTo("Players: 0"));
+            EditorTestLifecycle.SetActive(banner, true);
+            Assert.That(count.text, Is.EqualTo("참가자 · 0"));
             ScoreSystem first = CreatePlayer(1, "First", 10);
             ScoreSystem second = CreatePlayer(2, "Second", 5);
             first.OnStartClient();
             second.OnStartClient();
             second.OnStartClient();
-            Assert.That(count.text, Is.EqualTo("Players: 2"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 2"));
 
             ApplyMetadata(banner, new PlayFabBattleManager.RoomInfo("Current room", "Host", 8));
-            Assert.That(count.text, Is.EqualTo("Players: 2"));
-            Assert.That(GetField<TextMeshProUGUI>(banner, "_roomNameText").text, Is.EqualTo("Room: Current room"));
-            Assert.That(GetField<TextMeshProUGUI>(banner, "_masterNameText").text, Is.EqualTo("Master: Host"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 2"));
+            Assert.That(GetField<TextMeshProUGUI>(banner, "_roomNameText").text, Is.EqualTo("대기실 · Current room"));
+            Assert.That(GetField<TextMeshProUGUI>(banner, "_masterNameText").text, Is.EqualTo("방장 · Host"));
             first.OnStopClient();
-            Assert.That(count.text, Is.EqualTo("Players: 1"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"));
             second.OnStopClient();
-            Assert.That(count.text, Is.EqualTo("Players: 0"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 0"));
             ApplyMetadata(banner, new PlayFabBattleManager.RoomInfo("Current room", "Host", 8));
-            Assert.That(count.text, Is.EqualTo("Players: 0"), "An empty connected roster must not fall back to stored room membership.");
+            Assert.That(count.text, Is.EqualTo("참가자 · 0"), "An empty connected roster must not fall back to stored room membership.");
         }
 
         [Test]
@@ -70,22 +70,22 @@ namespace BattlePvp.EditorTests
             BattleRoomInfoBanner banner = CreateBanner(out TextMeshProUGUI count);
             ScoreSystem first = CreatePlayer(1, "Returning player", 10);
             first.OnStartClient();
-            banner.gameObject.SetActive(true);
-            Assert.That(count.text, Is.EqualTo("Players: 1"));
-            banner.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(banner, true);
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"));
+            EditorTestLifecycle.SetActive(banner, false);
             first.OnStopClient();
-            Assert.That(count.text, Is.EqualTo("Players: 1"), "A disabled view must have released its roster subscription.");
-            banner.gameObject.SetActive(true);
-            Assert.That(count.text, Is.EqualTo("Players: 0"), "Reactivation must read changes missed while disabled.");
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"), "A disabled view must have released its roster subscription.");
+            EditorTestLifecycle.SetActive(banner, true);
+            Assert.That(count.text, Is.EqualTo("참가자 · 0"), "Reactivation must read changes missed while disabled.");
             ScoreSystem replacement = CreatePlayer(20, "Returning player", 10);
             replacement.OnStartClient();
-            Assert.That(count.text, Is.EqualTo("Players: 1"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"));
 
             RoomBannerRequestState state = GetField<RoomBannerRequestState>(banner, "_metadataRequests");
             uint previousRequest = state.BeginRequest("previous-room");
             Invoke(banner, "OnSceneLoaded", _testScene, LoadSceneMode.Single);
             Assert.That(state.IsCurrent(previousRequest, "previous-room"), Is.False);
-            Assert.That(count.text, Is.EqualTo("Players: 1"));
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"));
         }
 
         [Test]
@@ -99,9 +99,9 @@ namespace BattlePvp.EditorTests
             ScoreSystem destroyed = CreatePlayer(8, "Destroyed", 100);
             ScoreSystem.ActiveScores.AddRange(new[] { valid, valid, sameId, unspawned, destroyed, null });
             Object.DestroyImmediate(destroyed.gameObject);
-            banner.gameObject.SetActive(true);
-            ranking.gameObject.SetActive(true);
-            Assert.That(count.text, Is.EqualTo("Players: 1"));
+            EditorTestLifecycle.SetActive(banner, true);
+            EditorTestLifecycle.SetActive(ranking, true);
+            Assert.That(count.text, Is.EqualTo("참가자 · 1"));
             Assert.That(VisibleRows(ranking).Count, Is.EqualTo(1));
         }
 
@@ -113,7 +113,7 @@ namespace BattlePvp.EditorTests
             ScoreSystem second = CreatePlayer(2, "Second", 5);
             first.OnStartClient();
             second.OnStartClient();
-            ranking.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(ranking, true);
             List<RankingEntryUI> rows = VisibleRows(ranking);
             Assert.That(rows.Count, Is.EqualTo(2));
             Assert.That(RowText(rows[0], "Name"), Is.EqualTo("Leader"));
@@ -127,11 +127,11 @@ namespace BattlePvp.EditorTests
             second.OnStopClient();
             Assert.That(VisibleRows(ranking), Is.Empty);
 
-            ranking.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(ranking, false);
             ScoreSystem returning = CreatePlayer(30, "Leader", 10);
             returning.OnStartClient();
             Assert.That(VisibleRows(ranking), Is.Empty);
-            ranking.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(ranking, true);
             rows = VisibleRows(ranking);
             Assert.That(rows.Count, Is.EqualTo(1));
             Assert.That(RowText(rows[0], "Name"), Is.EqualTo("Leader"));

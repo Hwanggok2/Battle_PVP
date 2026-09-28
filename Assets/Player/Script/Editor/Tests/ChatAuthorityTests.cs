@@ -133,7 +133,7 @@ namespace BattlePvp.EditorTests
                 case "unauthenticated": _connection.isAuthenticated = false; break;
                 case "not-ready": _connection.isReady = false; break;
                 case "no-room-authentication": _connection.authenticationData = null; break;
-                case "different-room": _connection.authenticationData = new AuthenticatedRoomPlayer("ABC123", "other"); break;
+                case "different-room": _connection.authenticationData = new AuthenticatedRoomPlayer("ABC123", "battle_abc123_22222222222222222222222222222222"); break;
                 case "stale-connection": NetworkServer.connections[ConnectionId] = new TestConnection(ConnectionId); break;
                 case "no-avatar": typeof(NetworkConnection).GetProperty(nameof(NetworkConnection.identity)).SetValue(_connection, null); break;
                 case "wrong-owner": SetProperty(_identity, nameof(NetworkIdentity.connectionToClient), null); break;

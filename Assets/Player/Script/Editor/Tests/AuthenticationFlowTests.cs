@@ -47,6 +47,7 @@ namespace BattlePvp.EditorTests
             typeof(GlobalDataManager).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, _profile);
             _profile.gameObject.SetActive(true);
             _auth = NewObject("Authentication service", false).AddComponent<PlayFabAuthManager>();
+            typeof(PlayFabAuthManager).GetField("<Instance>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, _auth);
             Set(_auth, "_clock", (Func<double>)(() => _now));
             Set(_auth, "_sendLogin", (Action<LoginWithPlayFabRequest, Action<LoginResult>, Action<PlayFabError>>)((request, success, failure) =>
             { _logins.Add(request); _loginSuccess.Add(success); _loginFailure.Add(failure); }));
@@ -56,7 +57,7 @@ namespace BattlePvp.EditorTests
             _auth.OnLoginSuccess += () => _successes++;
             _auth.OnLoginFailure += _ => _failures++;
             _auth.OnRegisterSuccess += () => _registered++;
-            _auth.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(_auth, true);
             _now = 0;
             _successes = _failures = _registered = 0;
         }
@@ -247,14 +248,14 @@ namespace BattlePvp.EditorTests
         public void DisablingServiceIgnoresLateAuthenticationAndProfileCallbacks()
         {
             _auth.Login("Alice", "fixture-password");
-            _auth.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(_auth, false);
             SucceedLogin(0, "A10");
             Assert.That(_successes, Is.Zero);
             Assert.That(PlayFabSettings.staticPlayer.IsClientLoggedIn(), Is.False);
-            _auth.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(_auth, true);
             _auth.Login("Alice", "fixture-password");
             SucceedLogin(1, "A10");
-            _auth.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(_auth, false);
             _profileResults[0](true);
             Assert.That(_successes, Is.Zero);
         }
@@ -273,7 +274,7 @@ namespace BattlePvp.EditorTests
             Assert.That(login.interactable, Is.True);
             login.onClick.Invoke();
             Assert.That(_logins.Count, Is.EqualTo(2));
-            ui.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(ui, false);
             SucceedLogin(1, "A10");
             Assert.That(_successes, Is.Zero);
             Assert.That(_auth.IsBusy, Is.False);
@@ -291,7 +292,7 @@ namespace BattlePvp.EditorTests
             Assert.That(navigation.IsPending, Is.True);
             Assert.That(navigation.TryConsume(_auth.ApprovedLoginRequestId, Time.realtimeSinceStartupAsDouble + 2), Is.True);
             Assert.That(navigation.TryConsume(_auth.ApprovedLoginRequestId, Time.realtimeSinceStartupAsDouble + 3), Is.False);
-            ui.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(ui, false);
             Assert.That(navigation.IsPending, Is.False);
         }
 
@@ -321,7 +322,7 @@ namespace BattlePvp.EditorTests
             register = NewObject("Register button", false).AddComponent<Button>();
             Set(ui, "_idInput", username); Set(ui, "_pwInput", password);
             Set(ui, "_loginButton", login); Set(ui, "_registerButton", register);
-            ui.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(ui, true);
             return ui;
         }
 

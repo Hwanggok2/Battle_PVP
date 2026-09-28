@@ -27,7 +27,8 @@ namespace BattlePvp.EditorTests
             var settings = new NetworkSettings();
             try
             {
-                settings.WithReliableStageParameters(windowSize: 1);
+                const int window = 32;
+                settings.WithReliableStageParameters(windowSize: window);
                 settings.WithFragmentationStageParameters(payloadCapacity: UnityRelayTransport.ReliablePacketCapacity);
                 var sender = NetworkDriver.Create(new IPCNetworkInterface(), settings);
                 Set(transport, "_serverDriver", sender);
@@ -56,16 +57,17 @@ namespace BattlePvp.EditorTests
                     failures++;
                     if (stopInErrorCallback) transport.ServerStop();
                 };
-                transport.ServerSend(1, new ArraySegment<byte>(new byte[] { 1 }));
-                // No receiver update/ACK: the single reliable slot remains occupied.
-                transport.ServerSend(1, new ArraySegment<byte>(new byte[] { 2 }));
-                Assert.That(sent, Is.EqualTo(1));
+                // No receiver update/ACK: occupy every slot in the actual reliable window.
+                for (int i = 0; i < window; i++)
+                    transport.ServerSend(1, new ArraySegment<byte>(new byte[] { (byte)i }));
+                transport.ServerSend(1, new ArraySegment<byte>(new byte[] { 255 }));
+                Assert.That(sent, Is.EqualTo(window));
                 Assert.That(failures, Is.EqualTo(1));
                 Assert.That(Get<Dictionary<int, UtpConnection>>(transport, "_serverConnections"), Is.Empty);
                 Assert.That(stopInErrorCallback ? !transport.ServerActive() : disconnects == 1, Is.True,
                     "An unconfirmed EndSend must end the connection or entire transport, including callback reentry.");
                 transport.ServerSend(1, new ArraySegment<byte>(new byte[] { 3 }));
-                Assert.That(sent, Is.EqualTo(1), "The failed peer cannot continue as though delivery succeeded.");
+                Assert.That(sent, Is.EqualTo(window), "The failed peer cannot continue as though delivery succeeded.");
             }
             finally
             {

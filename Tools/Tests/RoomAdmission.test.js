@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const { load } = require('./NetworkProfileRoomCapacity.test.js');
+const host = 'ABC123', guest = 'DEF456', roomId = 'battle_abc123_' + '1'.repeat(32);
+for (const file of ['roomRegistry.js', 'combinedCloudScript.js']) {
+    const { context: c, group, internalData } = load(file), h = c.handlers;
+    h.RegisterRoomToRegistry({ roomId, roomName: 'Open', masterName: 'Host', relayJoinCode: 'relay' });
+    const settings = { roomId, roomName: 'Private', capacity: 2, isPrivate: true, passwordHash: 'a'.repeat(64) };
+    assert.equal(h.UpdateRoomSettings(settings).roomInfo.capacity, 2);
+    assert.equal(h.GetActiveRoomInfos().roomInfos[roomId].isPrivate, true);
+    assert.ok(!JSON.stringify(group('GLOBALROOMREGISTRY')).includes(settings.passwordHash));
+    assert.ok(!JSON.stringify(group(roomId)).includes(settings.passwordHash));
+    c.currentPlayerId = guest;
+    assert.throws(() => h.UpdateRoomSettings(settings));
+    assert.throws(() => h.KickRoomPlayer({ roomId, playerId: host }));
+    assert.throws(() => h.JoinRoom({ roomId }), /PASSWORD/);
+    assert.throws(() => h.JoinRoom({ roomId, passwordHash: 'b'.repeat(64) }), /PASSWORD/);
+    assert.equal(group(roomId).members.length, 1);
+    assert.equal(h.JoinRoom({ roomId, passwordHash: settings.passwordHash }).roomInfo.playerCount, 2);
+    c.currentPlayerId = 'FFAABB';
+    assert.throws(() => h.JoinRoom({ roomId, passwordHash: settings.passwordHash }), /full/);
+    c.currentPlayerId = host;
+    assert.throws(() => h.UpdateRoomSettings({ ...settings, capacity: 1 }));
+    assert.throws(() => h.KickRoomPlayer({ roomId, playerId: host }));
+    assert.equal(h.KickRoomPlayer({ roomId, playerId: guest }).roomInfo.playerCount, 1);
+    c.currentPlayerId = guest;
+    assert.throws(() => h.JoinRoom({ roomId, passwordHash: settings.passwordHash }), /KICKED/);
+    assert.throws(() => h.ApproveRoomConnection({ roomId, challenge: '2'.repeat(32) }), /KICKED/);
+    c.currentPlayerId = host;
+    h.UpdateRoomSettings({ ...settings, isPrivate: false, passwordHash: '' });
+    assert.equal(h.GetActiveRoomInfos().roomInfos[roomId].isPrivate, false);
+    c.currentPlayerId = 'FFAABB';
+    assert.equal(h.JoinRoom({ roomId }).roomInfo.playerCount, 2);
+    console.log(file + ': room settings, password, capacity, owner-only kick and replay checks passed');
+}

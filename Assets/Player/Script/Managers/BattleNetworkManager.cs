@@ -13,6 +13,19 @@ namespace BattlePvp.Networking
     public class BattleNetworkManager : NetworkManager
     {
         public const int PlayerCapacity = 8;
+        public int RoomCapacity { get; private set; } = PlayerCapacity;
+        private readonly HashSet<string> _kickedAccounts = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        public bool IsKicked(string account) => _kickedAccounts.Contains(account);
+        public void ApplyRoomCapacity(int capacity)
+        {
+            if (NetworkServer.active && RoomAdmission.ValidCapacity(capacity, numPlayers)) RoomCapacity = capacity;
+        }
+        public void BanRoomAccount(string account)
+        {
+            if (NetworkServer.active) _kickedAccounts.Add(account);
+        }
+        public byte SelectedBattleMap { get; set; }
+        public int SelectedMatchDuration { get; set; } = 180;
         public BattlePvp.Combat.MatchResultSnapshot LastCompletedMatch { get; private set; }
         private readonly Dictionary<string, NetworkIdentity> _disconnectedPlayers =
             new Dictionary<string, NetworkIdentity>(System.StringComparer.OrdinalIgnoreCase);
@@ -36,6 +49,8 @@ namespace BattlePvp.Networking
 
         public override void OnStartServer()
         {
+            RoomCapacity = PlayerCapacity;
+            _kickedAccounts.Clear();
             _serverStopping = false;
             _changingServerScene = false;
             base.OnStartServer();
@@ -63,7 +78,7 @@ namespace BattlePvp.Networking
                 conn.Disconnect();
                 return;
             }
-            if (numPlayers >= PlayerCapacity || !conn.isAuthenticated || !(conn.authenticationData is AuthenticatedRoomPlayer identity) ||
+            if (numPlayers >= RoomCapacity || !conn.isAuthenticated || !(conn.authenticationData is AuthenticatedRoomPlayer identity) || IsKicked(identity.PlayFabId) ||
                 PlayFabBattleManager.Instance == null || identity.RoomId != PlayFabBattleManager.Instance.CurrentRoomId)
             {
                 conn.Disconnect();
@@ -99,7 +114,7 @@ namespace BattlePvp.Networking
             }
 
             // Disconnected bodies reserve their match slot, so cycling accounts cannot create unbounded targets.
-            if (numPlayers + _disconnectedPlayers.Count >= PlayerCapacity)
+            if (numPlayers + _disconnectedPlayers.Count >= RoomCapacity)
             {
                 conn.Disconnect();
                 return;
@@ -172,6 +187,7 @@ namespace BattlePvp.Networking
         public override void OnClientConnect()
         {
             base.OnClientConnect();
+            RoomConnectionDiagnostics.Record("mirror_connected");
             PlayFabBattleManager.Instance?.NotifyRoomNetworkConnected();
             Debug.Log("[BattleNetworkManager] Client connected to server.");
         }
@@ -181,9 +197,22 @@ namespace BattlePvp.Networking
             bool preserveMembership = authenticator is RoomNetworkAuthenticator roomAuthenticator &&
                 roomAuthenticator.PreserveRoomMembershipOnDisconnect;
             bool authenticationFailed = NetworkClient.connection == null || !NetworkClient.connection.isAuthenticated;
+            RoomConnectionDiagnostics.SaveExit(authenticationFailed ? "mirror_disconnected_before_authentication" : "mirror_disconnected");
             PlayFabBattleManager.Instance?.NotifyRoomNetworkDisconnected(preserveMembership, authenticationFailed);
             base.OnClientDisconnect();
             Debug.Log("[BattleNetworkManager] Client disconnected from server.");
+        }
+
+        public override void OnClientError(TransportError error, string reason)
+        {
+            RoomConnectionDiagnostics.Record("client_transport_error_" + error);
+            Debug.LogWarning($"[BattleNetworkManager] Client transport error: {error}: {reason}");
+        }
+
+        public override void OnServerError(NetworkConnectionToClient conn, TransportError error, string reason)
+        {
+            RoomConnectionDiagnostics.Record("server_transport_error_" + error);
+            Debug.LogWarning($"[BattleNetworkManager] Server transport error: {error}: {reason}");
         }
 
         public override void OnStopServer()

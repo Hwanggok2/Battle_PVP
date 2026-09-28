@@ -76,7 +76,8 @@ namespace BattlePvp.Networking
             int remoteConnections = 0;
             foreach (NetworkConnectionToClient connected in NetworkServer.connections.Values)
                 if (!(connected is LocalConnectionToClient)) remoteConnections++;
-            if (remoteConnections > BattleNetworkManager.PlayerCapacity - 1)
+            int capacity = NetworkManager.singleton is BattleNetworkManager manager ? manager.RoomCapacity : BattleNetworkManager.PlayerCapacity;
+            if (remoteConnections > capacity - 1)
             {
                 Reject(connection, ResponseCode.Rejected);
                 return;
@@ -138,9 +139,21 @@ namespace BattlePvp.Networking
 
         private void Accept(NetworkConnectionToClient connection, AuthenticatedRoomPlayer identity)
         {
+            var manager = NetworkManager.singleton as BattleNetworkManager;
+            if (manager != null && manager.IsKicked(identity.PlayFabId))
+            {
+                Reject(connection, ResponseCode.Rejected);
+                return;
+            }
             if (!_accounts.TryReserve(identity.PlayFabId, connection))
             {
                 Reject(connection, ResponseCode.DuplicateAccount);
+                return;
+            }
+            if (manager != null && _accounts.Count > manager.RoomCapacity)
+            {
+                _accounts.Release(identity.PlayFabId, connection);
+                Reject(connection, ResponseCode.Rejected);
                 return;
             }
             _pending.Remove(connection);
@@ -262,6 +275,7 @@ namespace BattlePvp.Networking
 
         private void RejectClient()
         {
+            RoomConnectionDiagnostics.Record(PreserveRoomMembershipOnDisconnect ? "authentication_duplicate_account" : "authentication_rejected");
             _clientWaiting = false;
             if (!PreserveRoomMembershipOnDisconnect) PlayFabBattleManager.Instance?.NotifyRoomAuthenticationFailed();
             if (NetworkClient.connection != null) ClientReject();

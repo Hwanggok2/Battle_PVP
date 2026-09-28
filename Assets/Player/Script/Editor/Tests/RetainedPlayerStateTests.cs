@@ -85,8 +85,8 @@ namespace BattlePvp.EditorTests
             System.Action<ScoreSystem> observer = _ => notifications++;
             try
             {
-                player.AddComponent<PlayerManager>();
-                ScoreSystem score = player.AddComponent<ScoreSystem>();
+                EditorTestLifecycle.AddNetwork<PlayerManager>(player);
+                ScoreSystem score = EditorTestLifecycle.AddNetwork<ScoreSystem>(player);
                 score.OnStartClient();
                 Assert.That(ScoreSystem.ActiveScores.Count, Is.EqualTo(1));
                 ScoreSystem.OnScoreUpdated += observer;

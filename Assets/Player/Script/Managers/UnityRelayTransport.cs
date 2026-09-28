@@ -690,6 +690,8 @@ namespace BattlePvp.Networking
 
         private void FailConnection(bool client, int connectionId, string message)
         {
+            // These messages are generated here from transport status codes, never SDK credentials.
+            RoomConnectionDiagnostics.Record((client ? "client_relay_failure: " : "server_relay_failure: ") + message);
             if (client)
             {
                 uint attempt = _clientAttempt;

@@ -7,7 +7,7 @@ const HOST = 'ABC123', GUEST = 'DEF456', REGISTRY = 'GLOBALROOMREGISTRY';
 const ROOM = 'battle_abc123_' + '1'.repeat(32);
 const ALLOWED = ['RegisterRoomToRegistry', 'UpdateRoomRelayJoinCode', 'HeartbeatRoom', 'GetActiveRooms', 'GetActiveRoomInfos',
     'JoinRoom', 'LeaveRoom', 'AdminValidateRoomKey', 'AdminDeleteRoom', 'AdminClearRoomRegistry',
-    'ApproveRoomConnection', 'VerifyRoomConnection'];
+    'ApproveRoomConnection', 'VerifyRoomConnection', 'UpdateRoomSettings', 'KickRoomPlayer'];
 const clone = value => JSON.parse(JSON.stringify(value));
 const sameId = (a, b) => a.toLowerCase() === b.toLowerCase();
 
@@ -18,7 +18,10 @@ function load(file) {
         readErrorAfterRemove: null, nextMemberReadError: null, now: 1000000, proofReadFailure: false, proofWriteFailure: false,
         beforeWrite: null, afterWrite: null };
     const group = id => {
-        if (!groups.has(id)) throw { apiErrorInfo: { apiError: 'InvalidSharedGroupId', apiErrorCode: 1088 } };
+        if (!groups.has(id)) throw { apiErrorInfo: {
+            api: '/Server/GetSharedGroupData',
+            apiError: { error: 'InvalidSharedGroupId', errorCode: 1088 }
+        } };
         return groups.get(id);
     };
     const forbidden = () => { calls.sampleWrite++; throw new Error('Unexpected sample write'); };
@@ -26,7 +29,10 @@ function load(file) {
         Date: class extends Date { static now() { return options.now; } },
         entity: { SetObjects: forbidden }, http: { request: forbidden }, server: {
             CreateSharedGroup({ SharedGroupId: id }) {
-                if (groups.has(id)) throw new Error('SharedGroupAlreadyExists');
+                // The live CreateSharedGroup API reports an ID collision as 1088, not SharedGroupAlreadyExists.
+                if (groups.has(id)) throw { message: 'PlayFab API request error',
+                    apiErrorInfo: { api: '/Server/CreateSharedGroup',
+                        apiError: { error: 'InvalidSharedGroupId', errorCode: 1088 } } };
                 groups.set(id, { members: [], data: {} });
             },
             GetSharedGroupData({ SharedGroupId: id, GetMembers }) {
@@ -64,12 +70,12 @@ function load(file) {
             GetTitleData() { calls.publicRead++; return { Data: { RoomAdminKey: 'public-test-key' } }; },
             UpdatePlayerStatistics: forbidden,
             UpdateUserInternalData({ PlayFabId, Data }) {
-                if (Object.keys(Data).some(key => key !== 'BattleRoomConnectionProof')) return forbidden();
+                if (Object.keys(Data).some(key => key !== 'BattleRoomConnectionProof' && !/^Room(Settings|Kick)_battle_/.test(key))) return forbidden();
                 if (options.proofWriteFailure) throw new Error('Injected proof write failure');
-                internalData.set(PlayFabId.toLowerCase(), clone(Data));
+                internalData.set(PlayFabId.toLowerCase(), { ...(internalData.get(PlayFabId.toLowerCase()) || {}), ...clone(Data) });
             },
             GetUserInternalData({ PlayFabId, Keys }) {
-                if (Keys.length !== 1 || Keys[0] !== 'BattleRoomConnectionProof') return forbidden();
+                if (Keys.length !== 1 || (Keys[0] !== 'BattleRoomConnectionProof' && !/^Room(Settings|Kick)_battle_/.test(Keys[0]))) return forbidden();
                 if (options.proofReadFailure) throw new Error('Injected proof read failure');
                 const source = internalData.get(PlayFabId.toLowerCase()) || {}, Data = {};
                 for (const key of Keys) if (source[key] !== undefined) Data[key] = { Value: source[key] };

@@ -220,7 +220,7 @@ namespace BattlePvp.EditorTests
         private object MakeFlow(RoomInfo info)
         {
             Type type = typeof(PlayFabBattleManager).GetNestedType("RoomFlow", BindingFlags.NonPublic);
-            object flow = Activator.CreateInstance(type, new object[] { new RoomFlowGeneration().Begin("a10", Room) });
+            object flow = Activator.CreateInstance(type, new object[] { new RoomSessionState(new RoomFlowGeneration().Begin("a10", Room)) });
             type.GetField("Info").SetValue(flow, info);
             _flows.Add(flow);
             return flow;

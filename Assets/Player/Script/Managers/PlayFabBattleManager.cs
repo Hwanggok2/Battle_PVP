@@ -16,7 +16,7 @@ namespace BattlePvp.Networking
     /// <summary>
     /// PlayFab??Shared Group Data瑜??댁슜??諛⑷?由?諛??좎? ?곗씠?곕? ?숆린?뷀븯???대옒?ㅼ엯?덈떎.
     /// </summary>
-    public class PlayFabBattleManager : MonoBehaviour
+    public partial class PlayFabBattleManager : MonoBehaviour
     {
         public static PlayFabBattleManager Instance { get; private set; }
         public static event Action<PlayFabBattleManager> InstanceChanged;
@@ -36,13 +36,15 @@ namespace BattlePvp.Networking
         public struct RoomInfo
         {
             public RoomInfo(string roomName, string masterName, int playerCount, string relayJoinCode = "",
-                double validUntil = double.PositiveInfinity)
+                double validUntil = double.PositiveInfinity, int capacity = 8, bool isPrivate = false)
             {
                 RoomName = roomName;
                 MasterName = masterName;
                 PlayerCount = playerCount;
                 RelayJoinCode = relayJoinCode ?? string.Empty;
                 ValidUntil = validUntil;
+                Capacity = Mathf.Clamp(capacity, 2, 8);
+                IsPrivate = isPrivate;
             }
 
             public string RoomName { get; private set; }
@@ -50,6 +52,8 @@ namespace BattlePvp.Networking
             public int PlayerCount { get; private set; }
             public string RelayJoinCode { get; private set; }
             public double ValidUntil { get; private set; }
+            public int Capacity { get; private set; }
+            public bool IsPrivate { get; private set; }
         }
 
 
@@ -123,7 +127,7 @@ namespace BattlePvp.Networking
             if (Instance == null)
             {
                 Instance = this;
-                DontDestroyOnLoad(gameObject);
+                if (Application.isPlaying) DontDestroyOnLoad(gameObject);
                 
                 // 諛??낆옣???깃났?섎㈃ ???꾪솚 ?대깽???곌껐
                 NotifyRoomObservers(InstanceChanged, subscriber => ((Action<PlayFabBattleManager>)subscriber)(this),
@@ -159,6 +163,7 @@ namespace BattlePvp.Networking
             if (host) _ownedRoomId = roomId;
             StopPreviousRoomNetwork();
             ScheduleRoomCleanup(previous);
+            RoomConnectionDiagnostics.Begin(host);
             return flow;
         }
 
@@ -199,7 +204,10 @@ namespace BattlePvp.Networking
             {
                 var relay = NetworkManager.singleton != null ? NetworkManager.singleton.transport as UnityRelayTransport : null;
                 if (relay == null || relay.ServerRelayFailed)
+                {
+                    RoomConnectionDiagnostics.Record("host_relay_failed");
                     LeaveRoomWithNotice("릴레이 호스트 연결이 종료되어 로비로 돌아왔습니다.");
+                }
                 else if (flow.Lease.HasExpired(now)) CloseExpiredHost(flow);
                 else if (relay.ServerRelayReady && flow.Lease.TryBeginHeartbeat(now)) SendHostHeartbeat(flow);
             }
@@ -256,6 +264,7 @@ namespace BattlePvp.Networking
             {
                 if (IsCurrentRoomFlow(flow))
                 {
+                    RoomConnectionDiagnostics.Record("relay_preparation_failed");
                     LeaveRoomWithNotice("릴레이 연결에 실패했습니다. 다시 참가해 주세요.");
                 }
             }
@@ -415,7 +424,7 @@ namespace BattlePvp.Networking
             if (IsCurrentRoomFlow(flow)) HandleRoomJoinSuccess(flow);
         }
 
-        private async void JoinRoomThroughCloudScript(string roomId)
+        private async void JoinRoomThroughCloudScript(string roomId, string password)
         {
             if (!PlayFabClientAPI.IsClientLoggedIn())
             {
@@ -429,7 +438,7 @@ namespace BattlePvp.Networking
             try
             {
                 ExecuteCloudScriptResult result = await ExecuteRoomMutation(flow, JOIN_ROOM_FUNCTION,
-                    new Dictionary<string, object> { { "roomId", roomId } });
+                    new Dictionary<string, object> { { "roomId", roomId }, { "passwordHash", RoomAdmission.PasswordHash(roomId, password) } });
                 if (!IsCurrentRoomFlow(flow)) { ScheduleRoomCleanup(flow); return; }
                 if (result == null || result.Error != null) throw new InvalidOperationException("Room join failed.");
                 flow.Info = ParseRoomInfoFromCloudScript(result.FunctionResult, flow);
@@ -442,8 +451,9 @@ namespace BattlePvp.Networking
             catch (Exception error)
             {
                 if (!IsCurrentRoomFlow(flow)) { ScheduleRoomCleanup(flow); return; }
+                RoomConnectionDiagnostics.Record("room_join_request_failed");
                 LeaveRoomWithNotice(error is RoomServiceUnconfirmedException ? RoomMutationUnconfirmedMessage :
-                    "방 참가에 실패했습니다. 다시 참가해 주세요.");
+                    "방 참가에 실패했습니다. 비밀방 암호, 정원 또는 강퇴 여부를 확인해 주세요.");
             }
         }
 
@@ -458,7 +468,8 @@ namespace BattlePvp.Networking
                     GetStringValue(infoDict, "roomName", fallback.RoomName),
                     GetStringValue(infoDict, "masterName", fallback.MasterName),
                     GetIntValue(infoDict, "playerCount", fallback.PlayerCount),
-                    GetStringValue(infoDict, "relayJoinCode", fallback.RelayJoinCode));
+                    GetStringValue(infoDict, "relayJoinCode", fallback.RelayJoinCode), capacity: GetIntValue(infoDict, "capacity", fallback.Capacity > 0 ? fallback.Capacity : 8),
+                    isPrivate: infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom);
             }
 
             return fallback;
@@ -494,6 +505,7 @@ namespace BattlePvp.Networking
             catch (Exception error)
             {
                 if (!IsCurrentRoomFlow(flow)) { ScheduleRoomCleanup(flow); return; }
+                RoomConnectionDiagnostics.Record("room_registration_failed");
                 if (error is RoomServiceUnconfirmedException)
                 {
                     LeaveRoomWithNotice(RoomMutationUnconfirmedMessage);
@@ -531,12 +543,17 @@ namespace BattlePvp.Networking
                 if (result != null && result.Error == null && AcceptHostLease(flow, result, requestStarted)) return;
             }
             catch (Exception) { }
-            if (IsCurrentRoomFlow(flow)) flow.Lease.Failed(Time.realtimeSinceStartupAsDouble);
+            if (IsCurrentRoomFlow(flow))
+            {
+                RoomConnectionDiagnostics.Record("room_heartbeat_failed");
+                flow.Lease.Failed(Time.realtimeSinceStartupAsDouble);
+            }
         }
 
         private void CloseExpiredHost(RoomFlow flow)
         {
             if (!IsCurrentRoomFlow(flow)) return;
+            RoomConnectionDiagnostics.Record("host_room_lease_expired");
             LeaveRoomWithNotice(RoomClosedMessage, retainNotice: true);
         }
 
@@ -674,7 +691,7 @@ namespace BattlePvp.Networking
             // A Join/Relay response does not grant a new list lease or make an unlisted room discoverable.
             if (_lastLoadedRoomInfos.TryGetValue(roomId, out RoomInfo listed))
                 _lastLoadedRoomInfos[roomId] = new RoomInfo(info.RoomName, info.MasterName, info.PlayerCount,
-                    info.RelayJoinCode, listed.ValidUntil);
+                    info.RelayJoinCode, listed.ValidUntil, info.Capacity, info.IsPrivate);
             _roomListSnapshot.Invalidate();
         }
 
@@ -683,7 +700,7 @@ namespace BattlePvp.Networking
             if (hostClosed || count <= 0) _lastLoadedRoomInfos.Remove(roomId);
             else if (_lastLoadedRoomInfos.TryGetValue(roomId, out RoomInfo listed))
                 _lastLoadedRoomInfos[roomId] = new RoomInfo(listed.RoomName, listed.MasterName, count,
-                    listed.RelayJoinCode, listed.ValidUntil);
+                    listed.RelayJoinCode, listed.ValidUntil, listed.Capacity, listed.IsPrivate);
             _roomListSnapshot.Invalidate();
         }
 
@@ -724,7 +741,8 @@ namespace BattlePvp.Networking
                     deadline <= Time.realtimeSinceStartupAsDouble)
                     continue;
 
-                roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount, relayJoinCode, deadline);
+                roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount, relayJoinCode, deadline,
+                    GetIntValue(infoDict, "capacity", 8), infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom);
             }
 
             return roomInfos;
@@ -802,7 +820,7 @@ namespace BattlePvp.Networking
         /// <summary>
         /// 湲곗〈 諛⑹뿉 李몄뿬?⑸땲?? (Shared Group 硫ㅻ쾭 異붽?)
         /// </summary>
-        public void JoinRoom(string roomId)
+        public void JoinRoom(string roomId, string password = "")
         {
             if (!CanUseRoomService) return;
             if (!RoomIdentity.IsValid(roomId))
@@ -810,7 +828,7 @@ namespace BattlePvp.Networking
                 SetRoomFlowState("이전 형식이거나 잘못된 방입니다. 호스트가 방을 다시 만들어 주세요.", false);
                 return;
             }
-            JoinRoomThroughCloudScript(roomId);
+            JoinRoomThroughCloudScript(roomId, password);
         }
 
         /// <summary>
@@ -859,7 +877,9 @@ namespace BattlePvp.Networking
             _activeRoomFlow = null;
             flow?.Cancel();
             ClearCurrentRoomState();
-            if (retainNotice) LastRoomNotice = message;
+            // Keep the reason through the asynchronous offline-scene load.
+            if (retainNotice || !string.IsNullOrEmpty(message)) LastRoomNotice = message;
+            if (flow != null) RoomConnectionDiagnostics.SaveExit(string.IsNullOrEmpty(message) ? "room_left" : "room_flow_failed");
             StopPreviousRoomNetwork();
             ScheduleRoomCleanup(flow);
             // Cleanup and network-stop observers can start another room synchronously.
@@ -1100,7 +1120,9 @@ namespace BattlePvp.Networking
                 !string.IsNullOrWhiteSpace(session.MasterName) ? session.MasterName :
                     !string.IsNullOrWhiteSpace(listed.MasterName) ? listed.MasterName : "Unknown",
                 session.PlayerCount > 0 ? session.PlayerCount : listed.PlayerCount > 0 ? listed.PlayerCount : 1,
-                !string.IsNullOrWhiteSpace(session.RelayJoinCode) ? session.RelayJoinCode : listed.RelayJoinCode);
+                !string.IsNullOrWhiteSpace(session.RelayJoinCode) ? session.RelayJoinCode : listed.RelayJoinCode,
+                capacity: session.Capacity > 0 ? session.Capacity : listed.Capacity > 0 ? listed.Capacity : 8,
+                isPrivate: session.Capacity > 0 ? session.IsPrivate : listed.IsPrivate);
         }
 
         private string GetCurrentPlayerNickname()

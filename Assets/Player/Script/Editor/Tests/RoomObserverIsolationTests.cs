@@ -55,6 +55,7 @@ namespace BattlePvp.EditorTests
             // Exercise the actual startup queue without opening Relay or starting a transport.
             Get<RoomOperationQueue>("_relayPreparations").Enqueue("relay", () => _relayBlock.Task);
             root.SetActive(true);
+            typeof(PlayFabBattleManager).GetField("<Instance>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, _manager);
         }
 
         [TearDown]
@@ -244,14 +245,14 @@ namespace BattlePvp.EditorTests
             };
             if (shutdown == "destroy") Invoke("OnDestroy");
             else if (shutdown == "quit") Invoke("OnApplicationQuit");
-            else _manager.gameObject.SetActive(false);
+            else EditorTestLifecycle.SetActive(_manager, false);
             Assert.That(_manager.CurrentRoomId, Is.Null);
             Assert.That(Get<object>("_activeRoomFlow"), Is.Null);
             CollectionAssert.AreEqual(new[] { "JoinRoom", "LeaveRoom" }, _requests);
             if (shutdown == "disable")
             {
                 Set("OnRoomFlowStateChanged", null);
-                _manager.gameObject.SetActive(true);
+                EditorTestLifecycle.SetActive(_manager, true);
                 _manager.CreateRoom("Reactivated room");
                 Assert.That(_manager.CurrentRoomInfo.RoomName, Is.EqualTo("Reactivated room"));
             }
@@ -321,6 +322,17 @@ namespace BattlePvp.EditorTests
             Invoke("OnDestroy");
             Assert.That(PlayFabBattleManager.Instance, Is.Null);
             Assert.That(notifications, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void RoomFailureNoticeSurvivesOfflineSceneTransitionAndResetsOnNextJoin()
+        {
+            _manager.CreateRoom("Created room");
+            Invoke("LeaveRoomWithNotice", "릴레이 연결이 종료되었습니다.", false);
+            Assert.That(_manager.LastRoomNotice, Is.EqualTo("릴레이 연결이 종료되었습니다."));
+            Assert.That(_manager.CurrentRoomId, Is.Null);
+            _manager.CreateRoom("Next room");
+            Assert.That(_manager.LastRoomNotice, Is.Null);
         }
 
         private void Respond(ExecuteCloudScriptRequest request, Action<ExecuteCloudScriptResult> success, Action<PlayFabError> failure)
