@@ -1,0 +1,23 @@
+{
+  "dummySceneIds": [
+    {
+      "name": "Training Dummy 3",
+      "sceneId": 1982080887416926222
+    },
+    {
+      "name": "Training Dummy 2",
+      "sceneId": 1982080888223728807
+    },
+    {
+      "name": "Training Dummy 1",
+      "sceneId": 1982080884324533699
+    }
+  ],
+  "cards": 8,
+  "maps": [
+    "map-preview-0",
+    "map-preview-1",
+    "map-preview-2"
+  ],
+  "portraitCount": 8
+}

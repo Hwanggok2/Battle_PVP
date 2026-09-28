@@ -1,0 +1,4450 @@
+{
+  "mode": "EditMode",
+  "summary": {
+    "total": 493,
+    "passed": 493,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 14.4979569,
+    "resultState": "Passed"
+  },
+  "results": [
+    {
+      "name": "DisablingServiceIgnoresLateAuthenticationAndProfileCallbacks",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.DisablingServiceIgnoresLateAuthenticationAndProfileCallbacks",
+      "state": "Passed",
+      "durationSeconds": 0.0148833,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "DistinctRequestContextsPreventOutOfOrderLoginFromReplacingTheSelectedAccount",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.DistinctRequestContextsPreventOutOfOrderLoginFromReplacingTheSelectedAccount",
+      "state": "Passed",
+      "durationSeconds": 0.0013511,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Bob\r\n"
+    },
+    {
+      "name": "DuplicateRequestsAndExplicitFailureAllowExactlyOneRetry",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.DuplicateRequestsAndExplicitFailureAllowExactlyOneRetry",
+      "state": "Passed",
+      "durationSeconds": 0.0009599,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "LateOldProfileAndDuplicateSdkCallbacksCannotResetOrApproveNewLogin",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.LateOldProfileAndDuplicateSdkCallbacksCannotResetOrApproveNewLogin",
+      "state": "Passed",
+      "durationSeconds": 0.0010309,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n[GlobalDataManager] PlayerNickname set to: Bob\r\n"
+    },
+    {
+      "name": "LoginButtonsRejectRepeatedClicksAndRecoverAfterFailure",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.LoginButtonsRejectRepeatedClicksAndRecoverAfterFailure",
+      "state": "Passed",
+      "durationSeconds": 0.0027854,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingProfileResponseRetainsTheSelectedLoginForLobbyRetry",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.MissingProfileResponseRetainsTheSelectedLoginForLobbyRetry",
+      "state": "Passed",
+      "durationSeconds": 0.00074489999999999995,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "NewRegistrationInvalidatesPendingLoginWithoutAdoptingEitherSession",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.NewRegistrationInvalidatesPendingLoginWithoutAdoptingEitherSession",
+      "state": "Passed",
+      "durationSeconds": 0.000686,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProfileResetFailureCannotBecomeLoginSuccess",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.ProfileResetFailureCannotBecomeLoginSuccess",
+      "state": "Passed",
+      "durationSeconds": 0.0008885,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "ReentrantResetDuringSessionInitializationCannotBeAdoptedByLogin",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.ReentrantResetDuringSessionInitializationCannotBeAdoptedByLogin",
+      "state": "Passed",
+      "durationSeconds": 0.0007989,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "RegistrationNeverCommitsItsSessionAcrossAnOverlappingLogin",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.RegistrationNeverCommitsItsSessionAcrossAnOverlappingLogin",
+      "state": "Passed",
+      "durationSeconds": 0.0006884,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Bob\r\n"
+    },
+    {
+      "name": "ReplacedOrDisabledProfileInstanceCannotApproveLogin",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.ReplacedOrDisabledProfileInstanceCannotApproveLogin",
+      "state": "Passed",
+      "durationSeconds": 0.0011244,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n[GlobalDataManager] PlayerNickname set to: Bob\r\n"
+    },
+    {
+      "name": "RetryableProfileFailurePreservesAuthenticationAndCompletesOnce",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.RetryableProfileFailurePreservesAuthenticationAndCompletesOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0006621,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "TimeoutIsCheckedInsideCallbackBeforeUpdateAndLateSdkSuccessCannotCommit",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.TimeoutIsCheckedInsideCallbackBeforeUpdateAndLateSdkSuccessCannotCommit",
+      "state": "Passed",
+      "durationSeconds": 0.0007015,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Bob\r\n"
+    },
+    {
+      "name": "UiNavigationIsScheduledOnceAndCancelledByScreenExit",
+      "fullName": "BattlePvp.EditorTests.AuthenticationFlowTests.UiNavigationIsScheduledOnceAndCancelledByScreenExit",
+      "state": "Passed",
+      "durationSeconds": 0.0011601,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Alice\r\n"
+    },
+    {
+      "name": "ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(False,False)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(False,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0203688,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(False,True)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(False,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0009183,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(True,False)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(True,False)",
+      "state": "Passed",
+      "durationSeconds": 0.001062,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(True,True)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.ProductionSendDelegatesKeepDeviceReportsOnEachRequestSession(True,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0007923,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StaticSdkRouteReproducesTheSignedOutDeviceFailure(False)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.StaticSdkRouteReproducesTheSignedOutDeviceFailure(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0057409,
+      "message": null,
+      "stackTrace": null,
+      "output": "PlayFabException: Must be logged in to call this method\r\nPlayFab.PlayFabClientAPI.ReportDeviceInfo (PlayFab.ClientModels.DeviceInfoRequest request, System.Action`1[T] resultCallback, System.Action`1[T] errorCallback, System.Object customData, System.Collections.Generic.Dictionary`2[TKey,TValue] extraHeaders) (at Assets/PlayFabSDK/Client/PlayFabClientAPI.cs:1838)\nPlayFab.Internal.PlayFabDeviceUtil.SendDeviceInfoToPlayFab (PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:27)\nPlayFab.Internal.PlayFabDeviceUtil._OnPlayFabLogin (PlayFab.ClientModels.UserSettings settingsForUser, System.String playFabId, System.String entityId, System.String entityType, PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:94)\nPlayFab.Internal.PlayFabDeviceUtil.OnPlayFabLogin (PlayFab.SharedModels.PlayFabResultCommon result, PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:75)\nPlayFab.Internal.PlayFabUnityHttp.OnResponse (System.String response, PlayFab.Internal.CallRequestContainer reqContainer) (at Assets/PlayFabSDK/Shared/Internal/PlayFabHttp/PlayFabUnityHttp.cs:231)\nUnityEngine.Debug:LogException(Exception)\nPlayFab.Internal.PlayFabUnityHttp:OnResponse(String, CallRequestContainer) (at Assets/PlayFabSDK/Shared/Internal/PlayFabHttp/PlayFabUnityHttp.cs:263)\nBattlePvp.EditorTests.AuthenticationSdkIntegrationTests:StaticSdkRouteReproducesTheSignedOutDeviceFailure(Boolean) (at Assets/Player/Script/Editor/Tests/AuthenticationSdkIntegrationTests.cs:148)\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\nNUnit.Framework.Internal.Reflect:InvokeMethod(MethodInfo, Object, Object[])\nNUnit.Framework.Internal.MethodWrapper:Invoke(Object, Object[])\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:Execute(ITestExecutionContext)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions()\n\r\n"
+    },
+    {
+      "name": "StaticSdkRouteReproducesTheSignedOutDeviceFailure(True)",
+      "fullName": "BattlePvp.EditorTests.AuthenticationSdkIntegrationTests.StaticSdkRouteReproducesTheSignedOutDeviceFailure(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0016983,
+      "message": null,
+      "stackTrace": null,
+      "output": "PlayFabException: Must be logged in to call this method\r\nPlayFab.PlayFabClientAPI.ReportDeviceInfo (PlayFab.ClientModels.DeviceInfoRequest request, System.Action`1[T] resultCallback, System.Action`1[T] errorCallback, System.Object customData, System.Collections.Generic.Dictionary`2[TKey,TValue] extraHeaders) (at Assets/PlayFabSDK/Client/PlayFabClientAPI.cs:1838)\nPlayFab.Internal.PlayFabDeviceUtil.SendDeviceInfoToPlayFab (PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:27)\nPlayFab.Internal.PlayFabDeviceUtil._OnPlayFabLogin (PlayFab.ClientModels.UserSettings settingsForUser, System.String playFabId, System.String entityId, System.String entityType, PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:94)\nPlayFab.Internal.PlayFabDeviceUtil.OnPlayFabLogin (PlayFab.SharedModels.PlayFabResultCommon result, PlayFab.PlayFabApiSettings settings, PlayFab.SharedModels.IPlayFabInstanceApi instanceApi) (at Assets/PlayFabSDK/Client/PlayFabDeviceUtil.cs:75)\nPlayFab.Internal.PlayFabUnityHttp.OnResponse (System.String response, PlayFab.Internal.CallRequestContainer reqContainer) (at Assets/PlayFabSDK/Shared/Internal/PlayFabHttp/PlayFabUnityHttp.cs:231)\nUnityEngine.Debug:LogException(Exception)\nPlayFab.Internal.PlayFabUnityHttp:OnResponse(String, CallRequestContainer) (at Assets/PlayFabSDK/Shared/Internal/PlayFabHttp/PlayFabUnityHttp.cs:263)\nBattlePvp.EditorTests.AuthenticationSdkIntegrationTests:StaticSdkRouteReproducesTheSignedOutDeviceFailure(Boolean) (at Assets/Player/Script/Editor/Tests/AuthenticationSdkIntegrationTests.cs:148)\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\nNUnit.Framework.Internal.Reflect:InvokeMethod(MethodInfo, Object, Object[])\nNUnit.Framework.Internal.MethodWrapper:Invoke(Object, Object[])\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:Execute(ITestExecutionContext)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions()\n\r\n"
+    },
+    {
+      "name": "DisabledAndInactiveObstaclesDoNotStopTheArrow",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.DisabledAndInactiveObstaclesDoNotStopTheArrow",
+      "state": "Passed",
+      "durationSeconds": 0.0188538,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisabledProjectileCannotMoveOrApplyDamage",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.DisabledProjectileCannotMoveOrApplyDamage",
+      "state": "Passed",
+      "durationSeconds": 0.0012712,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ExposedTargetReceivesDamageOnceDespiteMultipleCollidersAndLaterCallbacks",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.ExposedTargetReceivesDamageOnceDespiteMultipleCollidersAndLaterCallbacks",
+      "state": "Passed",
+      "durationSeconds": 0.0017291,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FullQueryBufferStillFindsTheBlockingWall(False)",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.FullQueryBufferStillFindsTheBlockingWall(False)",
+      "state": "Passed",
+      "durationSeconds": 0.001898,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FullQueryBufferStillFindsTheBlockingWall(True)",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.FullQueryBufferStillFindsTheBlockingWall(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0009065,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InitialWallOverlapWinsOverAnOverlappingDamageTrigger",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.InitialWallOverlapWinsOverAnOverlappingDamageTrigger",
+      "state": "Passed",
+      "durationSeconds": 0.0006695,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerAndDecorativeTriggersDoNotBlockAnExposedTarget",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.OwnerAndDecorativeTriggersDoNotBlockAnExposedTarget",
+      "state": "Passed",
+      "durationSeconds": 0.001185,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlayerControllerIsSkippedButItsAuthoredBodyTriggerIsEligible",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.PlayerControllerIsSkippedButItsAuthoredBodyTriggerIsEligible",
+      "state": "Passed",
+      "durationSeconds": 0.0012842,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ThinWallStopsArrowBeforeTheTargetAtNormalAndLowFrameRates(0.016f)",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.ThinWallStopsArrowBeforeTheTargetAtNormalAndLowFrameRates(0.016f)",
+      "state": "Passed",
+      "durationSeconds": 0.000942,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ThinWallStopsArrowBeforeTheTargetAtNormalAndLowFrameRates(0.5f)",
+      "fullName": "BattlePvp.EditorTests.BowProjectileCollisionTests.ThinWallStopsArrowBeforeTheTargetAtNormalAndLowFrameRates(0.5f)",
+      "state": "Passed",
+      "durationSeconds": 0.0004278,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BroadcastPathLimitsBurstsAndCleansUpAfterDisconnectAndServerStop",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.BroadcastPathLimitsBurstsAndCleansUpAfterDisconnectAndServerStop",
+      "state": "Passed",
+      "durationSeconds": 0.0090848,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HandlerRegistrationRequiresAuthenticationBeforeReadingPayload",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.HandlerRegistrationRequiresAuthenticationBeforeReadingPayload",
+      "state": "Passed",
+      "durationSeconds": 0.0013865,
+      "message": null,
+      "stackTrace": null,
+      "output": "Disconnecting connection: connection(2147483606). Received message BattlePvp.UI.BattleChatSubmitMessage that required authentication, but the user has not authenticated yet\r\n"
+    },
+    {
+      "name": "NameAndOutgoingMessageLimitsKeepCompleteSurrogatePairs",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.NameAndOutgoingMessageLimitsKeepCompleteSurrogatePairs",
+      "state": "Passed",
+      "durationSeconds": 0.0007692,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"unauthenticated\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"unauthenticated\")",
+      "state": "Passed",
+      "durationSeconds": 0.0008279,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"not-ready\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"not-ready\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002243,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"no-room-authentication\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"no-room-authentication\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002087,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"different-room\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"different-room\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001767,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"stale-connection\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"stale-connection\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002401,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"no-avatar\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"no-avatar\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002007,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"wrong-owner\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"wrong-owner\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001748,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"unspawned\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"unspawned\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001754,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsConnectionsOutsideTheCurrentConnectedRoster(\"disconnected-body\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsConnectionsOutsideTheCurrentConnectedRoster(\"disconnected-body\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001751,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsEmptyOrOversizedPayloads(null)",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsEmptyOrOversizedPayloads(null)",
+      "state": "Passed",
+      "durationSeconds": 0.0005742,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsEmptyOrOversizedPayloads(\" \\r\\n \")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsEmptyOrOversizedPayloads(\" \\r\\n \")",
+      "state": "Passed",
+      "durationSeconds": 0.0002211,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsEmptyOrOversizedPayloads(\"oversized\")",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.RejectsEmptyOrOversizedPayloads(\"oversized\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001933,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ValidMemberUsesServerNameAndSanitizedText",
+      "fullName": "BattlePvp.EditorTests.ChatAuthorityTests.ValidMemberUsesServerNameAndSanitizedText",
+      "state": "Passed",
+      "durationSeconds": 0.0009503,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BowCancellationInvalidatesChargeAndReservedShot",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.BowCancellationInvalidatesChargeAndReservedShot",
+      "state": "Passed",
+      "durationSeconds": 0.0006966,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BowPreservesMinimumDamageAndRejectsInvalidClock",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.BowPreservesMinimumDamageAndRejectsInvalidClock",
+      "state": "Passed",
+      "durationSeconds": 0.0006661,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BowRequiresChargeAndConsumesEachApprovedShotOnce",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.BowRequiresChargeAndConsumesEachApprovedShotOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0002632,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "KickRequiresApprovedSequenceAndCannotReopenAnEndedWindow",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.KickRequiresApprovedSequenceAndCannotReopenAnEndedWindow",
+      "state": "Passed",
+      "durationSeconds": 0.0003849,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MeleeGeometryUsesAuthoredRotationAndCannotExpandFromClientInput",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.MeleeGeometryUsesAuthoredRotationAndCannotExpandFromClientInput",
+      "state": "Passed",
+      "durationSeconds": 0.000436,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MeleeHistoryRejectsRearPointsExpiredSamplesAndNonFinitePoints",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.MeleeHistoryRejectsRearPointsExpiredSamplesAndNonFinitePoints",
+      "state": "Passed",
+      "durationSeconds": 0.0004622,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ServerBodyHistoryRejectsForgedHeadAndOldLifeSamples",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.ServerBodyHistoryRejectsForgedHeadAndOldLifeSamples",
+      "state": "Passed",
+      "durationSeconds": 0.0047734,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SolidWallBlocksServerHitWhileClearPathRemainsValid",
+      "fullName": "BattlePvp.EditorTests.CombatAuthorityTests.SolidWallBlocksServerHitWhileClearPathRemainsValid",
+      "state": "Passed",
+      "durationSeconds": 0.0017644,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptedOwnerControlsRejectInvalidDeadlinesAndDoNotRequireAnAnimationForInputLocks",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.AcceptedOwnerControlsRejectInvalidDeadlinesAndDoNotRequireAnAnimationForInputLocks",
+      "state": "Passed",
+      "durationSeconds": 0.0005616,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptedPostCastAnimationAndInputLocksKeepIndependentAbsoluteDeadlines",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.AcceptedPostCastAnimationAndInputLocksKeepIndependentAbsoluteDeadlines",
+      "state": "Passed",
+      "durationSeconds": 0.0002574,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ActualCastRoutineRejectsMissingIdentityWithoutRefundingCooldown(\"CoMonostatStrSkill\",\"_isCastingMonostatStrSkill\",\"_monostatStrSkillCooldownUntil\",\"_monostatStrSkillActiveUntil\")",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.ActualCastRoutineRejectsMissingIdentityWithoutRefundingCooldown(\"CoMonostatStrSkill\",\"_isCastingMonostatStrSkill\",\"_monostatStrSkillCooldownUntil\",\"_monostatStrSkillActiveUntil\")",
+      "state": "Passed",
+      "durationSeconds": 0.0026652,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ActualCastRoutineRejectsMissingIdentityWithoutRefundingCooldown(\"CoMonostatAgiSkill\",\"_isCastingMonostatAgiSkill\",\"_monostatAgiSkillCooldownUntil\",\"_monostatAgiSkillActiveUntil\")",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.ActualCastRoutineRejectsMissingIdentityWithoutRefundingCooldown(\"CoMonostatAgiSkill\",\"_isCastingMonostatAgiSkill\",\"_monostatAgiSkillCooldownUntil\",\"_monostatAgiSkillActiveUntil\")",
+      "state": "Passed",
+      "durationSeconds": 0.0007021,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CancellingAnAcceptedCastOrBuffClearsActionsButNeverRefundsItsCooldown",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.CancellingAnAcceptedCastOrBuffClearsActionsButNeverRefundsItsCooldown",
+      "state": "Passed",
+      "durationSeconds": 0.000281,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CastCompletionAndEffectExpiryPreserveTheOriginalCooldown",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.CastCompletionAndEffectExpiryPreserveTheOriginalCooldown",
+      "state": "Passed",
+      "durationSeconds": 0.0003023,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FirstReliableSpawnUsesItsBatchTimeBeforeTheFirstUnreliableTimeSnapshot",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.FirstReliableSpawnUsesItsBatchTimeBeforeTheFirstUnreliableTimeSnapshot",
+      "state": "Passed",
+      "durationSeconds": 0.0002065,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.NaN)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.NaN)",
+      "state": "Passed",
+      "durationSeconds": 0.0003976,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 2.86E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.NegativeInfinity)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(double.NegativeInfinity)",
+      "state": "Passed",
+      "durationSeconds": 1.66E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(-1.0d)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.InvalidDurationsCannotPartiallyConsumeOrResetAnExistingCooldown(-1.0d)",
+      "state": "Passed",
+      "durationSeconds": 1.5E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"HandleDied\",1)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"HandleDied\",1)",
+      "state": "Passed",
+      "durationSeconds": 0.0036389,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"HandleRevived\",1)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"HandleRevived\",1)",
+      "state": "Passed",
+      "durationSeconds": 0.000221,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"OnDisable\",0)",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.OwnerDeathAndRevivalPreserveAppliedPoisonWhileDisposalClearsIt(\"OnDisable\",0)",
+      "state": "Passed",
+      "durationSeconds": 0.000379,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerRebindSeedsRequestsFromRetainedServerWithoutRollingBackInFlightRequests",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.OwnerRebindSeedsRequestsFromRetainedServerWithoutRollingBackInFlightRequests",
+      "state": "Passed",
+      "durationSeconds": 0.0011698,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PoisonReappliedAtExpiryStartsWithOneStackBeforeTheNextTimerTick",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.PoisonReappliedAtExpiryStartsWithOneStackBeforeTheNextTimerTick",
+      "state": "Passed",
+      "durationSeconds": 0.0014575,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PoisonRefreshCapsStacksAndRetainsReverseTargetTickOrderUntilExactExpiry",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.PoisonRefreshCapsStacksAndRetainsReverseTargetTickOrderUntilExactExpiry",
+      "state": "Passed",
+      "durationSeconds": 0.000816,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PoisonRejectsInvalidInputsPrunesDeadTargetsAndClampsDamageOverflow",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.PoisonRejectsInvalidInputsPrunesDeadTargetsAndClampsDamageOverflow",
+      "state": "Passed",
+      "durationSeconds": 0.0003903,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PredictedLocksExpireIndependentlyAndCancellationAlsoStopsTheAnimationLock",
+      "fullName": "BattlePvp.EditorTests.CombatExecutionStateTests.PredictedLocksExpireIndependentlyAndCancellationAlsoStopsTheAnimationLock",
+      "state": "Passed",
+      "durationSeconds": 0.0002245,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BodyCacheRefreshesWhenNestedModelAddsANewCollider",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.BodyCacheRefreshesWhenNestedModelAddsANewCollider",
+      "state": "Passed",
+      "durationSeconds": 0.0009587,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ChargeEndingPreservesBuffAndSlowUntilTheirOwnExpiry",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.ChargeEndingPreservesBuffAndSlowUntilTheirOwnExpiry",
+      "state": "Passed",
+      "durationSeconds": 0.0005596,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FullOverlapAndRayBuffersRetryWithoutLosingColliders",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.FullOverlapAndRayBuffersRetryWithoutLosingColliders",
+      "state": "Passed",
+      "durationSeconds": 0.0014895,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "GuardBreakWaitsForAcceptedDamage(False,0.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.GuardBreakWaitsForAcceptedDamage(False,0.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0040359,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "GuardBreakWaitsForAcceptedDamage(True,0.0f,10.0f)",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.GuardBreakWaitsForAcceptedDamage(True,0.0f,10.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003466,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "GuardBreakWaitsForAcceptedDamage(True,10.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.GuardBreakWaitsForAcceptedDamage(True,10.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0002409,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HidingAndRestoringCharacterDoesNotEnableInactiveAttackColliders",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.HidingAndRestoringCharacterDoesNotEnableInactiveAttackColliders",
+      "state": "Passed",
+      "durationSeconds": 0.0033184,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InputLockRemovalAndExpiryKeepOtherOwnersLocked",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.InputLockRemovalAndExpiryKeepOtherOwnersLocked",
+      "state": "Passed",
+      "durationSeconds": 0.0002771,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RingWrapAndFrontDiscardPreserveSnapshotOrder",
+      "fullName": "BattlePvp.EditorTests.CombatMovementAndQueryTests.RingWrapAndFrontDiscardPreserveSnapshotOrder",
+      "state": "Passed",
+      "durationSeconds": 0.0014314,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AnimationSeekKeepsExistingClampedTiming(10.0d,9.0d,2.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.AnimationSeekKeepsExistingClampedTiming(10.0d,9.0d,2.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0006583,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AnimationSeekKeepsExistingClampedTiming(10.0d,11.0d,2.0f,0.5f)",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.AnimationSeekKeepsExistingClampedTiming(10.0d,11.0d,2.0f,0.5f)",
+      "state": "Passed",
+      "durationSeconds": 3.61E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AnimationSeekKeepsExistingClampedTiming(10.0d,15.0d,2.0f,0.98f)",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.AnimationSeekKeepsExistingClampedTiming(10.0d,15.0d,2.0f,0.98f)",
+      "state": "Passed",
+      "durationSeconds": 1.81E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AuraPresentationOwnsTimedExpiryShieldFallbackAndDisposal",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.AuraPresentationOwnsTimedExpiryShieldFallbackAndDisposal",
+      "state": "Passed",
+      "durationSeconds": 0.0042103,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudNamesUseConfiguredValuesOrExistingIdentityFallback(Monostat,STR,0,\"흡혈\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudNamesUseConfiguredValuesOrExistingIdentityFallback(Monostat,STR,0,\"흡혈\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004837,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudNamesUseConfiguredValuesOrExistingIdentityFallback(Monostat,AGI,0,\"독 바르기\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudNamesUseConfiguredValuesOrExistingIdentityFallback(Monostat,AGI,0,\"독 바르기\")",
+      "state": "Passed",
+      "durationSeconds": 6.37E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudNamesUseConfiguredValuesOrExistingIdentityFallback(Strategist,STR,1,\"프리셋\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudNamesUseConfiguredValuesOrExistingIdentityFallback(Strategist,STR,1,\"프리셋\")",
+      "state": "Passed",
+      "durationSeconds": 3.32E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudNamesUseConfiguredValuesOrExistingIdentityFallback(Polymath,STR,1,\"무기\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudNamesUseConfiguredValuesOrExistingIdentityFallback(Polymath,STR,1,\"무기\")",
+      "state": "Passed",
+      "durationSeconds": 2.75E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudPhaseOrderAndDeadlineBoundariesMatchCombatDisplay",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudPhaseOrderAndDeadlineBoundariesMatchCombatDisplay",
+      "state": "Passed",
+      "durationSeconds": 0.0005251,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudPublicationThrottlesEquivalentValuesButPublishesPhaseChangesImmediately",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.HudPublicationThrottlesEquivalentValuesButPublishesPhaseChangesImmediately",
+      "state": "Passed",
+      "durationSeconds": 0.0002828,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerLifecycleCancelsActionStateAndPresentationTogether(\"HandleDied\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.OwnerLifecycleCancelsActionStateAndPresentationTogether(\"HandleDied\")",
+      "state": "Passed",
+      "durationSeconds": 0.0028822,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerLifecycleCancelsActionStateAndPresentationTogether(\"HandleRevived\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.OwnerLifecycleCancelsActionStateAndPresentationTogether(\"HandleRevived\")",
+      "state": "Passed",
+      "durationSeconds": 0.000275,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerLifecycleCancelsActionStateAndPresentationTogether(\"OnDisable\")",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.OwnerLifecycleCancelsActionStateAndPresentationTogether(\"OnDisable\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002583,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SwordPresentationRestoresBothModelsWhenTargetOrEffectChanges",
+      "fullName": "BattlePvp.EditorTests.CombatPresentationTests.SwordPresentationRestoresBothModelsWhenTargetOrEffectChanges",
+      "state": "Passed",
+      "durationSeconds": 0.0007018,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CastCoroutineAppliesTheAcceptedPlanOnlyWhileTheSkillRemainsAvailable(False)",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.CastCoroutineAppliesTheAcceptedPlanOnlyWhileTheSkillRemainsAvailable(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0033111,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CastCoroutineAppliesTheAcceptedPlanOnlyWhileTheSkillRemainsAvailable(True)",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.CastCoroutineAppliesTheAcceptedPlanOnlyWhileTheSkillRemainsAvailable(True)",
+      "state": "Passed",
+      "durationSeconds": 0.000246,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Monostat,CON,0,MonostatConKick,\"_monostatConSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Monostat,CON,0,MonostatConKick,\"_monostatConSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0011774,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Monostat,DEF,0,MonostatDefTaunt,\"_monostatDefSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Monostat,DEF,0,MonostatDefTaunt,\"_monostatDefSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0003168,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Strategist,STR,0,StrategistRoll,\"_strategistRollSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Strategist,STR,0,StrategistRoll,\"_strategistRollSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002591,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Strategist,STR,1,StrategistPresetChange,\"_strategistPresetSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Strategist,STR,1,StrategistPresetChange,\"_strategistPresetSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002392,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Polymath,STR,0,PolymathRoll,\"_polymathRollSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Polymath,STR,0,PolymathRoll,\"_polymathRollSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002536,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Polymath,STR,1,PolymathWeaponSwap,\"_polymathWeaponSwapSkillData\")",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.OwnerSelectionAndServerResolutionUseTheSameAssignedAsset(Polymath,STR,1,PolymathWeaponSwap,\"_polymathWeaponSwapSkillData\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002296,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresetPlanKeepsReturnInvestmentSeparateFromItemsAndPreservesHealthConversion",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.PresetPlanKeepsReturnInvestmentSeparateFromItemsAndPreservesHealthConversion",
+      "state": "Passed",
+      "durationSeconds": 0.0008153,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectedPlansAndCancelledCastsCannotBypassCooldown",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.RejectedPlansAndCancelledCastsCannotBypassCooldown",
+      "state": "Passed",
+      "durationSeconds": 0.0001865,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(StrategistRoll)",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(StrategistRoll)",
+      "state": "Passed",
+      "durationSeconds": 0.0004771,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(PolymathRoll)",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(PolymathRoll)",
+      "state": "Passed",
+      "durationSeconds": 5.08E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(MonostatConKick)",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.StartAndHitWindowEffectsAreNotRepeatedByCastCompletion(MonostatConKick)",
+      "state": "Passed",
+      "durationSeconds": 3.08E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnavailablePolymathPresetStaysUnavailableEvenWithAnAssignedAsset",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.UnavailablePolymathPresetStaysUnavailableEvenWithAnAssignedAsset",
+      "state": "Passed",
+      "durationSeconds": 0.0006726,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ZeroCastRequiresNoAnimationBeforeApplyingImmediately",
+      "fullName": "BattlePvp.EditorTests.CombatSkillPlanTests.ZeroCastRequiresNoAnimationBeforeApplyingImmediately",
+      "state": "Passed",
+      "durationSeconds": 0.0002189,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BannerAndRankingDeduplicateNetworkIdsAndSkipInvalidRows",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.BannerAndRankingDeduplicateNetworkIdsAndSkipInvalidRows",
+      "state": "Passed",
+      "durationSeconds": 0.0875428,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BannerLateEnableReconnectAndSceneTransitionUseTheCurrentRoster",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.BannerLateEnableReconnectAndSceneTransitionUseTheCurrentRoster",
+      "state": "Passed",
+      "durationSeconds": 0.054153,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BannerTracksJoinLeaveAndZeroWithoutAcceptingStaleMetadataCount",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.BannerTracksJoinLeaveAndZeroWithoutAcceptingStaleMetadataCount",
+      "state": "Passed",
+      "durationSeconds": 0.050232,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MetadataRequestsRejectOlderResponsesAndRoomSwitches",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.MetadataRequestsRejectOlderResponsesAndRoomSwitches",
+      "state": "Passed",
+      "durationSeconds": 0.0482177,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MetadataRequestsRejectPreviousActivationEvenWhenTheRoomIsUnchanged",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.MetadataRequestsRejectPreviousActivationEvenWhenTheRoomIsUnchanged",
+      "state": "Passed",
+      "durationSeconds": 0.0460706,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RankingTracksLateEnableDepartureLastZeroAndReconnectWithReusedRows",
+      "fullName": "BattlePvp.EditorTests.ConnectedRosterUiTests.RankingTracksLateEnableDepartureLastZeroAndReconnectWithReusedRows",
+      "state": "Passed",
+      "durationSeconds": 0.0477925,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DestroyedWorldRootIsRecreatedAtUnitScaleOnTheNextSpawn",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.DestroyedWorldRootIsRecreatedAtUnitScaleOnTheNextSpawn",
+      "state": "Passed",
+      "durationSeconds": 0.0383882,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisableRemovesStaleHandlesAndAlreadyReturnedEntriesWithoutWaitingForCallbacks",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.DisableRemovesStaleHandlesAndAlreadyReturnedEntriesWithoutWaitingForCallbacks",
+      "state": "Passed",
+      "durationSeconds": 0.001887,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerDisableAndReenableReusePopupsWithoutDuplicateReturns(False)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.OwnerDisableAndReenableReusePopupsWithoutDuplicateReturns(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0025823,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerDisableAndReenableReusePopupsWithoutDuplicateReturns(True)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.OwnerDisableAndReenableReusePopupsWithoutDuplicateReturns(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0009021,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SceneCleanupToleratesThePopupRootBeingDestroyedFirst(False)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.SceneCleanupToleratesThePopupRootBeingDestroyedFirst(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0010203,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SceneCleanupToleratesThePopupRootBeingDestroyedFirst(True)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.SceneCleanupToleratesThePopupRootBeingDestroyedFirst(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0004963,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SpawnSkipsDestroyedRetainedObjectsAndComponents(False)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.SpawnSkipsDestroyedRetainedObjectsAndComponents(False)",
+      "state": "Passed",
+      "durationSeconds": 0.00121,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SpawnSkipsDestroyedRetainedObjectsAndComponents(True)",
+      "fullName": "BattlePvp.EditorTests.DamagePopupLifecycleTests.SpawnSkipsDestroyedRetainedObjectsAndComponents(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0006032,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BgmValidationFromWorkerDefersAudioSourceMutation",
+      "fullName": "BattlePvp.EditorTests.DeferredUiValidationTests.BgmValidationFromWorkerDefersAudioSourceMutation",
+      "state": "Passed",
+      "durationSeconds": 0.3006446,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DestroyBeforeEditorUpdateDiscardsPendingValidation",
+      "fullName": "BattlePvp.EditorTests.DeferredUiValidationTests.DestroyBeforeEditorUpdateDiscardsPendingValidation",
+      "state": "Passed",
+      "durationSeconds": 0.2996658,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SkillValidationFromWorkerDefersSpriteAndHierarchyChanges",
+      "fullName": "BattlePvp.EditorTests.DeferredUiValidationTests.SkillValidationFromWorkerDefersSpriteAndHierarchyChanges",
+      "state": "Passed",
+      "durationSeconds": 0.2981436,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ApprovedRevivalClosesTheLocalCustomizerWithoutCancellingItsPendingSave",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.ApprovedRevivalClosesTheLocalCustomizerWithoutCancellingItsPendingSave",
+      "state": "Passed",
+      "durationSeconds": 0.0037558,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ClosingChatStillConsumesGameplayInputForTheCurrentFrame",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.ClosingChatStillConsumesGameplayInputForTheCurrentFrame",
+      "state": "Passed",
+      "durationSeconds": 0.0004384,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalCustomizerSurvivesEitherRemoteSpawnOrderAndRemoteDeparture(False)",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.LocalCustomizerSurvivesEitherRemoteSpawnOrderAndRemoteDeparture(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0009167,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalCustomizerSurvivesEitherRemoteSpawnOrderAndRemoteDeparture(True)",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.LocalCustomizerSurvivesEitherRemoteSpawnOrderAndRemoteDeparture(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0004232,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalOwnershipCanArriveAfterAwakeAndReplaceThePreviousOwner",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.LocalOwnershipCanArriveAfterAwakeAndReplaceThePreviousOwner",
+      "state": "Passed",
+      "durationSeconds": 0.0019731,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlayerPrefabDoesNotUseTheCustomizerIconForOverflow",
+      "fullName": "BattlePvp.EditorTests.GameplayUiOwnershipTests.PlayerPrefabDoesNotUseTheCustomizerIconForOverflow",
+      "state": "Passed",
+      "durationSeconds": 0.0329084,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisableCancellationRejectsReentrantPublicLoadAndIgnoresLateResult",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.DisableCancellationRejectsReentrantPublicLoadAndIgnoresLateResult",
+      "state": "Passed",
+      "durationSeconds": 0.0020867,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FailedDecodePreservesExistingDataAndAllowsRetry",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.FailedDecodePreservesExistingDataAndAllowsRetry",
+      "state": "Passed",
+      "durationSeconds": 0.0021149,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] Profile load failed: The saved profile is incomplete or contains invalid values.\r\n"
+    },
+    {
+      "name": "ResetInsideStateEventStopsOldNotificationsAndFailsOldCompletion",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.ResetInsideStateEventStopsOldNotificationsAndFailsOldCompletion",
+      "state": "Passed",
+      "durationSeconds": 0.0004549,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SameSessionDuplicateResponseCannotCompleteTheNextLoad",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.SameSessionDuplicateResponseCannotCompleteTheNextLoad",
+      "state": "Passed",
+      "durationSeconds": 0.0007372,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] Profile load failed: \r\n"
+    },
+    {
+      "name": "SessionResetFailsEveryWaiterAndKeepsReentrantRequestSeparate",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.SessionResetFailsEveryWaiterAndKeepsReentrantRequestSeparate",
+      "state": "Passed",
+      "durationSeconds": 0.0016024,
+      "message": null,
+      "stackTrace": null,
+      "output": "InvalidOperationException: consumer\r\nBattlePvp.EditorTests.GlobalProfileCompletionTests+<>c.<SessionResetFailsEveryWaiterAndKeepsReentrantRequestSeparate>b__8_0 (System.Boolean _) (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:82)\nBattlePvp.Managers.GlobalDataManager.NotifyProfileCallback (System.Action`1[T] callback, System.Boolean succeeded) (at Assets/Player/Script/Managers/GlobalDataManager.cs:489)\nUnityEngine.Debug:LogException(Exception)\nBattlePvp.Managers.GlobalDataManager:NotifyProfileCallback(Action`1, Boolean) (at Assets/Player/Script/Managers/GlobalDataManager.cs:490)\nBattlePvp.Managers.GlobalDataManager:CompleteProfileLoadCallbacks(Action`1[], Boolean, Int32) (at Assets/Player/Script/Managers/GlobalDataManager.cs:484)\nBattlePvp.Managers.GlobalDataManager:BeginPlayerSession() (at Assets/Player/Script/Managers/GlobalDataManager.cs:132)\nBattlePvp.EditorTests.GlobalProfileCompletionTests:SessionResetFailsEveryWaiterAndKeepsReentrantRequestSeparate() (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:86)\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\nNUnit.Framework.Internal.Reflect:InvokeMethod(MethodInfo, Object, Object[])\nNUnit.Framework.Internal.MethodWrapper:Invoke(Object, Object[])\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:Execute(ITestExecutionContext)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions()\n\r\n"
+    },
+    {
+      "name": "SynchronousReloadInsideResetEventDoesNotPublishOldZeroRecordAfterward",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.SynchronousReloadInsideResetEventDoesNotPublishOldZeroRecordAfterward",
+      "state": "Passed",
+      "durationSeconds": 0.0004186,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions",
+      "fullName": "BattlePvp.EditorTests.GlobalProfileCompletionTests.ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions",
+      "state": "Passed",
+      "durationSeconds": 0.0019917,
+      "message": null,
+      "stackTrace": null,
+      "output": "InvalidOperationException: consumer\r\nBattlePvp.EditorTests.GlobalProfileCompletionTests+<>c.<ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions>b__7_0 (System.Int32 _, BattlePvp.Stats.StatContainer __, System.Boolean ___) (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:62)\nBattlePvp.Managers.GlobalDataManager+<>c__DisplayClass79_0.<PublishPresetState>b__0 (System.Delegate subscriber) (at Assets/Player/Script/Managers/GlobalDataManager.cs:246)\nBattlePvp.Managers.GlobalDataManager.NotifySubscribers (System.Delegate subscribers, System.Action`1[T] notify, System.Int32 session, System.Int32 stateVersion) (at Assets/Player/Script/Managers/GlobalDataManager.cs:499)\nUnityEngine.Debug:LogException(Exception)\nBattlePvp.Managers.GlobalDataManager:NotifySubscribers(Delegate, Action`1, Int32, Int32) (at Assets/Player/Script/Managers/GlobalDataManager.cs:500)\nBattlePvp.Managers.GlobalDataManager:PublishPresetState(Int32, Int32) (at Assets/Player/Script/Managers/GlobalDataManager.cs:245)\nBattlePvp.Managers.GlobalDataManager:FinishProfileLoad(Int32, Int32, PlayerProfileLoadResult) (at Assets/Player/Script/Managers/GlobalDataManager.cs:462)\nBattlePvp.Managers.<>c__DisplayClass97_0:<BeginProfileLoad>b__0(PlayerProfileLoadResult) (at Assets/Player/Script/Managers/GlobalDataManager.cs:428)\nBattlePvp.EditorTests.GlobalProfileCompletionTests:ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions() (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:72)\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\nNUnit.Framework.Internal.Reflect:InvokeMethod(MethodInfo, Object, Object[])\nNUnit.Framework.Internal.MethodWrapper:Invoke(Object, Object[])\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:Execute(ITestExecutionContext)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions()\n\r\nInvalidOperationException: consumer\r\nBattlePvp.EditorTests.GlobalProfileCompletionTests+<>c.<ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions>b__7_2 (System.Boolean _) (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:68)\nBattlePvp.Managers.GlobalDataManager.NotifyProfileCallback (System.Action`1[T] callback, System.Boolean succeeded) (at Assets/Player/Script/Managers/GlobalDataManager.cs:489)\nUnityEngine.Debug:LogException(Exception)\nBattlePvp.Managers.GlobalDataManager:NotifyProfileCallback(Action`1, Boolean) (at Assets/Player/Script/Managers/GlobalDataManager.cs:490)\nBattlePvp.Managers.GlobalDataManager:CompleteProfileLoadCallbacks(Action`1[], Boolean, Int32) (at Assets/Player/Script/Managers/GlobalDataManager.cs:484)\nBattlePvp.Managers.GlobalDataManager:FinishProfileLoad(Int32, Int32, PlayerProfileLoadResult) (at Assets/Player/Script/Managers/GlobalDataManager.cs:472)\nBattlePvp.Managers.<>c__DisplayClass97_0:<BeginProfileLoad>b__0(PlayerProfileLoadResult) (at Assets/Player/Script/Managers/GlobalDataManager.cs:428)\nBattlePvp.EditorTests.GlobalProfileCompletionTests:ThrowingStateListenerAndWaiterDoNotBlockOtherCompletions() (at Assets/Player/Script/Editor/Tests/GlobalProfileCompletionTests.cs:72)\nSystem.Reflection.MethodBase:Invoke(Object, Object[])\nNUnit.Framework.Internal.Reflect:InvokeMethod(MethodInfo, Object, Object[])\nNUnit.Framework.Internal.MethodWrapper:Invoke(Object, Object[])\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunNonAsyncTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:RunTestMethod(ITestExecutionContext)\nNUnit.Framework.Internal.Commands.TestMethodCommand:Execute(ITestExecutionContext)\nUnityEditor.EditorApplication:Internal_CallUpdateFunctions()\n\r\n"
+    },
+    {
+      "name": "LifeAnimatorBindingResolvesBeforeHealthAwakeAndKeepsSerializedOverride",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.LifeAnimatorBindingResolvesBeforeHealthAwakeAndKeepsSerializedOverride",
+      "state": "Passed",
+      "durationSeconds": 0.000696,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Physical)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Physical)",
+      "state": "Passed",
+      "durationSeconds": 0.0009709,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Poison)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Poison)",
+      "state": "Passed",
+      "durationSeconds": 6.21E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Thorns)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.LocalVictimTakesPrecedenceOverAttackerWithoutDoubleFeedback(Thorns)",
+      "state": "Passed",
+      "durationSeconds": 3.69E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Physical)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Physical)",
+      "state": "Passed",
+      "durationSeconds": 0.0006269,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Poison)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Poison)",
+      "state": "Passed",
+      "durationSeconds": 5.42E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Thorns)",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.ObserversShareWorldPopupStyleButOnlyAttackerReceivesFeedback(Thorns)",
+      "state": "Passed",
+      "durationSeconds": 3.47E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PopupPlacementPreservesHitPointAndVictimFallbackWithoutHealthComponent",
+      "fullName": "BattlePvp.EditorTests.HealthDamagePresentationTests.PopupPlacementPreservesHitPointAndVictimFallbackWithoutHealthComponent",
+      "state": "Passed",
+      "durationSeconds": 0.0004834,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(False,False,False,True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(False,False,False,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0036213,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,False,True,True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,False,True,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0003187,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(False,True,False,False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(False,True,False,False)",
+      "state": "Passed",
+      "durationSeconds": 0.000952,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,True,False,False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,True,False,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0002484,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,False,False,False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.BoundHealthUsesItsOwnServerRoleOrOfflineAuthority(True,False,False,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0002134,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InspectorValidationOnlyQueuesWorkAndEditModeUpdateDoesNotPublishIt(False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.InspectorValidationOnlyQueuesWorkAndEditModeUpdateDoesNotPublishIt(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0014171,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InspectorValidationOnlyQueuesWorkAndEditModeUpdateDoesNotPublishIt(True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.InspectorValidationOnlyQueuesWorkAndEditModeUpdateDoesNotPublishIt(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0001897,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RealMirrorBindingEnablesOfflineDeathAndExplicitReviveOnce",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.RealMirrorBindingEnablesOfflineDeathAndExplicitReviveOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0018055,
+      "message": null,
+      "stackTrace": null,
+      "output": "[HealthSystem:Health before Mirror initialization] IsDead set to true.\r\n"
+    },
+    {
+      "name": "UnapprovedSpawnCannotTakeDamageEvenIfSceneReady(False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnapprovedSpawnCannotTakeDamageEvenIfSceneReady(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0009959,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnapprovedSpawnCannotTakeDamageEvenIfSceneReady(True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnapprovedSpawnCannotTakeDamageEvenIfSceneReady(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0002522,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(False,False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(False,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0015419,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(True,False)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(True,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0002752,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(False,True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(False,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0002053,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(True,True)",
+      "fullName": "BattlePvp.EditorTests.HealthInitializationLifecycleTests.UnboundIdentityRejectsHealthChangesWithoutReadingMirrorAuthority(True,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0001919,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DamageResultSeparatesShieldAndClampedLethalHpDamage",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.DamageResultSeparatesShieldAndClampedLethalHpDamage",
+      "state": "Passed",
+      "durationSeconds": 0.0024747,
+      "message": null,
+      "stackTrace": null,
+      "output": "[HealthSystem:HealthUi health test] IsDead set to true.\r\n"
+    },
+    {
+      "name": "DeathAndReviveTransitionsRemainSingleAcrossTenLives",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.DeathAndReviveTransitionsRemainSingleAcrossTenLives",
+      "state": "Passed",
+      "durationSeconds": 0.0066334,
+      "message": null,
+      "stackTrace": null,
+      "output": "[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n[HealthSystem:HealthUi health test] IsDead set to true.\r\n"
+    },
+    {
+      "name": "DummyLethalResultKeepsDamageBeforeImmediateRespawn",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.DummyLethalResultKeepsDamageBeforeImmediateRespawn",
+      "state": "Passed",
+      "durationSeconds": 0.0021432,
+      "message": null,
+      "stackTrace": null,
+      "output": "[Dummy] Received 500 damage from Poison at (0.00, 0.00, 0.00). Current HP: 0/100\r\n[DummyHealth] Dummy respawned (HP restored).\r\n"
+    },
+    {
+      "name": "InvalidDamageDoesNotChangeHealth(float.NaN)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.InvalidDamageDoesNotChangeHealth(float.NaN)",
+      "state": "Passed",
+      "durationSeconds": 0.0004906,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDamageDoesNotChangeHealth(float.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.InvalidDamageDoesNotChangeHealth(float.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 0.0001585,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDamageDoesNotChangeHealth(-10.0f)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.InvalidDamageDoesNotChangeHealth(-10.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0001318,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDamageDoesNotChangeHealth(0.0f)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.InvalidDamageDoesNotChangeHealth(0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0001238,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvincibleDamageDoesNotConsumeShieldOrRaiseHealthEvents",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.InvincibleDamageDoesNotConsumeShieldOrRaiseHealthEvents",
+      "state": "Passed",
+      "durationSeconds": 0.0004307,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LifeSynchronizationHookRestoresObserverStateWithoutDuplicateEvents",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.LifeSynchronizationHookRestoresObserverStateWithoutDuplicateEvents",
+      "state": "Passed",
+      "durationSeconds": 0.0006022,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsInvalidRatios(0.0f)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsInvalidRatios(0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003281,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsInvalidRatios(-1.0f)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsInvalidRatios(-1.0f)",
+      "state": "Passed",
+      "durationSeconds": 3.28E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsInvalidRatios(1.001f)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsInvalidRatios(1.001f)",
+      "state": "Passed",
+      "durationSeconds": 2.13E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsInvalidRatios(float.NaN)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsInvalidRatios(float.NaN)",
+      "state": "Passed",
+      "durationSeconds": 2.14E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsInvalidRatios(float.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsInvalidRatios(float.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 1.93E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRejectsNonFiniteTimes",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRejectsNonFiniteTimes",
+      "state": "Passed",
+      "durationSeconds": 0.0001216,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReviveRequestRequiresDeathBattleAndFullDelay",
+      "fullName": "BattlePvp.EditorTests.HealthUiLifeAndDamageTests.ReviveRequestRequiresDeathBattleAndFullDelay",
+      "state": "Passed",
+      "durationSeconds": 0.0001162,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ChatCancellationDoesNotRemoveResultsOrDeathMode",
+      "fullName": "BattlePvp.EditorTests.HudAndInputLifecycleTests.ChatCancellationDoesNotRemoveResultsOrDeathMode",
+      "state": "Passed",
+      "durationSeconds": 0.0003715,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "EscapeAndSubmitAreConsumedOncePerFrame",
+      "fullName": "BattlePvp.EditorTests.HudAndInputLifecycleTests.EscapeAndSubmitAreConsumedOncePerFrame",
+      "state": "Passed",
+      "durationSeconds": 0.0001798,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudReenableRestoresExactlyOneSubscriptionTenTimes",
+      "fullName": "BattlePvp.EditorTests.HudAndInputLifecycleTests.HudReenableRestoresExactlyOneSubscriptionTenTimes",
+      "state": "Passed",
+      "durationSeconds": 0.0041501,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PopupCorrelationExpiresWithoutDroppingOtherVictims",
+      "fullName": "BattlePvp.EditorTests.HudAndInputLifecycleTests.PopupCorrelationExpiresWithoutDroppingOtherVictims",
+      "state": "Passed",
+      "durationSeconds": 0.0012737,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ActiveHealthEventsUseTheSamePulseRuleAsTheInitialSnapshot",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ActiveHealthEventsUseTheSamePulseRuleAsTheInitialSnapshot",
+      "state": "Passed",
+      "durationSeconds": 0.0047457,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DestroyedReaderIsNotKeptAliveThroughAnInterfaceReference",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.DestroyedReaderIsNotKeptAliveThroughAnInterfaceReference",
+      "state": "Passed",
+      "durationSeconds": 0.000867,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FirstEnableReadsLowHealthWithoutWaitingForAnEvent",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.FirstEnableReadsLowHealthWithoutWaitingForAnEvent",
+      "state": "Passed",
+      "durationSeconds": 0.000365,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(0.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0007164,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(-1.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(-1.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.000312,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingReaderRestoresDefaultsAfterAPreviousHealthEvent(False)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.MissingReaderRestoresDefaultsAfterAPreviousHealthEvent(False)",
+      "state": "Passed",
+      "durationSeconds": 0.000842,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingReaderRestoresDefaultsAfterAPreviousHealthEvent(True)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.MissingReaderRestoresDefaultsAfterAPreviousHealthEvent(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0013283,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(15.0f,100.0f,100.0f,100.0f,4.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(15.0f,100.0f,100.0f,100.0f,4.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0008506,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(100.0f,100.0f,20.0f,100.0f,8.8f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(100.0f,100.0f,20.0f,100.0f,8.8f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003979,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(150.0f,100.0f,20.0f,100.0f,8.8f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(150.0f,100.0f,20.0f,100.0f,8.8f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003184,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(20.0f,100.0f,150.0f,100.0f,4.0f,0.5f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(20.0f,100.0f,150.0f,100.0f,4.0f,0.5f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003144,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(75.0f,100.0f,75.0f,200.0f,7.75f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(75.0f,100.0f,75.0f,200.0f,7.75f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0002778,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(100.0f,200.0f,100.0f,50.0f,4.0f,1.0f)",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.ReenableRestoresHealthAndOverflowChangedWhileUnsubscribed(100.0f,200.0f,100.0f,50.0f,4.0f,1.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.000272,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SourceReplacementUnsubscribesTheOriginalAndReenablesExactlyOnce",
+      "fullName": "BattlePvp.EditorTests.IdentityGlitchLifecycleTests.SourceReplacementUnsubscribesTheOriginalAndReenablesExactlyOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0006832,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DestroyingOwnerReleasesItsItemsFromAnExternalContainer",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.DestroyingOwnerReleasesItsItemsFromAnExternalContainer",
+      "state": "Passed",
+      "durationSeconds": 0.0077859,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisableRemovesOwnedAnnouncementsButKeepsForeignContainerChildren(True)",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.DisableRemovesOwnedAnnouncementsButKeepsForeignContainerChildren(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0017531,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisableRemovesOwnedAnnouncementsButKeepsForeignContainerChildren(False)",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.DisableRemovesOwnedAnnouncementsButKeepsForeignContainerChildren(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0008198,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LifetimeEnumeratorReleasesItsItemAfterTheWaitYieldWithoutClaimingElapsedTime",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.LifetimeEnumeratorReleasesItsItemAfterTheWaitYieldWithoutClaimingElapsedTime",
+      "state": "Passed",
+      "durationSeconds": 0.0011125,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PrefabOnEnableDisablingOwnerCannotLeaveAnUntrackedAnnouncement",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.PrefabOnEnableDisablingOwnerCannotLeaveAnUntrackedAnnouncement",
+      "state": "Passed",
+      "durationSeconds": 0.0017527,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReenableShowsOnlyNewAnnouncementsAcrossTenCyclesAndKeepsNamesPlain",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.ReenableShowsOnlyNewAnnouncementsAcrossTenCyclesAndKeepsNamesPlain",
+      "state": "Passed",
+      "durationSeconds": 0.0033248,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ShowRejectsInactiveGameObjectAndDisabledComponent(True)",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.ShowRejectsInactiveGameObjectAndDisabledComponent(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0007805,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ShowRejectsInactiveGameObjectAndDisabledComponent(False)",
+      "fullName": "BattlePvp.EditorTests.KillAnnouncementLifecycleTests.ShowRejectsInactiveGameObjectAndDisabledComponent(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0002814,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ACompletionCallbackCanStartTheNextRequestWithoutBeingClearedByTheOldOne",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.ACompletionCallbackCanStartTheNextRequestWithoutBeingClearedByTheOldOne",
+      "state": "Passed",
+      "durationSeconds": 0.0019633,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ApplyResponseTimeoutReleasesTheRequestAndRejectsLateOrOlderReplies",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.ApplyResponseTimeoutReleasesTheRequestAndRejectsLateOrOlderReplies",
+      "state": "Passed",
+      "durationSeconds": 0.0008078,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AutomaticInitialInjectionPreservesServerApprovedReconnectStats",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.AutomaticInitialInjectionPreservesServerApprovedReconnectStats",
+      "state": "Passed",
+      "durationSeconds": 0.0013048,
+      "message": null,
+      "stackTrace": null,
+      "output": "[StatManager] Global stats updated asynchronously. STR=0\r\n"
+    },
+    {
+      "name": "CustomizerDisableUnsubscribesItsOriginalProfileEvenIfTheSingletonChanges",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.CustomizerDisableUnsubscribesItsOriginalProfileEvenIfTheSingletonChanges",
+      "state": "Passed",
+      "durationSeconds": 0.0040378,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LoadedEmptyProfileIsVisibleAsLoadedInsideEveryPresetEvent",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LoadedEmptyProfileIsVisibleAsLoadedInsideEveryPresetEvent",
+      "state": "Passed",
+      "durationSeconds": 0.0004964,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LobbyBindsLateReplacesExactlyOnceAndUnsubscribesTheOriginalPlayer",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LobbyBindsLateReplacesExactlyOnceAndUnsubscribesTheOriginalPlayer",
+      "state": "Passed",
+      "durationSeconds": 0.0032138,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LobbyPlayerAppliesLoadedZeroPresetToTheExplicitTarget",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LobbyPlayerAppliesLoadedZeroPresetToTheExplicitTarget",
+      "state": "Passed",
+      "durationSeconds": 0.0019565,
+      "message": null,
+      "stackTrace": null,
+      "output": "[LobbyPlayerActivator] Applied saved stats to lobby player. STR=0, AGI=0, CON=0, DEF=0\r\n"
+    },
+    {
+      "name": "LobbyPlayerClearsThePreviousBuildWhenAnUnusedSlotIsSelected",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LobbyPlayerClearsThePreviousBuildWhenAnUnusedSlotIsSelected",
+      "state": "Passed",
+      "durationSeconds": 0.0017622,
+      "message": null,
+      "stackTrace": null,
+      "output": "[LobbyPlayerActivator] Applied saved stats to lobby player. STR=30, AGI=0, CON=0, DEF=0\r\n[LobbyPlayerActivator] Applied saved stats to lobby player. STR=0, AGI=0, CON=0, DEF=0\r\n"
+    },
+    {
+      "name": "LobbyPlayerPreservesSceneStatsUntilTheProfileHasLoaded",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LobbyPlayerPreservesSceneStatsUntilTheProfileHasLoaded",
+      "state": "Passed",
+      "durationSeconds": 0.0005647,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LobbyRoomServiceReplacementReleasesTheSubscribedService",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.LobbyRoomServiceReplacementReleasesTheSubscribedService",
+      "state": "Passed",
+      "durationSeconds": 0.0010553,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NewAccountClearsOpenNormalAndStrategistEditorsWithoutWaitingForPolling",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.NewAccountClearsOpenNormalAndStrategistEditorsWithoutWaitingForPolling",
+      "state": "Passed",
+      "durationSeconds": 0.001072,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlayerDisableStopAndDisconnectCompletePendingApplyExactlyOnce",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.PlayerDisableStopAndDisconnectCompletePendingApplyExactlyOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0006844,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlayerReplacementUpdatesHealthAndPreservesTheCurrentUnsavedEditorValues",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.PlayerReplacementUpdatesHealthAndPreservesTheCurrentUnsavedEditorValues",
+      "state": "Passed",
+      "durationSeconds": 0.0012829,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProfileBindingReleasesHudOnDepartureAndRebindsTheNextPlayerOnce",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.ProfileBindingReleasesHudOnDepartureAndRebindsTheNextPlayerOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0018693,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StrategistModeReopensWithItsOwnPresetAndIgnoresNormalPresetChanges",
+      "fullName": "BattlePvp.EditorTests.LocalProfileUiBindingTests.StrategistModeReopensWithItsOwnPresetAndIgnoresNormalPresetChanges",
+      "state": "Passed",
+      "durationSeconds": 0.0013173,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] SavedStats Updated (Clamped to 30): 30/0/0/0\r\n"
+    },
+    {
+      "name": "CrouchSpeedCannotSustainFullStandingSpeed",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.CrouchSpeedCannotSustainFullStandingSpeed",
+      "state": "Passed",
+      "durationSeconds": 0.0012207,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DelayedPreLockLaunchAndWalkingOffALedgeRemainValid",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.DelayedPreLockLaunchAndWalkingOffALedgeRemainValid",
+      "state": "Passed",
+      "durationSeconds": 0.0003624,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FirstPostLockPacketKeepsOnlyTheMovementBeforeTheLock",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.FirstPostLockPacketKeepsOnlyTheMovementBeforeTheLock",
+      "state": "Passed",
+      "durationSeconds": 0.0009014,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ForcedReconnectDurationUsesFirstReliableBatchTime",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.ForcedReconnectDurationUsesFirstReliableBatchTime",
+      "state": "Passed",
+      "durationSeconds": 0.0002323,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "JumpLockRejectsNewLaunchButDoesNotCutOffAnAlreadyAcceptedJump",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.JumpLockRejectsNewLaunchButDoesNotCutOffAnAlreadyAcceptedJump",
+      "state": "Passed",
+      "durationSeconds": 0.000236,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LandingSlopeAndLateUnlockedPacketUseTheirOriginalPermissionState",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.LandingSlopeAndLateUnlockedPacketUseTheirOriginalPermissionState",
+      "state": "Passed",
+      "durationSeconds": 0.0002073,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LockedPositionToleranceCannotBeMultipliedByPacketSpamOrReconnection",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.LockedPositionToleranceCannotBeMultipliedByPacketSpamOrReconnection",
+      "state": "Passed",
+      "durationSeconds": 0.0003102,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MoveLockDiscardsOldSpeedCreditButPreservesAuthorizedForcedDisplacement",
+      "fullName": "BattlePvp.EditorTests.MovementControlAuthorityTests.MoveLockDiscardsOldSpeedCreditButPreservesAuthorizedForcedDisplacement",
+      "state": "Passed",
+      "durationSeconds": 0.0003138,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FailedLoadRemainsFailureAndCanRetry",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.FailedLoadRemainsFailureAndCanRetry",
+      "state": "Passed",
+      "durationSeconds": 0.0019503,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NewAccountAndMalformedDocumentAreDifferentResults",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.NewAccountAndMalformedDocumentAreDifferentResults",
+      "state": "Passed",
+      "durationSeconds": 0.0006063,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReliableCapacityAndBatchThresholdAreIndependent",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.ReliableCapacityAndBatchThresholdAreIndependent",
+      "state": "Passed",
+      "durationSeconds": 0.0010101,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SaveUsesOneImmutableDocumentAndSerializesOverlappingRequests",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.SaveUsesOneImmutableDocumentAndSerializesOverlappingRequests",
+      "state": "Passed",
+      "durationSeconds": 0.0020911,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ScoresHaveNoClientMutationCommandAndOneClaimPerDeath",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.ScoresHaveNoClientMutationCommandAndOneClaimPerDeath",
+      "state": "Passed",
+      "durationSeconds": 0.0002293,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SessionChangeFailsWaitingLoadAndDropsQueuedWritesBeforeIgnoringOldResponses",
+      "fullName": "BattlePvp.EditorTests.NetworkProfileRegressionTests.SessionChangeFailsWaitingLoadAndDropsQueuedWritesBeforeIgnoringOldResponses",
+      "state": "Passed",
+      "durationSeconds": 0.000671,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AbortedAndUnconfirmedRunsRetainTheirUnfinishedStatus",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.AbortedAndUnconfirmedRunsRetainTheirUnfinishedStatus",
+      "state": "Passed",
+      "durationSeconds": 0.0020745,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "EveryEligibleRunMustMeetTheBudget",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.EveryEligibleRunMustMeetTheBudget",
+      "state": "Passed",
+      "durationSeconds": 0.0011454,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidAndAbsentSamplesNeverBecomeZeroCostPasses",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.InvalidAndAbsentSamplesNeverBecomeZeroCostPasses",
+      "state": "Passed",
+      "durationSeconds": 0.0003438,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsAreNotCompletedMeasurements(double.NaN)",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.InvalidDurationsAreNotCompletedMeasurements(double.NaN)",
+      "state": "Passed",
+      "durationSeconds": 0.0004118,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidDurationsAreNotCompletedMeasurements(double.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.InvalidDurationsAreNotCompletedMeasurements(double.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 0.0001935,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"players\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"players\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005004,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"idle\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"idle\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002033,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"focus\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"focus\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001851,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"menu\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"menu\")",
+      "state": "Passed",
+      "durationSeconds": 0.000183,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"scene\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"scene\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002094,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"quality\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"quality\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001847,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"hardware\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"hardware\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001837,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"editor\")",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.LowFrameTimesDoNotOverrideMissingOrInvalidLoadConditions(\"editor\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001813,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NearestRankPercentilesKeepTailFramesAndDoNotMutateInput",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.NearestRankPercentilesKeepTailFramesAndDoNotMutateInput",
+      "state": "Passed",
+      "durationSeconds": 0.000223,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OneFastFrameIsNotSixtySecondsOfObservation",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.OneFastFrameIsNotSixtySecondsOfObservation",
+      "state": "Passed",
+      "durationSeconds": 0.0002768,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SingleRunCannotStandInForThreeMeasurementsOrAnotherPlatform",
+      "fullName": "BattlePvp.EditorTests.PerformanceCaptureRulesTests.SingleRunCannotStandInForThreeMeasurementsOrAnotherPlatform",
+      "state": "Passed",
+      "durationSeconds": 0.000876,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DepartedWinnerFallsBackToLocalCameraWithoutUnlockingSpectator",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.DepartedWinnerFallsBackToLocalCameraWithoutUnlockingSpectator",
+      "state": "Passed",
+      "durationSeconds": 0.0019587,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DestroyedHiddenPartsDoNotPreventRemainingPartsFromRestoring",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.DestroyedHiddenPartsDoNotPreventRemainingPartsFromRestoring",
+      "state": "Passed",
+      "durationSeconds": 0.0013083,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidClockNeverOpensRespawnInput(double.NaN)",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.InvalidClockNeverOpensRespawnInput(double.NaN)",
+      "state": "Passed",
+      "durationSeconds": 0.0003554,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidClockNeverOpensRespawnInput(double.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.InvalidClockNeverOpensRespawnInput(double.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 2.13E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidClockNeverOpensRespawnInput(double.NegativeInfinity)",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.InvalidClockNeverOpensRespawnInput(double.NegativeInfinity)",
+      "state": "Passed",
+      "durationSeconds": 1.51E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MatchEndAndReviveChooseCameraTargetsWithoutChangingPlayerPosition",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.MatchEndAndReviveChooseCameraTargetsWithoutChangingPlayerPosition",
+      "state": "Passed",
+      "durationSeconds": 0.0022924,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ModelRestoresMixedEnabledStatesAcrossTenDeathsWithoutChangingMovementController",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.ModelRestoresMixedEnabledStatesAcrossTenDeathsWithoutChangingMovementController",
+      "state": "Passed",
+      "durationSeconds": 0.0007029,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RespawnCountdownKeepsOriginalDeadlineAcrossPresentationPauses",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.RespawnCountdownKeepsOriginalDeadlineAcrossPresentationPauses",
+      "state": "Passed",
+      "durationSeconds": 0.0002356,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SuspendedSpectatorWaitsForExplicitRestoreAndReviveClearsFallback(False)",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.SuspendedSpectatorWaitsForExplicitRestoreAndReviveClearsFallback(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0009852,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SuspendedSpectatorWaitsForExplicitRestoreAndReviveClearsFallback(True)",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.SuspendedSpectatorWaitsForExplicitRestoreAndReviveClearsFallback(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0003626,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SuspendingAndResumingAnElapsedDeathRestoresTheModelThenHidesItAgain",
+      "fullName": "BattlePvp.EditorTests.PlayerLifePresentationTests.SuspendingAndResumingAnElapsedDeathRestoresTheModelThenHidesItAgain",
+      "state": "Passed",
+      "durationSeconds": 0.0018101,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CompleteLegacyPresetsMigrateAndIncompleteMetadataFails",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.CompleteLegacyPresetsMigrateAndIncompleteMetadataFails",
+      "state": "Passed",
+      "durationSeconds": 0.0009268,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CompleteLegacyStatsIncludingZeroRemainCompatible(\"0\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.CompleteLegacyStatsIncludingZeroRemainCompatible(\"0\")",
+      "state": "Passed",
+      "durationSeconds": 0.001208,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CompleteLegacyStatsIncludingZeroRemainCompatible(\"30\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.CompleteLegacyStatsIncludingZeroRemainCompatible(\"30\")",
+      "state": "Passed",
+      "durationSeconds": 5.93E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CompleteVersionOneDocumentRoundTrips",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.CompleteVersionOneDocumentRoundTrips",
+      "state": "Passed",
+      "durationSeconds": 0.0008372,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidCountersDoNotSilentlyBecomeZero(\"1.5\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.InvalidCountersDoNotSilentlyBecomeZero(\"1.5\")",
+      "state": "Passed",
+      "durationSeconds": 0.0003456,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidCountersDoNotSilentlyBecomeZero(\"-1\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.InvalidCountersDoNotSilentlyBecomeZero(\"-1\")",
+      "state": "Passed",
+      "durationSeconds": 4.72E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidCountersDoNotSilentlyBecomeZero(\"2147483648\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.InvalidCountersDoNotSilentlyBecomeZero(\"2147483648\")",
+      "state": "Passed",
+      "durationSeconds": 3.29E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidCountersDoNotSilentlyBecomeZero(\"invalid\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.InvalidCountersDoNotSilentlyBecomeZero(\"invalid\")",
+      "state": "Passed",
+      "durationSeconds": 2.89E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidNestedDocumentValuesAndTypesFail",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.InvalidNestedDocumentValuesAndTypesFail",
+      "state": "Passed",
+      "durationSeconds": 0.0010722,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SchemaVersion\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SchemaVersion\")",
+      "state": "Passed",
+      "durationSeconds": 0.0003459,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"Stats\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"Stats\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001181,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"Slots\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"Slots\")",
+      "state": "Passed",
+      "durationSeconds": 8.74E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SlotUsed\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SlotUsed\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001066,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SelectedSlot\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"SelectedSlot\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001158,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"StrategistPreset\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"StrategistPreset\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001446,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"HasStrategistPreset\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.MissingDocumentFieldsCannotBeDeserializedAsDefaults(\"HasStrategistPreset\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001226,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyAbsentProfileDataIsEmpty",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.OnlyAbsentProfileDataIsEmpty",
+      "state": "Passed",
+      "durationSeconds": 0.0002269,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"NaN\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"NaN\")",
+      "state": "Passed",
+      "durationSeconds": 0.0002523,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"Infinity\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"Infinity\")",
+      "state": "Passed",
+      "durationSeconds": 4.48E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"invalid\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"invalid\")",
+      "state": "Passed",
+      "durationSeconds": 2.72E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"\")",
+      "state": "Passed",
+      "durationSeconds": 2.65E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(null)",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(null)",
+      "state": "Passed",
+      "durationSeconds": 2.5E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"-1\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"-1\")",
+      "state": "Passed",
+      "durationSeconds": 2.83E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PresentInvalidLegacyValuesAreFailures(\"31\")",
+      "fullName": "BattlePvp.EditorTests.ProfileDataIntegrityTests.PresentInvalidLegacyValuesAreFailures(\"31\")",
+      "state": "Passed",
+      "durationSeconds": 2.53E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InactiveManagerImmediatelyRejectsReentrantProfileRequests",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.InactiveManagerImmediatelyRejectsReentrantProfileRequests",
+      "state": "Passed",
+      "durationSeconds": 0.000907,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,400,True)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,400,True)",
+      "state": "Passed",
+      "durationSeconds": 0.0004693,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidSessionTicket,401,True)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidSessionTicket,401,True)",
+      "state": "Passed",
+      "durationSeconds": 7.62E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(NotAuthorized,403,True)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(NotAuthorized,403,True)",
+      "state": "Passed",
+      "durationSeconds": 5.1E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(DataLengthExceeded,400,True)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(DataLengthExceeded,400,True)",
+      "state": "Passed",
+      "durationSeconds": 3.57E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(ConnectionError,0,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(ConnectionError,0,False)",
+      "state": "Passed",
+      "durationSeconds": 3.61E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(ServiceUnavailable,400,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(ServiceUnavailable,400,False)",
+      "state": "Passed",
+      "durationSeconds": 3.78E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(InternalServerError,500,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(InternalServerError,500,False)",
+      "state": "Passed",
+      "durationSeconds": 3.42E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(PartialFailure,400,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(PartialFailure,400,False)",
+      "state": "Passed",
+      "durationSeconds": 5.14E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,408,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,408,False)",
+      "state": "Passed",
+      "durationSeconds": 3.6E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,500,False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.OnlyExplicitRejectedWritesReleaseTheBarrier(InvalidParams,500,False)",
+      "state": "Passed",
+      "durationSeconds": 3.46E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionRepositoryCanBeConstructedOnAWorkerWithoutStartingAnyRequests",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.ProductionRepositoryCanBeConstructedOnAWorkerWithoutStartingAnyRequests",
+      "state": "Passed",
+      "durationSeconds": 0.0013326,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "QueueConstructorOnlyStoresDelegatesAndBindsTheAccountAtFirstUse(False)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.QueueConstructorOnlyStoresDelegatesAndBindsTheAccountAtFirstUse(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0014905,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "QueueConstructorOnlyStoresDelegatesAndBindsTheAccountAtFirstUse(True)",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.QueueConstructorOnlyStoresDelegatesAndBindsTheAccountAtFirstUse(True)",
+      "state": "Passed",
+      "durationSeconds": 5.71E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ResetNotifiesEveryWaiterEvenIfOneCallbackThrows",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.ResetNotifiesEveryWaiterEvenIfOneCallbackThrows",
+      "state": "Passed",
+      "durationSeconds": 0.0007804,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TimedOutLoadRetriesAndIgnoresOldSameSessionCallbacks",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.TimedOutLoadRetriesAndIgnoresOldSameSessionCallbacks",
+      "state": "Passed",
+      "durationSeconds": 0.0004883,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TimedOutSaveFailsWaitersButCannotBeOvertakenUntilItsResponse",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.TimedOutSaveFailsWaitersButCannotBeOvertakenUntilItsResponse",
+      "state": "Passed",
+      "durationSeconds": 0.0007035,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnknownWriteErrorBlocksFollowingSaveButExplicitFailureAllowsRetry",
+      "fullName": "BattlePvp.EditorTests.ProfileRequestLifecycleTests.UnknownWriteErrorBlocksFollowingSaveButExplicitFailureAllowsRetry",
+      "state": "Passed",
+      "durationSeconds": 0.0004333,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConfirmedRejectionReleasesAccountButUnknownFailureKeepsIt(True)",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ConfirmedRejectionReleasesAccountButUnknownFailureKeepsIt(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0012786,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConfirmedRejectionReleasesAccountButUnknownFailureKeepsIt(False)",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ConfirmedRejectionReleasesAccountButUnknownFailureKeepsIt(False)",
+      "state": "Passed",
+      "durationSeconds": 5E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OldDuplicateCannotReleaseLeaseAcquiredByReentrantReplacement",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.OldDuplicateCannotReleaseLeaseAcquiredByReentrantReplacement",
+      "state": "Passed",
+      "durationSeconds": 0.0003127,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionAccountKeyIncludesTitleAndDoesNotAllocateWhenUnchanged",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ProductionAccountKeyIncludesTitleAndDoesNotAllocateWhenUnchanged",
+      "state": "Passed",
+      "durationSeconds": 0.0017205,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ProductionRepositoriesShareCoordinatorWhileInjectedDefaultsRemainIsolated",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ProductionRepositoriesShareCoordinatorWhileInjectedDefaultsRemainIsolated",
+      "state": "Passed",
+      "durationSeconds": 0.0003584,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReplacingRepositoryAfterResetPreservesSameAccountLeaseButAllowsOtherAccounts",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ReplacingRepositoryAfterResetPreservesSameAccountLeaseButAllowsOtherAccounts",
+      "state": "Passed",
+      "durationSeconds": 0.0003523,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ResetCallbackCannotBypassLeaseThroughAnotherRepository",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.ResetCallbackCannotBypassLeaseThroughAnotherRepository",
+      "state": "Passed",
+      "durationSeconds": 0.0002374,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TimeoutDoesNotReleaseReplacementUntilActualAcknowledgement",
+      "fullName": "BattlePvp.EditorTests.ProfileWriteOwnershipTests.TimeoutDoesNotReleaseReplacementUntilActualAcknowledgement",
+      "state": "Passed",
+      "durationSeconds": 0.0008155,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConnectionFailureIsDeferredAndShutdownReentryDoesNotDuplicateItsNotification",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.ConnectionFailureIsDeferredAndShutdownReentryDoesNotDuplicateItsNotification",
+      "state": "Passed",
+      "durationSeconds": 0.0032232,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReceiveCallbackCannotReenterEitherPollOrOverwriteItsPayload",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.ReceiveCallbackCannotReenterEitherPollOrOverwriteItsPayload",
+      "state": "Passed",
+      "durationSeconds": 0.1206191,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RetryStartedInsideFailureCallbackSurvivesPreviousAttemptCleanup",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.RetryStartedInsideFailureCallbackSurvivesPreviousAttemptCleanup",
+      "state": "Passed",
+      "durationSeconds": 0.0005038,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ServerInitiatedDisconnectNotifiesBothSidesOnce",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.ServerInitiatedDisconnectNotifiesBothSidesOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0644072,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ShutdownInsideReceiveCallbackEndsPollingWithoutUsingDisposedDrivers",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.ShutdownInsideReceiveCallbackEndsPollingWithoutUsingDisposedDrivers",
+      "state": "Passed",
+      "durationSeconds": 0.057113,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "VoluntaryDisconnectNotifiesOnceAfterDisposingTheClient",
+      "fullName": "BattlePvp.EditorTests.RelayPollingTests.VoluntaryDisconnectNotifiesOnceAfterDisposingTheClient",
+      "state": "Passed",
+      "durationSeconds": 0.0653649,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReliableWindowOverflowDisconnectsInsteadOfContinuingWithLostMessages(False)",
+      "fullName": "BattlePvp.EditorTests.RelayReliableFailureTests.ReliableWindowOverflowDisconnectsInsteadOfContinuingWithLostMessages(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0213732,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReliableWindowOverflowDisconnectsInsteadOfContinuingWithLostMessages(True)",
+      "fullName": "BattlePvp.EditorTests.RelayReliableFailureTests.ReliableWindowOverflowDisconnectsInsteadOfContinuingWithLostMessages(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0057777,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AirborneReconnectDoesNotGrantAnotherJumpBudget",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.AirborneReconnectDoesNotGrantAnotherJumpBudget",
+      "state": "Passed",
+      "durationSeconds": 0.0003583,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConnectionHookRemovesRetainedBodyFromRosterAndReaddsItOnlyOnce",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.ConnectionHookRemovesRetainedBodyFromRosterAndReaddsItOnlyOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0010477,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HostHitchFinishesOnceAndDoesNotAccumulateDrift",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.HostHitchFinishesOnceAndDoesNotAccumulateDrift",
+      "state": "Passed",
+      "durationSeconds": 0.0002869,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MovementSnapshotUsesOriginalExpiryAfterReconnectLatency",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.MovementSnapshotUsesOriginalExpiryAfterReconnectLatency",
+      "state": "Passed",
+      "durationSeconds": 0.0003335,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReconnectDoesNotCopyOldOwnerPredictionsOrOverwriteNewCastLock",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.ReconnectDoesNotCopyOldOwnerPredictionsOrOverwriteNewCastLock",
+      "state": "Passed",
+      "durationSeconds": 0.0006345,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReconnectingAfterRespawnDeadlineDoesNotRestartFiveSecondWait",
+      "fullName": "BattlePvp.EditorTests.RetainedPlayerStateTests.ReconnectingAfterRespawnDeadlineDoesNotRestartFiveSecondWait",
+      "state": "Passed",
+      "durationSeconds": 0.0002466,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ChangedMetadataUpdatesSameIdAndDeletionOnlyRemovesMissingId",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.ChangedMetadataUpdatesSameIdAndDeletionOnlyRemovesMissingId",
+      "state": "Passed",
+      "durationSeconds": 0.0028339,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisabledViewAndReenabledViewRejectPriorRequests",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.DisabledViewAndReenabledViewRejectPriorRequests",
+      "state": "Passed",
+      "durationSeconds": 0.0001762,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "IdenticalRoomResponsesDoNotRequestAnyUiChanges",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.IdenticalRoomResponsesDoNotRequestAnyUiChanges",
+      "state": "Passed",
+      "durationSeconds": 0.000239,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LatestRoomResponseWinsAndOlderResponseCannotAddRows",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.LatestRoomResponseWinsAndOlderResponseCannotAddRows",
+      "state": "Passed",
+      "durationSeconds": 0.0001659,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ResultTextCanBeBuiltWithoutSceneObjectsAndPreservesAllFields",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.ResultTextCanBeBuiltWithoutSceneObjectsAndPreservesAllFields",
+      "state": "Passed",
+      "durationSeconds": 0.0010789,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RoomOrderingIsStableForDuplicateTitlesAndSkipsEmptyIds",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.RoomOrderingIsStableForDuplicateTitlesAndSkipsEmptyIds",
+      "state": "Passed",
+      "durationSeconds": 0.0004132,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TiedWinnersAndRewardsUseCompetitionRanksRegardlessOfInputOrder",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.TiedWinnersAndRewardsUseCompetitionRanksRegardlessOfInputOrder",
+      "state": "Passed",
+      "durationSeconds": 0.0004502,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ZeroScoreMatchSharesFirstPlaceAndEmptyMatchHasNoRank",
+      "fullName": "BattlePvp.EditorTests.RoomAndRankingTests.ZeroScoreMatchSharesFirstPlaceAndEmptyMatchHasNoRank",
+      "state": "Passed",
+      "durationSeconds": 0.00010509999999999999,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AuthoritativeReplacementRemovesMissingRoomsAndEmptyClearsEveryCache",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.AuthoritativeReplacementRemovesMissingRoomsAndEmptyClearsEveryCache",
+      "state": "Passed",
+      "durationSeconds": 0.0014793,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisposedServiceRejectsCallbacksWithoutRestoringCachedRooms",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.DisposedServiceRejectsCallbacksWithoutRestoringCachedRooms",
+      "state": "Passed",
+      "durationSeconds": 0.0009086,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FreshCacheFiltersExpiredLeasesAndAnAuthoritativeEmptyListRemainsCacheable",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.FreshCacheFiltersExpiredLeasesAndAnAuthoritativeEmptyListRemainsCacheable",
+      "state": "Passed",
+      "durationSeconds": 0.0013462,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LateResponseBeforeTheNextUpdateStillCompletesAsEmpty",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.LateResponseBeforeTheNextUpdateStillCompletesAsEmpty",
+      "state": "Passed",
+      "durationSeconds": 0.0003582,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ListenerAndCallbackMutationCannotCorruptTheCacheOrFollowingCallbacks",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.ListenerAndCallbackMutationCannotCorruptTheCacheOrFollowingCallbacks",
+      "state": "Passed",
+      "durationSeconds": 0.0006053,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NewRequestQueuedFromACompletionIsNotDrainedByTheOlderCallbackLoop",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.NewRequestQueuedFromACompletionIsNotDrainedByTheOlderCallbackLoop",
+      "state": "Passed",
+      "durationSeconds": 0.0004524,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReentrantNewerCompletionKeepsItsCacheWhileOlderCallbacksReceiveTheirOwnSnapshot",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.ReentrantNewerCompletionKeepsItsCacheWhileOlderCallbacksReceiveTheirOwnSnapshot",
+      "state": "Passed",
+      "durationSeconds": 0.0005103,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RequestTimeoutCompletesEmptyAtTheBoundaryAndRejectsItsLateResponse",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.RequestTimeoutCompletesEmptyAtTheBoundaryAndRejectsItsLateResponse",
+      "state": "Passed",
+      "durationSeconds": 0.0006208,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StaleAndDuplicateResponsesCannotCompleteTheCurrentRequest",
+      "fullName": "BattlePvp.EditorTests.RoomAvailabilityTests.StaleAndDuplicateResponsesCannotCompleteTheCurrentRequest",
+      "state": "Passed",
+      "durationSeconds": 0.0004164,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FailedMutationReleasesItsQueueWithoutDroppingTheNextOperation",
+      "fullName": "BattlePvp.EditorTests.RoomFlowGenerationTests.FailedMutationReleasesItsQueueWithoutDroppingTheNextOperation",
+      "state": "Passed",
+      "durationSeconds": 0.2996337,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NewRoomCancelAndAccountChangeInvalidateOldResponses",
+      "fullName": "BattlePvp.EditorTests.RoomFlowGenerationTests.NewRoomCancelAndAccountChangeInvalidateOldResponses",
+      "state": "Passed",
+      "durationSeconds": 0.0007873,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "QueuedOldCleanupRechecksTheCurrentRoomAtDispatch",
+      "fullName": "BattlePvp.EditorTests.RoomFlowGenerationTests.QueuedOldCleanupRechecksTheCurrentRoomAtDispatch",
+      "state": "Passed",
+      "durationSeconds": 0.2973458,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SameRoomLeaveCompletesBeforeNewJoinButOtherRoomsRemainIndependent",
+      "fullName": "BattlePvp.EditorTests.RoomFlowGenerationTests.SameRoomLeaveCompletesBeforeNewJoinButOtherRoomsRemainIndependent",
+      "state": "Passed",
+      "durationSeconds": 0.297773,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SameRoomNewAttemptOwnsMembershipAndPreservationDoesNotLeakToFutureAttempt",
+      "fullName": "BattlePvp.EditorTests.RoomFlowGenerationTests.SameRoomNewAttemptOwnsMembershipAndPreservationDoesNotLeakToFutureAttempt",
+      "state": "Passed",
+      "durationSeconds": 0.0009001,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CleanupDuringCreateCannotOverwriteTheReplacementRoomWithTheAbandonedCreate",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.CleanupDuringCreateCannotOverwriteTheReplacementRoomWithTheAbandonedCreate",
+      "state": "Passed",
+      "durationSeconds": 0.0100289,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "CleanupObserverStartingAnotherRoomSuppressesTheOldDisconnectNotice",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.CleanupObserverStartingAnotherRoomSuppressesTheOldDisconnectNotice",
+      "state": "Passed",
+      "durationSeconds": 0.0011459,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "CreateCommitsItsRoomAndQueuesRelayDespiteThrowingRegistryAndStateObservers",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.CreateCommitsItsRoomAndQueuesRelayDespiteThrowingRegistryAndStateObservers",
+      "state": "Passed",
+      "durationSeconds": 0.0019162,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "FailedJoinNotificationMayStartAnotherRoomWithoutAnOldFailureOverwritingItsBusyState",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.FailedJoinNotificationMayStartAnotherRoomWithoutAnOldFailureOverwritingItsBusyState",
+      "state": "Passed",
+      "durationSeconds": 0.0011427,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "HostRegistrationDoesNotRetryOrLeaveAfterSuccessfulResponseAndThrowingObservers",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.HostRegistrationDoesNotRetryOrLeaveAfterSuccessfulResponseAndThrowingObservers",
+      "state": "Passed",
+      "durationSeconds": 0.0036211,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "InstanceObserversCannotInterruptServicePublicationOrRemoval",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.InstanceObserversCannotInterruptServicePublicationOrRemoval",
+      "state": "Passed",
+      "durationSeconds": 0.0018653,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "JoinedObserverCancellationStopsRemainingStaleJoinedNotifications",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.JoinedObserverCancellationStopsRemainingStaleJoinedNotifications",
+      "state": "Passed",
+      "durationSeconds": 0.0006533,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "JoinSuccessCannotBecomeFailureOrCleanupBecauseAUiObserverThrows",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.JoinSuccessCannotBecomeFailureOrCleanupBecauseAUiObserverThrows",
+      "state": "Passed",
+      "durationSeconds": 0.0015917,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "LeaveClearsMembershipOnceAndStillNotifiesOtherObservers",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.LeaveClearsMembershipOnceAndStillNotifiesOtherObservers",
+      "state": "Passed",
+      "durationSeconds": 0.0015741,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "LegacyRoomListObserverCannotMutateTheNextObserverOrSuppressTheCaller",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.LegacyRoomListObserverCannotMutateTheNextObserverOrSuppressTheCaller",
+      "state": "Passed",
+      "durationSeconds": 0.0017614,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "NewIdleNotificationDuringBusyNotificationCannotBeOverwrittenByTheOldBusyState",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.NewIdleNotificationDuringBusyNotificationCannotBeOverwrittenByTheOldBusyState",
+      "state": "Passed",
+      "durationSeconds": 0.0007299,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "RelayCodeUpdateKeepsSuccessfulResultWhenRegistryAndCallbackObserversThrow",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.RelayCodeUpdateKeepsSuccessfulResultWhenRegistryAndCallbackObserversThrow",
+      "state": "Passed",
+      "durationSeconds": 0.0020774,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "RoomInfoObserversReceiveIndependentSnapshotsAndAllWaitingCallbacksComplete",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.RoomInfoObserversReceiveIndependentSnapshotsAndAllWaitingCallbacksComplete",
+      "state": "Passed",
+      "durationSeconds": 0.00173,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n[PlayFab] A room observer failed.\r\n[PlayFab] A room observer failed.\r\n"
+    },
+    {
+      "name": "ServiceShutdownObserversCannotStartANewRoom(\"disable\")",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.ServiceShutdownObserversCannotStartANewRoom(\"disable\")",
+      "state": "Passed",
+      "durationSeconds": 0.0014814,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "ServiceShutdownObserversCannotStartANewRoom(\"destroy\")",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.ServiceShutdownObserversCannotStartANewRoom(\"destroy\")",
+      "state": "Passed",
+      "durationSeconds": 0.0006236,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "ServiceShutdownObserversCannotStartANewRoom(\"quit\")",
+      "fullName": "BattlePvp.EditorTests.RoomObserverIsolationTests.ServiceShutdownObserversCannotStartANewRoom(\"quit\")",
+      "state": "Passed",
+      "durationSeconds": 0.000568,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] PlayerNickname set to: Fixture host\r\n"
+    },
+    {
+      "name": "HeartbeatFailureAllowsRetryWithoutReplayingItsLateResponse",
+      "fullName": "BattlePvp.EditorTests.RoomServiceTimeoutTests.HeartbeatFailureAllowsRetryWithoutReplayingItsLateResponse",
+      "state": "Passed",
+      "durationSeconds": 0.3997548,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LatePreparationDoesNotResumeTheCancelledCommitPath",
+      "fullName": "BattlePvp.EditorTests.RoomServiceTimeoutTests.LatePreparationDoesNotResumeTheCancelledCommitPath",
+      "state": "Passed",
+      "durationSeconds": 0.3983503,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingResponseReleasesQueueButBlocksSameMembershipUntilLateAcknowledgement",
+      "fullName": "BattlePvp.EditorTests.RoomServiceTimeoutTests.MissingResponseReleasesQueueButBlocksSameMembershipUntilLateAcknowledgement",
+      "state": "Passed",
+      "durationSeconds": 0.3984073,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StaleTransportPreparationCannotCommitOrClearTheNextCancellationSource",
+      "fullName": "BattlePvp.EditorTests.RoomServiceTimeoutTests.StaleTransportPreparationCannotCommitOrClearTheNextCancellationSource",
+      "state": "Passed",
+      "durationSeconds": 0.0016138,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TransportFailureDoesNotAuthorizeASecondMutation",
+      "fullName": "BattlePvp.EditorTests.RoomServiceTimeoutTests.TransportFailureDoesNotAuthorizeASecondMutation",
+      "state": "Passed",
+      "durationSeconds": 0.298196,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CleanupAndRelayQueuesReleaseOnlyWhenTheirOwnOperationCompletes",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.CleanupAndRelayQueuesReleaseOnlyWhenTheirOwnOperationCompletes",
+      "state": "Passed",
+      "durationSeconds": 0.0003328,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DifferentMembershipNeverReceivesOldCleanupResponsibility(\"a10\",\"battle_b20_fedcba9876543210fedcba9876543210\")",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.DifferentMembershipNeverReceivesOldCleanupResponsibility(\"a10\",\"battle_b20_fedcba9876543210fedcba9876543210\")",
+      "state": "Passed",
+      "durationSeconds": 0.0003374,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DifferentMembershipNeverReceivesOldCleanupResponsibility(\"b20\",\"battle_a10_0123456789abcdef0123456789abcdef\")",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.DifferentMembershipNeverReceivesOldCleanupResponsibility(\"b20\",\"battle_a10_0123456789abcdef0123456789abcdef\")",
+      "state": "Passed",
+      "durationSeconds": 2.66E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DuplicateRejectionDoesNotTransferExistingConnectionCleanupToAFutureAttempt",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.DuplicateRejectionDoesNotTransferExistingConnectionCleanupToAFutureAttempt",
+      "state": "Passed",
+      "durationSeconds": 0.0001642,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FailedListingMayReplaceUnverifiedRoomsWithEmptyDespiteRevisionChanges",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.FailedListingMayReplaceUnverifiedRoomsWithEmptyDespiteRevisionChanges",
+      "state": "Passed",
+      "durationSeconds": 0.0001183,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "LateAcknowledgementCanResumeCleanupAfterInheritedAttemptWasCancelled",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.LateAcknowledgementCanResumeCleanupAfterInheritedAttemptWasCancelled",
+      "state": "Passed",
+      "durationSeconds": 0.3977982,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MutationsRejectOlderListResponsesWithoutExtendingNewerSnapshotLifetime",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.MutationsRejectOlderListResponsesWithoutExtendingNewerSnapshotLifetime",
+      "state": "Passed",
+      "durationSeconds": 0.0003077,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SameRoomRenewalInheritsCleanupEvenIfItCancelsBeforeSendingJoin",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SameRoomRenewalInheritsCleanupEvenIfItCancelsBeforeSendingJoin",
+      "state": "Passed",
+      "durationSeconds": 0.0002666,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(9.0d,False)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(9.0d,False)",
+      "state": "Passed",
+      "durationSeconds": 0.0004282,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(10.0d,True)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(10.0d,True)",
+      "state": "Passed",
+      "durationSeconds": 5.36E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(13.0d,True)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(13.0d,True)",
+      "state": "Passed",
+      "durationSeconds": 3E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(13.001d,False)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(13.001d,False)",
+      "state": "Passed",
+      "durationSeconds": 2.64E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(double.NaN,False)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(double.NaN,False)",
+      "state": "Passed",
+      "durationSeconds": 1.69E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SnapshotReuseHonorsTtlAndFiniteMonotonicTime(double.PositiveInfinity,False)",
+      "fullName": "BattlePvp.EditorTests.RoomSessionStateTests.SnapshotReuseHonorsTtlAndFiniteMonotonicTime(double.PositiveInfinity,False)",
+      "state": "Passed",
+      "durationSeconds": 1.71E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(False,2)",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(False,2)",
+      "state": "Passed",
+      "durationSeconds": 0.0026142,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(False,0)",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(False,0)",
+      "state": "Passed",
+      "durationSeconds": 0.0001601,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(True,2)",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.CleanupUpdatesAllListedMetadataAndNeverResurrectsAnUnlistedRoom(True,2)",
+      "state": "Passed",
+      "durationSeconds": 0.0001133,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConfirmedAdminDeletionCannotBeUndoneByAnOlderPendingList(False)",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ConfirmedAdminDeletionCannotBeUndoneByAnOlderPendingList(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0023118,
+      "message": null,
+      "stackTrace": null,
+      "output": "[PlayFab] AdminDeleteRoom completed.\r\n"
+    },
+    {
+      "name": "ConfirmedAdminDeletionCannotBeUndoneByAnOlderPendingList(True)",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ConfirmedAdminDeletionCannotBeUndoneByAnOlderPendingList(True)",
+      "state": "Passed",
+      "durationSeconds": 0.000804,
+      "message": null,
+      "stackTrace": null,
+      "output": "[PlayFab] AdminClearRoomRegistry completed.\r\n"
+    },
+    {
+      "name": "EmptyAuthoritativeListPreservesCurrentSessionAndItsParserFallback",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.EmptyAuthoritativeListPreservesCurrentSessionAndItsParserFallback",
+      "state": "Passed",
+      "durationSeconds": 0.0010943,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"ttl\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"ttl\")",
+      "state": "Passed",
+      "durationSeconds": 0.0008125,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"lease\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"lease\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001751,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"infinity\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ParserDoesNotFallbackToAnExpiredOrUnverifiedListing(\"infinity\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001373,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ParserUsesCurrentSessionBeforeSameRoomListAndResponseBeforeBoth",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.ParserUsesCurrentSessionBeforeSameRoomListAndResponseBeforeBoth",
+      "state": "Passed",
+      "durationSeconds": 0.0004498,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectedAdminDeleteKeepsTheConfirmedSnapshot",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.RejectedAdminDeleteKeepsTheConfirmedSnapshot",
+      "state": "Passed",
+      "durationSeconds": 0.001602,
+      "message": null,
+      "stackTrace": null,
+      "output": "[PlayFab] AdminDeleteRoom failed: Denied: fixture\r\n"
+    },
+    {
+      "name": "SessionMetadataUpdatesExistingEntriesWithoutGrantingANewListingLease",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.SessionMetadataUpdatesExistingEntriesWithoutGrantingANewListingLease",
+      "state": "Passed",
+      "durationSeconds": 0.0005607,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"timeout\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"timeout\")",
+      "state": "Passed",
+      "durationSeconds": 0.0006641,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"failure\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"failure\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001629,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"late response\")",
+      "fullName": "BattlePvp.EditorTests.RoomSnapshotMutationTests.UnconfirmedListingHidesAllRoomsEvenAfterAMutationChangedTheRevision(\"late response\")",
+      "state": "Passed",
+      "durationSeconds": 0.0001376,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CollisionResultMayBeZeroWithoutRetryingOrDemandingDistance",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.CollisionResultMayBeZeroWithoutRetryingOrDemandingDistance",
+      "state": "Passed",
+      "durationSeconds": 0.0006276,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OwnerPoseCannotReplaceAForceBeforeFinalEpochHandoff",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.OwnerPoseCannotReplaceAForceBeforeFinalEpochHandoff",
+      "state": "Passed",
+      "durationSeconds": 0.0002283,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReconnectDoesNotRestartTheForceOrRepeatOldJumpInput",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ReconnectDoesNotRestartTheForceOrRepeatOldJumpInput",
+      "state": "Passed",
+      "durationSeconds": 0.0003479,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReliableMotionStateResetsJumpStreamAndLatchesItsInputEpoch",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ReliableMotionStateResetsJumpStreamAndLatchesItsInputEpoch",
+      "state": "Passed",
+      "durationSeconds": 0.0106673,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ServerControllerMovesWithoutOwnerPacketsAndHonorsTheWall(False)",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ServerControllerMovesWithoutOwnerPacketsAndHonorsTheWall(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0034344,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ServerControllerMovesWithoutOwnerPacketsAndHonorsTheWall(True)",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ServerControllerMovesWithoutOwnerPacketsAndHonorsTheWall(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0005574,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ServerJumpAndMidairHandoffPreserveFlightHeight",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ServerJumpAndMidairHandoffPreserveFlightHeight",
+      "state": "Passed",
+      "durationSeconds": 0.0004996,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TauntDuringForcedMotionIgnoresOwnerDirectionAndRespectsStopDistanceAndWalls(False)",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.TauntDuringForcedMotionIgnoresOwnerDirectionAndRespectsStopDistanceAndWalls(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0017028,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TauntDuringForcedMotionIgnoresOwnerDirectionAndRespectsStopDistanceAndWalls(True)",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.TauntDuringForcedMotionIgnoresOwnerDirectionAndRespectsStopDistanceAndWalls(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0006659,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "TeleportDuringForcedMovementEndsWithTheNewValidatorOrigin",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.TeleportDuringForcedMovementEndsWithTheNewValidatorOrigin",
+      "state": "Passed",
+      "durationSeconds": 0.0009704,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ZeroElapsedFrameDoesNotConsumeTheBufferedServerJump",
+      "fullName": "BattlePvp.EditorTests.ServerForcedMotionTests.ZeroElapsedFrameDoesNotConsumeTheBufferedServerJump",
+      "state": "Passed",
+      "durationSeconds": 0.0004103,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptedRotationRebasesTheBodyOffset",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.AcceptedRotationRebasesTheBodyOffset",
+      "state": "Passed",
+      "durationSeconds": 0.0015605,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptedSampleReplacesPeriodicPoseAtTheSameTimeAcrossRingWrap(0)",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.AcceptedSampleReplacesPeriodicPoseAtTheSameTimeAcrossRingWrap(0)",
+      "state": "Passed",
+      "durationSeconds": 0.0012786,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptedSampleReplacesPeriodicPoseAtTheSameTimeAcrossRingWrap(70)",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.AcceptedSampleReplacesPeriodicPoseAtTheSameTimeAcrossRingWrap(70)",
+      "state": "Passed",
+      "durationSeconds": 0.0003825,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DelayedHostPacketDoesNotOverwriteNewerActualLocalPose",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.DelayedHostPacketDoesNotOverwriteNewerActualLocalPose",
+      "state": "Passed",
+      "durationSeconds": 0.0004881,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DelayedPacketAlsoCorrectsLaterPeriodicHoldSamples",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.DelayedPacketAlsoCorrectsLaterPeriodicHoldSamples",
+      "state": "Passed",
+      "durationSeconds": 0.0003778,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DisabledBodyColliderDoesNotCreateAnAcceptedHitRegion",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.DisabledBodyColliderDoesNotCreateAnAcceptedHitRegion",
+      "state": "Passed",
+      "durationSeconds": 0.0002709,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HistoryResetClearsTheRetainedNetworkPose",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.HistoryResetClearsTheRetainedNetworkPose",
+      "state": "Passed",
+      "durationSeconds": 0.0004147,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NetworkRootAndBodyBoundsUseTheSameAcceptedPosition",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.NetworkRootAndBodyBoundsUseTheSameAcceptedPosition",
+      "state": "Passed",
+      "durationSeconds": 0.0003642,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OlderNetworkRecordDoesNotMoveThePeriodicCaptureBackwards",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.OlderNetworkRecordDoesNotMoveThePeriodicCaptureBackwards",
+      "state": "Passed",
+      "durationSeconds": 0.0003237,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PeriodicCaptureDoesNotReplaceApprovedRootWithHostInterpolation",
+      "fullName": "BattlePvp.EditorTests.ServerPoseConsistencyTests.PeriodicCaptureDoesNotReplaceApprovedRootWithHostInterpolation",
+      "state": "Passed",
+      "durationSeconds": 0.0003644,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "AcceptsBudgetBoundaryAndPreservesServerItems",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.AcceptsBudgetBoundaryAndPreservesServerItems",
+      "state": "Passed",
+      "durationSeconds": 0.0005792,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ClientCannotFreelySwapPresetDuringBattle",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.ClientCannotFreelySwapPresetDuringBattle",
+      "state": "Passed",
+      "durationSeconds": 0.0001723,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "EndingChargeDoesNotRemoveIndependentSlowOrBuff",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.EndingChargeDoesNotRemoveIndependentSlowOrBuff",
+      "state": "Passed",
+      "durationSeconds": 0.00019,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "FloodingPacketsDoesNotMultiplyMovementTolerance",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.FloodingPacketsDoesNotMultiplyMovementTolerance",
+      "state": "Passed",
+      "durationSeconds": 0.0002544,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ForcedMoveOnlyAllowsAuthorizedDirectionAndDistance",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.ForcedMoveOnlyAllowsAuthorizedDirectionAndDistance",
+      "state": "Passed",
+      "durationSeconds": 0.000228,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "InvalidCoordinatesAndTimesNeverEnterHistory",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.InvalidCoordinatesAndTimesNeverEnterHistory",
+      "state": "Passed",
+      "durationSeconds": 0.0002582,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "JumpEnvelopeAcceptsBallisticJumpAndRejectsHovering",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.JumpEnvelopeAcceptsBallisticJumpAndRejectsHovering",
+      "state": "Passed",
+      "durationSeconds": 0.0002521,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NormalMovementAcceptedButTeleportAndReplayRejected",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.NormalMovementAcceptedButTeleportAndReplayRejected",
+      "state": "Passed",
+      "durationSeconds": 0.000194,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsCombinedOverspendingAndForgedItemBonus",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsCombinedOverspendingAndForgedItemBonus",
+      "state": "Passed",
+      "durationSeconds": 0.0001178,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsInvalidInvestmentsWithoutChangingSnapshot(-1.0f)",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsInvalidInvestmentsWithoutChangingSnapshot(-1.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0003105,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsInvalidInvestmentsWithoutChangingSnapshot(31.0f)",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsInvalidInvestmentsWithoutChangingSnapshot(31.0f)",
+      "state": "Passed",
+      "durationSeconds": 2.72E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsInvalidInvestmentsWithoutChangingSnapshot(float.NaN)",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsInvalidInvestmentsWithoutChangingSnapshot(float.NaN)",
+      "state": "Passed",
+      "durationSeconds": 1.54E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsInvalidInvestmentsWithoutChangingSnapshot(float.PositiveInfinity)",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsInvalidInvestmentsWithoutChangingSnapshot(float.PositiveInfinity)",
+      "state": "Passed",
+      "durationSeconds": 1.46E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectsInvalidInvestmentsWithoutChangingSnapshot(float.NegativeInfinity)",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.RejectsInvalidInvestmentsWithoutChangingSnapshot(float.NegativeInfinity)",
+      "state": "Passed",
+      "durationSeconds": 1.63E-05,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "StandingIdleDoesNotCountAsJumpFlightTime",
+      "fullName": "BattlePvp.EditorTests.StatAndMovementSecurityTests.StandingIdleDoesNotCountAsJumpFlightTime",
+      "state": "Passed",
+      "durationSeconds": 0.0001886,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "DefMonostatIncludesDefHealthAndConfiguredMovementMultiplier",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.DefMonostatIncludesDefHealthAndConfiguredMovementMultiplier",
+      "state": "Passed",
+      "durationSeconds": 0.0011017,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "IdentityListenersReadTheNewDerivedSnapshot",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.IdentityListenersReadTheNewDerivedSnapshot",
+      "state": "Passed",
+      "durationSeconds": 0.0005339,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ItemOnlyChangesInvalidateValuesWithoutChangingIdentity",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.ItemOnlyChangesInvalidateValuesWithoutChangingIdentity",
+      "state": "Passed",
+      "durationSeconds": 0.0004478,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MissingPersistenceReportsFailureAfterLocalApplication",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.MissingPersistenceReportsFailureAfterLocalApplication",
+      "state": "Passed",
+      "durationSeconds": 0.0015305,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "NonLocalScalingDoesNotWriteCameraOffset",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.NonLocalScalingDoesNotWriteCameraOffset",
+      "state": "Passed",
+      "durationSeconds": 0.0005007,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OfflinePreviewOnlyChangesTheCameraFollowingItsCharacter",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.OfflinePreviewOnlyChangesTheCameraFollowingItsCharacter",
+      "state": "Passed",
+      "durationSeconds": 0.0013735,
+      "message": null,
+      "stackTrace": null,
+      "output": "[StatManager] Scale applied: 1.2, Camera Offset: (0.35, 0.40, -1.00)\r\n[StatManager] Scale applied: 1, Camera Offset: (0.30, 0.20, -1.00)\r\n"
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(30.0f,0.0f,0.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(30.0f,0.0f,0.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0007312,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(0.0f,30.0f,0.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(0.0f,30.0f,0.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0002698,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(0.0f,0.0f,30.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(0.0f,0.0f,30.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.000209,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(0.0f,0.0f,0.0f,30.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(0.0f,0.0f,0.0f,30.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0001911,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(8.0f,8.0f,7.0f,7.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(8.0f,8.0f,7.0f,7.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0001889,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreviewMatchesLiveDerivedValues(15.0f,0.0f,15.0f,0.0f)",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.PreviewMatchesLiveDerivedValues(15.0f,0.0f,15.0f,0.0f)",
+      "state": "Passed",
+      "durationSeconds": 0.0001824,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RejectedPresetDoesNotChangeLiveOrSavedStats",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.RejectedPresetDoesNotChangeLiveOrSavedStats",
+      "state": "Passed",
+      "durationSeconds": 0.0014379,
+      "message": null,
+      "stackTrace": null,
+      "output": "[GlobalDataManager] SavedStats Updated (Clamped to 30): 8/7/8/7\r\n"
+    },
+    {
+      "name": "RepeatedPulseRestartsPreserveNonUnitScale",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.RepeatedPulseRestartsPreserveNonUnitScale",
+      "state": "Passed",
+      "durationSeconds": 0.0007787,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RepeatedReadsReuseCacheAndConfigChangeInvalidatesIt",
+      "fullName": "BattlePvp.EditorTests.StatPreviewCacheTests.RepeatedReadsReuseCacheAndConfigChangeInvalidatesIt",
+      "state": "Passed",
+      "durationSeconds": 0.0005661,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ConfigValidationOnWorkerOnlyChangesRevisionAndPreviewCacheRemainsFresh",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.ConfigValidationOnWorkerOnlyChangesRevisionAndPreviewCacheRemainsFresh",
+      "state": "Passed",
+      "durationSeconds": 0.0012941,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "EditModeUpdateRetainsBothPendingFlagsWithoutRuntimeNotifications",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.EditModeUpdateRetainsBothPendingFlagsWithoutRuntimeNotifications",
+      "state": "Passed",
+      "durationSeconds": 0.0004274,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ExplicitNotifyChangedIsImmediateAndConsumesEarlierAssetValidation",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.ExplicitNotifyChangedIsImmediateAndConsumesEarlierAssetValidation",
+      "state": "Passed",
+      "durationSeconds": 0.0006089,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "MainThreadPublicationCoalescesAssetAndManagerValidation",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.MainThreadPublicationCoalescesAssetAndManagerValidation",
+      "state": "Passed",
+      "durationSeconds": 0.0004069,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ManagerValidationOnlyMarksPendingWithoutLoadingBalanceOrPublishingEvents",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.ManagerValidationOnlyMarksPendingWithoutLoadingBalanceOrPublishingEvents",
+      "state": "Passed",
+      "durationSeconds": 0.0006581,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "OfflineDisplayWithoutNetworkIdentityStillReceivesBalanceChanges",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.OfflineDisplayWithoutNetworkIdentityStillReceivesBalanceChanges",
+      "state": "Passed",
+      "durationSeconds": 0.0011868,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PreparedMainThreadDrainCoalescesEditsAndPublishesTheNewSnapshotOnce",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.PreparedMainThreadDrainCoalescesEditsAndPublishesTheNewSnapshotOnce",
+      "state": "Passed",
+      "durationSeconds": 0.0005531,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ReentrantAssetValidationWaitsForTheNextMainThreadPublication",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.ReentrantAssetValidationWaitsForTheNextMainThreadPublication",
+      "state": "Passed",
+      "durationSeconds": 0.0003166,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "UnboundBalanceSubscriberDefersUntilIdentityBindingIsReady",
+      "fullName": "BattlePvp.EditorTests.StatValidationLifecycleTests.UnboundBalanceSubscriberDefersUntilIdentityBindingIsReady",
+      "state": "Passed",
+      "durationSeconds": 0.0003637,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CharacterDetailsStartClosedAndLaterVisibilityIsNotReset",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.CharacterDetailsStartClosedAndLaterVisibilityIsNotReset",
+      "state": "Passed",
+      "durationSeconds": 0.0008391,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ExplicitHudStateSurvivesInitializationBeforeOrAfterItsFirstAwake(False)",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.ExplicitHudStateSurvivesInitializationBeforeOrAfterItsFirstAwake(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0025908,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ExplicitHudStateSurvivesInitializationBeforeOrAfterItsFirstAwake(True)",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.ExplicitHudStateSurvivesInitializationBeforeOrAfterItsFirstAwake(True)",
+      "state": "Passed",
+      "durationSeconds": 0.000485,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "HudClosesEditorOpenedDeathLoadingAndCountdownAndClearsSampleDamage",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.HudClosesEditorOpenedDeathLoadingAndCountdownAndClearsSampleDamage",
+      "state": "Passed",
+      "durationSeconds": 0.0006332,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SkillPreviewStartsHiddenButExplicitCooldownOrHiddenStateSurvivesAwake(False)",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.SkillPreviewStartsHiddenButExplicitCooldownOrHiddenStateSurvivesAwake(False)",
+      "state": "Passed",
+      "durationSeconds": 0.0018298,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "SkillPreviewStartsHiddenButExplicitCooldownOrHiddenStateSurvivesAwake(True)",
+      "fullName": "BattlePvp.EditorTests.TemporaryHudInitializationTests.SkillPreviewStartsHiddenButExplicitCooldownOrHiddenStateSurvivesAwake(True)",
+      "state": "Passed",
+      "durationSeconds": 0.0003504,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "BoundResultSummaryAndFieldsEscapeOnceAndPreserveAllWinners",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.BoundResultSummaryAndFieldsEscapeOnceAndPreserveAllWinners",
+      "state": "Passed",
+      "durationSeconds": 0.0280623,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<size=500%>Huge</size>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<size=500%>Huge</size>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0016541,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"</noparse><color=red>Red</color>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"</noparse><color=red>Red</color>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005785,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"</NOPARSE><b>Bold</b>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"</NOPARSE><b>Bold</b>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004974,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<style=Title>Title</style><br>Next\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<style=Title>Title</style><br>Next\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005248,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<a href=\\\"bad\\\">Link</a><link=bad>Other</link>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<a href=\\\"bad\\\">Link</a><link=bad>Other</link>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005621,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<sprite=0><space=999><pos=500>X\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<sprite=0><space=999><pos=500>X\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004816,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<<</b><i>X</i>>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"<<</b><i>X</i>>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0003861,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"\\\\n\\\\r\\\\t\\\\v\\\\u000A\\\\U0000000A\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"\\\\n\\\\r\\\\t\\\\v\\\\u000A\\\\U0000000A\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004205,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"\\\\u003Csize=500%\\\\u003EBig\\\\U0000003Cbr>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"\\\\u003Csize=500%\\\\u003EBig\\\\U0000003Cbr>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004965,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"C:\\\\users\\\\name\\\\\\\\<br>\\\\\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.PlainUserTextRendersLiterallyWithoutChangingAuthoredStyle(\"C:\\\\users\\\\name\\\\\\\\<br>\\\\\")",
+      "state": "Passed",
+      "durationSeconds": 0.000389,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<size=500%>Huge</size>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<size=500%>Huge</size>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0016861,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"</noparse><color=red>Red</color>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"</noparse><color=red>Red</color>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005819,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"</NOPARSE><b>Bold</b>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"</NOPARSE><b>Bold</b>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004843,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<style=Title>Title</style><br>Next\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<style=Title>Title</style><br>Next\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005055,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<a href=\\\"bad\\\">Link</a><link=bad>Other</link>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<a href=\\\"bad\\\">Link</a><link=bad>Other</link>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005534,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<sprite=0><space=999><pos=500>X\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<sprite=0><space=999><pos=500>X\")",
+      "state": "Passed",
+      "durationSeconds": 0.000507,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<<</b><i>X</i>>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"<<</b><i>X</i>>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004479,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"\\\\n\\\\r\\\\t\\\\v\\\\u000A\\\\U0000000A\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"\\\\n\\\\r\\\\t\\\\v\\\\u000A\\\\U0000000A\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004649,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"\\\\u003Csize=500%\\\\u003EBig\\\\U0000003Cbr>\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"\\\\u003Csize=500%\\\\u003EBig\\\\U0000003Cbr>\")",
+      "state": "Passed",
+      "durationSeconds": 0.0005265,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"C:\\\\users\\\\name\\\\\\\\<br>\\\\\")",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RichResultKeepsDeveloperMarkupAndRendersUserTagsLiterally(\"C:\\\\users\\\\name\\\\\\\\<br>\\\\\")",
+      "state": "Passed",
+      "durationSeconds": 0.0004396,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RuntimeResultFallbackUsesTheSameLiteralDisplayBoundary",
+      "fullName": "BattlePvp.EditorTests.UserTextPresentationTests.RuntimeResultFallbackUsesTheSameLiteralDisplayBoundary",
+      "state": "Passed",
+      "durationSeconds": 0.0016386,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "CharacterInfoNicknameUsesPlainDisplayWithoutRewritingProfileData",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.CharacterInfoNicknameUsesPlainDisplayWithoutRewritingProfileData",
+      "state": "Passed",
+      "durationSeconds": 0.0032393,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "ChatMessageCommitKeepsMessagesOnSeparateLinesAndDoesNotRewriteTheInput",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.ChatMessageCommitKeepsMessagesOnSeparateLinesAndDoesNotRewriteTheInput",
+      "state": "Passed",
+      "durationSeconds": 0.0019092,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "KillFeedFallbackCreateItemUsesPlainCombinedNames",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.KillFeedFallbackCreateItemUsesPlainCombinedNames",
+      "state": "Passed",
+      "durationSeconds": 0.000576,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "KillFeedGenericTmpPrefabUsesPlainNamesWithoutChangingItsTemplate",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.KillFeedGenericTmpPrefabUsesPlainNamesWithoutChangingItsTemplate",
+      "state": "Passed",
+      "durationSeconds": 0.0004958,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "KillItemSetDataUsesPlainNamesAndPreservesUnspecifiedIconState",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.KillItemSetDataUsesPlainNamesAndPreservesUnspecifiedIconState",
+      "state": "Passed",
+      "durationSeconds": 0.0013141,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RankingSetDataUsesPlainDisplayWhileKeepingRawNameAndNumericCaches",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.RankingSetDataUsesPlainDisplayWhileKeepingRawNameAndNumericCaches",
+      "state": "Passed",
+      "durationSeconds": 0.0005589,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RoomBannerMetadataUsesPlainNamesWhileKeepingLiveOccupancySeparate",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.RoomBannerMetadataUsesPlainNamesWhileKeepingLiveOccupancySeparate",
+      "state": "Passed",
+      "durationSeconds": 0.0006209,
+      "message": null,
+      "stackTrace": null,
+      "output": ""
+    },
+    {
+      "name": "RoomSetInfoEscapesOnlyLabelsAndPreservesSelectionAndDeletionIds",
+      "fullName": "BattlePvp.EditorTests.UserTextUiIntegrationTests.RoomSetInfoEscapesOnlyLabelsAndPreservesSelectionAndDeletionIds",
+      "state": "Passed",
+      "durationSeconds": 0.0022141,
+      "message": null,
+      "stackTrace": null,
+      "output": "[RoomListItem] Item Selected: battle_abc123_11111111111111111111111111111111\r\n"
+    }
+  ]
+}

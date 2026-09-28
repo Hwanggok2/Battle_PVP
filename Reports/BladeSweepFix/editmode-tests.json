@@ -1,0 +1,42 @@
+{
+  "result": {
+    "success": true,
+    "message": "Test job status retrieved.",
+    "error": null,
+    "data": {
+      "job_id": "8c74ebe1d8c34712b073880718e059e9",
+      "status": "succeeded",
+      "mode": "EditMode",
+      "started_unix_ms": 1790353148527,
+      "finished_unix_ms": 1790353169626,
+      "last_update_unix_ms": 1790353169626,
+      "progress": {
+        "completed": 554,
+        "total": 554,
+        "current_test_full_name": null,
+        "current_test_started_unix_ms": 1790353169337,
+        "last_finished_test_full_name": "BattlePvp.EditorTests.UserTextUiIntegrationTests.RoomSetInfoEscapesOnlyLabelsAndPreservesSelectionAndDeletionIds",
+        "last_finished_unix_ms": 1790353169340,
+        "stuck_suspected": false,
+        "editor_is_focused": false,
+        "blocked_reason": null,
+        "failures_so_far": [],
+        "failures_capped": false
+      },
+      "error": null,
+      "result": {
+        "mode": "EditMode",
+        "summary": {
+          "total": 554,
+          "passed": 554,
+          "failed": 0,
+          "skipped": 0,
+          "durationSeconds": 16.7584482,
+          "resultState": "Passed"
+        },
+        "results": []
+      }
+    },
+    "hint": null
+  }
+}

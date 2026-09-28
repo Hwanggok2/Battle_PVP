@@ -1,0 +1,68 @@
+[
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "yaw": 135.0,
+    "duration": 1.07142854,
+    "vertices": 324,
+    "planeDeviation": 8.629918E-09,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "yaw": 135.0,
+    "duration": 1.07142854,
+    "vertices": 380,
+    "planeDeviation": 6.447357E-08,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "yaw": 135.0,
+    "duration": 1.07142854,
+    "vertices": 160,
+    "planeDeviation": 0.0,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  },
+  {
+    "combo": 0,
+    "pitch": -45.0,
+    "yaw": 135.0,
+    "duration": 1.07142854,
+    "vertices": 324,
+    "planeDeviation": 7.70337749E-09,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "yaw": 135.0,
+    "duration": 1.07142854,
+    "vertices": 324,
+    "planeDeviation": 7.802321E-09,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  },
+  {
+    "combo": 0,
+    "pitch": -30.0,
+    "yaw": 195.0,
+    "duration": 1.07142854,
+    "vertices": 328,
+    "planeDeviation": 8.629918E-09,
+    "poseError": 0.0,
+    "legRotationError": 0.0,
+    "aimError": 0.0
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "part": "Legs",
+    "combo": 0,
+    "damage": 43.7897034,
+    "pitch": 45.14961
+  },
+  {
+    "part": "Legs",
+    "combo": 1,
+    "damage": 45.54129,
+    "pitch": 46.582634
+  },
+  {
+    "part": "Legs",
+    "combo": 2,
+    "damage": 38.5349426,
+    "pitch": 46.6255722
+  },
+  {
+    "part": "Body",
+    "combo": 0,
+    "damage": 43.7897034,
+    "pitch": 24.38525
+  },
+  {
+    "part": "Body",
+    "combo": 1,
+    "damage": 56.9266052,
+    "pitch": 23.1066952
+  },
+  {
+    "part": "Body",
+    "combo": 2,
+    "damage": 48.16867,
+    "pitch": 23.03936
+  },
+  {
+    "part": "Head",
+    "combo": 0,
+    "damage": 65.68454,
+    "pitch": -6.3711853
+  },
+  {
+    "part": "Head",
+    "combo": 1,
+    "damage": 56.9266052,
+    "pitch": -7.97460938
+  },
+  {
+    "part": "Head",
+    "combo": 2,
+    "damage": 72.25302,
+    "pitch": -8.062134
+  }
+]

@@ -1,0 +1,24 @@
+{
+  "scene": "Lobby",
+  "duration": 1.07142854,
+  "frames": [
+    {
+      "normalized": 0.150066629,
+      "vertices": 36,
+      "samples": 10,
+      "animatorTime": 0.150063619
+    },
+    {
+      "normalized": 0.55384624,
+      "vertices": 156,
+      "samples": 48,
+      "animatorTime": 0.553846061
+    },
+    {
+      "normalized": 0.9053487,
+      "vertices": 136,
+      "samples": 48,
+      "animatorTime": 0.905348361
+    }
+  ]
+}

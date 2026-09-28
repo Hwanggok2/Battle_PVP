@@ -1,0 +1,36 @@
+[
+  {
+    "scene": "Login",
+    "missingScripts": 0,
+    "spawns": 0,
+    "duplicateBorders": 0,
+    "skillArcs": 0
+  },
+  {
+    "scene": "Lobby",
+    "missingScripts": 0,
+    "spawns": 0,
+    "duplicateBorders": 0,
+    "skillArcs": 1
+  },
+  {
+    "scene": "Battle_waiting",
+    "missingScripts": 0,
+    "spawns": 8,
+    "duplicateBorders": 0,
+    "skillArcs": 0
+  },
+  {
+    "scene": "Battle",
+    "missingScripts": 0,
+    "spawns": 8,
+    "duplicateBorders": 0,
+    "skillArcs": 0
+  },
+  {
+    "prefab": "Player",
+    "missingScripts": 0,
+    "skillArcs": 1,
+    "fx": true
+  }
+]

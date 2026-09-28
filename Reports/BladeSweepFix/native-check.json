@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "message": "Code executed successfully.",
+  "data": {
+    "result": {
+      "onlyHitWindow": true,
+      "startNormalized": 0.533333361,
+      "endNormalized": 0.6666667,
+      "patchLength": 0.945563138,
+      "samples": 8,
+      "vertices": 48,
+      "shader": "BattlePvp/BladeSweep",
+      "debugPaths": 0
+    },
+    "compiler": "codedom"
+  }
+}

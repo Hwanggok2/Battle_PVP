@@ -1,0 +1,11 @@
+{
+  "scene": "Battle_waiting",
+  "before": -8.00002,
+  "after": -1.99079514E-05,
+  "delta": "(40.00, 0.00)",
+  "right": true,
+  "locked": false,
+  "paused": false,
+  "typing": false,
+  "currentMouse": true
+}

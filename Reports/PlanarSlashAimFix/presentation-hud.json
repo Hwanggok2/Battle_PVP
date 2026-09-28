@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Health_Root",
+    "alpha": 0.0
+  },
+  {
+    "name": "Identity_Widget",
+    "alpha": 0.0
+  },
+  {
+    "name": "Combat Reticle",
+    "alpha": 1.0
+  }
+]

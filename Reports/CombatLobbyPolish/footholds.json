@@ -1,0 +1,101 @@
+[
+  {
+    "name": "Courtyard foothold 0",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 1",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 2",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 3",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 4",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 5",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 6",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 7",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 8",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Courtyard foothold 9",
+    "stepTop": 0.65,
+    "landedStep": 0.7299999,
+    "targetTop": 1.3,
+    "landedTop": 1.37999988,
+    "grounded": true,
+    "passed": true
+  },
+  {
+    "name": "Generator foothold",
+    "stepTop": 4.9,
+    "landedStep": 4.98,
+    "targetTop": 5.6,
+    "landedTop": 5.68,
+    "grounded": true,
+    "passed": true
+  }
+]

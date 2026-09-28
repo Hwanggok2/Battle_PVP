@@ -1,0 +1,1781 @@
+{
+  "UI_Root": [
+    {
+      "path": "",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "CanvasScaler",
+        "GraphicRaycaster",
+        "UiInitialVisibility"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "GraphicRaycaster",
+        "PlayerHUD"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, -58.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Back",
+      "active": false,
+      "rect": "(100.00, 100.00)",
+      "position": "(154.00, -128.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Fill",
+      "active": true,
+      "rect": "(160.00, 15.00)",
+      "position": "(0.00, 129.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Fill/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Fill/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Fill/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HP_Fill/HP_Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(21.00, -7.10)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "HP "
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/Overflow_Fill",
+      "active": true,
+      "rect": "(160.00, 15.00)",
+      "position": "(0.00, 103.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/Overflow_Fill/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/Overflow_Fill/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/Overflow_Fill/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Health_Root/HitDamage",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(134.00, 196.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": ""
+    },
+    {
+      "path": "Canvas_HUD/Identity_Widget",
+      "active": true,
+      "rect": "(-3.00, -8.00)",
+      "position": "(-1.50, 4.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Identity_Widget/Frame",
+      "active": true,
+      "rect": "(112.39, 35.87)",
+      "position": "(0.67, -3.45)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/Identity_Widget/Status_VFX",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "RawImage",
+        "UIIdentityGlitchBinder"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/FloatingMessage_Canvas",
+      "active": true,
+      "rect": "(100.00, 100.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/FloatingMessage_Canvas/Panel",
+      "active": true,
+      "rect": "(284.00, -60.00)",
+      "position": "(0.00, -125.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/FloatingMessage_Canvas/FloatingMessage",
+      "active": true,
+      "rect": "(500.00, 40.00)",
+      "position": "(0.00, -125.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "New Text"
+    },
+    {
+      "path": "Canvas_HUD/DeathOverlay",
+      "active": false,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_HUD/DeathOverlay/Count",
+      "active": true,
+      "rect": "(750.00, 50.00)",
+      "position": "(0.00, -100.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Count..."
+    },
+    {
+      "path": "SkillUI",
+      "active": true,
+      "rect": "(50.00, 50.00)",
+      "position": "(223.00, 95.00)",
+      "scripts": [
+        "Image",
+        "SkillUI"
+      ],
+      "text": null
+    },
+    {
+      "path": "SkillUI/Overlay",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "SkillUI/Overlay/Timer",
+      "active": true,
+      "rect": "(60.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "10"
+    },
+    {
+      "path": "SkillUI/Image",
+      "active": true,
+      "rect": "(40.00, 40.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "SkillUI/SkillName",
+      "active": true,
+      "rect": "(120.00, 20.00)",
+      "position": "(0.00, -26.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "발차기"
+    },
+    {
+      "path": "SkillUI/Index",
+      "active": true,
+      "rect": "(75.94, 20.00)",
+      "position": "(99.00, 26.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": ""
+    },
+    {
+      "path": "Stat_Setting",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "GraphicRaycaster",
+        "StatCustomizerController"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer",
+      "active": false,
+      "rect": "(-100.00, -100.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "GraphicRaycaster"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Background",
+      "active": false,
+      "rect": "(100.00, 100.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "HorizontalLayoutGroup"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats",
+      "active": true,
+      "rect": "(100.00, 100.00)",
+      "position": "(50.00, -50.00)",
+      "scripts": [
+        "VerticalLayoutGroup"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row",
+      "active": true,
+      "rect": "(500.00, 20.00)",
+      "position": "(50.00, -210.00)",
+      "scripts": [
+        "Slider",
+        "StatSlider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Handle Slide Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Handle Slide Area/Handle",
+      "active": true,
+      "rect": "(20.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(-150.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "STR"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/STR_Row_Item",
+      "active": true,
+      "rect": "(300.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/STR_Row_Item/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/STR_Row/STR_Row_Item/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row",
+      "active": true,
+      "rect": "(500.00, 20.00)",
+      "position": "(50.00, -280.00)",
+      "scripts": [
+        "Slider",
+        "StatSlider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Handle Slide Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Handle Slide Area/Handle",
+      "active": true,
+      "rect": "(20.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(-150.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "AGI"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/AGI_Row_Item",
+      "active": true,
+      "rect": "(300.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/AGI_Row_Item/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/AGI_Row/AGI_Row_Item/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row",
+      "active": true,
+      "rect": "(500.00, 20.00)",
+      "position": "(50.00, -350.00)",
+      "scripts": [
+        "Slider",
+        "StatSlider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Handle Slide Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Handle Slide Area/Handle",
+      "active": true,
+      "rect": "(20.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(-150.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "CON"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/CON_Row_Item",
+      "active": true,
+      "rect": "(300.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/CON_Row_Item/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/CON_Row/CON_Row_Item/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row",
+      "active": true,
+      "rect": "(500.00, 20.00)",
+      "position": "(50.00, -420.00)",
+      "scripts": [
+        "Slider",
+        "StatSlider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Background",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Handle Slide Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Handle Slide Area/Handle",
+      "active": true,
+      "rect": "(20.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(-150.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "DEF"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/DEF_Row_Item",
+      "active": true,
+      "rect": "(300.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Slider"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/DEF_Row_Item/Fill Area",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Left_PrimaryStats/DEF_Row/DEF_Row_Item/Fill Area/Fill",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats",
+      "active": true,
+      "rect": "(100.00, 100.00)",
+      "position": "(198.00, 87.00)",
+      "scripts": [
+        "VerticalLayoutGroup"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/ATK_Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -175.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "ATK_Text"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/Armor Penetration",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -210.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Armor Penetration"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/DEF_Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -245.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "DEF_Text"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/MaxHP_Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -280.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "MaxHP_Text"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/Recovery_Text",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -315.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Recovery_Text"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/MoveSpeed",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -350.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "MoveSpeed"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Stat_Group/Right_DerivedStats/AttackSpeed",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(250.00, -385.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "AttackSpeed"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Identity_Preview",
+      "active": true,
+      "rect": "(904.00, 410.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Identity_Preview/RemainStatus",
+      "active": true,
+      "rect": "(400.00, 50.00)",
+      "position": "(0.00, -20.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Remain"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Identity_Preview/Icon",
+      "active": true,
+      "rect": "(54.07, 49.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Identity_Preview/Icon/Text (TMP)",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Identity\nicon\n"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Identity_Preview/Description",
+      "active": true,
+      "rect": "(500.00, 47.00)",
+      "position": "(0.00, 100.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "stat description"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/ApplyButton",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(-20.00, 10.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/ApplyButton/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "저장하기"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset1",
+      "active": true,
+      "rect": "(200.00, 60.00)",
+      "position": "(5.00, -2.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset1/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Preset1"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset2",
+      "active": true,
+      "rect": "(200.00, 60.00)",
+      "position": "(205.00, -2.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset2/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Preset2"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset3",
+      "active": true,
+      "rect": "(200.00, 60.00)",
+      "position": "(405.00, -2.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Preset3/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Preset3"
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Strategist_Preset",
+      "active": true,
+      "rect": "(200.00, 60.00)",
+      "position": "(-5.00, -2.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat_Setting/Canvas_Customizer/Strategist_Preset/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Strategist"
+    },
+    {
+      "path": "Canvas_FX",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "GraphicRaycaster"
+      ],
+      "text": null
+    },
+    {
+      "path": "Canvas_FX/Screen_Distortion",
+      "active": false,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "RawImage"
+      ],
+      "text": null
+    },
+    {
+      "path": "Damage_Popup",
+      "active": true,
+      "rect": "(10.00, 5.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshPro",
+        "DamagePopup"
+      ],
+      "text": "Sample text"
+    },
+    {
+      "path": "Player Icon Button",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Player Icon Button/Text (TMP)",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(930.00, -795.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": ""
+    },
+    {
+      "path": "CharacterInfoController",
+      "active": true,
+      "rect": "(100.00, 100.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "CharacterInfoController"
+      ],
+      "text": null
+    },
+    {
+      "path": "CharacterInfo_Panel",
+      "active": false,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO",
+      "active": true,
+      "rect": "(-140.00, -140.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/PlayerID",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, -50.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "PlayerID"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/STR",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, -100.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "STR :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/AGI",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, -130.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "AGI :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/CON",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, -160.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "CON :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/DEF",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, -190.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "DEF :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/KillCount",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, 100.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "K :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/DeathCouont",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, 70.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "D :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/KDA",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(30.00, 40.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "KDA : "
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/ATK",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -100.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "ATK :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/DEF_Rate",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -130.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "DEF_Rate :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/MaxHP",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -160.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "MaxHP :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/Pene",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -190.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Pene :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/Regen",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -220.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Regen :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/MoveSpd",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -250.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "MoveSpd :"
+    },
+    {
+      "path": "CharacterInfo_Panel/PlayerINFO/AtkSpd",
+      "active": true,
+      "rect": "(200.00, 50.00)",
+      "position": "(0.00, -280.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "AtkSpd :"
+    }
+  ],
+  "Lobby_UI": [
+    {
+      "path": "",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "CanvasScaler",
+        "GraphicRaycaster",
+        "LobbyUIManager",
+        "LobbyPlayerActivator"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI",
+      "active": true,
+      "rect": "(900.00, 250.00)",
+      "position": "(15.00, 15.00)",
+      "scripts": [
+        "Image",
+        "BattleChatUI"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI/ResizeHandle",
+      "active": true,
+      "rect": "(0.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI/LogScroll",
+      "active": true,
+      "rect": "(-20.00, -56.00)",
+      "position": "(0.00, 14.00)",
+      "scripts": [
+        "Image",
+        "ScrollRect"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI/LogScroll/Viewport",
+      "active": true,
+      "rect": "(-16.00, -12.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Mask"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI/LogScroll/Viewport/Content",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": ""
+    },
+    {
+      "path": "BattleChatUI/Input",
+      "active": true,
+      "rect": "(-20.00, 20.00)",
+      "position": "(0.00, 8.00)",
+      "scripts": [
+        "Image",
+        "TMP_InputField"
+      ],
+      "text": null
+    },
+    {
+      "path": "BattleChatUI/Input/Text",
+      "active": true,
+      "rect": "(-20.00, -6.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "​"
+    },
+    {
+      "path": "BattleChatUI/Input/Placeholder",
+      "active": true,
+      "rect": "(-20.00, -6.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Enter to chat"
+    },
+    {
+      "path": "Stat",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Stat/Text (TMP)",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "설정"
+    },
+    {
+      "path": "Battle_Panel",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Battle",
+      "active": true,
+      "rect": "(60.00, 50.00)",
+      "position": "(0.00, -60.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Battle/Text (TMP)",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "방 목록"
+    },
+    {
+      "path": "Battle_Panel/Room",
+      "active": false,
+      "rect": "(-160.00, -180.00)",
+      "position": "(0.00, 10.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List",
+      "active": true,
+      "rect": "(-80.00, -30.00)",
+      "position": "(0.00, -15.00)",
+      "scripts": [
+        "Image",
+        "ScrollRect",
+        "RoomListManager"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Viewport",
+      "active": true,
+      "rect": "(-17.00, -17.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Mask"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Viewport/Content",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "VerticalLayoutGroup"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Horizontal",
+      "active": true,
+      "rect": "(-17.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Scrollbar"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Horizontal/Sliding Area",
+      "active": true,
+      "rect": "(-20.00, -20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Horizontal/Sliding Area/Handle",
+      "active": true,
+      "rect": "(20.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Vertical",
+      "active": true,
+      "rect": "(20.00, -17.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Scrollbar"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Vertical/Sliding Area",
+      "active": true,
+      "rect": "(-20.00, -20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Room_List/Scrollbar Vertical/Sliding Area/Handle",
+      "active": true,
+      "rect": "(20.00, 20.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/CreateRoom",
+      "active": true,
+      "rect": "(250.00, 50.00)",
+      "position": "(45.00, 25.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/CreateRoom/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "방 만들기"
+    },
+    {
+      "path": "Battle_Panel/Room/EnterRoom",
+      "active": true,
+      "rect": "(250.00, 50.00)",
+      "position": "(-60.00, 25.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/EnterRoom/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "참여하기"
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting",
+      "active": false,
+      "rect": "(500.00, 75.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/RoomName",
+      "active": true,
+      "rect": "(420.00, 45.00)",
+      "position": "(10.00, 0.00)",
+      "scripts": [
+        "Image",
+        "TMP_InputField"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/RoomName/Text Area",
+      "active": true,
+      "rect": "(-20.00, -13.00)",
+      "position": "(0.00, -0.50)",
+      "scripts": [
+        "RectMask2D"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/RoomName/Text Area/Placeholder",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI",
+        "LayoutElement"
+      ],
+      "text": "Enter RoomName..."
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/RoomName/Text Area/Text",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "​"
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/SaveSetting",
+      "active": true,
+      "rect": "(45.00, 45.00)",
+      "position": "(-10.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/RoomSetting/SaveSetting/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "생성"
+    },
+    {
+      "path": "Battle_Panel/Room/Refresh",
+      "active": true,
+      "rect": "(150.00, 50.00)",
+      "position": "(0.00, 25.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    },
+    {
+      "path": "Battle_Panel/Room/Refresh/Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 60.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "새로고침"
+    }
+  ],
+  "Start_button": [
+    {
+      "path": "",
+      "active": true,
+      "rect": "(300.00, 50.00)",
+      "position": "(0.00, -117.00)",
+      "scripts": [
+        "Image",
+        "Button",
+        "BattleStartController"
+      ],
+      "text": null
+    },
+    {
+      "path": "Text (TMP)",
+      "active": true,
+      "rect": "(0.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "시작하기"
+    },
+    {
+      "path": "Text (TMP) (1)",
+      "active": true,
+      "rect": "(100.00, 50.00)",
+      "position": "(157.00, 13.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": ""
+    }
+  ],
+  "_Room": [
+    {
+      "path": "",
+      "active": true,
+      "rect": "(1268.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "RoomListItem"
+      ],
+      "text": null
+    },
+    {
+      "path": "RoomName",
+      "active": true,
+      "rect": "(420.00, 50.00)",
+      "position": "(20.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Name"
+    },
+    {
+      "path": "Master",
+      "active": true,
+      "rect": "(400.00, 50.00)",
+      "position": "(-20.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Master :"
+    },
+    {
+      "path": "PlayerCount",
+      "active": true,
+      "rect": "(118.00, 50.00)",
+      "position": "(-100.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Player :"
+    },
+    {
+      "path": "SelectButton",
+      "active": true,
+      "rect": "(0.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "Button"
+      ],
+      "text": null
+    }
+  ],
+  "RankingEntry": [
+    {
+      "path": "",
+      "active": true,
+      "rect": "(400.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image",
+        "RankingEntryUI"
+      ],
+      "text": null
+    },
+    {
+      "path": "Background",
+      "active": true,
+      "rect": "(0.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Panel",
+      "active": true,
+      "rect": "(50.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Panel/Ranking",
+      "active": true,
+      "rect": "(50.00, 0.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "#1"
+    },
+    {
+      "path": "Name_Panel",
+      "active": true,
+      "rect": "(-154.00, 50.00)",
+      "position": "(-29.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Name_Panel/Name",
+      "active": true,
+      "rect": "(-10.00, 50.00)",
+      "position": "(5.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Name"
+    },
+    {
+      "path": "Kill_Panel",
+      "active": true,
+      "rect": "(55.00, 50.00)",
+      "position": "(-53.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Kill_Panel/Score",
+      "active": true,
+      "rect": "(60.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "0"
+    },
+    {
+      "path": "Kill_Panel/Score/Text (TMP)",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(15.00, -16.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Kill"
+    },
+    {
+      "path": "Death_Panel",
+      "active": true,
+      "rect": "(55.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "Image"
+      ],
+      "text": null
+    },
+    {
+      "path": "Death_Panel/Death",
+      "active": true,
+      "rect": "(60.00, 50.00)",
+      "position": "(0.00, 0.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "0"
+    },
+    {
+      "path": "Death_Panel/Death/Text (TMP)",
+      "active": true,
+      "rect": "(60.00, 60.00)",
+      "position": "(9.00, -16.00)",
+      "scripts": [
+        "TextMeshProUGUI"
+      ],
+      "text": "Death"
+    }
+  ]
+}

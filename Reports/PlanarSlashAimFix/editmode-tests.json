@@ -1,0 +1,34 @@
+{
+  "job_id": "e8355f465554422a9b616280f3a0c315",
+  "status": "succeeded",
+  "mode": "EditMode",
+  "started_unix_ms": 1790580557915,
+  "finished_unix_ms": 1790580580256,
+  "last_update_unix_ms": 1790580580256,
+  "progress": {
+    "completed": 572,
+    "total": 572,
+    "current_test_full_name": null,
+    "current_test_started_unix_ms": 1790580579955,
+    "last_finished_test_full_name": "BattlePvp.EditorTests.UserTextUiIntegrationTests.RoomSetInfoEscapesOnlyLabelsAndPreservesSelectionAndDeletionIds",
+    "last_finished_unix_ms": 1790580579956,
+    "stuck_suspected": false,
+    "editor_is_focused": false,
+    "blocked_reason": null,
+    "failures_so_far": [],
+    "failures_capped": false
+  },
+  "error": null,
+  "result": {
+    "mode": "EditMode",
+    "summary": {
+      "total": 572,
+      "passed": 572,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 18.0095018,
+      "resultState": "Passed"
+    },
+    "results": []
+  }
+}

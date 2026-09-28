@@ -1,0 +1,14 @@
+{
+  "platform": "WebGL",
+  "result": "Succeeded",
+  "errors": 0,
+  "warnings": 4,
+  "bytes": 242751514,
+  "seconds": 393.2185447,
+  "messages": [
+    "Assets\\Player\\Script\\Managers\\UnityRelayTransport.cs(21,41): warning CS0414: The field 'UnityRelayTransport._connectionType' is assigned but its value is never used",
+    "Assets\\Player\\Script\\FollowCamera.cs(26,40): warning CS0414: The field 'FollowCamera._rotSmoothSpeed' is assigned but its value is never used",
+    "Assets\\Player\\Script\\UI\\DamagePopup.cs(12,40): warning CS0414: The field 'DamagePopup._moveYSpeed' is assigned but its value is never used",
+    "Assets\\Player\\Script\\FollowCamera.cs(25,40): warning CS0414: The field 'FollowCamera._moveSmoothTime' is assigned but its value is never used"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "target": "WebGL Development",
+  "scope": "로그인 화면 초기 실행. 인증/방 입장/전투/성능은 미검증",
+  "observed": "실제 브라우저에서 로그인 배경, 아이디/비밀번호 입력창, Login/Sign up 버튼 표시",
+  "browserErrors": 0,
+  "browserWarnings": 1,
+  "warning": "Unity runtime: manual Application.persistentDataPath synchronization via JS_FileSystem_Sync is deprecated. autoSyncPersistentDataPath opt-in 안내",
+  "credentialsEntered": false,
+  "loginSubmitted": false,
+  "localServer": "127.0.0.1:8766",
+  "productionDeployment": false
+}

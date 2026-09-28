@@ -1,0 +1,30 @@
+{
+  "unityVersion": "6000.3.15f1",
+  "editMode": {
+    "jobId": "b4dd943bab8c41b89cc6b69513ce22b7",
+    "passed": 631,
+    "failed": 0,
+    "skipped": 0
+  },
+  "nativePlay": {
+    "jumpPeakMeters": 0.7993,
+    "jumpLandingSeconds": 0.808,
+    "walkRateAt5MetersPerSecond": 1.0,
+    "walkRateAt10MetersPerSecond": 2.0,
+    "dummyDamage": { "head": 31.375, "body": 20.91602, "legs": 16.7334 },
+    "spiralRouteCompleted": true,
+    "rooftopSurfaceMeters": 4.2,
+    "screenAndBladeColorsVerified": ["STR", "AGI", "CON", "DEF"],
+    "finalConsoleErrors": 0
+  },
+  "cloudScriptLocalSuites": [
+    "NetworkProfileRoomCapacity.test.js",
+    "RoomAdmission.test.js",
+    "RoomLease.test.js",
+    "SharedGroupCreation.test.js"
+  ],
+  "cloudScriptDeployed": false,
+  "eightClientLiveSessionTested": false,
+  "mobilePerformanceMeasured": false,
+  "webBuildUsed": false
+}

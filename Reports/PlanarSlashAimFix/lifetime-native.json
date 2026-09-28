@@ -1,0 +1,74 @@
+[
+  {
+    "phase": 0.101675674,
+    "emitting": true,
+    "vertices": 8,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.3016709,
+    "emitting": true,
+    "vertices": 148,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.450922221,
+    "emitting": true,
+    "vertices": 356,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.5005789,
+    "emitting": true,
+    "vertices": 448,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.5546676,
+    "emitting": true,
+    "vertices": 732,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.6046516,
+    "emitting": true,
+    "vertices": 836,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.654656947,
+    "emitting": true,
+    "vertices": 852,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.7032404,
+    "emitting": false,
+    "vertices": 648,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.752120256,
+    "emitting": false,
+    "vertices": 312,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.822662354,
+    "emitting": false,
+    "vertices": 96,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 0.900038,
+    "emitting": false,
+    "vertices": 0,
+    "oldGeometryDrift": 0.0
+  },
+  {
+    "phase": 1.05257332,
+    "emitting": false,
+    "vertices": 0,
+    "oldGeometryDrift": 0.0
+  }
+]

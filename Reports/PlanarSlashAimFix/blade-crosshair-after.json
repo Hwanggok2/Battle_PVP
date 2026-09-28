@@ -1,0 +1,92 @@
+[
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 9.712267E-06,
+    "minimumDistanceMeters": 3.63179225E-07,
+    "depthMeters": 2.142511,
+    "phase": 0.58
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 2.7791064E-05,
+    "minimumDistanceMeters": 1.013156E-06,
+    "depthMeters": 2.08878517,
+    "phase": 0.55
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 2.732347E-05,
+    "minimumDistanceMeters": 9.967512E-07,
+    "depthMeters": 2.090131,
+    "phase": 0.66
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 1.04537139E-05,
+    "minimumDistanceMeters": 4.242135E-07,
+    "depthMeters": 2.32507253,
+    "phase": 0.58
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 1.99123278E-05,
+    "minimumDistanceMeters": 7.891362E-07,
+    "depthMeters": 2.27066231,
+    "phase": 0.55
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 2.248059E-05,
+    "minimumDistanceMeters": 8.914524E-07,
+    "depthMeters": 2.27202487,
+    "phase": 0.66
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 9.456128E-06,
+    "minimumDistanceMeters": 4.622575E-07,
+    "depthMeters": 2.80087185,
+    "phase": 0.58
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 1.55060443E-05,
+    "minimumDistanceMeters": 7.439367E-07,
+    "depthMeters": 2.74889159,
+    "phase": 0.55
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 2.21408154E-05,
+    "minimumDistanceMeters": 1.06275581E-06,
+    "depthMeters": 2.75018883,
+    "phase": 0.66
+  }
+]

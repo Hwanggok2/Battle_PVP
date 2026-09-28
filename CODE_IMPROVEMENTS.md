@@ -794,3 +794,15 @@ N04에서 요청별 `AuthenticationContext`를 분리하면서 정적 `PlayFabCl
 - Unity NUnit 신규 **12사례 작성·컴파일**: IPC 메모리 전송의 reliable 창 포화/오류 콜백 재진입 2, 로컬 설정 창 생성 순서·교체·부활·텍스트 소비·프리팹 참조 6, 미승인 플레이어 피해 거절 2, 도발+강제 이동의 소유자 도주/점프 입력·벽·정지 거리 2. 기존 room observer 검사는 공유 수명을 테스트별로 격리했다. **Unity에서 이 사례들을 실행하지 않았다.**
 
 현재 상태는 **G01–G11 구현 완료·로컬 컴파일/CLI/Weaver 확인 / Unity 생명주기·실제 연결·플랫폼 실행 검증 대기**다. 호스트 1+원격 2의 기본 회귀 후 호스트 포함 8인의 Windows/WebGL 부하와 60 FPS 기준을 별도로 확인해야 한다. 기존 S11 외부 구현·검증과 N09 성능 실측 대기도 그대로 남는다.
+
+### Unity 실행 검증 복구 및 OnValidate 후속 — 2026-09-25
+
+- SkillUI/BgmManager의 OnValidate에서 Unity 객체 접근을 직접 수행하지 않고 EditorValidationQueue에 관리 작업을 예약한다. 에디터 update에서 한 번 처리하며, 파괴된 객체를 무시하고 실행 중 스킬 HUD 상태/BGM 페이드를 보존한다.
+- 잘못된 길이의 GUID 때문에 로드되지 않던 테스트 스크립트 5개의 meta를 복구했다. 기존 씬/프리팹 참조는 없었다. 기존 테스트 65개가 실제 실행 대상에 추가됐다.
+- EditMode에서 자동 호출되지 않는 Awake/OnEnable/OnDisable, Mirror NetworkIdentity 바인딩을 테스트에서 명시한다. 테스트 종료 시 static 이벤트 구독도 정리한다. 프로덕션 PlayFabBattleManager의 DontDestroyOnLoad는 실제 Play 모드에서만 호출한다.
+- 테스트의 유효하지 않은 roomId, 교체된 RoomFlow 생성자, unsaved 테스트 씬 처리, UTP 포화 입력을 실제 계약에 맞췄다. 포화 검사는 기본 window 32를 ACK 없이 채운 뒤 다음 송신 실패·정리·동기 종료 재진입을 확인한다.
+- 로딩 스레드 OnValidate 예약·에디터 갱신·예약 후 객체 파괴를 실행하는 UnityTest 3개를 추가했다.
+
+검증: 첫 실제 EditMode 425개 중 338 통과/87 실패 → 복구 후 **493/493 통과**, 실패/건너뜀 0. 순수 CLI **59,709 assertions PASS**. CloudScript 권한/정원 및 임대 **26시나리오·564 assertions PASS**. Windows/WebGL 실제 Development 빌드 오류 0(기존 경고 3/4). 오프라인 4개 씬 Play 로딩 예외 0, 빌드 씬/게임 프리팹 863개 오브젝트 Missing Script 0.
+
+[전체 실행 기록과 JSON 증거](VALIDATION_AND_REMODEL_2026-09-25.md)를 따르며, 실제 서비스/8인 접속·플랫폼 60 FPS·S11 외부 구현은 완료로 처리하지 않는다. 빌드 후 원래 Login 씬/비실행/WebGL 상태를 복구했다. 시각 리모델링은 Assets 밖의 [HTML 시안](DesignPreview/index.html)만 작성했으며 사용자 승인 후 반영한다.

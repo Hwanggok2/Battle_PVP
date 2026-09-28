@@ -1,0 +1,22 @@
+{
+  "stats": {
+    "STR": {
+      "Invested": 18.0,
+      "Item": 0.0
+    },
+    "CON": {
+      "Invested": 6.0,
+      "Item": 0.0
+    },
+    "AGI": {
+      "Invested": 3.0,
+      "Item": 0.0
+    },
+    "DEF": {
+      "Invested": 3.0,
+      "Item": 0.0
+    }
+  },
+  "phase": "Cooldown",
+  "returnStored": true
+}

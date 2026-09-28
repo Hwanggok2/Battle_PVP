@@ -310,3 +310,15 @@ HealthSystem의 미바인딩 Mirror 속성 접근과 DamagePopupManager의 파�
 | G11 | Player.prefab의 잘못된 overflow→customizer icon 연결 해제. 미리보기 아이콘 유지 | 정상/초과 HP 변경 후 스탯 창 첫 열기에서 아이콘 유지. 기존 체력 표시 유지 |
 
 로컬 검증: 순수 CLI **59,709 assertions PASS**(이번 변경으로 2,657개 추가). 전체 C# 오류 0/기존 경고 4개, 설치 Mirror ILPostProcessorHook 검사 통과. 새 Unity NUnit 12사례는 작성·컴파일했으며 실행하지 않았다. 최종 명령·세부 정책은 [CODE_IMPROVEMENTS.md](C:/Github/Battle_PVP/CODE_IMPROVEMENTS.md)의 `G01–G11 플레이 흐름 문제 수정` 절에 기록한다.
+
+## 15. 실제 Unity 검증과 리모델링 시안 — 2026-09-25
+
+MCP를 Battle_PVP에 연결해 이전의 실행 대기 항목 중 에디터에서 가능한 범위를 검사했다. SkillUI/BgmManager의 OnValidate를 메인 스레드 예약 처리로 바꾸고, 잘못된 테스트 GUID 5개 및 EditMode 생명주기/네트워크 바인딩 초기화를 복구했다.
+
+- Unity EditMode 493개 전부 통과(실패/건너뜀 0). 실제 UTP reliable 포화·오류 콜백 재진입 사례도 포함한다.
+- Windows/WebGL Development 빌드 성공, 오류 0. 기존 미사용 필드 경고는 각각 3/4개다.
+- Login/Lobby/Battle_waiting/Battle 오프라인 Play 로딩에서 콘솔 오류·경고 0. 로그인/네트워크 참가/실제 전투 검증으로 집계하지 않는다.
+- 빌드 씬 4개와 게임 프리팹의 오브젝트 863개에서 Missing Script 0.
+- 실제 PlayFab 정책·배포·registry 이전, S11 영속/원자적 결과 백엔드, 8인 연결·60 FPS와 N09 실측 판단은 여전히 남아 있다. MCP 연결만으로 외부 서비스 환경이 갖춰지지는 않는다.
+
+상세 변경·증거와 남은 범위는 [실행 검증 기록](VALIDATION_AND_REMODEL_2026-09-25.md)을 따른다. UI·로비·Battle 맵은 [HTML 미리보기](DesignPreview/index.html)와 [반영 계획](DesignPreview/README.md)을 작성했으며, 사용자 확인 전 Unity 시각 변경은 적용하지 않는다.

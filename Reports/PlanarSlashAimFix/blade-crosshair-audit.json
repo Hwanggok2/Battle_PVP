@@ -1,0 +1,92 @@
+[
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 7.4371686,
+    "minimumDistanceMeters": 0.1990926,
+    "depthMeters": 1.52518094,
+    "phase": 0.55
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 13.9146852,
+    "minimumDistanceMeters": 0.3896437,
+    "depthMeters": 1.57274842,
+    "phase": 0.5541667
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 10.1355639,
+    "minimumDistanceMeters": 0.451494962,
+    "depthMeters": 2.52559733,
+    "phase": 0.658333361
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 7.339653,
+    "minimumDistanceMeters": 0.21548073,
+    "depthMeters": 1.6729033,
+    "phase": 0.55
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 13.2861071,
+    "minimumDistanceMeters": 0.407380521,
+    "depthMeters": 1.72520936,
+    "phase": 0.5541667
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 9.393147,
+    "minimumDistanceMeters": 0.443938136,
+    "depthMeters": 2.68360472,
+    "phase": 0.658333361
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "open": 0.533333361,
+    "close": 0.6666667,
+    "minimumAngleDegrees": 4.687042,
+    "minimumDistanceMeters": 0.170777932,
+    "depthMeters": 2.08298063,
+    "phase": 0.566666663
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "open": 0.5111111,
+    "close": 0.6666666,
+    "minimumAngleDegrees": 3.68387747,
+    "minimumDistanceMeters": 0.1900628,
+    "depthMeters": 2.95199466,
+    "phase": 0.55
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "open": 0.599999964,
+    "close": 0.822222233,
+    "minimumAngleDegrees": 2.101493,
+    "minimumDistanceMeters": 0.09890685,
+    "depthMeters": 2.69541883,
+    "phase": 0.658333361
+  }
+]

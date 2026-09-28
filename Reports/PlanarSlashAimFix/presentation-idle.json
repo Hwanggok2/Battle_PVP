@@ -1,0 +1,32 @@
+[
+  {
+    "pitch": -20.0,
+    "attacking": false,
+    "upperBodyError": 0.0,
+    "legError": 0.0,
+    "reticleActive": true,
+    "reticleOpacity": 1.0,
+    "screenPoint": "(960.00, 540.00)",
+    "screenSize": "1920x1080"
+  },
+  {
+    "pitch": 0.0,
+    "attacking": false,
+    "upperBodyError": 0.0,
+    "legError": 0.0,
+    "reticleActive": true,
+    "reticleOpacity": 1.0,
+    "screenPoint": "(960.00, 540.00)",
+    "screenSize": "1920x1080"
+  },
+  {
+    "pitch": 45.0,
+    "attacking": false,
+    "upperBodyError": 0.0,
+    "legError": 0.0,
+    "reticleActive": true,
+    "reticleOpacity": 1.0,
+    "screenPoint": "(960.00, 540.00)",
+    "screenSize": "1920x1080"
+  }
+]

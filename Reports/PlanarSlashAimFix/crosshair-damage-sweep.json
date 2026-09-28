@@ -1,0 +1,191 @@
+[
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "fps": 30,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "fps": 60,
+    "hits": 1,
+    "damage": 23.0078125
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 20.9160156
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 27.1914063
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "fps": 144,
+    "hits": 1,
+    "damage": 23.0078125
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "result": "Succeeded",
+  "platform": "StandaloneWindows64",
+  "output": "C:/Github/Battle_PVP/Temp/RemodelBuilds/StandaloneWindows64/Battle_PvP.exe",
+  "errors": 0,
+  "warnings": 0,
+  "durationSeconds": 11.9540712,
+  "totalBytes": 321250587,
+  "buildStarted": "2026-09-25T13:07:05.1240686",
+  "buildEnded": "2026-09-25T13:07:17.0781398",
+  "playing": true,
+  "messages": []
+}

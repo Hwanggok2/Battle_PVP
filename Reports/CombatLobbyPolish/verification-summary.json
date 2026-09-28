@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-29",
+  "unity": "6000.3.15f1",
+  "editMode": { "job": "f4f0d012c480450992ed961a1b9300e2", "passed": 639, "failed": 0, "skipped": 0 },
+  "nativePlayMode": {
+    "lobbyDummies": 3,
+    "skillTooltip": true,
+    "skillCastAndCooldown": true,
+    "offlineArrowDamage": 43.7897034,
+    "offlineArrowRemovedOnHit": true,
+    "footholdRoutesPassed": 16,
+    "crouchDropMeters": 0.675,
+    "cameraAimOriginError": 0,
+    "swingsPerAttack": 1,
+    "consoleErrors": 0
+  },
+  "bodyPartRule": "First actual contact; closest collider to the sampled blade breaks simultaneous-contact ties. A torso contact before a leg contact still deals torso damage.",
+  "webBuildUsed": false,
+  "eightClientSessionVerified": false
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "pitch": -45.0,
+    "hitTarget": true,
+    "angleError": 0.0,
+    "targetDistance": 1.94000185
+  },
+  {
+    "pitch": 0.0,
+    "hitTarget": true,
+    "angleError": 0.0,
+    "targetDistance": 1.94
+  },
+  {
+    "pitch": 45.0,
+    "hitTarget": true,
+    "angleError": 0.0,
+    "targetDistance": 1.94000185
+  }
+]

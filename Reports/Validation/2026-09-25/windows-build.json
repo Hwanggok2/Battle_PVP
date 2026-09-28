@@ -1,0 +1,13 @@
+{
+  "platform": "StandaloneWindows64",
+  "result": "Succeeded",
+  "errors": 0,
+  "warnings": 3,
+  "bytes": 311727858,
+  "seconds": 28.6451554,
+  "messages": [
+    "Assets\\Player\\Script\\FollowCamera.cs(26,40): warning CS0414: The field 'FollowCamera._rotSmoothSpeed' is assigned but its value is never used",
+    "Assets\\Player\\Script\\UI\\DamagePopup.cs(12,40): warning CS0414: The field 'DamagePopup._moveYSpeed' is assigned but its value is never used",
+    "Assets\\Player\\Script\\FollowCamera.cs(25,40): warning CS0414: The field 'FollowCamera._moveSmoothTime' is assigned but its value is never used"
+  ]
+}

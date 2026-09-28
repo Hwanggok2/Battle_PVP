@@ -1,0 +1,37 @@
+[
+  {
+    "name": "Roof front foothold -1",
+    "stepTop": 4.55,
+    "landedStep": 4.63,
+    "landedTop": 5.08,
+    "passed": true
+  },
+  {
+    "name": "Roof front foothold 1",
+    "stepTop": 4.55,
+    "landedStep": 4.63,
+    "landedTop": 5.08,
+    "passed": true
+  },
+  {
+    "name": "Roof east foothold -1",
+    "stepTop": 4.55,
+    "landedStep": 4.63,
+    "landedTop": 5.08,
+    "passed": true
+  },
+  {
+    "name": "Roof east foothold 1",
+    "stepTop": 4.55,
+    "landedStep": 4.63,
+    "landedTop": 5.08,
+    "passed": true
+  },
+  {
+    "name": "Roof west foothold",
+    "stepTop": 4.55,
+    "landedStep": 4.63,
+    "landedTop": 5.08,
+    "passed": true
+  }
+]

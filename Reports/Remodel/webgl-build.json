@@ -1,0 +1,17 @@
+{
+  "result": "Succeeded",
+  "platform": "WebGL",
+  "output": "C:/Github/Battle_PVP/Temp/RemodelBuilds/WebGL/Battle_PvP",
+  "errors": 0,
+  "warnings": 4,
+  "durationSeconds": 362.1152868,
+  "totalBytes": 247641339,
+  "completedAt": "2026-09-25T13:05:47.6837389Z",
+  "jobId": "build-09bd1db3ee",
+  "messages": [
+    "Assets\\Player\\Script\\FollowCamera.cs(26,40): warning CS0414: The field 'FollowCamera._rotSmoothSpeed' is assigned but its value is never used",
+    "Assets\\Player\\Script\\Managers\\UnityRelayTransport.cs(21,41): warning CS0414: The field 'UnityRelayTransport._connectionType' is assigned but its value is never used",
+    "Assets\\Player\\Script\\FollowCamera.cs(25,40): warning CS0414: The field 'FollowCamera._moveSmoothTime' is assigned but its value is never used",
+    "Assets\\Player\\Script\\UI\\DamagePopup.cs(12,40): warning CS0414: The field 'DamagePopup._moveYSpeed' is assigned but its value is never used"
+  ]
+}

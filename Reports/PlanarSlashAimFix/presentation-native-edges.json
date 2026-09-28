@@ -1,0 +1,443 @@
+[
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.1,
+    "edgeError": 4.298152E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.45,
+    "edgeError": 4.80548E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.53,
+    "edgeError": 0.0,
+    "vertices": 208
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.58,
+    "edgeError": 2.98023224E-07,
+    "vertices": 320
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.65,
+    "edgeError": 2.06476543E-07,
+    "vertices": 304
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.75,
+    "edgeError": 2.4575624E-07,
+    "vertices": 72
+  },
+  {
+    "combo": 0,
+    "pitch": -20.0,
+    "phase": 0.9,
+    "edgeError": 4.298152E-07,
+    "vertices": 80
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.1,
+    "edgeError": 4.12953085E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.45,
+    "edgeError": 3.57627869E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.53,
+    "edgeError": 2.4575624E-07,
+    "vertices": 232
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.58,
+    "edgeError": 3.81655951E-07,
+    "vertices": 368
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.65,
+    "edgeError": 2.38418579E-07,
+    "vertices": 352
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.75,
+    "edgeError": 5.33120158E-07,
+    "vertices": 124
+  },
+  {
+    "combo": 1,
+    "pitch": -20.0,
+    "phase": 0.9,
+    "edgeError": 2.38418579E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.1,
+    "edgeError": 5.33120158E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.45,
+    "edgeError": 6.107659E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.53,
+    "edgeError": 1.63912773E-07,
+    "vertices": 112
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.58,
+    "edgeError": 5.339525E-07,
+    "vertices": 156
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.65,
+    "edgeError": 3.20980831E-07,
+    "vertices": 296
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.75,
+    "edgeError": 3.57627869E-07,
+    "vertices": 372
+  },
+  {
+    "combo": 2,
+    "pitch": -20.0,
+    "phase": 0.9,
+    "edgeError": 1.1920929E-07,
+    "vertices": 128
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.1,
+    "edgeError": 4.46040332E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.45,
+    "edgeError": 8.28054169E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.53,
+    "edgeError": 2.38418579E-07,
+    "vertices": 208
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.58,
+    "edgeError": 6.336061E-07,
+    "vertices": 320
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.65,
+    "edgeError": 6.078505E-07,
+    "vertices": 304
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.75,
+    "edgeError": 8.940697E-08,
+    "vertices": 72
+  },
+  {
+    "combo": 0,
+    "pitch": 0.0,
+    "phase": 0.9,
+    "edgeError": 1.33280039E-07,
+    "vertices": 80
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.1,
+    "edgeError": 4.12953085E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.45,
+    "edgeError": 0.0,
+    "vertices": 68
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.53,
+    "edgeError": 2.149076E-07,
+    "vertices": 232
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.58,
+    "edgeError": 2.38418579E-07,
+    "vertices": 368
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.65,
+    "edgeError": 2.66560079E-07,
+    "vertices": 352
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.75,
+    "edgeError": 0.0,
+    "vertices": 124
+  },
+  {
+    "combo": 1,
+    "pitch": 0.0,
+    "phase": 0.9,
+    "edgeError": 0.0,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.1,
+    "edgeError": 3.37174782E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.45,
+    "edgeError": 3.37174782E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.53,
+    "edgeError": 5.840039E-07,
+    "vertices": 112
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.58,
+    "edgeError": 4.12953085E-07,
+    "vertices": 156
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.65,
+    "edgeError": 5.20475169E-07,
+    "vertices": 296
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.75,
+    "edgeError": 1.1920929E-07,
+    "vertices": 372
+  },
+  {
+    "combo": 2,
+    "pitch": 0.0,
+    "phase": 0.9,
+    "edgeError": 2.66560079E-07,
+    "vertices": 128
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.1,
+    "edgeError": 2.92001943E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.45,
+    "edgeError": 1.1920929E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.53,
+    "edgeError": 2.4575624E-07,
+    "vertices": 208
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.58,
+    "edgeError": 3.65306448E-07,
+    "vertices": 320
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.65,
+    "edgeError": 2.610429E-07,
+    "vertices": 304
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.75,
+    "edgeError": 1.78813934E-07,
+    "vertices": 72
+  },
+  {
+    "combo": 0,
+    "pitch": 45.0,
+    "phase": 0.9,
+    "edgeError": 1.4919776E-07,
+    "vertices": 80
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.1,
+    "edgeError": 2.66560079E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.45,
+    "edgeError": 5.462856E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.53,
+    "edgeError": 2.73548949E-07,
+    "vertices": 232
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.58,
+    "edgeError": 4.987439E-07,
+    "vertices": 368
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.65,
+    "edgeError": 4.47034836E-07,
+    "vertices": 352
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.75,
+    "edgeError": 2.38418579E-07,
+    "vertices": 124
+  },
+  {
+    "combo": 1,
+    "pitch": 45.0,
+    "phase": 0.9,
+    "edgeError": 2.98023224E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.1,
+    "edgeError": 2.4575624E-07,
+    "vertices": 40
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.45,
+    "edgeError": 5.33120158E-07,
+    "vertices": 68
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.53,
+    "edgeError": 5.840039E-07,
+    "vertices": 112
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.58,
+    "edgeError": 7.633119E-07,
+    "vertices": 156
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.65,
+    "edgeError": 4.14295158E-07,
+    "vertices": 296
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.75,
+    "edgeError": 3.57627869E-07,
+    "vertices": 372
+  },
+  {
+    "combo": 2,
+    "pitch": 45.0,
+    "phase": 0.9,
+    "edgeError": 2.38418579E-07,
+    "vertices": 128
+  }
+]
