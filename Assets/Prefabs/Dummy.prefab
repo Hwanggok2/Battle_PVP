@@ -130,6 +130,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.DummyHealth
   _statData: {fileID: 11400000, guid: 2d8ecf14fb874e345b84feed66cd24ec, type: 2}
+  _requireBodyPartHitboxes: 0
   _currentHp: 0
   _maxHp: 99999
   _currentRegen: 0

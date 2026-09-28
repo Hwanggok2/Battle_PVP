@@ -5868,7 +5868,7 @@ MonoBehaviour:
   _projectileSpeedOverride: -1
   _projectileLifeSecondsOverride: -1
   _releaseInputLockFallbackSecondsOverride: -1
-  _aimDistance: 10
+  _aimDistance: 1000
   _aimHitMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -6136,12 +6136,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  _target: {fileID: 1836544979153991395}
   _origin: {fileID: 8541180397250211595}
-  _distance: 8
-  _yawOffsetDegrees: 105
-  _ignorePitch: 1
-  _localOffset: {x: 0, y: 1.35, z: 0}
+  _authoredAimDirection: {x: -0.97425, y: -0.12326, z: -0.18881}
 --- !u!114 &5930940508941741572
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -74,12 +74,12 @@ namespace BattlePvp.Combat
         }
 
         public bool TryRelease(double now, float minimumCharge, float maximumCharge,
-            float minimumDamage, float maximumDamage, float releaseLockSeconds)
+            float minimumDamage, float maximumDamage, float releaseLockSeconds, float pendingAnimationSeconds = 0f)
         {
             if (!double.IsFinite(now) || !IsCharging || now < _chargeStartedAt ||
                 !float.IsFinite(minimumCharge) || !float.IsFinite(maximumCharge) ||
                 !float.IsFinite(minimumDamage) || !float.IsFinite(maximumDamage) ||
-                !float.IsFinite(releaseLockSeconds))
+                !float.IsFinite(releaseLockSeconds) || !float.IsFinite(pendingAnimationSeconds))
                 return false;
             float elapsed = (float)(now - _chargeStartedAt);
             float progress = Mathf.Clamp01((elapsed - Mathf.Max(0f, minimumCharge)) /
@@ -87,7 +87,8 @@ namespace BattlePvp.Combat
             _shotMultiplier = Mathf.Lerp(Mathf.Max(0f, minimumDamage), Mathf.Max(minimumDamage, maximumDamage), progress);
             _chargeStartedAt = double.NegativeInfinity;
             _nextChargeAt = now + Mathf.Max(0.1f, releaseLockSeconds);
-            _shotExpiresAt = now + Mathf.Max(1f, releaseLockSeconds + 0.5f);
+            // The server supplies the authored draw duration, never the client. Damage was frozen above.
+            _shotExpiresAt = now + Mathf.Clamp(pendingAnimationSeconds, 0f, 5f) + Mathf.Max(1f, releaseLockSeconds + 0.5f);
             return true;
         }
 

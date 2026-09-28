@@ -1032,7 +1032,7 @@ public class PlayerManager : NetworkBehaviour
             moveDirection = (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
 
             // 2. 캐릭터 회전 (공격 중에도 카메라 방향에 맞춰 회전 허용)
-            if (InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name))
+            if (InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name) || (_combat != null && _combat.IsAimingBow))
                 transform.rotation = Quaternion.Euler(0, cameraYaw, 0);
             else if (inputVector.sqrMagnitude > .001f)
                 transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDirection), rotationSpeed * Time.deltaTime);

@@ -15,7 +15,11 @@ MonoBehaviour:
   _projectilePrefab: {fileID: -40485556262915806, guid: 2d70caf7070873745a0f8323abddfd34, type: 3}
   _drawAnimationStateName: Bow_Draw
   _aimHoldAnimationStateName: Bow_AimHold
+  _resetAnimationStateName: New State
+  _releaseTriggerName: BowRelease
   _releaseAnimationStateName: Bow_Release
   _animationLayer: 1
+  _animationPlaybackSpeed: 3
   _projectileSpeed: 28
   _projectileLifeSeconds: 4
+  _releaseInputLockFallbackSeconds: 1

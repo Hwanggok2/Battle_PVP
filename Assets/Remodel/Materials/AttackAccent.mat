@@ -50,7 +50,7 @@ Material:
     - _QueueOffset: 0
     - _SampleGI: 0
     - _SrcBlend: 5
-    - _SrcBlendAlpha: 0
+    - _SrcBlendAlpha: 1
     - _Surface: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 0

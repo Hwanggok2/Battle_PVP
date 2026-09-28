@@ -1,0 +1,6 @@
+case,holdSeconds,arrowCount,trailCount,busyAfter,chargeAfter
+0,0.05,1,1,False,False
+1,0.5,1,1,False,False
+2,2.9,1,1,False,False
+3,3.3,1,1,False,False
+4,0.2,0,0,False,False

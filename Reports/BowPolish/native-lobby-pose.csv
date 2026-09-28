@@ -1,0 +1,4 @@
+view,cameraPitch,handAimY,handAimErrorDegrees,charging
+forward,0,0.003545801,0.5271187,True
+up,-5,0.08721839,0.01978234,True
+down,35,-0.5752658,0.1170339,True

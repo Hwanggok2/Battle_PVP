@@ -41,14 +41,12 @@ namespace BattlePvp.Combat
         private NetworkIdentity _identity;
         private Light _light;
         private BattlePvp.Stats.StatManager _stats;
-        private BattlePvp.VFX.VFXLinker _statVfx;
         private Color _strokeColor = new Color(.04f, .28f, 1f, .3f);
         private void Awake()
         {
             _health = GetComponent<HealthSystem>(); _identity = GetComponent<NetworkIdentity>();
             _animator = GetComponent<Animator>();
             _stats = GetComponent<BattlePvp.Stats.StatManager>();
-            _statVfx = GetComponent<BattlePvp.VFX.VFXLinker>();
             var lightObject = new GameObject("Attack Glow"); lightObject.transform.SetParent(transform, false);
             _light = lightObject.AddComponent<Light>(); _light.type = LightType.Point;
             _light.color = new Color(.2f, .85f, 1f); _light.range = 4; _light.shadows = LightShadows.None; _light.enabled = false;
@@ -66,11 +64,7 @@ namespace BattlePvp.Combat
             _rotation = camera != null ? camera.transform.rotation : transform.rotation;
             _bow = bow; _start = Time.time; _serial++;
             if (_stats != null)
-                _strokeColor = BattlePvp.Stats.StatVfxColor.Resolve(_stats.CurrentIdentity, _stats.GetStatsCopy(),
-                    _statVfx != null ? _statVfx.GetStatColor(BattlePvp.Stats.StatKind.STR) : Color.red,
-                    _statVfx != null ? _statVfx.GetStatColor(BattlePvp.Stats.StatKind.AGI) : Color.green,
-                    _statVfx != null ? _statVfx.GetStatColor(BattlePvp.Stats.StatKind.CON) : Color.yellow,
-                    _statVfx != null ? _statVfx.GetStatColor(BattlePvp.Stats.StatKind.DEF) : Color.blue);
+                _strokeColor = BattlePvp.Stats.StatVfxColor.Resolve(_stats);
             _strokeColor.a = .3f;
             _swingDuration = Mathf.Max(.08f, swingDuration);
             _animationState = _animator != null ? _animator.GetCurrentAnimatorStateInfo(1).fullPathHash : 0;

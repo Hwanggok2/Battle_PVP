@@ -4,6 +4,17 @@ namespace BattlePvp.Stats
 {
     public static class StatVfxColor
     {
+        public static Color Resolve(StatManager stats)
+        {
+            if (stats == null) return new Color(.04f, .28f, 1f);
+            var palette = stats.GetComponent<BattlePvp.VFX.VFXLinker>();
+            return Resolve(stats.CurrentIdentity, stats.GetStatsCopy(),
+                palette != null ? palette.GetStatColor(StatKind.STR) : Color.red,
+                palette != null ? palette.GetStatColor(StatKind.AGI) : Color.green,
+                palette != null ? palette.GetStatColor(StatKind.CON) : Color.yellow,
+                palette != null ? palette.GetStatColor(StatKind.DEF) : Color.blue);
+        }
+
         public static Color Resolve(Identity identity, StatContainer stats, Color str, Color agi, Color con, Color def)
         {
             Color primary = identity.PrimaryStat switch { StatKind.STR => str, StatKind.AGI => agi, StatKind.CON => con, _ => def };

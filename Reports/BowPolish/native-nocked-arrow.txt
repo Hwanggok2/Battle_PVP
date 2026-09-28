@@ -1,0 +1,3 @@
+tail error (m): 7.348554E-07
+hand arrow axis error (degrees): 0
+spawn center error (m): 1.228781E-07

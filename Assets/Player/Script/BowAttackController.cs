@@ -66,9 +66,17 @@ public sealed class BowAttackController : NetworkBehaviour
     private readonly BowShotAuthority _serverShotAuthority = new BowShotAuthority();
     private float _serverReleaseLockSeconds;
     private bool _serverOwnsTauntVisual;
+    private float _drawDuration = 3f;
+    private float _drawReadyAt = float.PositiveInfinity;
+    private float _releaseArrowAt = float.PositiveInfinity;
+    private Transform _bowHand, _stringHand;
+    private float _handArrowTailLocal = .29609093f;
 
     public bool IsCharging => _chargeStartedAt >= 0d;
     public bool IsBusy => IsCharging || _isVisuallyCharging || _releaseQueued || _isReleaseLocked;
+    public bool ControlsAimPose => IsBusy || (_bowAimRigTarget != null && _bowAimRigTarget.IsPosing);
+    private bool UsesLocalAim => (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active)) &&
+        !_serverOwnsTauntVisual && (_playerCombat == null || !_playerCombat.IsServerTaunted);
 
     [Server]
     public void ServerTickTauntAttack(Vector3 direction)
@@ -102,7 +110,14 @@ public sealed class BowAttackController : NetworkBehaviour
     private void Awake()
     {
         ResolveReferences();
+        if (_animator != null)
+            foreach (var parameter in _animator.parameters)
+                if (parameter.name == "BowPlaybackSpeed" && parameter.type == AnimatorControllerParameterType.Float)
+                { _animator.SetFloat(parameter.nameHash, AnimationPlaybackSpeed); break; }
         _serverReleaseLockSeconds = ResolveServerReleaseLockSeconds();
+        if (_animator != null && _animator.runtimeAnimatorController != null)
+            foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
+                if (clip.name == DrawAnimationStateName) { _drawDuration = Mathf.Clamp(clip.length / AnimationPlaybackSpeed, .1f, 5f); break; }
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
         if (!NetworkClient.active && !NetworkServer.active)
@@ -130,6 +145,17 @@ public sealed class BowAttackController : NetworkBehaviour
     private void LateUpdate()
     {
         UpdateChargeReticle();
+
+        // Clips may lose events at a transition boundary or when animation is culled.
+        if (_isVisuallyCharging && !_isAimHoldReady && Time.time >= _drawReadyAt)
+            OnBowDrawReady();
+        if (_isReleaseLocked && Time.time >= _releaseArrowAt)
+        {
+            _releaseArrowAt = float.PositiveInfinity;
+            OnBowReleaseArrow();
+        }
+
+        UpdateNockedArrowPose();
 
         if (_captureAimPointPending)
         {
@@ -223,6 +249,7 @@ public sealed class BowAttackController : NetworkBehaviour
         _isAimHoldReady = false;
         _isReleaseLocked = false;
         _isVisuallyCharging = false;
+        _drawReadyAt = _releaseArrowAt = float.PositiveInfinity;
         StopReleaseLockFallback();
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
@@ -232,7 +259,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     public void OnBowDrawReady()
     {
-        if (!_isVisuallyCharging)
+        if (!_isVisuallyCharging || _isAimHoldReady)
             return;
 
         PlayBowAnimationLocal(AimHoldAnimationStateName, Vector3.zero);
@@ -256,14 +283,17 @@ public sealed class BowAttackController : NetworkBehaviour
     public void OnBowReleaseArrow()
     {
         SetHandArrowVisible(false);
-        if (!_hasPendingShot || _releaseArrowEventPending)
+        if (!_isReleaseLocked || !_hasPendingShot || _releaseArrowEventPending)
             return;
 
         _releaseArrowEventPending = true;
+        _captureAimPointPending = UsesLocalAim;
     }
 
     public void OnBowReleaseFinished()
     {
+        if (!_isReleaseLocked) return;
+        if (_hasPendingShot) OnBowReleaseArrow();
         if (_releaseArrowEventPending)
             _releaseFinishedPending = true;
         else
@@ -272,11 +302,10 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void QueueShot(JobSkillData bowData, float chargeSeconds, Vector3 direction)
     {
-        // LateUpdate captures the release-frame camera ray after FollowCamera applies mouse input.
+        // Capture the camera ray when the string actually releases, after any queued draw animation.
         _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _hasPendingAimPoint = false;
-        _captureAimPointPending = (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active)) &&
-            (_playerCombat == null || !_playerCombat.IsServerTaunted);
+        _captureAimPointPending = false;
         float progress = Mathf.Clamp01((chargeSeconds - bowData.MinimumBowChargeSeconds) /
             Mathf.Max(.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds));
         _offlineShotMultiplier = Mathf.Lerp(bowData.MinimumBowDamageMultiplier, bowData.MaximumBowDamageMultiplier, progress);
@@ -331,7 +360,7 @@ public sealed class BowAttackController : NetworkBehaviour
         JobSkillData data = _playerCombat.ServerBowData;
         bool accepted = _serverShotAuthority.TryRelease(NetworkTime.time, data.MinimumBowChargeSeconds,
             data.MaximumBowDamageChargeSeconds, data.MinimumBowDamageMultiplier,
-            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds);
+            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds, _drawDuration + .15f);
         if (accepted) _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
         return accepted;
     }
@@ -343,7 +372,7 @@ public sealed class BowAttackController : NetworkBehaviour
             foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
                 foreach (AnimationEvent animationEvent in clip.events)
                     if (animationEvent.functionName == nameof(OnBowReleaseFinished))
-                        return Mathf.Max(0.1f, Mathf.Min(animationEvent.time, ReleaseInputLockFallbackSeconds));
+                        return Mathf.Max(0.1f, Mathf.Min(animationEvent.time / AnimationPlaybackSpeed, ReleaseInputLockFallbackSeconds));
         return Mathf.Max(0.1f, ReleaseInputLockFallbackSeconds);
     }
 
@@ -422,17 +451,19 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void TriggerBowReleaseLocal()
     {
-        GetComponent<BattlePvp.Combat.BlockAttackVfx>()?.Play(true);
-        if (_animator == null || string.IsNullOrWhiteSpace(ReleaseTriggerName))
-            return;
-
         _isVisuallyCharging = false;
         _releaseQueued = false;
         _isReleaseLocked = true;
+        _releaseArrowAt = Time.time + .12f;
         RestartReleaseLockFallback();
+        if (_animator == null) return;
         _animator.speed = 1f;
-        _animator.ResetTrigger(ReleaseTriggerName);
-        _animator.SetTrigger(ReleaseTriggerName);
+        if (!string.IsNullOrWhiteSpace(ReleaseTriggerName)) _animator.ResetTrigger(ReleaseTriggerName);
+        int layer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
+        string state = _settings != null ? _settings.ReleaseAnimationStateName : "Bow_Release";
+        if (_animator.HasState(layer, Animator.StringToHash(state)))
+            _animator.CrossFadeInFixedTime(state, .08f, layer, 0f);
+        else if (!string.IsNullOrWhiteSpace(ReleaseTriggerName)) _animator.SetTrigger(ReleaseTriggerName);
     }
 
     private void PlayBowAnimationLocal(string stateName, Vector3 aimDirection)
@@ -443,6 +474,8 @@ public sealed class BowAttackController : NetworkBehaviour
         if (stateName == DrawAnimationStateName)
         {
             _isVisuallyCharging = true;
+            _isAimHoldReady = false;
+            _drawReadyAt = Time.time + _drawDuration + .05f;
             SetHandArrowVisible(false);
             ApplyBowAimDirection(aimDirection);
             SetBowAimRigActive(true);
@@ -535,6 +568,11 @@ public sealed class BowAttackController : NetworkBehaviour
             _playerManager = GetComponent<PlayerManager>();
         if (_animator == null)
             _animator = GetComponentInChildren<Animator>();
+        if (_animator != null && _animator.isHuman)
+        {
+            if (_bowHand == null) _bowHand = _animator.GetBoneTransform(HumanBodyBones.LeftHand);
+            if (_stringHand == null) _stringHand = _animator.GetBoneTransform(HumanBodyBones.RightHand);
+        }
         if (_arrowSpawnPoint == null)
             _arrowSpawnPoint = FindChildTransform("Arrow_Point") ?? FindChildTransform("ArrowSpawnPoint");
         if (_handArrowVisual == null)
@@ -549,15 +587,30 @@ public sealed class BowAttackController : NetworkBehaviour
             _bowAimRigTarget = GetComponent<BowAimRigTarget>();
     }
 
+    private void UpdateNockedArrowPose()
+    {
+        if (_bowHand == null || _stringHand == null || _handArrowVisual == null ||
+            (!_handArrowVisual.activeSelf && !_releaseArrowEventPending)) return;
+        Vector3 direction = _bowHand.position - _stringHand.position;
+        if (direction.sqrMagnitude < .001f) return;
+        direction.Normalize();
+        Transform arrow = _handArrowVisual.transform;
+        // This asset's arrowhead is -Z and its nock is +Z. Keep the nock at the string hand.
+        arrow.rotation = Quaternion.LookRotation(-direction, transform.up);
+        arrow.position = _stringHand.position + direction * (_handArrowTailLocal * Mathf.Abs(arrow.lossyScale.z));
+        if (_arrowSpawnPoint != null)
+            _arrowSpawnPoint.SetPositionAndRotation(arrow.position, Quaternion.LookRotation(direction, transform.up));
+    }
+
     private bool TryResolveCenterScreenAimPoint(out Vector3 aimPoint)
     {
         aimPoint = Vector3.zero;
-        if (isLocalPlayer)
+        if (UsesLocalAim)
         {
             if (_followCamera == null)
                 _followCamera = FindFirstObjectByType<FollowCamera>();
 
-            if (_followCamera != null)
+            if (_followCamera != null && _followCamera.Target == transform)
             {
                 Ray aimRay = _followCamera.GetAimRay();
                 aimPoint = ResolveAimPoint(aimRay);
@@ -595,15 +648,17 @@ public sealed class BowAttackController : NetworkBehaviour
         if (!_applyBowCameraOffset)
             active = false;
 
-        if (_followCamera == null && isLocalPlayer)
+        if (!UsesLocalAim) return;
+        if (_followCamera == null)
             _followCamera = FindFirstObjectByType<FollowCamera>();
 
-        if (_followCamera != null)
+        if (_followCamera != null && _followCamera.Target == transform)
             _followCamera.SetTemporaryOffset(active, _bowCameraOffset, _bowCameraRotationOffset);
     }
 
     private void ResolveBowRigComponent()
     {
+        if (_bowAimRigObject == null) return;
         Component[] components = _bowAimRigObject.GetComponents<Component>();
         for (int i = 0; i < components.Length; i++)
         {
@@ -654,9 +709,9 @@ public sealed class BowAttackController : NetworkBehaviour
         SetBowCameraOffsetActive(active);
         if (_bowAimRigTarget != null)
             _bowAimRigTarget.SetYawOffsetActive(active);
-        SetBowRigWeight(active ? 1f : 0f);
-        if (_bowAimRigTarget != null && _bowAimRigTarget.enabled != active)
-            _bowAimRigTarget.enabled = active;
+        // The calibrated pose driver preserves the authored arms; the old chest constraint must not add a second rotation.
+        SetBowRigWeight(0f);
+        if (_bowAimRigTarget != null) _bowAimRigTarget.enabled = true;
     }
 
     private void ApplyBowAimDirection(Vector3 aimDirection)
@@ -664,7 +719,7 @@ public sealed class BowAttackController : NetworkBehaviour
         if (_bowAimRigTarget == null)
             return;
 
-        if (isLocalPlayer)
+        if (UsesLocalAim)
         {
             _bowAimRigTarget.ClearNetworkAimDirection();
             return;
@@ -694,7 +749,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void UpdateChargeReticle()
     {
-        if (!IsCharging || _activeChargeData == null || !isLocalPlayer)
+        if (!IsCharging || _activeChargeData == null || !UsesLocalAim)
         {
             SetChargeRingVisible(false);
             return;
@@ -766,6 +821,7 @@ public sealed class BowAttackController : NetworkBehaviour
     private void UnlockReleaseInput()
     {
         _isReleaseLocked = false;
+        _releaseArrowAt = float.PositiveInfinity;
         SetBowAimRigActive(false);
         ClearBowAnimationLayer();
         StopReleaseLockFallback();
@@ -820,6 +876,8 @@ public sealed class BowAttackController : NetworkBehaviour
     private int AnimationLayer => _animationLayerOverride >= 0
         ? _animationLayerOverride
         : _settings != null ? _settings.AnimationLayer : 1;
+
+    private float AnimationPlaybackSpeed => _settings != null ? _settings.AnimationPlaybackSpeed : 3f;
 
     private float ProjectileSpeed => _projectileSpeedOverride > 0f
         ? _projectileSpeedOverride

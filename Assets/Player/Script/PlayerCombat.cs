@@ -230,6 +230,8 @@ public class PlayerCombat : NetworkBehaviour
     public bool IsServerTaunted => _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
 
     public JobSkillData ServerBowData => _polymathWeaponSwapSkillData;
+    public bool IsAimingBow => _bowAttackController != null && _bowAttackController.IsBusy;
+    internal Vector3 ReplicatedLookDirection => Quaternion.AngleAxis(_networkLookPitch, transform.right) * transform.forward;
     private bool HasAuthoritativeCombatStats => !NetworkServer.active ||
         (_statManager != null && _statManager.HasServerStats);
     public bool CanServerUseBow => NetworkServer.active && isActiveAndEnabled &&
@@ -464,6 +466,11 @@ public class PlayerCombat : NetworkBehaviour
 
     internal void UpdateMeleeAimPose()
     {
+        if (_bowAttackController != null && _bowAttackController.ControlsAimPose)
+        {
+            _lookPoseWeight = _meleeAimWeight = 0f;
+            return;
+        }
         // Resolve after animation moved the hips/spine, using the same frame as the hit query.
         if (isAttacking && ShouldHandleLocalInput) SetMeleeAim(GetCurrentMeleeAimDirection());
         bool alive = _healthSystem == null || !_healthSystem.IsDead;
@@ -2814,7 +2821,7 @@ public class PlayerCombat : NetworkBehaviour
     private Vector3 GetCurrentAimDirection()
     {
         Vector3 fallback;
-        if (_followCamera == null && isLocalPlayer)
+        if (_followCamera == null && ShouldHandleLocalInput)
             _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
 
         if (_followCamera != null)

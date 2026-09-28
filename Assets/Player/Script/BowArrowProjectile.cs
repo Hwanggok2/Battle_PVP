@@ -11,6 +11,9 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     [SyncVar] private float _lifeSeconds = 4f;
     [SyncVar] private float _damageMultiplier = 1f;
     [SyncVar] private double _spawnedAt;
+    [SyncVar] private Color _trailColor;
+    [SerializeField] private Material _trailMaterial;
+    private ArrowFlightTrail _trail;
 
     private bool _hasHit;
     private PlayerCombat _offlineOwner;
@@ -40,6 +43,8 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         _damageMultiplier = Mathf.Max(0f, damageMultiplier);
         _spawnedAt = NetworkTime.time;
         _hasHit = false;
+        var owner = ResolveOwner();
+        _trailColor = StatVfxColor.Resolve(owner != null ? owner.GetComponent<StatManager>() : null);
     }
 
     public void InitializeOffline(PlayerCombat owner, Vector3 direction, float speed, float lifeSeconds, float damageMultiplier)
@@ -47,6 +52,40 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         if (NetworkServer.active || NetworkClient.active || owner == null) return;
         Initialize(0, direction, speed, lifeSeconds, damageMultiplier);
         _offlineOwner = owner; _offlineShot = true; _spawnedAt = Time.timeAsDouble;
+        _trailColor = StatVfxColor.Resolve(owner.GetComponent<StatManager>());
+    }
+
+    private void Start()
+    {
+        if (_hasHit || _trailMaterial == null || (NetworkServer.active && !NetworkClient.active)) return;
+        var effect = new GameObject("Arrow flight trail");
+        UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(effect, gameObject.scene);
+        _trail = effect.AddComponent<ArrowFlightTrail>();
+        _trail.Initialize(_trailMaterial, _trailColor, transform.position);
+    }
+
+    private void LateUpdate() { if (_trail != null && !_hasHit) _trail.Sample(transform.position); }
+    private void OnDestroy() { if (_trail != null) _trail.Finish(transform.position); }
+
+    private void FinishFlight()
+    {
+        _hasHit = true;
+        if (_trail != null) _trail.Finish(transform.position);
+        if (isServer)
+        {
+            RpcFinishFlight(transform.position);
+            NetworkServer.Destroy(gameObject);
+        }
+        else if (IsOfflineShot) Destroy(gameObject);
+    }
+
+    [ClientRpc]
+    private void RpcFinishFlight(Vector3 finalPosition)
+    {
+        if (isServer) return;
+        _hasHit = true;
+        transform.position = finalPosition;
+        if (_trail != null) _trail.Finish(finalPosition);
     }
 
     private void Update()
@@ -55,8 +94,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         if (_offlineShot && (!IsOfflineShot || _offlineOwner == null)) { Destroy(gameObject); return; }
         if ((isServer || IsOfflineShot) && (IsOfflineShot ? Time.timeAsDouble : NetworkTime.time) - _spawnedAt >= _lifeSeconds)
         {
-            _hasHit = true;
-            if (isServer) NetworkServer.Destroy(gameObject); else Destroy(gameObject);
+            FinishFlight();
             return;
         }
         Vector3 direction = _direction.sqrMagnitude > 0.001f ? _direction.normalized : transform.forward;
@@ -106,8 +144,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         }
         finally
         {
-            if (isServer) NetworkServer.Destroy(gameObject);
-            else if (IsOfflineShot) Destroy(gameObject);
+            FinishFlight();
         }
     }
 
