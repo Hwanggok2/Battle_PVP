@@ -16,3 +16,7 @@ MonoBehaviour:
   comboWindowStart: 0
   comboWindowEnd: 1
   damage: 1
+  aimCrossingPhase: 0.58
+  aimBladePoint: {x: 0.14446342, y: 0.051585637, z: 1.48090351}
+  aimBladeBase: {x: 0.03341341, y: -0.01661072, z: 0.831964552}
+  aimBladeTip: {x: 0.1920561, y: 0.08081287, z: 1.75902045}

@@ -160,6 +160,8 @@ Shader "UI/IdentityGlitch"
                 uv.x += jitter;
 
                 fixed4 baseCol = tex2D(_MainTex, uv) + _TextureSampleAdd;
+                // Tint the white UI texture before the pulse; adding to white clips all stat colors.
+                baseCol.rgb *= _StatColor.rgb;
                 
                 // 글리치 색상 효과에도 마스크 적용
                 fixed3 glitchTint = _StatColor.rgb * glitch;

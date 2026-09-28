@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 1525788590271416440}
   - component: {fileID: 6207972749929614046}
   - component: {fileID: 6198377015443535550}
+  - component: {fileID: 5228580274840560822}
   m_Layer: 6
   m_Name: Dummy
   m_TagString: Untagged
@@ -202,3 +203,19 @@ MonoBehaviour:
   CurrentPoints: 0
   CurrentDeaths: 0
   PlayerName: Unknown
+  MatchDamageDealt: 0
+  MatchDamageTaken: 0
+--- !u!114 &5228580274840560822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5671916071794364411}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 86e0f4e9134c4974a87b271f1d57d823, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.HitImpactVfx
+  _square: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+  _material: {fileID: 2100000, guid: 5409be76446d1994bb315d6353f8947d, type: 2}
