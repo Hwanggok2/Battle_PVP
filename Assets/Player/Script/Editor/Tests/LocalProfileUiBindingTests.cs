@@ -45,7 +45,13 @@ namespace BattlePvp.EditorTests
         public void TearDown()
         {
             for (int i = _objects.Count - 1; i >= 0; i--)
-                if (_objects[i] != null) UnityEngine.Object.DestroyImmediate(_objects[i]);
+                if (_objects[i] != null)
+                {
+                    foreach (var view in _objects[i].GetComponentsInChildren<StatCustomizerController>(true)) Invoke(view, "OnDisable");
+                    foreach (var view in _objects[i].GetComponentsInChildren<LobbyUIManager>(true)) Invoke(view, "OnDisable");
+                    foreach (var view in _objects[i].GetComponentsInChildren<PlayerHUD>(true)) Invoke(view, "OnDisable");
+                    UnityEngine.Object.DestroyImmediate(_objects[i]);
+                }
             _objects.Clear();
             foreach (var entry in _previousStatics) entry.Key.SetValue(null, entry.Value);
             _previousStatics.Clear();
@@ -83,6 +89,7 @@ namespace BattlePvp.EditorTests
             Assert.That(target.GetStatsCopy().STR.Invested, Is.EqualTo(8));
             Assert.That(target.GetStatsCopy().AGI.Invested, Is.EqualTo(7));
             Assert.That(changes, Is.Zero, "Unloaded default data must not overwrite the scene player.");
+            Assert.That(StatManager.Local, Is.SameAs(target), "The explicit offline lobby player must own its stat panels before login data arrives.");
         }
 
         [Test]
@@ -131,7 +138,7 @@ namespace BattlePvp.EditorTests
         {
             LoadProfile(Preset(8, 8, 7, 7), true, Preset(12, 8, 6, 4), true);
             StatCustomizerController customizer = CreateCustomizer();
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, true);
             Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.EqualTo(8));
             _profile.BeginPlayerSession();
             Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.Zero);
@@ -152,10 +159,10 @@ namespace BattlePvp.EditorTests
         {
             LoadProfile(Preset(8, 8, 7, 7), true, Preset(12, 8, 6, 4), true);
             StatCustomizerController customizer = CreateCustomizer();
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, true);
             Invoke(customizer, "SelectStrategistTargetPreset");
-            customizer.gameObject.SetActive(false);
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, false);
+            EditorTestLifecycle.SetActive(customizer, true);
             Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.EqualTo(12));
             _profile.SavedStats = Preset(30, 0, 0, 0);
             Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.EqualTo(12));
@@ -169,7 +176,7 @@ namespace BattlePvp.EditorTests
             StatManager first = CreatePlayer("First");
             StatManager second = CreatePlayer("Second");
             StatCustomizerController customizer = CreateCustomizer();
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, true);
             SetLocal(first);
             StatSlider str = Get<StatSlider>(customizer, "_str");
             str.SetInvestedWithoutNotify(6);
@@ -188,7 +195,7 @@ namespace BattlePvp.EditorTests
             StatManager second = CreatePlayer("Second");
             SetLocal(first);
             LobbyUIManager lobby = CreateLobby();
-            lobby.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(lobby, true);
             Assert.That(SubscriberCount(first, "StatsChanged", lobby), Is.EqualTo(1));
             Assert.That(SubscriberCount(first.GetComponent<HealthSystem>(), "OnDied", lobby), Is.EqualTo(1));
             SetLocal(second);
@@ -198,11 +205,11 @@ namespace BattlePvp.EditorTests
             Assert.That(SubscriberCount(first, "StatsChanged", lobby), Is.Zero);
             Assert.That(SubscriberCount(first.GetComponent<HealthSystem>(), "OnDied", lobby), Is.Zero);
             Assert.That(SubscriberCount(second, "StatsChanged", lobby), Is.EqualTo(1));
-            lobby.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(lobby, false);
             Assert.That(SubscriberCount(second, "StatsChanged", lobby), Is.Zero);
             Assert.That(SubscriberCount(second.GetComponent<HealthSystem>(), "OnRevived", lobby), Is.Zero);
             SetLocal(first);
-            lobby.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(lobby, true);
             Assert.That(Get<StatManager>(lobby, "_localStatManager"), Is.SameAs(first));
             Assert.That(SubscriberCount(first, "StatsChanged", lobby), Is.EqualTo(1));
             first.OnStopLocalPlayer();
@@ -216,7 +223,7 @@ namespace BattlePvp.EditorTests
             PlayFabBattleManager first = NewObject("First service").AddComponent<PlayFabBattleManager>();
             PlayFabBattleManager second = NewObject("Second service").AddComponent<PlayFabBattleManager>();
             LobbyUIManager lobby = CreateLobby();
-            lobby.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(lobby, true);
             Invoke(lobby, "BindRoomService", first);
             Invoke(lobby, "BindRoomService", second);
             Invoke(lobby, "BindRoomService", second);
@@ -224,7 +231,7 @@ namespace BattlePvp.EditorTests
             Assert.That(SubscriberCount(second, "OnRoomFlowStateChanged", lobby), Is.EqualTo(1));
             // The singleton can already point elsewhere by the time this view is disabled.
             SetStatic(typeof(PlayFabBattleManager), "<Instance>k__BackingField", first);
-            lobby.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(lobby, false);
             Assert.That(SubscriberCount(second, "OnRoomFlowStateChanged", lobby), Is.Zero);
             SetStatic(typeof(PlayFabBattleManager), "<Instance>k__BackingField", null);
         }
@@ -233,14 +240,14 @@ namespace BattlePvp.EditorTests
         public void CustomizerDisableUnsubscribesItsOriginalProfileEvenIfTheSingletonChanges()
         {
             StatCustomizerController customizer = CreateCustomizer();
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, true);
             GlobalDataManager original = _profile;
             GlobalDataManager replacement = NewObject("Replacement profile").AddComponent<GlobalDataManager>();
             SetStatic(typeof(GlobalDataManager), "_instance", replacement);
-            customizer.gameObject.SetActive(false);
+            EditorTestLifecycle.SetActive(customizer, false);
             Assert.That(SubscriberCount(original, "OnSavedStatsUpdated", customizer), Is.Zero);
             Assert.That(SubscriberCount(original, "OnStrategistTargetPresetChanged", customizer), Is.Zero);
-            customizer.gameObject.SetActive(true);
+            EditorTestLifecycle.SetActive(customizer, true);
             Assert.That(SubscriberCount(replacement, "OnSavedStatsUpdated", customizer), Is.EqualTo(1));
             Assert.That(SubscriberCount(original, "OnSavedStatsUpdated", customizer), Is.Zero);
         }
@@ -248,7 +255,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void AutomaticInitialInjectionPreservesServerApprovedReconnectStats()
         {
-            StatManager stats = NewObject("Restored stats").AddComponent<StatManager>();
+            StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(NewObject("Restored stats"));
             Set(stats, "_stats", Preset(2, 18, 6, 4));
             Set(stats, "_serverStatsInitialized", true);
             FieldInfo connectionState = typeof(NetworkClient).GetField("connectState", PrivateStatic);
@@ -292,7 +299,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void ApplyResponseTimeoutReleasesTheRequestAndRejectsLateOrOlderReplies()
         {
-            StatManager stats = NewObject("Pending stat request").AddComponent<StatManager>();
+            StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(NewObject("Pending stat request"));
             Set(stats, "_stats", Preset(8, 8, 7, 7));
             int oldCalls = 0, nextCalls = 0;
             bool accepted = true;
@@ -320,7 +327,7 @@ namespace BattlePvp.EditorTests
         {
             foreach (string stop in new[] { "disable", "local stop", "disconnect" })
             {
-                StatManager stats = NewObject(stop).AddComponent<StatManager>();
+                StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(NewObject(stop));
                 int calls = 0;
                 bool accepted = true;
                 SetPending(stats, 1, Time.realtimeSinceStartupAsDouble + 10d,
@@ -338,7 +345,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void ACompletionCallbackCanStartTheNextRequestWithoutBeingClearedByTheOldOne()
         {
-            StatManager stats = NewObject("Reentrant stat request").AddComponent<StatManager>();
+            StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(NewObject("Reentrant stat request"));
             int nextCalls = 0;
             SetPending(stats, 1, Time.realtimeSinceStartupAsDouble + 10d, (_, __) =>
                 SetPending(stats, 2, Time.realtimeSinceStartupAsDouble + 10d, (___, ____) => nextCalls++));
@@ -365,8 +372,9 @@ namespace BattlePvp.EditorTests
         {
             GameObject obj = NewObject(name);
             obj.AddComponent<NetworkIdentity>();
-            StatManager stats = obj.AddComponent<StatManager>();
+            StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(obj);
             obj.AddComponent<HealthSystem>();
+            EditorTestLifecycle.BindNetwork(obj);
             return stats;
         }
 
@@ -385,6 +393,7 @@ namespace BattlePvp.EditorTests
                 Set(statSlider, "_slider", slider);
                 Set(customizer, field, statSlider);
             }
+            Invoke(customizer, "Awake");
             return customizer;
         }
 

@@ -35,6 +35,7 @@ namespace BattlePvp.UI
             _metadataRequests.SetActive(true);
             SceneManager.sceneLoaded += OnSceneLoaded;
             ScoreSystem.OnScoreUpdated += OnRosterUpdated;
+            BattleMapSelection.RoomSettingsChanged += OnRoomSettingsChanged;
             SubscribeRoomEvents();
             RefreshVisibilityAndInfo();
         }
@@ -44,6 +45,7 @@ namespace BattlePvp.UI
             _metadataRequests.SetActive(false);
             SceneManager.sceneLoaded -= OnSceneLoaded;
             ScoreSystem.OnScoreUpdated -= OnRosterUpdated;
+            BattleMapSelection.RoomSettingsChanged -= OnRoomSettingsChanged;
             UnsubscribeRoomEvents();
         }
 
@@ -76,6 +78,11 @@ namespace BattlePvp.UI
             else RefreshPlayerCount();
         }
 
+        private void OnRoomSettingsChanged()
+        {
+            if (_roomManager != null) SetInfo(_roomManager.CurrentRoomInfo);
+        }
+
         private void RefreshVisibilityAndInfo()
         {
             var manager = _roomManager;
@@ -95,7 +102,7 @@ namespace BattlePvp.UI
             
             if (manager == null)
             {
-                SetInfo("Unknown Room", "Unknown");
+                SetInfo("대기실", "연결 확인 중");
                 return;
             }
 
@@ -225,7 +232,11 @@ namespace BattlePvp.UI
             }
 
             _leaveButton.onClick.RemoveListener(OnLeaveButtonClicked);
-            _leaveButton.onClick.AddListener(OnLeaveButtonClicked);
+            _leaveButton.onClick.RemoveListener(OnRoomInfoClicked);
+            _leaveButton.onClick.AddListener(OnRoomInfoClicked);
+            _leaveButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            var label = _leaveButton.GetComponentInChildren<TMP_Text>(true);
+            if (label != null) label.text = "방 정보";
         }
 
         private Button CreateLeaveButton()
@@ -259,7 +270,7 @@ namespace BattlePvp.UI
             textRect.offsetMax = Vector2.zero;
 
             var text = textObject.GetComponent<TextMeshProUGUI>();
-            text.text = "\uB098\uAC00\uAE30";
+            text.text = "방 정보";
             text.fontSize = 17f;
             text.color = Color.white;
             text.alignment = TextAlignmentOptions.Center;
@@ -269,8 +280,21 @@ namespace BattlePvp.UI
             return button;
         }
 
+        private void OnRoomInfoClicked()
+        {
+            if (BattlePvp.Logic.InputModeRules.CanLockCursor(SceneManager.GetActiveScene().name,
+                BattlePvp.Logic.GameInputController.CurrentMode)) return;
+            if (LobbyUIManager.Instance != null) LobbyUIManager.Instance.OpenRoomInfo();
+        }
+
+        public void LeaveRoom() => OnLeaveButtonClicked();
+
         private void OnLeaveButtonClicked()
         {
+            // A captured FPS attack/jump must never submit the room's leave button.
+            if (BattlePvp.Logic.InputModeRules.CanLockCursor(SceneManager.GetActiveScene().name,
+                BattlePvp.Logic.GameInputController.CurrentMode)) return;
+            Debug.Log("[BattleRoom] Leaving through the room menu.");
             if (_leaveButton != null)
                 _leaveButton.interactable = false;
 
@@ -312,11 +336,13 @@ namespace BattlePvp.UI
             if (_roomNameText == null || _playerCountText == null || _masterNameText == null)
                 return;
 
-            string safeRoomName = UserDisplayText.SingleLine(roomName, UserDisplayText.RoomNameLimit, "Unknown Room");
-            string safeMasterName = UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit, "Unknown");
+            var settings = BattleMapSelection.Instance;
+            if (settings != null && !string.IsNullOrEmpty(settings.RoomTitle)) roomName = settings.RoomTitle;
+            string safeRoomName = UserDisplayText.SingleLine(roomName, UserDisplayText.RoomNameLimit, "대기실");
+            string safeMasterName = UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit, "연결 확인 중");
 
-            UserTextPresentation.SetPlain(_roomNameText, $"Room: {safeRoomName}");
-            UserTextPresentation.SetPlain(_masterNameText, $"Master: {safeMasterName}");
+            UserTextPresentation.SetPlain(_roomNameText, $"대기실 · {safeRoomName}");
+            UserTextPresentation.SetPlain(_masterNameText, $"방장 · {safeMasterName}");
             RefreshPlayerCount();
         }
 
@@ -326,7 +352,7 @@ namespace BattlePvp.UI
             _seenNetIds.Clear();
             foreach (ScoreSystem score in ScoreSystem.ActiveScores)
                 if (score != null && score.netId != 0) _seenNetIds.Add(score.netId);
-            _playerCountText.text = $"Players: {_seenNetIds.Count}";
+            _playerCountText.text = $"참가자 · {_seenNetIds.Count}";
         }
     }
 }

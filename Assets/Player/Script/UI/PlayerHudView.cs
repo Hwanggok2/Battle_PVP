@@ -28,6 +28,7 @@ namespace BattlePvp.UI
 
         [Header("Skill")]
         [SerializeField] private SkillUI _skillUI;
+        [SerializeField] private SkillArcHud _skillArcHud;
 
         [Header("Match Info")]
         [SerializeField] private TextMeshProUGUI _timerText;
@@ -215,6 +216,7 @@ namespace BattlePvp.UI
 
         public void SetSkill(SkillHudState state)
         {
+            if (_skillArcHud != null) return;
             ResolveSkillUI();
 
             if (_skillUI != null)

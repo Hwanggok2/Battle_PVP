@@ -75,12 +75,12 @@ namespace BattlePvp.UI
             if (_masterNameText != null && (!_hasInfo || _masterName != masterName))
             {
                 _masterNameText.gameObject.SetActive(true);
-                UserTextPresentation.SetPlain(_masterNameText, $"Master : {UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit)}");
+                UserTextPresentation.SetPlain(_masterNameText, $"방장 · {UserDisplayText.SingleLine(masterName, UserDisplayText.NameLimit)}");
             }
             if (_playerCountText != null && (!_hasInfo || _playerCount != playerCount))
             {
                 _playerCountText.gameObject.SetActive(true);
-                _playerCountText.text = $"Player : {playerCount}";
+                _playerCountText.text = $"참가자 · {playerCount}";
             }
 
             _roomName = roomName;
@@ -100,6 +100,21 @@ namespace BattlePvp.UI
 
             _onSelected?.Invoke(_roomId);
             Debug.Log($"[RoomListItem] Item Selected: {_roomId}");
+        }
+
+        public void SetAdmissionInfo(int count, int capacity, bool isPrivate)
+        {
+            if (_playerCountText != null) _playerCountText.text = $"{(isPrivate ? "비밀방 · " : "")}{count} / {Mathf.Max(2, capacity)}명";
+        }
+
+        public void SetBrowseOnly(bool browseOnly)
+        {
+            if (_selectButton != null) _selectButton.interactable = !browseOnly;
+            if (browseOnly)
+            {
+                if (_selectedItem == this) _selectedItem = null;
+                SetSelected(false);
+            }
         }
 
         private void OnDeleteClicked()

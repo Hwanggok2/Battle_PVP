@@ -28,6 +28,8 @@ namespace BattlePvp.EditorTests
             Save(typeof(StatManager), "<Local>k__BackingField", null);
             Save(typeof(StatManager), "LocalChanged", null);
             Save(typeof(GlobalDataManager), "_instance", null);
+            var profile = NewRoot("Profile fixture").AddComponent<GlobalDataManager>();
+            typeof(GlobalDataManager).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, profile);
             Save(typeof(LobbyUIManager), "<Instance>k__BackingField", null);
             Save(typeof(GameInputController), "<Instance>k__BackingField", null);
             Save(typeof(GameInputController), "_paused", false);

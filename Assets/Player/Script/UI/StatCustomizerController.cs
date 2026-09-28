@@ -170,7 +170,8 @@ namespace BattlePvp.UI
         private void OnStrategistPresetUpdated(StatContainer stats, bool hasPreset)
         {
             if (!isActiveAndEnabled || !_editingStrategistTargetPreset) return;
-            _baseStats = hasPreset ? stats : default;
+            _baseStats = hasPreset ? stats : _profileData != null && !_profileData.HasLoadedPlayerStats
+                ? default : BattlePvp.Combat.CombatPresetPlan.DefaultTarget(default);
             _virtualStats = _baseStats;
             RefreshSliderVisuals();
             RebuildBudgetAndPreview();
@@ -376,7 +377,7 @@ namespace BattlePvp.UI
             if (_profileData != null && _profileData.HasStrategistTargetPreset)
                 _baseStats = _profileData.StrategistTargetPreset;
             else
-                _baseStats = default;
+                _baseStats = BattlePvp.Combat.CombatPresetPlan.DefaultTarget(default);
 
             _virtualStats = _baseStats;
             RefreshSliderVisuals();

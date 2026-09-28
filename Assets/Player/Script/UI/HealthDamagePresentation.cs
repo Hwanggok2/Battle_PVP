@@ -53,13 +53,13 @@ namespace BattlePvp.UI
             DamageSource source, uint attackerNetId, uint victimNetId, uint correlationId,
             bool localVictim, bool localAttacker)
         {
-            DamagePopupManager popups = DamagePopupManager.Instance;
-            if (popups == null)
-                return;
-
             if (localAttacker && source == DamageSource.Physical && correlationId != 0 &&
                 !PhysicalPopupCorrelations.TryClaim(attackerNetId, victimNetId, correlationId, Time.unscaledTime))
                 return;
+
+            HitImpactVfx.PlayFor(victim, position, source);
+            DamagePopupManager popups = DamagePopupManager.Instance;
+            if (popups == null) return;
 
             Style style = ResolveStyle(source, localVictim, localAttacker);
             if (style.UseReceivedDamageHud)

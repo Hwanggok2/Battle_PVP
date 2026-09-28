@@ -85,6 +85,7 @@ namespace BattlePvp.UI
 
         private void OnEnable()
         {
+            StatManager.LocalChanged += OnLocalPlayerChanged;
             EnsureRuntimeMaterial();
 
             TryAutoResolveSources();
@@ -100,6 +101,7 @@ namespace BattlePvp.UI
 
         private void OnDisable()
         {
+            StatManager.LocalChanged -= OnLocalPlayerChanged;
             if (_resolveSourcesRoutine != null)
             {
                 StopCoroutine(_resolveSourcesRoutine);
@@ -107,6 +109,18 @@ namespace BattlePvp.UI
             }
 
             UnsubscribeSources();
+        }
+
+        private void OnLocalPlayerChanged(StatManager local)
+        {
+            if (!IsSceneGlobalUi()) return;
+            UnsubscribeSources();
+            _identitySourceBehaviour = local;
+            _statusSourceBehaviour = local != null ? local.GetComponent<HealthSystem>() : null;
+            _hasCurrentStats = false;
+            RefreshSourceInterfaces();
+            SubscribeSources();
+            PullCurrentHpFromReader();
         }
 
         private void OnDestroy()
@@ -234,9 +248,7 @@ namespace BattlePvp.UI
             if (!IsSceneGlobalUi())
                 return null;
 
-            return StatManager.Local != null
-                ? StatManager.Local
-                : FindFirstObjectByType<StatManager>();
+            return StatManager.Local;
         }
 
         private HealthSystem ResolveScopedHealthSystem()
@@ -255,7 +267,7 @@ namespace BattlePvp.UI
                     return localHealth;
             }
 
-            return FindFirstObjectByType<HealthSystem>();
+            return null;
         }
 
         private bool IsSceneGlobalUi()
@@ -431,94 +443,9 @@ namespace BattlePvp.UI
 
         private Color ResolveIdentityColor(Identity identity)
         {
-            if (!_hasCurrentStats)
-                return ResolveStatColor(identity.PrimaryStat);
-
-            return identity.Type switch
-            {
-                IdentityType.Strategist => ResolveStrategistColor(),
-                IdentityType.Polymath => ResolvePolymathColor(),
-                _ => ResolveStatColor(identity.PrimaryStat),
-            };
-        }
-
-        private Color ResolveStrategistColor()
-        {
-            float str = Mathf.Max(0f, _currentStats.STR.Invested);
-            float agi = Mathf.Max(0f, _currentStats.AGI.Invested);
-            float con = Mathf.Max(0f, _currentStats.CON.Invested);
-            float def = Mathf.Max(0f, _currentStats.DEF.Invested);
-
-            StatKind firstKind = StatKind.STR;
-            float firstValue = str;
-            StatKind secondKind = StatKind.STR;
-            float secondValue = -1f;
-
-            ConsiderTopTwo(StatKind.AGI, agi, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
-            ConsiderTopTwo(StatKind.CON, con, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
-            ConsiderTopTwo(StatKind.DEF, def, ref firstKind, ref firstValue, ref secondKind, ref secondValue);
-
-            float total = firstValue + secondValue;
-            if (total <= 0.0001f)
-                return ResolveStatColor(_currentIdentity.PrimaryStat);
-
-            Color color = ResolveStatColor(firstKind) * (firstValue / total);
-            color += ResolveStatColor(secondKind) * (secondValue / total);
-            return NormalizeMixedColor(color);
-        }
-
-        private static void ConsiderTopTwo(
-            StatKind kind,
-            float value,
-            ref StatKind firstKind,
-            ref float firstValue,
-            ref StatKind secondKind,
-            ref float secondValue)
-        {
-            if (value > firstValue)
-            {
-                secondKind = firstKind;
-                secondValue = firstValue;
-                firstKind = kind;
-                firstValue = value;
-            }
-            else if (value > secondValue)
-            {
-                secondKind = kind;
-                secondValue = value;
-            }
-        }
-
-        private Color ResolvePolymathColor()
-        {
-            float str = Mathf.Max(0f, _currentStats.STR.Invested);
-            float agi = Mathf.Max(0f, _currentStats.AGI.Invested);
-            float con = Mathf.Max(0f, _currentStats.CON.Invested);
-            float def = Mathf.Max(0f, _currentStats.DEF.Invested);
-            float total = str + agi + con + def;
-
-            if (total <= 0.0001f)
-                return ResolveStatColor(_currentIdentity.PrimaryStat);
-
-            Color color = ResolveStatColor(StatKind.STR) * (str / total);
-            color += ResolveStatColor(StatKind.AGI) * (agi / total);
-            color += ResolveStatColor(StatKind.CON) * (con / total);
-            color += ResolveStatColor(StatKind.DEF) * (def / total);
-            return NormalizeMixedColor(color);
-        }
-
-        private static Color NormalizeMixedColor(Color color)
-        {
-            float maxChannel = Mathf.Max(color.r, Mathf.Max(color.g, color.b));
-            if (maxChannel > 0.0001f && maxChannel < 1f)
-            {
-                color.r /= maxChannel;
-                color.g /= maxChannel;
-                color.b /= maxChannel;
-            }
-
-            color.a = 1f;
-            return color;
+            return _hasCurrentStats
+                ? StatVfxColor.Resolve(identity, _currentStats, _strColor, _agiColor, _conColor, _defColor)
+                : ResolveStatColor(identity.PrimaryStat);
         }
 
         private float ResolveMirrorActive(IdentityType type)

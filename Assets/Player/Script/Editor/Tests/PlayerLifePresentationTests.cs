@@ -101,6 +101,7 @@ namespace BattlePvp.EditorTests
                     presentation.BeginLocalDeath(elapsed);
                     Assert.That(renderer.enabled || collider.enabled, Is.False);
                     presentation.enabled = false;
+                    EditorTestLifecycle.Invoke(presentation, "OnDisable");
                     Assert.That(renderer.enabled && collider.enabled, Is.True);
                     presentation.enabled = true;
                     presentation.BeginLocalDeath(elapsed);
@@ -200,7 +201,7 @@ namespace BattlePvp.EditorTests
                 presentation.AttachCamera(camera);
                 Transform originalTarget = winner.transform;
                 presentation.ShowMatchEnd(originalTarget, false);
-                if (disableComponent) presentation.enabled = false;
+                if (disableComponent) { presentation.enabled = false; EditorTestLifecycle.Invoke(presentation, "OnDisable"); }
                 else presentation.Suspend();
                 Object.DestroyImmediate(winner);
 

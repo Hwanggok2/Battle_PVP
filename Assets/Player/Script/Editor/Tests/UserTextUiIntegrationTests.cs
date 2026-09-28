@@ -84,8 +84,8 @@ namespace BattlePvp.EditorTests
 
                 item.SetInfo(roomId, RoomName, Name, 7, id => selected = id, id => deleted = id, true);
                 AssertPlain(room, PlainRoomName);
-                AssertPlain(master, "Master : " + PlainName);
-                Assert.That(count.text, Is.EqualTo("Player : 7"));
+                AssertPlain(master, "방장 · " + PlainName);
+                Assert.That(count.text, Is.EqualTo("참가자 · 7"));
                 Assert.That(Get<string>(item, "_roomName"), Is.EqualTo(RoomName));
                 Assert.That(Get<string>(item, "_masterName"), Is.EqualTo(Name));
                 Invoke(item, "OnItemClicked");
@@ -97,7 +97,7 @@ namespace BattlePvp.EditorTests
 
                 item.SetInfo(roomId, RoomName, Name, 8, id => selected = id, null, false);
                 AssertPlain(room, PlainRoomName);
-                Assert.That(count.text, Is.EqualTo("Player : 8"));
+                Assert.That(count.text, Is.EqualTo("참가자 · 8"));
                 Assert.That(item.IsSelected, Is.True);
                 Assert.That(delete.gameObject.activeSelf, Is.False);
             }
@@ -225,9 +225,9 @@ namespace BattlePvp.EditorTests
                 var metadata = new PlayFabBattleManager.RoomInfo(RoomName, Name, 8);
 
                 Invoke(banner, "SetInfo", metadata);
-                AssertPlain(room, "Room: " + PlainRoomName);
-                AssertPlain(master, "Master: " + PlainName);
-                Assert.That(count.text, Is.EqualTo("Players: 0"));
+                AssertPlain(room, "대기실 · " + PlainRoomName);
+                AssertPlain(master, "방장 · " + PlainName);
+                Assert.That(count.text, Is.EqualTo("참가자 · 0"));
                 Assert.That(metadata.RoomName, Is.EqualTo(RoomName));
                 Assert.That(metadata.MasterName, Is.EqualTo(Name));
             }
@@ -253,7 +253,7 @@ namespace BattlePvp.EditorTests
                 quitting.SetValue(null, false);
                 GameObject root = NewObject("Character info fixture");
                 info = root.AddComponent<CharacterInfoController>();
-                StatManager stats = NewObject("Inactive stats fixture").AddComponent<StatManager>();
+                StatManager stats = EditorTestLifecycle.AddNetwork<StatManager>(NewObject("Inactive stats fixture"));
                 Set(info, "_statManager", stats);
                 TextMeshProUGUI nickname = Label("Nickname", root.transform);
                 Set(info, "_loginIdText", nickname);

@@ -15,6 +15,15 @@ namespace BattlePvp.UI
         [SerializeField] private RectTransform _contentParent;      // ScrollView의 Content
         [SerializeField] private RoomListItem _itemPrefab;          // 방 항목 프리팹
         [SerializeField] private Button _refreshButton;             // 새로고침 버튼
+        [SerializeField] private TMPro.TMP_Text _statusText;
+        private bool _browseOnly;
+
+        public void SetBrowseOnly(bool browseOnly)
+        {
+            _browseOnly = browseOnly;
+            foreach (var item in _itemsById.Values)
+                if (item != null) item.SetBrowseOnly(browseOnly);
+        }
 
         [SerializeField, Range(1f, 5f)] private float _autoRefreshSeconds = 5f;
 
@@ -78,7 +87,8 @@ namespace BattlePvp.UI
         {
             if (!isActiveAndEnabled) return;
             BindRoomSource();
-            if (_subscribedManager == null) return;
+            if (_subscribedManager == null)
+            { if (_statusText != null) _statusText.text = "방 목록에 연결되지 않았습니다."; return; }
             if (_contentParent == null || _itemPrefab == null)
             {
                 Debug.LogError("[RoomList] Missing content parent or item prefab.");
@@ -91,6 +101,8 @@ namespace BattlePvp.UI
                 if (this == null || !isActiveAndEnabled || _contentParent == null || _itemPrefab == null ||
                     !_state.Apply(request, rooms, _removedIds, _changedIds)) return;
                 ApplyChangedRows();
+                if (_statusText != null) _statusText.text = rooms == null || rooms.Count == 0
+                    ? "표시할 대기실이 없습니다." : string.Empty;
             });
         }
 
@@ -126,6 +138,8 @@ namespace BattlePvp.UI
                 }
                 var info = _state.Rooms[roomId];
                 item.SetInfo(roomId, info.RoomName, info.MasterName, info.PlayerCount, _onSelected, null, false);
+                item.SetAdmissionInfo(info.PlayerCount, info.Capacity, info.IsPrivate);
+                item.SetBrowseOnly(_browseOnly);
             }
             _state.CopyOrderedIds(_orderedIds);
             for (int i = 0; i < _orderedIds.Count; i++)
@@ -138,6 +152,7 @@ namespace BattlePvp.UI
 
         private void OnRoomSelected(string roomName)
         {
+            if (_browseOnly) return;
             // LobbyUIManager에게 선택된 방 이름을 전달합니다.
             if (LobbyUIManager.Instance != null)
             {

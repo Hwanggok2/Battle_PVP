@@ -23,6 +23,7 @@ namespace BattlePvp.UI
 
         [Header("Status Feedback")]
         [SerializeField] private TextMeshProUGUI _statusText;  // 결과 메시지 표시용 텍스트
+        [SerializeField] private LoginStatusBanner _statusBanner;
         private PlayFabAuthManager _authService;
         private readonly LoginNavigationGate _navigation = new LoginNavigationGate();
         private bool _waitingForResult;
@@ -136,11 +137,11 @@ namespace BattlePvp.UI
             if (!CanSubmit()) return;
             if (_idInput == null || _pwInput == null || string.IsNullOrWhiteSpace(_idInput.text) || string.IsNullOrEmpty(_pwInput.text))
             {
-                SetStatus("<color=yellow>아이디와 비밀번호를 모두 입력하세요.</color>");
+                SetStatus("아이디와 비밀번호를 입력해 주세요.");
                 return;
             }
 
-            SetStatus("로그인 중...");
+            SetStatus("계정 정보를 확인하고 있습니다.", LoginStatusTone.Pending, "신원 확인 중");
             _waitingForResult = true;
             UpdateButtons();
             _authService.Login(_idInput.text, _pwInput.text);
@@ -151,14 +152,14 @@ namespace BattlePvp.UI
             if (!CanSubmit()) return;
             if (_idInput == null || _pwInput == null || string.IsNullOrWhiteSpace(_idInput.text) || string.IsNullOrEmpty(_pwInput.text))
             {
-                SetStatus("<color=yellow>아이디와 비밀번호를 모두 입력하세요.</color>");
+                SetStatus("아이디와 비밀번호를 입력해 주세요.");
                 return;
             }
 
             // 비밀번호 길이 체크 (서버 가기 전 한 번 더!)
             if (_pwInput.text.Length < 6)
             {
-                SetStatus("<color=yellow>비밀번호는 최소 6자 이상이어야 합니다.</color>");
+                SetStatus("비밀번호는 6자 이상 입력해 주세요.");
                 return;
             }
 
@@ -167,7 +168,7 @@ namespace BattlePvp.UI
                 ? _emailInput.text 
                 : $"{_idInput.text}@test.com";
 
-            SetStatus("회원가입 시도 중...");
+            SetStatus("새 계정을 등록하고 있습니다.", LoginStatusTone.Pending, "계정 등록 중");
             _waitingForResult = true;
             UpdateButtons();
             _authService.Register(_idInput.text, email, _pwInput.text);
@@ -178,7 +179,7 @@ namespace BattlePvp.UI
             if (!isActiveAndEnabled || !_waitingForResult || _authService == null ||
                 !_navigation.Schedule(_authService.ApprovedLoginRequestId, Time.realtimeSinceStartupAsDouble)) return;
             _waitingForResult = false;
-            SetStatus("<color=green>로그인 성공! 잠시 후 이동합니다.</color>");
+            SetStatus("인증 완료. 작전실로 이동합니다.", LoginStatusTone.Success, "접속 승인");
             UpdateButtons();
         }
 
@@ -192,7 +193,7 @@ namespace BattlePvp.UI
         {
             if (!isActiveAndEnabled || !_waitingForResult) return;
             _waitingForResult = false;
-            SetStatus("<color=blue>회원가입 성공! 이제 로그인해 주세요.</color>");
+            SetStatus("계정이 생성됐습니다. 로그인해 주세요.", LoginStatusTone.Success, "계정 등록 완료");
             UpdateButtons();
         }
 
@@ -200,14 +201,20 @@ namespace BattlePvp.UI
         {
             if (!isActiveAndEnabled || !_waitingForResult) return;
             _waitingForResult = false;
-            SetStatus($"<color=red>오류: {errorMessage}</color>");
+            SetStatus(errorMessage, LoginStatusTone.Error, "접속 오류");
             UpdateButtons();
         }
 
-        private void SetStatus(string message)
+        private void SetStatus(string message, LoginStatusTone tone = LoginStatusTone.Notice, string heading = "접속 단말")
         {
+            if (_statusBanner != null)
+            {
+                _statusBanner.Show(heading, message, tone);
+                return;
+            }
             if (_statusText != null)
             {
+                _statusText.richText = false;
                 _statusText.text = message;
                 _statusText.gameObject.SetActive(!string.IsNullOrEmpty(message));
             }

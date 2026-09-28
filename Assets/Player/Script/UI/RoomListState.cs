@@ -58,6 +58,6 @@ namespace BattlePvp.UI
 
         private static bool SameDisplay(PlayFabBattleManager.RoomInfo left, PlayFabBattleManager.RoomInfo right) =>
             left.RoomName == right.RoomName && left.MasterName == right.MasterName &&
-            left.PlayerCount == right.PlayerCount;
+            left.PlayerCount == right.PlayerCount && left.Capacity == right.Capacity && left.IsPrivate == right.IsPrivate;
     }
 }

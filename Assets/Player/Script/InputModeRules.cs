@@ -15,9 +15,11 @@ namespace BattlePvp.Logic
         public static bool CanToggleMenu(GameInputMode mode) =>
             mode == GameInputMode.Gameplay || mode == GameInputMode.Menu;
 
-        // 로비와 대기실에서는 설정 UI를 조작하므로 클릭해도 커서를 잠그지 않는다.
+        public static bool UsesFpsLook(string sceneName) => sceneName == "Battle" || sceneName == "Battle_waiting";
+
+        // Both multiplayer scenes use FPS input. Menus and chat release the pointer.
         public static bool CanLockCursor(string sceneName, GameInputMode mode) =>
-            sceneName == "Battle" && mode == GameInputMode.Gameplay;
+            UsesFpsLook(sceneName) && mode == GameInputMode.Gameplay;
 
         public static bool CanTrackCamera(GameInputMode mode, bool paused, bool typing) =>
             !typing && (!paused || mode == GameInputMode.Spectating);

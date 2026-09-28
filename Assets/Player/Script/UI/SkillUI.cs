@@ -15,6 +15,7 @@ namespace BattlePvp.UI
         [SerializeField] private TextMeshProUGUI _nameText;
         [SerializeField] private TextMeshProUGUI _timerText;
         [SerializeField] private TextMeshProUGUI _indexText;
+        [SerializeField] private bool _useDirectKeyLabel;
 
         [Header("Preview")]
         [SerializeField] private JobSkillData _previewSkillData;
@@ -34,6 +35,13 @@ namespace BattlePvp.UI
         private int _displayedSeconds = -1;
         private int _displayedIndex = -1;
         private int _displayedCount = -1;
+        private SkillTooltip _tooltip;
+
+        public void SetDescription(string description)
+        {
+            if (_tooltip == null) _tooltip = GetComponent<SkillTooltip>();
+            if (_tooltip != null) _tooltip.SetDescription(description);
+        }
 
         private void Awake()
         {
@@ -43,11 +51,27 @@ namespace BattlePvp.UI
             ApplyPreview();
         }
 
+#if UNITY_EDITOR
+        private int _pendingEditorValidation;
+
         private void OnValidate()
         {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1) == 0)
+                EditorValidationQueue.Enqueue(ApplyPendingEditorValidation);
+        }
+
+        private void ApplyPendingEditorValidation()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0) == 0 || this == null)
+                return;
+            // The next authoritative HUD snapshot restores the live display. An Inspector
+            // edit must never replace a running cooldown or visibility with preview data.
+            _initialized = false;
+            if (Application.IsPlaying(gameObject)) return;
             InitializeDisplay();
             ApplyPreview();
         }
+#endif
 
         public void SetState(SkillHudState state)
         {
@@ -78,7 +102,9 @@ namespace BattlePvp.UI
             if (_nameText != null && _nameText.text != state.Name)
                 _nameText.text = state.Name;
 
-            if (_indexText != null && (!_hasState || _displayedIndex != state.SelectedIndex || _displayedCount != state.SkillCount))
+            if (_indexText != null && _useDirectKeyLabel)
+                _indexText.text = (state.SelectedIndex == 0 ? LocalGameSettings.Current.skill1 : LocalGameSettings.Current.skill2).ToUpperInvariant();
+            else if (_indexText != null && (!_hasState || _displayedIndex != state.SelectedIndex || _displayedCount != state.SkillCount))
                 _indexText.text = state.SkillCount > 1 ? $"{state.SelectedIndex + 1}/{state.SkillCount}" : string.Empty;
             _displayedIndex = state.SelectedIndex;
             _displayedCount = state.SkillCount;
@@ -237,7 +263,11 @@ namespace BattlePvp.UI
             }
             else if (_overlayImage != null)
             {
-                _overlayImage.transform.SetAsFirstSibling();
+                Transform iconLayer = _baseImage != null ? _baseImage.transform : null;
+                while (iconLayer != null && iconLayer.parent != _overlayImage.transform.parent) iconLayer = iconLayer.parent;
+                if (iconLayer != null)
+                { iconLayer.SetAsFirstSibling(); _overlayImage.transform.SetSiblingIndex(iconLayer.GetSiblingIndex() + 1); }
+                else _overlayImage.transform.SetAsFirstSibling();
             }
 
             MoveTextAboveOverlay(_nameText);

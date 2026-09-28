@@ -25,17 +25,18 @@ namespace BattlePvp.EditorTests
                 PlayerHUD hud = root.AddComponent<PlayerHUD>();
                 SetField(hud, "_view", view);
                 SetField(hud, "_healthSource", status);
+                EditorTestLifecycle.Invoke(hud, "Awake");
                 for (int i = 0; i < 10; i++)
                 {
                     status.ReportHp(i % 2 == 0 ? 150f : 70f);
-                    root.SetActive(true);
+                    EditorTestLifecycle.SetActive(hud, true);
                     Assert.That(status.SubscriberCount, Is.EqualTo(1));
                     Assert.That(view.IsOverflow, Is.EqualTo(i % 2 == 0), "Reenable must restore overflow changes missed while disabled.");
                     int before = view.HpUpdates;
                     status.ReportHp(70f - i);
                     Assert.That(view.HpUpdates, Is.EqualTo(before + 1));
                     Assert.That(view.CurrentHp, Is.EqualTo(70f - i));
-                    root.SetActive(false);
+                    EditorTestLifecycle.SetActive(hud, false);
                     Assert.That(status.SubscriberCount, Is.Zero);
                 }
             }

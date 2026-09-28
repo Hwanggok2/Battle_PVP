@@ -322,7 +322,7 @@ namespace BattlePvp.UI
             }
             else if (isBattleWaiting)
             {
-                if (_battleButton != null) { _battleButton.gameObject.SetActive(true); _battleButton.interactable = true; }
+                if (_battleButton != null) _battleButton.gameObject.SetActive(false);
                 if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(true); _statSettingButton.interactable = true; }
                 return;
             }
@@ -366,7 +366,7 @@ namespace BattlePvp.UI
                 if (label == null)
                     continue;
 
-                label.color = new Color(0.05f, 0.05f, 0.05f, 1f);
+                label.color = new Color(0.84f, 0.92f, 0.97f, 1f);
                 label.canvasRenderer.SetAlpha(1f);
             }
         }
@@ -462,7 +462,8 @@ namespace BattlePvp.UI
                 return;
 
             _roomFlowStatusText.text = message ?? string.Empty;
-            _roomFlowStatusText.gameObject.SetActive(!string.IsNullOrEmpty(message));
+            _roomFlowStatusText.gameObject.SetActive(!string.IsNullOrEmpty(message) &&
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby");
         }
 
         private TextMeshProUGUI CreateRoomFlowStatusText()
@@ -476,15 +477,15 @@ namespace BattlePvp.UI
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, 18f);
-            rect.sizeDelta = new Vector2(640f, 42f);
+            rect.anchoredPosition = new Vector2(0f, 68f);
+            rect.sizeDelta = new Vector2(800f, 40f);
 
             TextMeshProUGUI label = statusObject.GetComponent<TextMeshProUGUI>();
             label.font = TMP_Settings.defaultFontAsset;
-            label.fontSize = 24f;
+            label.fontSize = 16f;
             label.color = Color.white;
             label.alignment = TextAlignmentOptions.Center;
-            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.textWrappingMode = TextWrappingModes.Normal;
             label.raycastTarget = false;
             return label;
         }
@@ -568,13 +569,44 @@ namespace BattlePvp.UI
 
                 roomList?.RefreshList();
             }
+            GameInputController.RefreshCursorState();
+        }
+
+        public void OpenRoomInfo()
+        {
+            if (_room_UI == null) return;
+            CharacterInfoController.CloseOpenPanel();
+            SetCustomizerActive(false);
+            _room_UI.SetActive(true);
+            GameInputController.RefreshCursorState();
+        }
+
+        public bool CloseInputPanels()
+        {
+            if (!HasOpenInputPanel) return false;
+            CloseStartupPanels();
+            GameInputController.RefreshCursorState();
+            return true;
         }
 
         private void OnCreateRoomButtonClicked()
         {
             if (!CanStartRoomFlow())
                 return;
-            if (_roomSettingPanel != null) { _roomSettingPanel.SetActive(true); if (_roomNameInput != null) _roomNameInput.text = ""; }
+            if (_roomSettingPanel != null)
+            {
+                // List/status labels can be created after this popup. Keep them behind it on every open.
+                _roomSettingPanel.transform.SetAsLastSibling();
+                var background = _roomSettingPanel.GetComponent<Image>();
+                if (background != null)
+                {
+                    Color color = background.color;
+                    color.a = 1f;
+                    background.color = color;
+                }
+                _roomSettingPanel.SetActive(true);
+                if (_roomNameInput != null) _roomNameInput.text = "";
+            }
         }
 
         private void OnSaveRoomButtonClicked()
@@ -595,7 +627,10 @@ namespace BattlePvp.UI
             if (!CanStartRoomFlow())
                 return;
             if (PlayFabBattleManager.Instance != null && !string.IsNullOrEmpty(_selectedRoomId))
-                PlayFabBattleManager.Instance.JoinRoom(_selectedRoomId);
+            {
+                if (PlayFabBattleManager.Instance.IsListedPrivate(_selectedRoomId)) RoomPasswordPrompt.Open(_selectedRoomId, transform);
+                else PlayFabBattleManager.Instance.JoinRoom(_selectedRoomId);
+            }
         }
 
         private bool CanStartRoomFlow()
@@ -620,8 +655,8 @@ namespace BattlePvp.UI
 
             if (!globalData.HasStrategistTargetPreset)
             {
-                ShowRoomValidationMessage("전략가 전환 프리셋을 설정하십시오");
-                return false;
+                // An unconfigured swap uses the server's 30-point default allocation.
+                return true;
             }
 
             if (!GlobalDataManager.IsCompleteStatPreset(globalData.StrategistTargetPreset))
@@ -665,7 +700,12 @@ namespace BattlePvp.UI
             if (_canvas_Customizer == null) return;
 
             if (active)
+            {
+                CharacterInfoController.CloseOpenPanel();
+                if (_room_UI != null) _room_UI.SetActive(false);
+                if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
                 EnsureCustomizerHierarchyVisible(_canvas_Customizer.transform);
+            }
 
             _canvas_Customizer.SetActive(active);
             GameInputController.RefreshCursorState();

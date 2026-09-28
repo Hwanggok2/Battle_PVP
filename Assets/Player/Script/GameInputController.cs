@@ -27,8 +27,9 @@ namespace BattlePvp.Logic
             get => _textInputActive || HasFocusedTextInput || _textInputConsumedFrame == Time.frameCount;
             private set => _textInputActive = value;
         }
-        private static bool HasModalInput => BattlePvp.UI.LobbyUIManager.Instance != null &&
-            BattlePvp.UI.LobbyUIManager.Instance.HasOpenInputPanel;
+        private static bool HasModalInput => BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
+            BattlePvp.UI.CharacterInfoController.HasOpenPanel ||
+            (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.HasOpenInputPanel);
         private static bool HasFocusedTextInput
         {
             get
@@ -48,6 +49,7 @@ namespace BattlePvp.Logic
 
         private FollowCamera _followCamera;
         private bool _isCursorUnlocked = false;
+        [SerializeField] private TMPro.TMP_Text _cursorHint;
         private NetworkIdentity _localIdentity;
         private HealthSystem _localHealth;
         private PlayerManager _localMovement;
@@ -124,6 +126,10 @@ namespace BattlePvp.Logic
         public static void HandleEscape()
         {
             if (!InputGate.TryConsumeEscape(Time.frameCount)) return;
+            if (BattlePvp.UI.RoomPasswordPrompt.IsOpen) { BattlePvp.UI.RoomPasswordPrompt.Instance.Close(); return; }
+            if (BattlePvp.UI.GameSettingsPanel.IsOpen) { BattlePvp.UI.GameSettingsPanel.Instance.Cancel(); return; }
+            if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) { BattlePvp.UI.WaitingRoomTerminal.Instance.Close(); return; }
+            if (BattlePvp.UI.CharacterInfoController.CloseOpenPanel()) return;
             if (IsTextInputActive)
             {
                 TextInputCancelled?.Invoke();
@@ -132,7 +138,10 @@ namespace BattlePvp.Logic
                 return;
             }
             if (Instance == null) return;
+            if (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.CloseInputPanels()) return;
             Instance.ApplyCursorState();
+            if (InputModeRules.CanToggleMenu(CurrentMode) && BattlePvp.UI.GameSettingsPanel.Instance != null)
+            { BattlePvp.UI.GameSettingsPanel.Instance.Open(); return; }
             if (InputModeRules.CanToggleMenu(CurrentMode)) Instance.ToggleCursor();
         }
 
@@ -146,6 +155,7 @@ namespace BattlePvp.Logic
         {
             ApplyCursorState();
             var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.tKey.wasPressedThisFrame) ToggleCursorMode();
             if (IsTextInputActive && keyboard != null &&
                 (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
                 ConsumeSubmit();
@@ -198,6 +208,21 @@ namespace BattlePvp.Logic
                 Debug.Log("[GameInput] Play Mode: Camera Active, Attack Enabled, Cursor Follows Scene Policy");
         }
 
+        public void ToggleCursorMode()
+        {
+            if (IsTextInputActive || BattlePvp.UI.GameSettingsPanel.IsOpen ||
+                !InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name) ||
+                !InputModeRules.CanToggleMenu(CurrentMode)) return;
+            if (_isCursorUnlocked || HasModalInput)
+            {
+                if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) BattlePvp.UI.WaitingRoomTerminal.Instance.Close();
+                BattlePvp.UI.CharacterInfoController.CloseOpenPanel();
+                if (BattlePvp.UI.LobbyUIManager.Instance != null) BattlePvp.UI.LobbyUIManager.Instance.CloseInputPanels();
+                ResetToPlayMode();
+            }
+            else ToggleCursor();
+        }
+
         private void ApplyCursorState()
         {
             if (_localIdentity != NetworkClient.localPlayer)
@@ -217,16 +242,24 @@ namespace BattlePvp.Logic
             }
             else if (!IsWebGlRuntime)
             {
+                ClearSelectedUiIfNotTextInput();
                 if (Cursor.lockState != CursorLockMode.Locked) Cursor.lockState = CursorLockMode.Locked;
                 if (Cursor.visible) Cursor.visible = false;
             }
             else
             {
+                ClearSelectedUiIfNotTextInput();
                 // WebGL 잠금은 전투 씬의 사용자 클릭 경로에서만 요청한다.
                 Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
             }
             if (_followCamera == null) _followCamera = FindFirstObjectByType<FollowCamera>();
             if (_followCamera != null) _followCamera.IsLocked = CurrentMode != GameInputMode.Gameplay;
+            if (_cursorHint != null)
+            {
+                string hint = BattlePvp.UI.GameSettingsPanel.IsOpen ? "Esc 설정 닫기" :
+                    _isCursorUnlocked ? "커서 모드  ·  T 조작 복귀  ·  Esc 설정" : "T 커서  ·  Enter 채팅  ·  Esc 설정";
+                if (_cursorHint.text != hint) _cursorHint.text = hint;
+            }
         }
 
         private static bool CanLockCursorInCurrentScene() =>

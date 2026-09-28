@@ -372,6 +372,7 @@ namespace BattlePvp.UI
 
             Canvas.ForceUpdateCanvases();
             UpdateContentHeight();
+            Canvas.ForceUpdateCanvases();
             _scrollRect.Rebuild(CanvasUpdate.PostLayout);
 
             _scrollRect.velocity = Vector2.zero;
@@ -413,6 +414,13 @@ namespace BattlePvp.UI
 
         private void ConfigureRuntimeComponents()
         {
+            AnchorBottom();
+            if (_contentRect != null)
+            {
+                _contentRect.anchorMin = Vector2.zero;
+                _contentRect.anchorMax = new Vector2(1f,0f);
+                _contentRect.pivot = new Vector2(.5f,0f);
+            }
             if (_scrollRect != null)
             {
                 _scrollRect.viewport = _viewportRect;
@@ -425,6 +433,7 @@ namespace BattlePvp.UI
             if (_logText != null)
             {
                 _logText.textWrappingMode = TextWrappingModes.Normal;
+                _logText.alignment = TextAlignmentOptions.BottomLeft;
                 _logText.raycastTarget = false;
             }
 
@@ -445,16 +454,14 @@ namespace BattlePvp.UI
                 {
                     GameInputController.SetTextInputActive(true);
                     var pointer = (PointerEventData)data;
-                    _dragStartHeight = _panelRect.sizeDelta.y;
-                    _dragStartPointerY = pointer.position.y;
+                    _dragStartHeight = _panelRect.rect.height;
+                    _dragStartPointerY = PointerLocalY(pointer);
                 });
                 AddDragTrigger(trigger, EventTriggerType.Drag, data =>
                 {
                     var pointer = (PointerEventData)data;
-                    float delta = pointer.position.y - _dragStartPointerY;
-                    float height = Mathf.Clamp(_dragStartHeight + delta, _minHeight, _maxHeight);
-                    _panelRect.sizeDelta = new Vector2(_panelRect.sizeDelta.x, height);
-                    QueueScrollToBottom();
+                    float delta = PointerLocalY(pointer) - _dragStartPointerY;
+                    ResizeHeight(_dragStartHeight + delta);
                 });
                 AddDragTrigger(trigger, EventTriggerType.EndDrag, data =>
                 {
@@ -464,6 +471,29 @@ namespace BattlePvp.UI
                     QueueScrollToBottom();
                 });
             }
+        }
+
+        private void AnchorBottom()
+        {
+            if (_panelRect == null) return;
+            Vector3 bottom = _panelRect.TransformPoint(new Vector3(0f, _panelRect.rect.yMin, 0f));
+            _panelRect.pivot = new Vector2(_panelRect.pivot.x,0);
+            _panelRect.position += bottom - _panelRect.TransformPoint(new Vector3(0f, _panelRect.rect.yMin, 0f));
+        }
+
+        public void ResizeHeight(float height)
+        {
+            if (_panelRect == null) return;
+            AnchorBottom();
+            _panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical,Mathf.Clamp(height,_minHeight,_maxHeight));
+            QueueScrollToBottom();
+        }
+
+        private float PointerLocalY(PointerEventData pointer)
+        {
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(_panelRect,
+                pointer.position,pointer.pressEventCamera,out Vector2 point);
+            return point.y;
         }
 
         private void HookInputSubmit()

@@ -13,6 +13,17 @@ namespace BattlePvp.UI
     /// </summary>
     public class CharacterInfoController : MonoBehaviour
     {
+        private static CharacterInfoController _openController;
+        public static bool HasOpenPanel => _openController != null && _openController.isActiveAndEnabled &&
+            _openController._infoPanel != null && _openController._infoPanel.activeInHierarchy;
+        public static bool CloseOpenPanel()
+        {
+            if (!HasOpenPanel) return false;
+            _openController._infoPanel.SetActive(false);
+            _openController = null;
+            BattlePvp.Logic.GameInputController.RefreshCursorState();
+            return true;
+        }
         [Header("System References")]
         [SerializeField] private GameObject _infoPanel;
         [SerializeField] private Button _playerIconButton;
@@ -180,7 +191,10 @@ namespace BattlePvp.UI
             if (_infoPanel == null) return;
             
             bool isActive = _infoPanel.activeSelf;
+            if (!isActive && LobbyUIManager.Instance != null) LobbyUIManager.Instance.CloseInputPanels();
             _infoPanel.SetActive(!isActive);
+            _openController = isActive ? null : this;
+            BattlePvp.Logic.GameInputController.RefreshCursorState();
 
             if (!isActive)
             {

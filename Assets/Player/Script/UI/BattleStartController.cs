@@ -4,12 +4,15 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using Mirror;
 using TMPro;
+using BattlePvp.Logic;
+using UnityEngine.InputSystem;
 
 namespace BattlePvp.UI
 {
     [RequireComponent(typeof(Button))]
     public class BattleStartController : MonoBehaviour
     {
+        public static bool IsStarting { get; private set; }
         [Header("UI References")]
         [Tooltip("카운트다운을 표시할 텍스트 컴포넌트입니다. 할당하지 않으면 자식에서 자동으로 찾습니다.")]
         [SerializeField] private TextMeshProUGUI _countdownText;
@@ -19,18 +22,26 @@ namespace BattlePvp.UI
         [SerializeField] private float _countdownDuration = 5f;
         [Tooltip("이동할 씬의 이름")]
         [SerializeField] private string _battleSceneName = "Battle";
+        [SerializeField] private bool _allowKeyboardShortcut = true;
 
         private Button _button;
         private bool _isCountingDown = false;
         private bool _isSceneTransitioning = false;
         private string _originalText = "Start";
+        private bool IsWaitingScene => SceneManager.GetActiveScene().name == "Battle_waiting" ||
+            SceneManager.GetActiveScene().name == "Battle_wait";
+        private bool CanStart => IsWaitingScene && !_isCountingDown && !_isSceneTransitioning &&
+            (BattlePvp.Networking.PlayFabBattleManager.Instance == null || !BattlePvp.Networking.PlayFabBattleManager.Instance.RoomSettingsBusy) &&
+            (!NetworkClient.active || NetworkServer.active);
 
         private void Awake()
         {
+            IsStarting = false;
             _button = GetComponent<Button>();
             if (_button != null)
             {
                 _button.onClick.AddListener(OnStartButtonClick);
+                _button.navigation = new Navigation { mode = Navigation.Mode.None };
             }
             
             // Text가 할당되지 않았다면 자식 오브젝트에서 찾기 시도
@@ -38,43 +49,57 @@ namespace BattlePvp.UI
 
             if (_countdownText != null)
             {
-                _originalText = _countdownText.text;
+                _originalText = IsWaitingScene ? (_allowKeyboardShortcut ? "G · 경기 시작" : "경기 시작") : _countdownText.text;
+                if (IsWaitingScene) _countdownText.text = _originalText;
             }
         }
 
         private void OnDestroy()
         {
+            IsStarting = false;
             if (_button != null)
             {
                 _button.onClick.RemoveListener(OnStartButtonClick);
             }
         }
 
+        private void OnDisable()
+        {
+            StopAllCoroutines();
+            _isCountingDown = false;
+            _isSceneTransitioning = false;
+            IsStarting = false;
+            if (_countdownText != null) _countdownText.text = _originalText;
+        }
+
+        private void Update()
+        {
+            if (_button != null)
+                _button.interactable = CanStart;
+            if (!_isCountingDown && !_isSceneTransitioning && _countdownText != null && IsWaitingScene)
+                _countdownText.text = NetworkClient.active && !NetworkServer.active ? "방장이 시작을 준비 중" : _originalText;
+            if (_allowKeyboardShortcut && CanStart && Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame &&
+                !GameInputController.IsPaused && !GameInputController.IsTextInputActive &&
+                GameInputController.CurrentMode == GameInputMode.Gameplay)
+                BeginCountdown();
+        }
+
         private void OnStartButtonClick()
         {
-            if (_isCountingDown) return;
+            // Captured attack clicks and UI Submit must not start the match.
+            if (InputModeRules.CanLockCursor(SceneManager.GetActiveScene().name, GameInputController.CurrentMode)) return;
+            BeginCountdown();
+        }
 
-            // Mirror 환경 체크: 네트워크가 활성화되어 있다면 호스트(서버)인지 확인
-            if (NetworkManager.singleton != null && NetworkClient.active)
-            {
-                if (!NetworkServer.active)
-                {
-                    Debug.LogWarning("[BattleStartController] 오직 방장(Host)만 게임을 시작할 수 있습니다.");
-                    if (_countdownText != null)
-                    {
-                        _countdownText.text = "Host Only";
-                        StartCoroutine(CoResetTextAfterDelay(2f));
-                    }
-                    return;
-                }
-            }
-
-            StartCoroutine(CoStartCountdown());
+        private void BeginCountdown()
+        {
+            if (CanStart) StartCoroutine(CoStartCountdown());
         }
 
         private IEnumerator CoStartCountdown()
         {
             _isCountingDown = true;
+            IsStarting = true;
             if (_button != null) _button.interactable = false;
 
             float remainingTime = _countdownDuration;
@@ -92,13 +117,14 @@ namespace BattlePvp.UI
 
             if (_countdownText != null)
             {
-                _countdownText.text = "Starting...";
+                _countdownText.text = "출격 중";
             }
 
             // 이미 목표 씬이거나 전환 중이라면 중복 실행 방지
             if (_isSceneTransitioning || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == _battleSceneName)
             {
                 _isCountingDown = false;
+                IsStarting = false;
                 yield break;
             }
 
@@ -117,14 +143,6 @@ namespace BattlePvp.UI
             _isCountingDown = false;
         }
 
-        private IEnumerator CoResetTextAfterDelay(float delay)
-        {
-            yield return new WaitForSeconds(delay);
-            if (_countdownText != null && !_isCountingDown)
-            {
-                _countdownText.text = _originalText;
-            }
-        }
     }
 
     internal static class TmpTextMigration

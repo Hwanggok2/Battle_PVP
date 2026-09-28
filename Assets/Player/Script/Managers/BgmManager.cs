@@ -25,6 +25,7 @@ namespace BattlePvp.Audio
         private readonly Dictionary<string, BgmSettings.SceneBgm> _bgmsByScene = new Dictionary<string, BgmSettings.SceneBgm>(System.StringComparer.OrdinalIgnoreCase);
         private Coroutine _fadeRoutine;
         private string _currentSceneName;
+        private float OutputVolume => _volume * BattlePvp.UI.LocalGameSettings.Current.music;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
@@ -63,11 +64,18 @@ namespace BattlePvp.Audio
         private void OnEnable()
         {
             SceneManager.sceneLoaded += OnSceneLoaded;
+            BattlePvp.UI.LocalGameSettings.Changed += OnDeviceSettingsChanged;
         }
 
         private void OnDisable()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            BattlePvp.UI.LocalGameSettings.Changed -= OnDeviceSettingsChanged;
+        }
+
+        private void OnDeviceSettingsChanged()
+        {
+            if (_audioSource != null && _fadeRoutine == null) _audioSource.volume = _audioSource.clip != null ? OutputVolume : 0f;
         }
 
         private void Start()
@@ -75,14 +83,26 @@ namespace BattlePvp.Audio
             PlayForScene(SceneManager.GetActiveScene().name);
         }
 
+#if UNITY_EDITOR
+        private int _pendingEditorValidation;
+
         private void OnValidate()
         {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 1) == 0)
+                EditorValidationQueue.Enqueue(ApplyPendingEditorValidation);
+        }
+
+        private void ApplyPendingEditorValidation()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _pendingEditorValidation, 0) == 0 || this == null)
+                return;
+            _volume = Mathf.Clamp01(_volume);
             _fadeSeconds = Mathf.Max(0f, _fadeSeconds);
             ApplySettings();
-
             if (_audioSource != null && _fadeRoutine == null)
-                _audioSource.volume = _volume;
+                _audioSource.volume = OutputVolume;
         }
+#endif
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
@@ -178,11 +198,11 @@ namespace BattlePvp.Audio
 
             for (float t = 0f; t < fadeDuration; t += Time.unscaledDeltaTime)
             {
-                _audioSource.volume = Mathf.Lerp(0f, _volume, t / fadeDuration);
+                _audioSource.volume = Mathf.Lerp(0f, OutputVolume, t / fadeDuration);
                 yield return null;
             }
 
-            _audioSource.volume = nextClip == null ? 0f : _volume;
+            _audioSource.volume = nextClip == null ? 0f : OutputVolume;
             _fadeRoutine = null;
         }
     }

@@ -136,6 +136,13 @@ namespace BattlePvp.UI
 
         private void CreateImages(Transform parent)
         {
+            var root = new GameObject("Combat Reticle", typeof(RectTransform), typeof(HudVisibilitySettings));
+            root.transform.SetParent(parent, false);
+            root.GetComponent<HudVisibilitySettings>().ShowInWaitingRoom = true;
+            var rect = root.GetComponent<RectTransform>();
+            rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero; rect.offsetMax = Vector2.zero;
+            parent = root.transform;
             Sprite ringSprite = _baseReticleSprite != null
                 ? _baseReticleSprite
                 : Resources.Load<Sprite>(RingResourcePath);
