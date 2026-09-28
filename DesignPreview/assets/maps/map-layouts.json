@@ -1,0 +1,577 @@
+{
+  "units": "meters",
+  "upAxis": "Y",
+  "tileTextureMeters": 5,
+  "notes": "3D layout meshes without embedded textures. Apply included albedo/sky assets in Unity after approval. Colliders and networking are not included.",
+  "maps": [
+    {
+      "id": "lobby",
+      "name": "작전실",
+      "file": "lobby.glb",
+      "width": 28,
+      "depth": 24,
+      "albedo": "../alloy-floor.png",
+      "repeat": [
+        5.6,
+        4.8
+      ],
+      "sky": "../night-city-sky.png",
+      "neon": {
+        "signs": [
+          {
+            "text": "CITY LINK",
+            "color": "#ff278f",
+            "position": [
+              -6.6,
+              5.1,
+              -9.45
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "OPS 01",
+            "color": "#20e5ff",
+            "position": [
+              6.3,
+              5.1,
+              -9.45
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "ARMORY",
+            "color": "#ffaf30",
+            "position": [
+              -12.55,
+              3.6,
+              -0.5
+            ],
+            "rotationY": 1.5707963267948966
+          },
+          {
+            "text": "CORE",
+            "color": "#9b55ff",
+            "position": [
+              12.55,
+              3.6,
+              -0.5
+            ],
+            "rotationY": -1.5707963267948966
+          }
+        ],
+        "lights": [
+          {
+            "color": "#ff278f",
+            "position": [
+              -8,
+              2.8,
+              -5
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#20e5ff",
+            "position": [
+              8,
+              2.8,
+              -5
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ffaf30",
+            "position": [
+              -10,
+              2.8,
+              2
+            ],
+            "intensity": 45,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#9b55ff",
+            "position": [
+              10,
+              2.8,
+              2
+            ],
+            "intensity": 50,
+            "distance": 13,
+            "castShadow": false
+          }
+        ],
+        "notes": "Lettering meshes/unlit materials and punctual lights included; local shader halos are preview-only. Recreate emission/glow and tune lighting for Unity."
+      },
+      "spawnPositions": [
+        [
+          0,
+          0,
+          2
+        ]
+      ]
+    },
+    {
+      "id": "waiting",
+      "name": "출격 격납고",
+      "file": "waiting.glb",
+      "width": 24,
+      "depth": 20,
+      "albedo": "../alloy-floor.png",
+      "repeat": [
+        4.8,
+        4
+      ],
+      "sky": "../night-city-sky.png",
+      "neon": {
+        "signs": [
+          {
+            "text": "HANGAR 08",
+            "color": "#ffaf30",
+            "position": [
+              0,
+              7.65,
+              -6.85
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "ARMORY",
+            "color": "#20e5ff",
+            "position": [
+              -7.9,
+              4.8,
+              -7.05
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "LINK",
+            "color": "#ff278f",
+            "position": [
+              7.9,
+              4.8,
+              -7.05
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "EXIT",
+            "color": "#9b55ff",
+            "position": [
+              10.82,
+              3.8,
+              3.5
+            ],
+            "rotationY": -1.5707963267948966
+          }
+        ],
+        "lights": [
+          {
+            "color": "#20e5ff",
+            "position": [
+              -8,
+              2.8,
+              -2
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ff278f",
+            "position": [
+              8,
+              2.8,
+              -2
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ffaf30",
+            "position": [
+              0,
+              2.8,
+              -7
+            ],
+            "intensity": 45,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#9b55ff",
+            "position": [
+              8,
+              2.8,
+              5
+            ],
+            "intensity": 45,
+            "distance": 13,
+            "castShadow": false
+          }
+        ],
+        "notes": "Lettering meshes/unlit materials and punctual lights included; local shader halos are preview-only. Recreate emission/glow and tune lighting for Unity."
+      },
+      "spawnPositions": [
+        [
+          -4,
+          0,
+          2
+        ],
+        [
+          -1,
+          0,
+          3
+        ],
+        [
+          2,
+          0,
+          3
+        ],
+        [
+          5,
+          0,
+          2
+        ],
+        [
+          -5,
+          0,
+          -1
+        ],
+        [
+          -2,
+          0,
+          -2
+        ],
+        [
+          1,
+          0,
+          -2
+        ],
+        [
+          4,
+          0,
+          -1
+        ]
+      ]
+    },
+    {
+      "id": "arena",
+      "name": "연구 구역",
+      "file": "arena.glb",
+      "width": 36,
+      "depth": 32,
+      "albedo": "../alloy-floor.png",
+      "repeat": [
+        7.2,
+        6.4
+      ],
+      "sky": "../night-city-sky.png",
+      "neon": {
+        "signs": [
+          {
+            "text": "SECTOR 07",
+            "color": "#ff278f",
+            "position": [
+              -8.5,
+              5.8,
+              -13.9
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "LAB 02",
+            "color": "#20e5ff",
+            "position": [
+              8.5,
+              5.8,
+              -13.9
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "POWER",
+            "color": "#ffaf30",
+            "position": [
+              -14.6,
+              4.15,
+              3.5
+            ],
+            "rotationY": 1.5707963267948966
+          },
+          {
+            "text": "CORE",
+            "color": "#9b55ff",
+            "position": [
+              14.6,
+              4.15,
+              -1
+            ],
+            "rotationY": -1.5707963267948966
+          }
+        ],
+        "lights": [
+          {
+            "color": "#ff278f",
+            "position": [
+              -10,
+              2.8,
+              -10
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#20e5ff",
+            "position": [
+              10,
+              2.8,
+              -10
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ffaf30",
+            "position": [
+              -12,
+              2.8,
+              4
+            ],
+            "intensity": 60,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#9b55ff",
+            "position": [
+              12,
+              2.8,
+              4
+            ],
+            "intensity": 75,
+            "distance": 13,
+            "castShadow": false
+          }
+        ],
+        "notes": "Lettering meshes/unlit materials and punctual lights included; local shader halos are preview-only. Recreate emission/glow and tune lighting for Unity."
+      },
+      "spawnPositions": [
+        [
+          -10,
+          0,
+          9
+        ],
+        [
+          -9,
+          0,
+          -10
+        ],
+        [
+          9,
+          0,
+          -10
+        ],
+        [
+          10,
+          0,
+          9
+        ],
+        [
+          -12,
+          0,
+          0
+        ],
+        [
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12
+        ],
+        [
+          0,
+          0,
+          -12
+        ]
+      ]
+    },
+    {
+      "id": "foundry",
+      "name": "네온 옥상",
+      "file": "foundry.glb",
+      "width": 36,
+      "depth": 32,
+      "albedo": "../rooftop-floor.png",
+      "repeat": [
+        7.2,
+        6.4
+      ],
+      "sky": "../night-city-sky.png",
+      "neon": {
+        "signs": [
+          {
+            "text": "NOVA",
+            "color": "#9b55ff",
+            "position": [
+              -29,
+              6.3,
+              -19.8
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "PULSE",
+            "color": "#ff278f",
+            "position": [
+              25,
+              8.4,
+              -22.8
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "ROOF 07",
+            "color": "#20e5ff",
+            "position": [
+              -9,
+              5.5,
+              -14.7
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "NIGHT LINE",
+            "color": "#ff278f",
+            "position": [
+              7.5,
+              5.5,
+              -14.7
+            ],
+            "rotationY": 0
+          },
+          {
+            "text": "POWER",
+            "color": "#ffaf30",
+            "position": [
+              -15.65,
+              3.4,
+              -2
+            ],
+            "rotationY": 1.5707963267948966
+          },
+          {
+            "text": "LINK",
+            "color": "#9b55ff",
+            "position": [
+              15.65,
+              3.4,
+              2
+            ],
+            "rotationY": -1.5707963267948966
+          }
+        ],
+        "lights": [
+          {
+            "color": "#20e5ff",
+            "position": [
+              -10,
+              2.8,
+              -11
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ff278f",
+            "position": [
+              10,
+              2.8,
+              -11
+            ],
+            "intensity": 65,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#ffaf30",
+            "position": [
+              -13,
+              2.8,
+              2
+            ],
+            "intensity": 55,
+            "distance": 13,
+            "castShadow": false
+          },
+          {
+            "color": "#9b55ff",
+            "position": [
+              13,
+              2.8,
+              4
+            ],
+            "intensity": 75,
+            "distance": 13,
+            "castShadow": false
+          }
+        ],
+        "notes": "Lettering meshes/unlit materials and punctual lights included; local shader halos are preview-only. Recreate emission/glow and tune lighting for Unity."
+      },
+      "spawnPositions": [
+        [
+          -10,
+          0,
+          9
+        ],
+        [
+          -9,
+          0,
+          -10
+        ],
+        [
+          9,
+          0,
+          -10
+        ],
+        [
+          10,
+          0,
+          9
+        ],
+        [
+          -12,
+          0,
+          0
+        ],
+        [
+          12,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          12
+        ],
+        [
+          0,
+          0,
+          -12
+        ]
+      ]
+    }
+  ]
+}

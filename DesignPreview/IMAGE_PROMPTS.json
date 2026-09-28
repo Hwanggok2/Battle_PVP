@@ -1,0 +1,16 @@
+{
+  "generator": "Built-in image_gen (imagegen skill)",
+  "date": "2026-09-25",
+  "assets": [
+    {
+      "file": "assets/lobby-concept.png",
+      "purpose": "로비 배경 제안",
+      "prompt": "Create a premium 3D action PvP game lobby background asset, landscape 16:9. A moody underground combat simulation laboratory, brutalist concrete and brushed black steel, a large cyan illuminated cylindrical human-scale calibration pod at the right of center, empty with translucent glass, delicate amber diagnostics, restrained cyan light strips, thick overhead cables, damp reflective concrete floor, layered industrial architecture and hazy depth, warm dim practical lights balancing cool teal. There are no people, no letters, no numbers, no logos, no UI, no watermarks. Compose for a game menu: left 35 percent is dark quiet architectural negative space for a menu, upper 15 percent quiet dark, center-right focal pod, readable floor space in bottom foreground. Sophisticated realistic PBR game environment art, tactile rough materials, controlled bloom, cinematic but usable not too cluttered, charcoal and desaturated teal with tiny amber accents. Grounded near-future laboratory, not a spaceship, not medieval, not pixel art. One finished background image, not a collage."
+    },
+    {
+      "file": "assets/arena-concept.png",
+      "purpose": "Battle 맵의 분위기 콘셉트, 3D 메시 아님",
+      "prompt": "Create a finished landscape 16:9 environment concept background for a 3D third-person 8-player free-for-all melee-and-bow combat game. No UI, text, letters, numbers, logos, watermarks, people or characters. A compact symmetrical brutalist underground training arena in the same world as a dark cyberpunk calibration laboratory. Center-right a recessed circular ring of pale concrete with a restrained cyan rim, surrounded by broad flat concrete fighting floor, four groups of chest-high modular dark steel cover blocks, two low side ramps to shallow galleries, exposed structural beams and distant empty observation windows. The dominant visual is accessible navigable combat floor with clear sight lines and multiple approach paths, not machinery. Muted charcoal concrete, cyan electrical strips, a few amber safety lights, overhead diffuse cool daylight entering a large industrial skylight, subtle dust haze, realistic high-quality PBR game concept art with practical simple repeatable geometry. Elevated wide perspective from the southwest at human-camera-friendly shallow angle showing floor and distant architecture, horizontal cinematic composition, center of arena clearly visible, fairly bright ground so combat silhouettes could be readable, edges subdued for game HUD. Restrained glow, no excessive neon grid or particles."
+    }
+  ]
+}

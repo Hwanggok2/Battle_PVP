@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <meta name="theme-color" content="#080e1a" />
+    <title>Battle PvP</title>
+    <link rel="icon" href="assets/Strategist.png" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="importmap">
+      { "imports": { "three": "./vendor/three.module.min.js" } }
+    </script>
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div id="game" data-screen="title">
+      <div id="world">
+        <canvas id="world-canvas" aria-label="3D 공간: 드래그로 회전, 두 손가락으로 확대"></canvas>
+        <div id="world-labels"></div>
+        <div id="world-error" hidden></div>
+      </div>
+      <div class="shade"></div>
+      <header id="game-header"></header>
+      <main id="screen"></main>
+      <div id="world-tools"></div>
+      <div id="review-controls"></div>
+      <button
+        id="review-toggle"
+        class="review-toggle"
+        aria-label="미리보기 화면 선택"
+        title="미리보기 화면 선택"
+      >
+        ◫
+      </button>
+    </div>
+    <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <audio id="bgm" src="assets/audio/lobby.mp3" preload="none" loop></audio>
+  </body>
+</html>
