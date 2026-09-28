@@ -24,6 +24,7 @@ namespace BattlePvp.EditorTests
             body.AddComponent<HitBodyPart>();
             _historyType = typeof(PlayerCombat).Assembly.GetType("ServerPoseHistory", true);
             _history = _root.AddComponent(_historyType);
+            EditorTestLifecycle.Invoke(_history, "Awake");
             Physics.SyncTransforms();
         }
 

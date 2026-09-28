@@ -32,12 +32,13 @@ namespace BattlePvp.EditorTests
             _binder = _root.AddComponent<UIIdentityGlitchBinder>();
             _source = AddSource<IdentityGlitchSourceStub>();
             SetSources(_source);
+            Invoke("Awake");
         }
 
         [TearDown]
         public void TearDown()
         {
-            _root.SetActive(false);
+            EditorTestLifecycle.SetActive(_binder, false);
             Material runtime = Get<Material>("_runtimeMaterial");
             Set("_runtimeMaterial", null);
             _root.GetComponent<Image>().material = null;
@@ -54,7 +55,7 @@ namespace BattlePvp.EditorTests
         public void FirstEnableReadsLowHealthWithoutWaitingForAnEvent()
         {
             _source.SetSnapshot(25f, 100f);
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             AssertMaterial(8.5f, 0f);
             AssertSubscribers(_source, 1);
         }
@@ -69,11 +70,11 @@ namespace BattlePvp.EditorTests
             float previousHp, float previousMax, float currentHp, float currentMax, float pulse, float overlap)
         {
             _source.SetSnapshot(previousHp, previousMax);
-            _root.SetActive(true);
-            _root.SetActive(false);
+            EditorTestLifecycle.SetActive(_binder, true);
+            EditorTestLifecycle.SetActive(_binder, false);
             AssertSubscribers(_source, 0);
             _source.SetSnapshot(currentHp, currentMax);
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             AssertMaterial(pulse, overlap);
             AssertSubscribers(_source, 1);
         }
@@ -81,7 +82,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void ActiveHealthEventsUseTheSamePulseRuleAsTheInitialSnapshot()
         {
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             _source.Publish(75f, 200f);
             AssertMaterial(7.75f, 0f);
             _source.Publish(150f, 100f);
@@ -93,10 +94,10 @@ namespace BattlePvp.EditorTests
         public void InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(float maximum)
         {
             _source.SetSnapshot(150f, 100f);
-            _root.SetActive(true);
-            _root.SetActive(false);
+            EditorTestLifecycle.SetActive(_binder, true);
+            EditorTestLifecycle.SetActive(_binder, false);
             _source.SetSnapshot(10f, maximum);
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             AssertMaterial(4f, 0f);
         }
 
@@ -104,10 +105,10 @@ namespace BattlePvp.EditorTests
         [TestCase(true)]
         public void MissingReaderRestoresDefaultsAfterAPreviousHealthEvent(bool statusWithoutReader)
         {
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             _source.Publish(20f, 100f);
             _source.PublishOverflow(true, 0.5f);
-            _root.SetActive(false);
+            EditorTestLifecycle.SetActive(_binder, false);
             Set("_statusSourceBehaviour", statusWithoutReader ? AddSource<IdentityGlitchStatusOnlyStub>() : null);
             // Exercise the snapshot without scene-wide auto-resolution selecting another open scene's player.
             Invoke("RefreshSourceInterfaces");
@@ -119,17 +120,17 @@ namespace BattlePvp.EditorTests
         [Test]
         public void SourceReplacementUnsubscribesTheOriginalAndReenablesExactlyOnce()
         {
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             IdentityGlitchSourceStub replacement = AddSource<IdentityGlitchSourceStub>();
             replacement.SetSnapshot(25f, 100f);
             // Serialized references can change before OnDisable; unsubscription must use the bound interfaces.
             SetSources(replacement);
             for (int i = 0; i < 10; i++)
             {
-                _root.SetActive(false);
+                EditorTestLifecycle.SetActive(_binder, false);
                 AssertSubscribers(_source, 0);
                 AssertSubscribers(replacement, 0);
-                _root.SetActive(true);
+                EditorTestLifecycle.SetActive(_binder, true);
                 AssertSubscribers(replacement, 1);
                 _source.Publish(150f, 100f);
                 AssertMaterial(8.5f, 0f);
@@ -140,9 +141,9 @@ namespace BattlePvp.EditorTests
         public void DestroyedReaderIsNotKeptAliveThroughAnInterfaceReference()
         {
             _source.SetSnapshot(20f, 100f);
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             UnityEngine.Object.DestroyImmediate(_source.gameObject);
-            _root.SetActive(false);
+            EditorTestLifecycle.SetActive(_binder, false);
             AssertSubscribers(_source, 0);
             Invoke("RefreshSourceInterfaces");
             Assert.That(Get<IPlayerStatusSource>("_statusSource"), Is.Null);
@@ -152,7 +153,7 @@ namespace BattlePvp.EditorTests
             IdentityGlitchSourceStub replacement = AddSource<IdentityGlitchSourceStub>();
             replacement.SetSnapshot(150f, 100f);
             SetSources(replacement);
-            _root.SetActive(true);
+            EditorTestLifecycle.SetActive(_binder, true);
             AssertMaterial(4f, 0.5f);
             AssertSubscribers(replacement, 1);
         }

@@ -137,7 +137,7 @@ namespace BattlePvp.EditorTests
         {
             var owner = new GameObject("Skill plan adapter test");
             owner.SetActive(false);
-            stats = owner.AddComponent<StatManager>();
+            stats = EditorTestLifecycle.AddNetwork<StatManager>(owner);
             combat = owner.AddComponent<PlayerCombat>();
             Set(combat, "_statManager", stats);
             Set(combat, "_hitboxes", Array.Empty<MeleeHitBox>());

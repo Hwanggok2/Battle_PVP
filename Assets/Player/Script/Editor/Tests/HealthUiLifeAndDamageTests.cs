@@ -150,7 +150,7 @@ namespace BattlePvp.EditorTests
         {
             _object = new GameObject("HealthUi dummy test");
             _object.SetActive(false);
-            DummyHealth dummy = _object.AddComponent<DummyHealth>();
+            DummyHealth dummy = EditorTestLifecycle.AddNetwork<DummyHealth>(_object);
             SetField(dummy, "_maxHp", 100f);
             SetField(dummy, "_currentHp", 40f);
             DamageResult result = dummy.ApplyDamage(Request(500f));

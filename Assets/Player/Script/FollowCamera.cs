@@ -3,8 +3,9 @@ using UnityEngine;
 namespace BattlePvp.CameraLogic
 {
     /// <summary>
-    /// 플레이어의 뒤쪽 상단에서 부드럽게 따라다니는 3인칭 팔로우 카메라 스크립트입니다.
+    /// 로비 궤도 카메라와 기존 전투 시점을 씬 입력 정책에 맞춰 제어합니다.
     /// </summary>
+    [DefaultExecutionOrder(-40)]
     public class FollowCamera : MonoBehaviour
     {
         [Header("Target Settings")]
@@ -21,6 +22,13 @@ namespace BattlePvp.CameraLogic
         [SerializeField] private float _minPitch = -20f;
         [SerializeField] private float _maxPitch = 45f;
 
+        [Header("Lobby Orbit")]
+        [SerializeField] private float _lobbyDistance = 6f;
+        [SerializeField] private float _lobbyMinDistance = 2.2f;
+        [SerializeField] private float _lobbyMaxDistance = 9f;
+        private bool _viewInitialized;
+        private bool IsLobby => UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Lobby";
+
         [Header("Smoothing")]
         [SerializeField] private float _moveSmoothTime = 0.12f;
         [SerializeField] private float _rotSmoothSpeed = 10f;
@@ -32,6 +40,8 @@ namespace BattlePvp.CameraLogic
         private Vector3 _temporaryOffset;
         private Vector3 _temporaryRotationOffset;
         private Transform _forcedLookTarget;
+        private PlayerManager _targetPlayer;
+        private float _crouchDrop, _crouchVelocity;
 
         /// <summary>
         /// ESC 토글 등에 의해 카메라 회전만 막아야 할 때 설정합니다.
@@ -40,13 +50,10 @@ namespace BattlePvp.CameraLogic
 
         private void Start()
         {
-            // 초기 회전값 설정 (현재 카메라 회전 기준)
-            Vector3 angles = transform.eulerAngles;
-            _yaw = angles.y;
-            _pitch = angles.x;
+            if (!_viewInitialized) InitializeView();
         }
 
-        private void LateUpdate()
+        private void Update()
         {
             if (_target == null) return;
             if (!BattlePvp.Logic.InputModeRules.CanTrackCamera(
@@ -54,20 +61,36 @@ namespace BattlePvp.CameraLogic
                 BattlePvp.Logic.GameInputController.IsPaused,
                 BattlePvp.Logic.GameInputController.IsTextInputActive)) return;
 
-            // 1. 마우스 입력 직접 가져오기 (Input System 사용)
-            if (!IsLocked && _forcedLookTarget == null)
+            var mouse = UnityEngine.InputSystem.Mouse.current;
+            bool overUi = IsLobby && UnityEngine.EventSystems.EventSystem.current != null &&
+                UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+            bool canLook = !IsLobby || (mouse != null && mouse.rightButton.isPressed && !overUi);
+            if (!IsLocked && _forcedLookTarget == null && canLook)
             {
-                var mouse = UnityEngine.InputSystem.Mouse.current;
                 if (mouse != null)
                 {
                     Vector2 delta = mouse.delta.ReadValue();
-                    _yaw += delta.x * _mouseSensitivity * 0.1f;
-                    _pitch -= delta.y * _mouseSensitivity * 0.1f;
-                    _pitch = Mathf.Clamp(_pitch, _minPitch, _maxPitch);
+                    var settings = BattlePvp.UI.LocalGameSettings.Current;
+                    _yaw += delta.x * _mouseSensitivity * 0.1f * settings.sensitivity;
+                    _pitch -= delta.y * _mouseSensitivity * 0.1f * settings.sensitivity * (settings.invertY ? -1f : 1f);
+                    _pitch = Mathf.Clamp(_pitch, IsLobby ? -10f : _minPitch, IsLobby ? 65f : _maxPitch);
                 }
             }
+            if (IsLobby && mouse != null && !IsLocked && !overUi)
+                // Input System uses a uniform scroll delta of 1 per wheel notch.
+                _lobbyDistance = Mathf.Clamp(_lobbyDistance - mouse.scroll.ReadValue().y * .75f, _lobbyMinDistance, _lobbyMaxDistance);
+            UpdateForcedLookYaw();
+        }
+
+        private void LateUpdate()
+        {
+            if (_target == null || !BattlePvp.Logic.InputModeRules.CanTrackCamera(
+                BattlePvp.Logic.GameInputController.CurrentMode,
+                BattlePvp.Logic.GameInputController.IsPaused,
+                BattlePvp.Logic.GameInputController.IsTextInputActive)) return;
 
             // 2. 회전 쿼터니언 계산
+            UpdateCrouchHeight(Time.deltaTime);
             UpdateForcedLookYaw();
             Quaternion targetRotation = GetActiveRotation();
 
@@ -86,12 +109,46 @@ namespace BattlePvp.CameraLogic
             transform.position = targetPosition;
         }
 
+        private void UpdateCrouchHeight(float deltaTime)
+        {
+            _crouchDrop = Mathf.SmoothDamp(_crouchDrop, _targetPlayer != null ? _targetPlayer.CrouchCameraDrop : 0f,
+                ref _crouchVelocity, .1f, Mathf.Infinity, deltaTime);
+        }
+
         /// <summary>
         /// 외부에서 타겟을 수동으로 설정할 때 사용합니다.
         /// </summary>
         public void SetTarget(Transform target)
         {
+            if (_target == target && _viewInitialized) return;
             _target = target;
+            InitializeView();
+        }
+
+        private void InitializeView()
+        {
+            _viewInitialized = true;
+            _targetPlayer = _target != null ? _target.GetComponent<PlayerManager>() : null;
+            _crouchDrop = _targetPlayer != null ? _targetPlayer.CrouchCameraDrop : 0f;
+            _crouchVelocity = 0f;
+            _yaw = transform.eulerAngles.y;
+            _pitch = Mathf.DeltaAngle(0, transform.eulerAngles.x);
+            if (_target == null) return;
+            if (IsLobby)
+            {
+                Vector3 direction = _target.position + Vector3.up * 1.2f - transform.position;
+                _lobbyDistance = Mathf.Clamp(direction.magnitude, _lobbyMinDistance, _lobbyMaxDistance);
+                if (direction.sqrMagnitude > .001f)
+                {
+                    var angles = Quaternion.LookRotation(direction).eulerAngles;
+                    _yaw = angles.y; _pitch = Mathf.Clamp(Mathf.DeltaAngle(0, angles.x), -10f, 65f);
+                }
+            }
+            else if (BattlePvp.Logic.InputModeRules.UsesFpsLook(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
+            {
+                _yaw = _target.eulerAngles.y;
+                _pitch = 0f;
+            }
         }
 
         public void SetForcedLookTarget(Transform target)
@@ -159,7 +216,9 @@ namespace BattlePvp.CameraLogic
             if (_target == null)
                 return transform.position;
 
-            Vector3 pivotPosition = _target.position + Vector3.up * 1.5f;
+            if (IsLobby) return _target.position + Vector3.up * (1.2f - _crouchDrop) + activeRotation * Vector3.back * _lobbyDistance;
+
+            Vector3 pivotPosition = _target.position + Vector3.up * (1.5f - _crouchDrop);
             Vector3 activeOffset = _useTemporaryOffset ? _temporaryOffset : Offset;
             return pivotPosition + (activeRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y);
         }

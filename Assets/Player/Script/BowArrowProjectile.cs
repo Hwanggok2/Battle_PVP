@@ -13,6 +13,9 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     [SyncVar] private double _spawnedAt;
 
     private bool _hasHit;
+    private PlayerCombat _offlineOwner;
+    private bool _offlineShot;
+    private bool IsOfflineShot => _offlineShot && !NetworkServer.active && !NetworkClient.active;
     private BoxCollider _shape;
     private readonly CombatPhysicsQuery _query = new CombatPhysicsQuery();
 
@@ -29,6 +32,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
 
     public void Initialize(uint ownerNetId, Vector3 direction, float speed, float lifeSeconds, float damageMultiplier)
     {
+        _offlineShot = false; _offlineOwner = null;
         _ownerNetId = ownerNetId;
         _direction = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _speed = Mathf.Max(0.01f, speed);
@@ -38,20 +42,28 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         _hasHit = false;
     }
 
+    public void InitializeOffline(PlayerCombat owner, Vector3 direction, float speed, float lifeSeconds, float damageMultiplier)
+    {
+        if (NetworkServer.active || NetworkClient.active || owner == null) return;
+        Initialize(0, direction, speed, lifeSeconds, damageMultiplier);
+        _offlineOwner = owner; _offlineShot = true; _spawnedAt = Time.timeAsDouble;
+    }
+
     private void Update()
     {
         if (_hasHit) return;
-        if (isServer && NetworkTime.time - _spawnedAt >= _lifeSeconds)
+        if (_offlineShot && (!IsOfflineShot || _offlineOwner == null)) { Destroy(gameObject); return; }
+        if ((isServer || IsOfflineShot) && (IsOfflineShot ? Time.timeAsDouble : NetworkTime.time) - _spawnedAt >= _lifeSeconds)
         {
             _hasHit = true;
-            NetworkServer.Destroy(gameObject);
+            if (isServer) NetworkServer.Destroy(gameObject); else Destroy(gameObject);
             return;
         }
         Vector3 direction = _direction.sqrMagnitude > 0.001f ? _direction.normalized : transform.forward;
         if (direction.sqrMagnitude > 0.001f)
             transform.rotation = Quaternion.LookRotation(direction, Vector3.up);
         Vector3 displacement = direction * (_speed * Time.deltaTime);
-        if (isServer) AdvanceServer(displacement, ResolveOwner());
+        if (isServer || IsOfflineShot) AdvanceServer(displacement, ResolveOwner());
         else transform.position += displacement;
     }
 
@@ -68,7 +80,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     private void HandleCollision(Collider other)
     {
         // Resolve the complete overlap instead of trusting callback order at a wall/body boundary.
-        if (isServer && other != null && !_hasHit)
+        if ((isServer || IsOfflineShot) && other != null && !_hasHit)
             AdvanceServer(Vector3.zero, ResolveOwner());
     }
 
@@ -95,6 +107,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         finally
         {
             if (isServer) NetworkServer.Destroy(gameObject);
+            else if (IsOfflineShot) Destroy(gameObject);
         }
     }
 
@@ -162,6 +175,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
 
     private NetworkIdentity ResolveOwner()
     {
+        if (IsOfflineShot) return _offlineOwner != null ? _offlineOwner.GetComponent<NetworkIdentity>() : null;
         if (_ownerNetId == 0 || !NetworkServer.spawned.TryGetValue(_ownerNetId, out NetworkIdentity ownerIdentity))
             return null;
         return ownerIdentity;

@@ -137,15 +137,18 @@ namespace BattlePvp.Lobby
         private void ApplySavedStatsToTarget()
         {
             GlobalDataManager profile = GlobalDataManager.Instance;
-            if (_targetPlayer == null || profile == null)
+            if (_targetPlayer == null)
                 return;
 
             StatManager statManager = _targetPlayer.GetComponent<StatManager>();
             if (statManager == null)
                 return;
 
+            statManager.BindAsLocalScenePlayer();
+            _targetPlayer.GetComponent<PlayerManager>()?.BindLocalCamera();
+
             // A loaded empty slot is valid data; only an unfinished load preserves the scene values.
-            if (profile.HasLoadedPlayerStats)
+            if (profile != null && profile.HasLoadedPlayerStats)
             {
                 StatContainer saved = profile.SavedStats;
                 statManager.ApplyLocalSceneStats(saved, recalculateIdentity: true);

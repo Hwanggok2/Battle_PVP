@@ -52,6 +52,7 @@ public sealed class BowAttackController : NetworkBehaviour
     private Vector3 _pendingDirection;
     private Vector3 _pendingAimPoint;
     private bool _hasPendingShot;
+    private float _offlineShotMultiplier;
     private bool _hasPendingAimPoint;
     private bool _captureAimPointPending;
     private bool _releaseArrowEventPending;
@@ -274,7 +275,11 @@ public sealed class BowAttackController : NetworkBehaviour
         // LateUpdate captures the release-frame camera ray after FollowCamera applies mouse input.
         _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _hasPendingAimPoint = false;
-        _captureAimPointPending = isLocalPlayer && (_playerCombat == null || !_playerCombat.IsServerTaunted);
+        _captureAimPointPending = (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active)) &&
+            (_playerCombat == null || !_playerCombat.IsServerTaunted);
+        float progress = Mathf.Clamp01((chargeSeconds - bowData.MinimumBowChargeSeconds) /
+            Mathf.Max(.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds));
+        _offlineShotMultiplier = Mathf.Lerp(bowData.MinimumBowDamageMultiplier, bowData.MaximumBowDamageMultiplier, progress);
         _hasPendingShot = true;
         if (!_isAimHoldReady)
         {
@@ -417,6 +422,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void TriggerBowReleaseLocal()
     {
+        GetComponent<BattlePvp.Combat.BlockAttackVfx>()?.Play(true);
         if (_animator == null || string.IsNullOrWhiteSpace(ReleaseTriggerName))
             return;
 
@@ -475,6 +481,13 @@ public sealed class BowAttackController : NetworkBehaviour
             CmdSpawnBowArrow(spawnPosition, direction.normalized);
         else if (NetworkServer.active)
             SpawnBowArrow(spawnPosition, direction.normalized);
+        else if (!NetworkClient.active && ProjectilePrefab != null && _playerCombat != null &&
+            CombatValidation.HasClearPath(transform.position + Vector3.up, spawnPosition, transform, transform))
+        {
+            var arrow = Instantiate(ProjectilePrefab, spawnPosition, Quaternion.LookRotation(direction.normalized));
+            arrow.InitializeOffline(_playerCombat, direction.normalized, ProjectileSpeed, ProjectileLifeSeconds,
+                _offlineShotMultiplier * _playerCombat.ConsumeNextAttackDamageMultiplier());
+        }
     }
 
     [Command]

@@ -17,43 +17,48 @@ namespace BattlePvp.Combat
         private BoxCollider _boxCollider;
         private readonly HashSet<IDamageReceiver> _hitTargets = new HashSet<IDamageReceiver>();
         private readonly CombatPhysicsQuery _sweepQuery = new CombatPhysicsQuery();
+        private readonly ContactComparer _contactComparer = new ContactComparer();
+
+        private sealed class ContactComparer : IComparer<Collider>
+        {
+            public Vector3 Center;
+            public int Compare(Collider a, Collider b)
+            {
+                if (a == b) return 0;
+                if (a == null) return 1;
+                if (b == null) return -1;
+                int distance = (a.ClosestPoint(Center) - Center).sqrMagnitude.CompareTo((b.ClosestPoint(Center) - Center).sqrMagnitude);
+                if (distance != 0) return distance;
+                distance = (a.bounds.center - Center).sqrMagnitude.CompareTo((b.bounds.center - Center).sqrMagnitude);
+                return distance != 0 ? distance : a.GetInstanceID().CompareTo(b.GetInstanceID());
+            }
+        }
         [SerializeField] private LayerMask _targetLayers = ~0;
 
         [Header("Swept Hit Detection")]
         [SerializeField] private bool _useSweptHitDetection = true;
         [SerializeField] private float _sweepSampleSpacing = 0.15f;
-        [SerializeField] private int _maxSweepSamples = 8;
         [SerializeField] private float _sweepPadding = 0.02f;
 
-        [Header("Aim/Crouch Hit Position")]
-        [SerializeField] private float _aimForwardOffset = 0.8f;
-        [SerializeField] private float _crouchVerticalOffset = -0.45f;
-
         [Header("Debug")]
-        [SerializeField] private bool _drawDebugHitPath = true;
-        [SerializeField] private bool _drawDebugHitPathInGame = true;
+        [SerializeField] private bool _drawDebugHitPath = false;
+        [SerializeField] private bool _drawDebugHitPathInGame = false;
         [SerializeField] private float _debugHitPathDuration = 3f;
         [SerializeField] private Color _debugHitPathColor = new Color(1f, 0.2f, 0.05f, 0.35f);
         [SerializeField] private float _debugHitPathLineWidth = 0.025f;
 
         private bool _hitBoxActive;
+        private bool _pendingInitialOverlap;
+        private bool _pendingEnd;
         private Vector3 _previousPosition;
         private Quaternion _previousRotation;
-        private Vector3 _aimDirection = Vector3.forward;
-        private bool _isCrouching;
         private PlayerCombat _playerCombat;
         private readonly CombatHitPoseHistory _serverHitPoses = new CombatHitPoseHistory();
 
         public bool ValidateServerHit(Vector3 point, double hitTime, Vector3 attackerPosition)
         {
             if (!NetworkServer.active) return false;
-            if (_hitBoxActive && _boxCollider != null)
-            {
-                Vector3 scale = Abs(transform.lossyScale);
-                Quaternion rotation = GetHitRotation(transform.rotation);
-                _serverHitPoses.Record(NetworkTime.time, GetHitCenter(transform.position, rotation, scale) - transform.root.position,
-                    Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding, rotation);
-            }
+            // Only poses sampled after animation/aim correction are authoritative.
             return _serverHitPoses.Contains(hitTime, point - attackerPosition, 0.25d);
         }
 
@@ -143,14 +148,26 @@ namespace BattlePvp.Combat
 
         private void LateUpdate()
         {
+            // Animation events precede the additive aim pose. Query only after that pose is applied.
+            if (_hitBoxActive && _pendingInitialOverlap)
+            {
+                _pendingInitialOverlap = false;
+                CaptureCurrentPose();
+                ProcessCurrentOverlaps();
+                UpdateDebugHitBoxRenderers();
+                if (_pendingEnd) DisableHitBox();
+                return;
+            }
             if (!_hitBoxActive || !_useSweptHitDetection || _boxCollider == null)
             {
                 UpdateDebugHitBoxRenderers();
+                if (_pendingEnd) DisableHitBox();
                 return;
             }
 
             ProcessSweptBox();
             CaptureCurrentPose();
+            if (_pendingEnd) DisableHitBox();
 
             UpdateDebugHitBoxRenderers();
         }
@@ -161,12 +178,6 @@ namespace BattlePvp.Combat
             _serverHitPoses.Clear();
         }
 
-        public void SetAttackContext(Vector3 aimDirection, bool isCrouching)
-        {
-            _aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
-            _isCrouching = isCrouching;
-        }
-
         public void EnableHitBox()
         {
             if (_collider != null)
@@ -175,14 +186,18 @@ namespace BattlePvp.Combat
             _hitBoxActive = true;
             _hitTargets.Clear();
             _currentDebugHitBoxRenderer = null;
-            CaptureCurrentPose();
-
-            ProcessCurrentOverlaps();
+            _pendingInitialOverlap = true;
+            _pendingEnd = false;
         }
+
+        // Animation events run before the final corrected pose of the hit window.
+        public void EndHitWindow() { if (_hitBoxActive) _pendingEnd = true; }
 
         public void DisableHitBox()
         {
             _hitBoxActive = false;
+            _pendingInitialOverlap = false;
+            _pendingEnd = false;
             if (_collider != null)
                 _collider.enabled = false;
         }
@@ -204,7 +219,7 @@ namespace BattlePvp.Combat
             if (_useSweptHitDetection && _boxCollider != null)
                 return;
 
-            TryProcessHit(other);
+            TryProcessHit(other, transform.position);
         }
 
         private void ProcessCurrentOverlaps()
@@ -221,17 +236,18 @@ namespace BattlePvp.Combat
             Bounds bounds = _collider.bounds;
             int count = _sweepQuery.OverlapBox(bounds.center, bounds.extents, Quaternion.identity, _targetLayers);
 
-            for (int i = 0; i < count; i++)
-                TryProcessHit(_sweepQuery.Colliders[i]);
+            ProcessContacts(count, bounds.center);
         }
 
         private void ProcessSweptBox()
         {
             float distance = Vector3.Distance(_previousPosition, transform.position);
             float angle = Quaternion.Angle(_previousRotation, transform.rotation);
-            int distanceSamples = Mathf.CeilToInt(distance / Mathf.Max(0.01f, _sweepSampleSpacing));
-            int angleSamples = Mathf.CeilToInt(angle / 25f);
-            int samples = Mathf.Clamp(Mathf.Max(distanceSamples, angleSamples), 1, _maxSweepSamples);
+            Vector3 scale = Abs(transform.lossyScale);
+            float radius = Vector3.Scale(Abs(_boxCollider.center) + _boxCollider.size * .5f, scale).magnitude;
+            float thickness = Mathf.Min(_boxCollider.size.x * scale.x, _boxCollider.size.y * scale.y) + 2f * _sweepPadding;
+            float spacing = Mathf.Max(.01f, Mathf.Min(_sweepSampleSpacing, thickness));
+            int samples = Mathf.Clamp(Mathf.CeilToInt((distance + angle * Mathf.Deg2Rad * radius) / spacing), 1, 64);
 
             for (int i = 1; i <= samples; i++)
             {
@@ -248,7 +264,7 @@ namespace BattlePvp.Combat
                 return;
 
             Vector3 scale = Abs(transform.lossyScale);
-            Quaternion hitRotation = GetHitRotation(sampleRotation);
+            Quaternion hitRotation = sampleRotation;
             Vector3 center = GetHitCenter(samplePosition, hitRotation, scale);
             Vector3 halfExtents = Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding;
 
@@ -258,8 +274,16 @@ namespace BattlePvp.Combat
 
             int count = _sweepQuery.OverlapBox(center, halfExtents, hitRotation, _targetLayers);
 
-            for (int i = 0; i < count; i++)
-                TryProcessHit(_sweepQuery.Colliders[i]);
+            ProcessContacts(count, center);
+        }
+
+        private void ProcessContacts(int count, Vector3 center)
+        {
+            // Physics overlap order is unspecified. Resolve simultaneous regions from the sampled blade,
+            // while retaining the chronological order of the sweep and one hit per target per attack.
+            _contactComparer.Center = center;
+            System.Array.Sort(_sweepQuery.Colliders, 0, count, _contactComparer);
+            for (int i = 0; i < count; i++) TryProcessHit(_sweepQuery.Colliders[i], center);
         }
 
         private void CaptureCurrentPose()
@@ -273,26 +297,12 @@ namespace BattlePvp.Combat
             return new Vector3(Mathf.Abs(value.x), Mathf.Abs(value.y), Mathf.Abs(value.z));
         }
 
-        private Quaternion GetHitRotation(Quaternion fallbackRotation)
-        {
-            if (_aimDirection.sqrMagnitude <= 0.001f)
-                return fallbackRotation;
-
-            return Quaternion.LookRotation(_aimDirection.normalized, Vector3.up);
-        }
-
         private Vector3 GetHitCenter(Vector3 samplePosition, Quaternion hitRotation, Vector3 scale)
         {
-            Vector3 center = samplePosition + hitRotation * Vector3.Scale(_boxCollider.center, scale);
-            center += _aimDirection.normalized * _aimForwardOffset;
-
-            if (_isCrouching)
-                center += Vector3.up * _crouchVerticalOffset;
-
-            return center;
+            return samplePosition + hitRotation * Vector3.Scale(_boxCollider.center, scale);
         }
 
-        private void TryProcessHit(Collider other)
+        private void TryProcessHit(Collider other, Vector3 hitQueryPosition)
         {
             if (!_hitBoxActive || !isActiveAndEnabled || other == null || other.transform.root == transform.root)
                 return;
@@ -315,10 +325,6 @@ namespace BattlePvp.Combat
                 return;
 
             float bodyPartMultiplier = bodyPart != null ? bodyPart.DamageMultiplier : 1f;
-
-            Vector3 hitQueryPosition = transform.position + (_aimDirection.normalized * _aimForwardOffset);
-            if (_isCrouching)
-                hitQueryPosition += Vector3.up * _crouchVerticalOffset;
 
             Vector3 hitPosition = other.ClosestPoint(hitQueryPosition);
             if (NetworkServer.active && !CombatValidation.HasClearPath(

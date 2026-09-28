@@ -44,6 +44,8 @@ namespace BattlePvp.EditorTests
             _arrow = arrow.GetComponent<BowArrowProjectile>();
             Assert.That(arrow.GetComponent<BoxCollider>().isTrigger, Is.True);
             Assert.That(arrow.GetComponent<Rigidbody>().isKinematic, Is.True);
+            EditorTestLifecycle.BindNetwork(owner);
+            EditorTestLifecycle.BindNetwork(arrow);
             _arrow.Initialize(0, Vector3.forward, 28f, 4f, 1f);
         }
 
@@ -68,6 +70,13 @@ namespace BattlePvp.EditorTests
             Assert.That(HasHit(), Is.True);
             Assert.That(target.DamageCalls, Is.Zero);
             Assert.That(_arrow.transform.position.z, Is.LessThan(target.transform.position.z));
+        }
+
+        [Test]
+        public void OfflinePracticeCannotEnableLocalDamageWhileConnectedToAServer()
+        {
+            _arrow.InitializeOffline(_owner.GetComponent<PlayerCombat>(), Vector3.forward, 28, 4, 1);
+            Assert.That(typeof(BowArrowProjectile).GetField("_offlineShot", PrivateInstance).GetValue(_arrow), Is.False);
         }
 
         [Test]

@@ -39,7 +39,7 @@ namespace BattlePvp.Combat
 
         public void PlaySound(AudioClip clip, float volume)
         {
-            if (clip != null && _audioSource != null) _audioSource.PlayOneShot(clip, volume);
+            if (clip != null && _audioSource != null) _audioSource.PlayOneShot(clip, volume * LocalGameSettings.Current.effects);
         }
 
         public void PlayAnimation(string stateName, int layer, double visualStartedAt, double now)

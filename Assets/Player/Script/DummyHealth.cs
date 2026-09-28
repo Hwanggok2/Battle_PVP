@@ -17,6 +17,8 @@ namespace BattlePvp.Combat
 
         [Header("Stat Configuration")]
         [SerializeField] private DummyStatData _statData;
+        [SerializeField] private bool _requireBodyPartHitboxes;
+        public bool RequiresBodyPartHitboxes => _requireBodyPartHitboxes;
 
         [Header("Runtime Status (Read Only)")]
         [SerializeField] private float _currentHp;
@@ -50,6 +52,7 @@ namespace BattlePvp.Combat
             {
                 _statManager.StatsChanged += OnStatsChanged;
                 RefreshInspectorStats();
+                if (_currentHp <= 0f) _currentHp = _maxHp;
             }
         }
 
@@ -121,6 +124,7 @@ namespace BattlePvp.Combat
             
             // 데미지 팝업을 피격 지점에 띄웁니다.
             Vector3 popupPosition = hitPosition == Vector3.zero ? transform.position + Vector3.up : hitPosition;
+            HitImpactVfx.PlayFor(transform, popupPosition, source);
             if (DamagePopupManager.Instance != null)
             {
                 if (source == DamageSource.Poison)

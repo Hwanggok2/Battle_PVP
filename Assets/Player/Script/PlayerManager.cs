@@ -141,6 +141,9 @@ public class PlayerManager : NetworkBehaviour
     private bool IsFollowingServerMotion => _serverMotionActive || _ownerServerMotionActive;
     public double RemotePoseRenderTime => isLocalPlayer ? NetworkTime.time : NetworkTime.time - _remoteRenderDelay;
     public bool IsCrouching => isCrouching;
+    public float CrouchCameraDrop => controller != null && _standingControllerHeight > 0f
+        ? Mathf.Max(0f, _standingControllerHeight - controller.height) * Mathf.Abs(transform.lossyScale.y)
+        : 0f;
     public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
     public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
     public bool IsEmoteBlockingJump => _activeEmote != null && _activeEmote.LockJump;
@@ -403,7 +406,7 @@ public class PlayerManager : NetworkBehaviour
         animator.Update(0f);
 
         if (emote.UseSfx != null && _audioSource != null)
-            _audioSource.PlayOneShot(emote.UseSfx, Mathf.Clamp01(emote.SfxVolume));
+            _audioSource.PlayOneShot(emote.UseSfx, Mathf.Clamp01(emote.SfxVolume) * LocalGameSettings.Current.effects);
     }
 
     private void ResetEmoteVisual(EmoteData emote)
@@ -571,6 +574,11 @@ public class PlayerManager : NetworkBehaviour
     }
 
     private readonly int speedHash = Animator.StringToHash("Speed");
+    private readonly int locomotionRateHash = Animator.StringToHash("LocomotionRate");
+    private Vector3 _previousLocomotionPosition;
+    private bool _hasLocomotionPosition;
+    private bool _hasLocomotionRate;
+    [SerializeField, Min(.1f)] private float _walkAnimationMetersPerSecond = 5f;
     private readonly int moveXHash = Animator.StringToHash("MoveX");
     private readonly int moveYHash = Animator.StringToHash("MoveY");
     private readonly int isCrouchingHash = Animator.StringToHash("IsCrouching");
@@ -579,6 +587,8 @@ public class PlayerManager : NetworkBehaviour
     {
         controller = GetComponent<CharacterController>();
         animator = GetComponent<Animator>();
+        foreach (var parameter in animator.parameters)
+            if (parameter.nameHash == locomotionRateHash) _hasLocomotionRate = true;
         _audioSource = GetComponent<AudioSource>();
         rb = GetComponent<Rigidbody>();
         _playerInput = GetComponent<PlayerInput>();
@@ -626,19 +636,21 @@ public class PlayerManager : NetworkBehaviour
 
     public override void OnStartLocalPlayer()
     {
-        // 1. 카메라 컴포넌트 찾기
-        followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
-        if (followCamera != null)
-        {
-            followCamera.SetTarget(this.transform);
-        }
-        _lifePresentation.AttachCamera(followCamera);
+        BindLocalCamera();
 
         _lastSentLocomotionState = PackLocomotion(Vector2.zero);
         _hasSentLocomotionState = true;
         ApplyLocomotionAnimation(Vector2.zero, false);
         ResetLocalInputForPlayMode();
         RestoreLifePresentation();
+    }
+
+    public void BindLocalCamera()
+    {
+        if (!ShouldHandleLocalInput) return;
+        if (followCamera == null) followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        if (followCamera != null) followCamera.SetTarget(transform);
+        _lifePresentation?.AttachCamera(followCamera);
     }
 
     public override void OnStartClient()
@@ -671,7 +683,10 @@ public class PlayerManager : NetworkBehaviour
         }
 
         if (ShouldHandleLocalInput)
+        {
+            BindLocalCamera();
             ResetLocalInputForPlayMode();
+        }
         RestoreLifePresentation();
     }
 
@@ -785,8 +800,15 @@ public class PlayerManager : NetworkBehaviour
         bool moveLocked = IsSkillInputLocked(SkillInputLockFlags.Move);
         if (_wasMoveInputLocked && !moveLocked) RefreshMoveInputFromCurrentAction();
         _wasMoveInputLocked = moveLocked;
-        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() || GameInputController.IsPaused || GameInputController.IsTextInputActive)
+        if (isDead || _matchEndLocked || IsBattleLoadingOrNotStarted())
         {
+            UpdateLocalLocomotion(Vector2.zero);
+            return;
+        }
+        if (GameInputController.IsPaused || GameInputController.IsTextInputActive)
+        {
+            // UI blocks voluntary input, not gravity. Opening chat/terminal in midair must not hover.
+            if (controller != null && controller.enabled) { MoveBallistic(Vector3.zero, Time.deltaTime); TrySyncTransform(); }
             UpdateLocalLocomotion(Vector2.zero);
             return;
         }
@@ -890,7 +912,7 @@ public class PlayerManager : NetworkBehaviour
     private bool TryConsumeJumpRequest()
     {
         double now = LocalInputTime;
-        if (_jumpRequestedUntil < now || !CanConsumeJumpRequest())
+        if (_jumpRequestedUntil < now || velocityY > 0f || !CanConsumeJumpRequest())
             return false;
 
         bool canUseCoyoteTime = now - _lastGroundedAt <= Mathf.Max(0f, _coyoteTimeSeconds);
@@ -1010,13 +1032,17 @@ public class PlayerManager : NetworkBehaviour
             moveDirection = (cameraForward * inputVector.y + cameraRight * inputVector.x).normalized;
 
             // 2. 캐릭터 회전 (공격 중에도 카메라 방향에 맞춰 회전 허용)
-            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.Euler(0, cameraYaw, 0), rotationSpeed * Time.deltaTime);
+            if (InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name))
+                transform.rotation = Quaternion.Euler(0, cameraYaw, 0);
+            else if (inputVector.sqrMagnitude > .001f)
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(moveDirection), rotationSpeed * Time.deltaTime);
         }
         else
         {
             // 카메라가 없을 경우 기존 월드 기준 이동 (폴백)
-            moveDirection = new Vector3(inputVector.x, 0, inputVector.y).normalized;
-            if (inputVector.sqrMagnitude > 0.001f)
+            bool fps = InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name);
+            moveDirection = fps ? (transform.right * inputVector.x + transform.forward * inputVector.y).normalized : new Vector3(inputVector.x, 0, inputVector.y).normalized;
+            if (!fps && inputVector.sqrMagnitude > 0.001f)
             {
                 Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
@@ -1024,17 +1050,11 @@ public class PlayerManager : NetworkBehaviour
         }
 
         // 3. 중력 처리
-        bool groundedForJump = IsGroundedForJump();
+        bool groundedForJump = velocityY <= 0f && IsGroundedForJump();
         if (groundedForJump)
             _lastGroundedAt = LocalInputTime;
 
-        if (!TryConsumeJumpRequest())
-        {
-            if (groundedForJump && velocityY < 0f)
-                velocityY = -0.5f;
-            else
-                velocityY -= gravity * Time.deltaTime;
-        }
+        TryConsumeJumpRequest();
 
         // 4. 최종 이동
         float currentMoveSpeed = moveSpeed;
@@ -1052,8 +1072,7 @@ public class PlayerManager : NetworkBehaviour
             currentMoveSpeed = 0f;
         }
 
-        Vector3 finalMove = (moveDirection * currentMoveSpeed) + (Vector3.up * velocityY);
-        controller.Move(finalMove * Time.deltaTime);
+        MoveBallistic(moveDirection * currentMoveSpeed, Time.deltaTime);
         TrySyncTransform();
 
         // 5. 애니메이션 (사망 시 업데이트 중지)
@@ -1062,6 +1081,37 @@ public class PlayerManager : NetworkBehaviour
             locomotion = Vector2.zero;
 
         UpdateLocalLocomotion(locomotion);
+    }
+
+    // Integrate acceleration on the launch frame too. Small collision steps prevent a slow
+    // frame from adding an entire frame of upward travel without gravity or crossing a ceiling.
+    private void MoveBallistic(Vector3 horizontalVelocity, float duration)
+    {
+        while (duration > .000001f)
+        {
+            float step = Mathf.Min(duration, 1f / 60f);
+            bool grounded = controller.isGrounded && velocityY <= 0f;
+            float verticalDistance;
+            if (grounded) { velocityY = -.5f; verticalDistance = velocityY * step; }
+            else verticalDistance = JumpPhysics.Integrate(ref velocityY, gravity, step);
+            CollisionFlags collision = controller.Move(horizontalVelocity * step + Vector3.up * verticalDistance);
+            if ((collision & CollisionFlags.Above) != 0 && velocityY > 0f) velocityY = 0f;
+            if ((collision & CollisionFlags.Below) != 0 && velocityY < 0f) velocityY = -.5f;
+            duration -= step;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        Vector3 displacement = transform.position - _previousLocomotionPosition;
+        _previousLocomotionPosition = transform.position;
+        if (!_hasLocomotionPosition) { _hasLocomotionPosition = true; return; }
+        if (!_hasLocomotionRate || animator == null || Time.deltaTime <= 0f) return;
+        displacement.y = 0f;
+        float metersPerSecond = displacement.magnitude / Time.deltaTime;
+        // Ignore respawn/network teleports. Only locomotion states consume this parameter.
+        float rate = metersPerSecond > 40f ? 1f : Mathf.Clamp(metersPerSecond / _walkAnimationMetersPerSecond, .1f, 4f);
+        animator.SetFloat(locomotionRateHash, rate / Mathf.Max(.01f, animator.speed));
     }
 
     [Server]
@@ -1133,8 +1183,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (controller == null || !controller.enabled) return;
         float step = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
-        velocityY = controller.isGrounded ? -0.5f : Mathf.Max(-50f, velocityY - gravity * step);
-        Vector3 movement = Vector3.up * velocityY;
+        Vector3 movement = Vector3.zero;
         if ((_healthSystem == null || !_healthSystem.IsDead) && !IsBattleLoadingOrNotStarted() &&
             (_statManager == null || _statManager.HasServerStats))
         {
@@ -1151,7 +1200,7 @@ public class PlayerManager : NetworkBehaviour
             }
         }
         Vector3 before = transform.position;
-        controller.Move(movement * step);
+        MoveBallistic(movement, step);
         if (_forcedTauntActive)
         {
             Vector3 horizontal = transform.position - before;
@@ -1245,8 +1294,6 @@ public class PlayerManager : NetworkBehaviour
         while (remainingStep > 0.0000001d)
         {
             float step = (float)Math.Min(remainingStep, 1d / 60d);
-            if (controller.isGrounded && velocityY < 0f) velocityY = -0.5f;
-            else velocityY = Mathf.Max(-50f, velocityY - gravity * step);
             Vector3 voluntaryVelocity = voluntaryDirection * controls.Speed;
             if (_forcedTauntActive)
             {
@@ -1259,9 +1306,7 @@ public class PlayerManager : NetworkBehaviour
             }
             else if (_serverForcedMotion.HasInput(now))
                 transform.rotation = Quaternion.Slerp(transform.rotation, _serverInputRotation, rotationSpeed * step);
-            CollisionFlags collision = controller.Move((forcedVelocity + voluntaryVelocity + Vector3.up * velocityY) * step);
-            if ((collision & CollisionFlags.Above) != 0 && velocityY > 0f) velocityY = 0f;
-            if ((collision & CollisionFlags.Below) != 0 && velocityY < 0f) velocityY = -0.5f;
+            MoveBallistic(forcedVelocity + voluntaryVelocity, step);
             remainingStep -= step;
         }
         CommitServerMovementPose(now);

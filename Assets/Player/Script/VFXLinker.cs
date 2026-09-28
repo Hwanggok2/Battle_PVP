@@ -31,6 +31,14 @@ namespace BattlePvp.VFX
         private static readonly int GlitchAmountId = Shader.PropertyToID("_GlitchAmount");
         private static readonly int StatColorId = Shader.PropertyToID("_StatColor");
 
+        public Color GetStatColor(StatKind stat) => stat switch
+        {
+            StatKind.STR => _colorStr,
+            StatKind.AGI => _colorAgi,
+            StatKind.CON => _colorCon,
+            _ => _colorDef
+        };
+
         private void Awake()
         {
             if (_statManager == null)
@@ -51,6 +59,7 @@ namespace BattlePvp.VFX
                 return;
 
             _statManager.IdentityChanged += OnIdentityChanged;
+            _statManager.StatsChanged += OnStatsChanged;
             Apply(_statManager.CurrentIdentity);
         }
 
@@ -60,7 +69,10 @@ namespace BattlePvp.VFX
                 return;
 
             _statManager.IdentityChanged -= OnIdentityChanged;
+            _statManager.StatsChanged -= OnStatsChanged;
         }
+
+        private void OnStatsChanged(StatContainer _) { if (this != null) Apply(_statManager.CurrentIdentity); }
 
         private void OnIdentityChanged(Identity identity)
         {
@@ -77,13 +89,9 @@ namespace BattlePvp.VFX
                 ? _glitchAmountMonostat
                 : _glitchAmountDefault;
 
-            Color statColor = identity.PrimaryStat switch
-            {
-                StatKind.STR => _colorStr,
-                StatKind.AGI => _colorAgi,
-                StatKind.CON => _colorCon,
-                _ => _colorDef, // DEF
-            };
+            Color statColor = _statManager != null
+                ? StatVfxColor.Resolve(identity, _statManager.GetStatsCopy(), _colorStr, _colorAgi, _colorCon, _colorDef)
+                : GetStatColor(identity.PrimaryStat);
 
             _block.SetFloat(GlitchAmountId, glitchAmount);
             _block.SetVector(StatColorId, (Vector4)statColor);
@@ -98,6 +106,9 @@ namespace BattlePvp.VFX
                 if (r == null)
                     continue;
 
+                r.GetPropertyBlock(_block);
+                _block.SetFloat(GlitchAmountId, glitchAmount);
+                _block.SetVector(StatColorId, (Vector4)statColor);
                 r.SetPropertyBlock(_block);
             }
         }

@@ -18,6 +18,9 @@ namespace BattlePvp.Combat
             receiver = collider.GetComponentInParent<IDamageReceiver>();
             stats = collider.GetComponentInParent<StatManager>();
             bodyPart = collider.GetComponentInParent<HitBodyPart>();
+            // A training stand is scenery, not an unmarked torso. Legacy single-box targets remain supported.
+            if (receiver is DummyHealth dummy && dummy.RequiresBodyPartHitboxes && bodyPart == null)
+            { receiver = null; stats = null; }
         }
     }
 
@@ -46,15 +49,16 @@ namespace BattlePvp.Combat
             }
         }
 
-        public int Raycast(Vector3 origin, Vector3 direction, float distance, int layers = Physics.DefaultRaycastLayers)
+        public int Raycast(Vector3 origin, Vector3 direction, float distance, int layers = Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction triggers = QueryTriggerInteraction.Ignore)
         {
             while (true)
             {
-                int count = Physics.RaycastNonAlloc(origin, direction, _hits, distance, layers, QueryTriggerInteraction.Ignore);
+                int count = Physics.RaycastNonAlloc(origin, direction, _hits, distance, layers, triggers);
                 if (count < _hits.Length) return count;
                 if (_hits.Length >= MaximumReusableCapacity)
                 {
-                    _hits = Physics.RaycastAll(origin, direction, distance, layers, QueryTriggerInteraction.Ignore);
+                    _hits = Physics.RaycastAll(origin, direction, distance, layers, triggers);
                     return _hits.Length;
                 }
                 Array.Resize(ref _hits, _hits.Length * 2);

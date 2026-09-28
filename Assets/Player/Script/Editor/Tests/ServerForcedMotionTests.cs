@@ -222,6 +222,8 @@ namespace BattlePvp.EditorTests
             var player = new GameObject("Server force test");
             player.AddComponent<NetworkIdentity>();
             player.AddComponent<PlayerManager>();
+            EditorTestLifecycle.BindNetwork(player);
+            EditorTestLifecycle.Invoke(player.GetComponent<PlayerManager>(), "Awake");
             return player;
         }
         private static T Get<T>(PlayerManager manager, string name) => (T)typeof(PlayerManager).GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(manager);

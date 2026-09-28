@@ -6,6 +6,23 @@ namespace BattlePvp.Combat
     /// <summary>A proposed preset swap. Commit its return state only after the stats owner accepts Target.</summary>
     public readonly struct CombatPresetPlan
     {
+        public static StatContainer DefaultTarget(StatContainer current)
+        {
+            // Only investment changes. Equipment bonuses remain owned by the stats owner.
+            current.STR.Invested = 18; current.CON.Invested = 6;
+            current.AGI.Invested = 3; current.DEF.Invested = 3;
+            return current;
+        }
+
+        public static StatContainer ResolveUnconfiguredTarget(StatContainer configured, StatContainer current)
+        {
+            float total = configured.STR.Invested + configured.CON.Invested + configured.AGI.Invested + configured.DEF.Invested;
+            if (total == 0f) return DefaultTarget(current);
+            // ScriptableObject presets contain allocations, not the player's equipment.
+            configured.STR.Item = current.STR.Item; configured.CON.Item = current.CON.Item;
+            configured.AGI.Item = current.AGI.Item; configured.DEF.Item = current.DEF.Item;
+            return configured;
+        }
         public readonly StatContainer Target;
         public readonly StatContainer ReturnPreset;
         public readonly bool HasReturnPreset;

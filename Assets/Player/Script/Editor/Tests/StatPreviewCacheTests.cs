@@ -45,7 +45,7 @@ namespace BattlePvp.EditorTests
         [TestCase(15f, 0f, 15f, 0f)]
         public void PreviewMatchesLiveDerivedValues(float str, float con, float agi, float def)
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             StatContainer stats = Preset(str, con, agi, def);
             manager.ApplyLocalSceneStats(stats);
             AssertPreview(manager, stats, manager.GetDerivedStats());
@@ -54,7 +54,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void DefMonostatIncludesDefHealthAndConfiguredMovementMultiplier()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             StatContainer stats = Preset(0f, 0f, 0f, 30f);
             manager.ApplyLocalSceneStats(stats);
             DerivedCombatStats derived = manager.GetDerivedStats();
@@ -66,7 +66,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void RepeatedReadsReuseCacheAndConfigChangeInvalidatesIt()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             StatContainer stats = Preset(0f, 0f, 0f, 30f);
             manager.ApplyLocalSceneStats(stats);
             int before = CalculationCount(manager);
@@ -86,7 +86,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void IdentityListenersReadTheNewDerivedSnapshot()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             manager.ApplyLocalSceneStats(Preset(8f, 8f, 7f, 7f));
             StatContainer next = Preset(30f, 0f, 0f, 0f);
             float observedAttack = 0f;
@@ -98,7 +98,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void ItemOnlyChangesInvalidateValuesWithoutChangingIdentity()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             StatContainer stats = Preset(8f, 8f, 7f, 7f);
             manager.ApplyLocalSceneStats(stats);
             Identity identity = manager.CurrentIdentity;
@@ -113,7 +113,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void NonLocalScalingDoesNotWriteCameraOffset()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             _cameraObject = new GameObject("Stat camera ownership test");
             _cameraObject.SetActive(false);
             FollowCamera camera = _cameraObject.AddComponent<FollowCamera>();
@@ -129,7 +129,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void OfflinePreviewOnlyChangesTheCameraFollowingItsCharacter()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             _cameraObject = new GameObject("Stat offline camera test");
             _cameraObject.SetActive(false);
             FollowCamera camera = _cameraObject.AddComponent<FollowCamera>();
@@ -163,7 +163,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void RejectedPresetDoesNotChangeLiveOrSavedStats()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             GlobalDataManager profile = _object.AddComponent<GlobalDataManager>();
             StatContainer initial = Preset(8f, 8f, 7f, 7f);
             manager.ApplyLocalSceneStats(initial);
@@ -185,7 +185,7 @@ namespace BattlePvp.EditorTests
         [Test]
         public void MissingPersistenceReportsFailureAfterLocalApplication()
         {
-            StatManager manager = _object.AddComponent<StatManager>();
+            StatManager manager = EditorTestLifecycle.AddNetwork<StatManager>(_object);
             GlobalDataManager profile = _object.AddComponent<GlobalDataManager>();
             StatContainer stats = Preset(8f, 8f, 7f, 7f);
             int completions = 0;

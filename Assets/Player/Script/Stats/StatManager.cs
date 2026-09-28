@@ -218,6 +218,7 @@ namespace BattlePvp.Stats
             SetLocal(this);
             
             Debug.Log("[StatManager] OnStartLocalPlayer: Initializing stats for Local Player.");
+            BattlePvp.Networking.RoomConnectionDiagnostics.Record("local_player_stats_start");
             
             if (BattlePvp.Managers.GlobalDataManager.Instance != null)
             {
@@ -227,6 +228,11 @@ namespace BattlePvp.Stats
             
             InitializeCameraReference();
             ApplyVisualScaling();
+        }
+
+        public void BindAsLocalScenePlayer()
+        {
+            if (!NetworkClient.active && !NetworkServer.active) SetLocal(this);
         }
 
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
@@ -314,7 +320,11 @@ namespace BattlePvp.Stats
         {
             yield return new WaitForSecondsRealtime(10f);
             if (isServer && !_serverStatsInitialized && connectionToClient != null)
+            {
+                BattlePvp.Networking.RoomConnectionDiagnostics.Record("server_stats_initialization_timeout");
+                Debug.LogWarning("[StatManager] Disconnecting a player whose initial stats were not accepted within 10 seconds.");
                 connectionToClient.Disconnect();
+            }
         }
 
         private void OnStatsSynced(StatContainer oldStats, StatContainer newStats)
@@ -338,7 +348,10 @@ namespace BattlePvp.Stats
                 return false;
             _nextStatRequestAt = NetworkTime.time + 0.2d;
             if (!StatValidation.TryValidateClientStats(stats, _stats, out StatContainer validated))
+            {
+                if (!_serverStatsInitialized) BattlePvp.Networking.RoomConnectionDiagnostics.Record("initial_stats_rejected");
                 return false;
+            }
             var health = GetComponent<BattlePvp.Combat.HealthSystem>();
             Identity next = Calculator.ResolveIdentity(validated, out _);
             bool battleScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle";
@@ -347,6 +360,7 @@ namespace BattlePvp.Stats
                 return false;
 
             _serverStatsInitialized = true;
+            BattlePvp.Networking.RoomConnectionDiagnostics.Record("server_stats_accepted");
             InternalApplyStats(validated, true);
             return true;
         }

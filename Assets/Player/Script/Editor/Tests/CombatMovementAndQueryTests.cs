@@ -21,12 +21,12 @@ namespace BattlePvp.EditorTests
             AttackData attack = ScriptableObject.CreateInstance<AttackData>();
             try
             {
-                StatManager attackerStats = attacker.AddComponent<StatManager>();
+                StatManager attackerStats = EditorTestLifecycle.AddNetwork<StatManager>(attacker);
                 var stats = new StatContainer();
                 stats.STR.Invested = 30f;
                 attackerStats.ApplyLocalSceneStats(stats);
                 Assert.That(attackerStats.CurrentIdentity.Type, Is.EqualTo(IdentityType.Monostat));
-                StatManager defenderStats = defender.AddComponent<StatManager>();
+                StatManager defenderStats = EditorTestLifecycle.AddNetwork<StatManager>(defender);
                 AttackProcessor processor = attacker.AddComponent<AttackProcessor>();
                 typeof(AttackProcessor).GetMethod("Awake", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(processor, null);
                 attack.damage = 1f;
@@ -161,7 +161,7 @@ namespace BattlePvp.EditorTests
             var root = new GameObject("Combat visibility test");
             try
             {
-                PlayerManager manager = root.AddComponent<PlayerManager>();
+                PlayerManager manager = EditorTestLifecycle.AddNetwork<PlayerManager>(root);
                 var attackObject = new GameObject("Inactive attack collider");
                 attackObject.transform.SetParent(root.transform);
                 BoxCollider attack = attackObject.AddComponent<BoxCollider>();

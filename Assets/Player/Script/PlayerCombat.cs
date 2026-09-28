@@ -1,4 +1,4 @@
-﻿using BattlePvp.Combat;
+using BattlePvp.Combat;
 using BattlePvp.Stats;
 using System;
 using System.Collections.Generic;
@@ -184,6 +184,9 @@ public class PlayerCombat : NetworkBehaviour
     private CombatSkillPresentation _skillPresentation;
     private SkillAuraPresentation _auraPresentation;
     private readonly SkillHudPresenter _skillHudPresenter = new SkillHudPresenter();
+    private readonly JobSkillData[] _describedSkills = new JobSkillData[2];
+    private readonly string[] _skillDescriptions = new string[2];
+    private bool _swingSoundPlayed;
 
     private CombatSkillPresentation SkillPresentation =>
         _skillPresentation ??= new CombatSkillPresentation(gameObject, animator);
@@ -207,6 +210,23 @@ public class PlayerCombat : NetworkBehaviour
     public float AttackPowerBonusMultiplier => SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f;
     public uint CurrentAttackPredictionId => _currentAttackSequence;
     public bool IsAttackActive => isAttacking;
+    private MeleeAimPose _meleeAimPose;
+    private Vector3 _meleeAimDirection;
+    private float _meleeAimReach;
+    private readonly CombatPhysicsQuery _meleeAimQuery = new CombatPhysicsQuery();
+    // Network aim vectors carry direction and the requested blade radius; reference selection clamps reach.
+    private Vector3 MeleeAimVector => _meleeAimDirection * _meleeAimReach;
+    private float _meleeAimWeight;
+    [SyncVar] private float _networkLookPitch;
+    private float _lookPitch, _lookPoseWeight, _sentLookPitch = float.NaN;
+    private double _nextLookSendAt, _nextLookReceiveAt;
+    private uint _meleeAimRevision, _acceptedMeleeAimRevision;
+    private double _nextMeleeAimSendAt, _nextMeleeAimReceiveAt;
+    public Vector3 MeleeAimDirection => _meleeAimDirection.sqrMagnitude > .001f ? _meleeAimDirection : transform.forward;
+    public Vector3 MeleeAimPivot => _meleeAimPose != null ? _meleeAimPose.Pivot : transform.position + transform.up * 1.2f;
+    private AttackData _meleeAnimationData;
+    private AttackData CurrentMeleeData => _meleeAnimationData != null ? _meleeAnimationData :
+        comboList != null && currentComboIndex >= 0 && currentComboIndex < comboList.Length ? comboList[currentComboIndex] : null;
     public bool IsServerTaunted => _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
 
     public JobSkillData ServerBowData => _polymathWeaponSwapSkillData;
@@ -283,6 +303,7 @@ public class PlayerCombat : NetworkBehaviour
         animator = GetComponent<Animator>();
         if (animator == null)
             animator = GetComponentInChildren<Animator>(true);
+        _meleeAimPose = new MeleeAimPose(transform, animator);
         if (animator != null)
         {
             SkillAnimationEventRelay relay = animator.GetComponent<SkillAnimationEventRelay>();
@@ -306,6 +327,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_kickHitBox != null)
             _kickHitBox.Initialize(this);
         _skillPresentation = new CombatSkillPresentation(gameObject, animator);
+        if (GetComponent<MeleeAimDriver>() == null) gameObject.AddComponent<MeleeAimDriver>();
     }
 
 #if UNITY_EDITOR
@@ -359,6 +381,10 @@ public class PlayerCombat : NetworkBehaviour
 
     private void OnDisable()
     {
+        _meleeAimPose?.Restore();
+        _meleeAimWeight = 0;
+        _lookPoseWeight = 0;
+        _sentLookPitch = float.NaN;
         ClearServerTauntControl();
         CancelAllCombatActions();
         StopActionRoutine(ref _monostatAgiPoisonRoutine);
@@ -378,7 +404,7 @@ public class PlayerCombat : NetworkBehaviour
             _statManager.IdentityChanged -= OnIdentityChanged;
         }
 
-        DisableHitBox();
+        ForceDisableHitBoxes();
         ForceDisableKickHitBox();
         _bowAttackController?.CancelCharge();
         _bowAttackController?.SetCrosshairVisible(false);
@@ -424,13 +450,113 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         UpdateLocalTauntControl();
+        UpdateLocalLookPitch();
+        if (isAttacking) UpdateLocalMeleeAim();
 
         _isPointerOverUI = UnityEngine.EventSystems.EventSystem.current != null &&
                            UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
 
         HandleBowReleaseFallback();
-        HandleSkillMouseInput();
         PublishSkillHudState(false);
+    }
+
+    internal void RestoreMeleeAimPose() => _meleeAimPose?.Restore();
+
+    internal void UpdateMeleeAimPose()
+    {
+        // Resolve after animation moved the hips/spine, using the same frame as the hit query.
+        if (isAttacking && ShouldHandleLocalInput) SetMeleeAim(GetCurrentMeleeAimDirection());
+        bool alive = _healthSystem == null || !_healthSystem.IsDead;
+        bool lookEnabled = alive && BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name) &&
+            (_playerManager == null || !_playerManager.IsEmoteBlockingAttack) &&
+            (_bowAttackController == null || !_bowAttackController.IsBusy) && !IsSkillCastingOrAttackLocked();
+        _lookPoseWeight = Mathf.MoveTowards(_lookPoseWeight, lookEnabled ? 1f : 0f, Time.deltaTime * 12f);
+        // Owners use this frame's camera pitch; observers smoothly follow the replicated pitch.
+        _lookPitch = ShouldHandleLocalInput ? _networkLookPitch :
+            Mathf.Lerp(_lookPitch, _networkLookPitch, 1f - Mathf.Exp(-Time.deltaTime * 20f));
+        Vector3 lookDirection = Quaternion.AngleAxis(_lookPitch * _lookPoseWeight, transform.right) * transform.forward;
+        _meleeAimWeight = alive ? Mathf.MoveTowards(_meleeAimWeight, isAttacking ? 1f : 0f, Time.deltaTime * 12f) : 0f;
+        if (_meleeAimWeight > 0f)
+        {
+            var data = CurrentMeleeData;
+            if (data != null && data.aimBladePoint.sqrMagnitude > .001f && animator != null)
+                _meleeAimPose?.ApplyCalibrated(MeleeAimDirection, _meleeAimPose.SelectReference(data, _meleeAimReach),
+                    Mathf.Clamp01(animator.GetCurrentAnimatorStateInfo(1).normalizedTime), _meleeAimWeight, lookDirection);
+            else _meleeAimPose?.Apply(Vector3.Slerp(lookDirection, MeleeAimDirection, _meleeAimWeight));
+        }
+        else if (_lookPoseWeight > 0f) _meleeAimPose?.ApplyCalibrated(lookDirection, Vector3.forward, 0, 0, lookDirection);
+    }
+
+    private void UpdateLocalLookPitch()
+    {
+        if (!BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name)) return;
+        if (_followCamera == null) _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        if (_followCamera == null || _followCamera.Target != transform) return;
+        float pitch = Mathf.Clamp(-Mathf.Asin(Mathf.Clamp(_followCamera.GetAimDirection().y, -1, 1)) * Mathf.Rad2Deg, -60, 60);
+        _networkLookPitch = pitch;
+        if (!NetworkClient.active || !NetworkClient.ready || !isLocalPlayer || isServer ||
+            Time.unscaledTimeAsDouble < _nextLookSendAt ||
+            (Mathf.Abs(pitch - _sentLookPitch) < .25f && Time.unscaledTimeAsDouble < _nextLookSendAt + .4d)) return;
+        _nextLookSendAt = Time.unscaledTimeAsDouble + .1d;
+        _sentLookPitch = pitch;
+        CmdSetLookPitch(pitch);
+    }
+
+    [Command]
+    private void CmdSetLookPitch(float pitch) => TryAcceptLookPitch(pitch, NetworkTime.time);
+
+    private bool TryAcceptLookPitch(float pitch, double now)
+    {
+        if (!float.IsFinite(pitch) || pitch < -60 || pitch > 60 || now < _nextLookReceiveAt ||
+            (_healthSystem != null && _healthSystem.IsDead)) return false;
+        _nextLookReceiveAt = now + .05d;
+        _networkLookPitch = pitch;
+        return true;
+    }
+
+    private void SetMeleeAim(Vector3 direction)
+    {
+        if (!CombatValidation.IsFinite(direction) || float.IsInfinity(direction.sqrMagnitude) || direction.sqrMagnitude < .001f) return;
+        _meleeAimDirection = direction.normalized;
+        _meleeAimReach = direction.magnitude;
+    }
+
+    private void UpdateLocalMeleeAim()
+    {
+        SetMeleeAim(GetCurrentMeleeAimDirection());
+        if (!NetworkClient.active || !NetworkClient.ready || !isLocalPlayer || Time.unscaledTimeAsDouble < _nextMeleeAimSendAt) return;
+        _nextMeleeAimSendAt = Time.unscaledTimeAsDouble + .05d;
+        _meleeAimRevision = CombatRequestSequences.Next(_meleeAimRevision);
+        if (isServer) RpcUpdateMeleeAim(_currentAttackSequence, _meleeAimRevision, MeleeAimVector);
+        else CmdUpdateMeleeAim(_currentAttackSequence, _meleeAimRevision, MeleeAimVector);
+    }
+
+    [Command(channel = Channels.Unreliable)]
+    private void CmdUpdateMeleeAim(uint sequence, uint revision, Vector3 direction)
+    {
+        if (TryAcceptMeleeAim(sequence, revision, direction, NetworkTime.time))
+            RpcUpdateMeleeAim(sequence, revision, MeleeAimVector);
+    }
+
+    private bool TryAcceptMeleeAim(uint sequence, uint revision, Vector3 direction, double now)
+    {
+        if (!isAttacking || !HasAuthoritativeCombatStats || (_healthSystem != null && _healthSystem.IsDead) ||
+            sequence != _currentAttackSequence || !IsNewerSequence(revision, _acceptedMeleeAimRevision) ||
+            !CombatValidation.IsFinite(direction) || float.IsInfinity(direction.sqrMagnitude) || direction.sqrMagnitude < .001f ||
+            now < _nextMeleeAimReceiveAt) return false;
+        _nextMeleeAimReceiveAt = now + .025d;
+        _acceptedMeleeAimRevision = revision;
+        SetMeleeAim(ResolveTauntAimDirection(direction.normalized) * direction.magnitude);
+        return true;
+    }
+
+    [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
+    private void RpcUpdateMeleeAim(uint sequence, uint revision, Vector3 direction)
+    {
+        if (isServer || !isAttacking || sequence != _lastRemoteAttackSequence ||
+            !IsNewerSequence(revision, _acceptedMeleeAimRevision)) return;
+        _acceptedMeleeAimRevision = revision;
+        SetMeleeAim(direction);
     }
 
     private void HandleBowReleaseFallback()
@@ -447,26 +573,23 @@ public class PlayerCombat : NetworkBehaviour
             HandleBowAttackInput(false);
     }
 
-    private void HandleSkillMouseInput()
+    private bool _skillButtonRequest;
+    public void OnSkill1(InputValue value) { if (value.isPressed) UseSkillSlot(0); }
+    public void OnSkill2(InputValue value) { if (value.isPressed) UseSkillSlot(1); }
+    public void UseSkillSlot(int index, bool fromHud = false)
     {
-        if (Mouse.current == null)
-            return;
-
-        if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
-            return;
-
-        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
-            return;
-
-        if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
-            return;
-
-        Vector2 scroll = Mouse.current.scroll.ReadValue();
-        if (Mathf.Abs(scroll.y) > 0.01f)
-            SelectSkill(scroll.y > 0f ? -1 : 1);
-
-        if (Mouse.current.rightButton.wasPressedThisFrame)
+        if (!fromHud && WaitingRoomTerminal.ConsumesSkillInput(index)) return;
+        if (!ShouldHandleLocalInput || index < 0 || index >= ResolveAvailableSkillCount()) return;
+        if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)) return;
+        _skillButtonRequest = fromHud;
+        try
+        {
+            if (!CanUseSkillInput()) return;
+            _selectedSkillIndex = index;
             TryUseSelectedSkill();
+            PublishSkillHudState();
+        }
+        finally { _skillButtonRequest = false; }
     }
 
     public void OnSkill(InputValue value)
@@ -506,7 +629,7 @@ public class PlayerCombat : NetworkBehaviour
         SetVisualActive(_handSwordVisual, !bowEquipped);
         SetVisualActive(_hipSwordVisual, bowEquipped);
         ResolveBowAttackController();
-        _bowAttackController?.SetCrosshairVisible(isLocalPlayer);
+        _bowAttackController?.SetCrosshairVisible(ShouldHandleLocalInput);
     }
 
     private void OnBowEquippedChanged(bool oldValue, bool newValue)
@@ -562,9 +685,14 @@ public class PlayerCombat : NetworkBehaviour
 
     public void OnAttack(InputValue value)
     {
-        if (!ShouldHandleLocalInput) return;
+        HandleAttackInput(value.isPressed, false);
+    }
 
-        bool pressed = value.isPressed;
+    public void AttackFromHud(bool pressed) => HandleAttackInput(pressed, true);
+
+    private void HandleAttackInput(bool pressed, bool fromHud)
+    {
+        if (!ShouldHandleLocalInput) return;
         if (!pressed)
         {
             if (IsPolymath() && _isBowEquipped)
@@ -580,7 +708,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_playerManager != null && _playerManager.IsSkillAttackLocked) return;
         if (IsPolymath() && _isBowEquipped)
         {
-            HandleBowAttackInput(true);
+            HandleBowAttackInput(true, fromHud);
             return;
         }
         if (IsBattleLoadingOrNotStarted()) return;
@@ -600,7 +728,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (IsSkillCastingOrAttackLocked()) return;
 
-        if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
+        if (!fromHud && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
             return;
 
         if (isAttacking)
@@ -609,7 +737,7 @@ public class PlayerCombat : NetworkBehaviour
             return;
         }
 
-        StartAttack(0, true, GetCurrentAimDirection());
+        StartAttack(0, true, GetCurrentMeleeAimDirection());
     }
 
     private bool IsBattleLoadingOrNotStarted()
@@ -663,7 +791,10 @@ public class PlayerCombat : NetworkBehaviour
         currentComboIndex = index;
         if (isServer) _serverCombo.Reset();
         _hitTargetsThisAttack.Clear();
-        aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward);
+        aimDirection = ResolveTauntAimDirection(aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward) * Mathf.Max(.1f, aimDirection.magnitude);
+        SetMeleeAim(aimDirection);
+        _acceptedMeleeAimRevision = _meleeAimRevision = 0;
+        _nextMeleeAimSendAt = _nextMeleeAimReceiveAt = 0;
 
         if (animator != null)
             animator.applyRootMotion = false;
@@ -684,7 +815,6 @@ public class PlayerCombat : NetworkBehaviour
             if (hb != null)
             {
                 hb.SetAttackData(comboList[index]);
-                hb.SetAttackContext(aimDirection, pm != null && pm.IsCrouching);
             }
         }
 
@@ -715,7 +845,7 @@ public class PlayerCombat : NetworkBehaviour
         Vector3 aimDirection,
         uint sequence)
     {
-        if (!HasAuthoritativeCombatStats || !CombatValidation.IsFinite(aimDirection) || aimDirection.sqrMagnitude <= 0.001f ||
+        if (!HasAuthoritativeCombatStats || !CombatValidation.IsFinite(aimDirection) || float.IsInfinity(aimDirection.sqrMagnitude) || aimDirection.sqrMagnitude <= 0.001f ||
             IsBattleLoadingOrNotStarted() || _isBowEquipped || IsServerTaunted ||
             !IsNewerSequence(sequence, _lastServerAttackSequence) ||
             index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null ||
@@ -793,7 +923,9 @@ public class PlayerCombat : NetworkBehaviour
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
-        aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection.normalized : transform.forward;
+        aimDirection = aimDirection.sqrMagnitude > 0.001f ? aimDirection : transform.forward;
+        SetMeleeAim(aimDirection);
+        _acceptedMeleeAimRevision = 0;
 
         if (_statManager != null)
         {
@@ -813,7 +945,6 @@ public class PlayerCombat : NetworkBehaviour
             if (hb != null)
             {
                 hb.SetAttackData(comboList[index]);
-                hb.SetAttackContext(aimDirection, pm != null && pm.IsCrouching);
             }
         }
     }
@@ -832,9 +963,16 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         animator.applyRootMotion = false;
+        _meleeAimPose?.Restore();
+        _meleeAnimationData = comboList[index];
         animator.speed = Mathf.Max(0.01f, _currentAttackSpeed);
+        _swingSoundPlayed = false;
+        ForceDisableHitBoxes();
         animator.Play(comboList[index].animationName, 1, 0f);
         animator.Update(0f);
+        // State duration already includes Animator/state speed. Dividing again cuts fast swings short.
+        GetComponent<BattlePvp.Combat.BlockAttackVfx>()?.Play(false,
+            animator.GetCurrentAnimatorStateInfo(1).length);
     }
 
     [Server]
@@ -1010,6 +1148,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!isActiveAndEnabled || !isAttacking || (_healthSystem != null && _healthSystem.IsDead))
             return;
 
+        if (!_swingSoundPlayed) { _swingSoundPlayed = true; GetComponent<CombatAudio>()?.PlaySwing(); }
+
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
@@ -1018,6 +1158,12 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     public void DisableHitBox()
+    {
+        foreach (var hb in _hitboxes) if (hb != null) hb.EndHitWindow();
+        GetComponent<BlockAttackVfx>()?.EndMeleeEmission();
+    }
+
+    private void ForceDisableHitBoxes()
     {
         foreach (var hb in _hitboxes)
         {
@@ -1179,7 +1325,7 @@ public class PlayerCombat : NetworkBehaviour
         }
 
         if (hasComboReserved && currentComboIndex < comboList.Length - 1)
-            StartAttack(currentComboIndex + 1, true, GetCurrentAimDirection());
+            StartAttack(currentComboIndex + 1, true, GetCurrentMeleeAimDirection(currentComboIndex + 1));
         else
         {
             StopCombo(allowDelayedContinuation: true);
@@ -1195,6 +1341,9 @@ public class PlayerCombat : NetworkBehaviour
 
     public void CancelCurrentAttack()
     {
+        _meleeAimPose?.Restore();
+        _meleeAimWeight = 0;
+        GetComponent<BlockAttackVfx>()?.StopMelee();
         _serverCombo.Reset();
         if (_comboRoutine != null)
         {
@@ -1202,7 +1351,7 @@ public class PlayerCombat : NetworkBehaviour
             _comboRoutine = null;
         }
 
-        DisableHitBox();
+        ForceDisableHitBoxes();
         ForceDisableKickHitBox();
         isAttacking = false;
         currentComboIndex = 0;
@@ -1756,12 +1905,12 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         StatContainer currentPreset = _statManager.GetStatsCopy();
-        StatContainer targetPreset = data.TargetPreset;
+        StatContainer targetPreset = CombatPresetPlan.ResolveUnconfiguredTarget(data.TargetPreset, currentPreset);
         if (data.SkillKind == JobSkillKind.StrategistPresetChange && _hasRuntimeStrategistTargetPreset)
         {
             targetPreset = _runtimeStrategistTargetPreset;
         }
-        else if (data.SkillKind == JobSkillKind.StrategistPresetChange &&
+        else if (!NetworkServer.active && data.SkillKind == JobSkillKind.StrategistPresetChange &&
                  GlobalDataManager.Instance != null &&
                  GlobalDataManager.Instance.HasStrategistTargetPreset)
         {
@@ -1786,8 +1935,9 @@ public class PlayerCombat : NetworkBehaviour
         {
             if (!_statManager.TryApplyServerPreset(plan.Target)) return;
         }
-        else
-            _statManager.ApplyStats(plan.Target, true);
+        else if (!NetworkClient.active)
+            _statManager.ApplyLocalSceneStats(plan.Target, true);
+        else return;
         _strategistSwapReturnPreset = plan.ReturnPreset;
         _hasStrategistSwapReturnPreset = plan.HasReturnPreset;
         float newMax = _healthSystem.MaxHp;
@@ -2208,7 +2358,7 @@ public class PlayerCombat : NetworkBehaviour
         if (IsBattleLoadingOrNotStarted()) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return false;
-        if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI) return false;
+        if (!_skillButtonRequest && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI) return false;
         if (ResolveAvailableSkillCount() <= 0) return false;
 
         return true;
@@ -2347,7 +2497,7 @@ public class PlayerCombat : NetworkBehaviour
         return IsSkillDataKind(data, kind) ? data : null;
     }
 
-    private void HandleBowAttackInput(bool pressed)
+    private void HandleBowAttackInput(bool pressed, bool fromHud = false)
     {
         if (IsServerTaunted) return;
         JobSkillData bow = _polymathWeaponSwapSkillData;
@@ -2370,7 +2520,7 @@ public class PlayerCombat : NetworkBehaviour
         {
             if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
                 return;
-            if (Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
+            if (!fromHud && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
                 return;
             if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
                 return;
@@ -2447,13 +2597,20 @@ public class PlayerCombat : NetworkBehaviour
     public SkillHudState GetSkillHudState()
     {
         ClampSelectedSkillIndex();
+        return GetSkillHudState(_selectedSkillIndex);
+    }
+
+    public SkillHudState GetSkillHudState(int index)
+    {
         int count = ResolveAvailableSkillCount();
+        if (index < 0 || index >= count)
+            return new SkillHudState(false, string.Empty, index, count, SkillHudPhase.Hidden, 0f, 0f);
         JobSkillData data;
         bool casting = false;
         double castCompleteAt = 0d, activeUntil = 0d, cooldownUntil = 0d;
         float castSeconds = 0f, cooldownSeconds = 0f;
 
-        if (IsMonostatStr() && _selectedSkillIndex == 0)
+        if (IsMonostatStr() && index == 0)
         {
             data = MonostatStrSkillData;
             casting = _isCastingMonostatStrSkill;
@@ -2463,7 +2620,7 @@ public class PlayerCombat : NetworkBehaviour
             castSeconds = MonostatStrCastSeconds;
             cooldownSeconds = MonostatStrCooldownSeconds;
         }
-        else if (IsMonostatAgi() && _selectedSkillIndex == 0)
+        else if (IsMonostatAgi() && index == 0)
         {
             data = MonostatAgiSkillData;
             casting = _isCastingMonostatAgiSkill;
@@ -2475,7 +2632,8 @@ public class PlayerCombat : NetworkBehaviour
         }
         else
         {
-            data = ResolveSelectedAdvancedSkillData();
+            data = _statManager != null && CombatSkillRules.TrySelect(_statManager.CurrentIdentity, index, out JobSkillKind kind)
+                ? ResolveAssignedAdvancedSkillData((int)kind) : null;
             if (data != null)
             {
                 int key = (int)data.SkillKind;
@@ -2490,11 +2648,21 @@ public class PlayerCombat : NetworkBehaviour
 
         string name = SkillHudPresenter.ResolveName(
             _statManager != null ? _statManager.CurrentIdentity : (Identity?)null,
-            _selectedSkillIndex, data != null ? data.DisplayName : null);
+            index, data != null ? data.DisplayName : null);
         var snapshot = new SkillHudSnapshot(name, data != null ? data.IconSprite : null,
-            _selectedSkillIndex, count, casting, castCompleteAt, activeUntil, cooldownUntil,
+            index, count, casting, castCompleteAt, activeUntil, cooldownUntil,
             castSeconds, cooldownSeconds);
         return SkillHudPresenter.Build(snapshot, SkillTime);
+    }
+
+    public string GetSkillDescription(int index)
+    {
+        if (index < 0 || index >= _describedSkills.Length || _statManager == null ||
+            !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, index, out JobSkillKind kind)) return string.Empty;
+        var data = ResolveSkillData((int)kind);
+        if (_describedSkills[index] != data)
+        { _describedSkills[index] = data; _skillDescriptions[index] = SkillDescription.Build(data); }
+        return _skillDescriptions[index] ?? string.Empty;
     }
 
     private void PublishSkillHudState(bool force = true)
@@ -2619,7 +2787,7 @@ public class PlayerCombat : NetworkBehaviour
         if (animator != null)
             animator.speed = 1.0f;
 
-        DisableHitBox();
+        ForceDisableHitBoxes();
         SetSkillSwordVisual(null);
         isAttacking = false;
         hasComboReserved = false;
@@ -2655,6 +2823,36 @@ public class PlayerCombat : NetworkBehaviour
             fallback = transform.forward;
 
         return ResolveTauntAimDirection(fallback);
+    }
+
+    private Vector3 GetCurrentMeleeAimDirection(int comboIndex = -1)
+    {
+        int index = comboIndex >= 0 ? comboIndex : currentComboIndex;
+        var data = comboList != null && index >= 0 && index < comboList.Length ? comboList[index] : null;
+        float reach = data != null && data.aimBladePoint.sqrMagnitude > .001f ?
+            (_meleeAimPose != null ? _meleeAimPose.ReferenceVector(data.aimBladePoint) : transform.TransformVector(data.aimBladePoint)).magnitude : 1.4f;
+        if (!BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name))
+            return ResolveTauntAimDirection(transform.forward) * reach;
+        if (_followCamera == null)
+            _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();
+        if (_followCamera == null) return ResolveTauntAimDirection(transform.forward) * reach;
+        Ray ray = _followCamera.GetAimRay();
+        float distance = 8f;
+        bool found = false;
+        int count = _meleeAimQuery.Raycast(ray.origin, ray.direction, distance, ~0, QueryTriggerInteraction.Collide);
+        for (int i = 0; i < count; i++)
+        {
+            var hit = _meleeAimQuery.Hits[i];
+            if (hit.collider == null || hit.collider.transform.IsChildOf(transform) || hit.distance >= distance) continue;
+            if (hit.collider.isTrigger && hit.collider.GetComponentInParent<IDamageReceiver>() == null) continue;
+            distance = hit.distance; found = true;
+        }
+        if (found && data != null && _meleeAimPose != null)
+            reach = _meleeAimPose.ReferenceVector(_meleeAimPose.SelectReference(data,
+                Vector3.Distance(ray.GetPoint(distance), MeleeAimPivot))).magnitude;
+        Vector3 direction = MeleeAimPose.ReachablePoint(ray, MeleeAimPivot, reach) - MeleeAimPivot;
+        if (Vector3.Dot(direction, ray.direction) <= .01f) direction = ray.direction;
+        return ResolveTauntAimDirection(direction.normalized) * reach;
     }
 
     private void SetTauntedBy(uint taunterNetId, float durationSeconds)
@@ -2771,6 +2969,7 @@ public class PlayerCombat : NetworkBehaviour
     private void PlayHitFeedbackLocal(bool isHeadshot)
     {
         SkillPresentation.PlayConfirmedHit(isHeadshot);
+        GetComponent<CombatAudio>()?.PlayConfirmedHit();
     }
 
     private void ClearLocalTauntControl()
