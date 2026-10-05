@@ -53,6 +53,11 @@ namespace BattlePvp.Combat
         private Vector3 _previousPosition;
         private Quaternion _previousRotation;
         private PlayerCombat _playerCombat;
+        private Animator _sampleAnimator;
+        private int _sampleState;
+        private AnimationHitWindow _animationWindow;
+        private bool _hasSweepPose;
+        private float _previousPhase;
         private readonly CombatHitPoseHistory _serverHitPoses = new CombatHitPoseHistory();
 
         public bool ValidateServerHit(Vector3 point, double hitTime, Vector3 attackerPosition)
@@ -148,6 +153,25 @@ namespace BattlePvp.Combat
 
         private void LateUpdate()
         {
+            if (_sampleAnimator != null && _useSweptHitDetection && _boxCollider != null)
+            {
+                var state = _sampleAnimator.GetCurrentAnimatorStateInfo(1);
+                if (state.fullPathHash == _sampleState)
+                {
+                    float phase = state.normalizedTime;
+                    if (_hitBoxActive && _hasSweepPose && _animationWindow.Clip(_previousPhase, phase, out float from, out float to))
+                        ProcessSweptBox(from, to);
+                    else if (_hitBoxActive && !_hasSweepPose && phase >= _animationWindow.Start && phase <= _animationWindow.End)
+                        ProcessCurrentOverlaps();
+                    CaptureCurrentPose();
+                    _hasSweepPose = true;
+                    _previousPhase = phase;
+                    _pendingInitialOverlap = false;
+                    if (_pendingEnd) DisableHitBox();
+                    UpdateDebugHitBoxRenderers();
+                    return;
+                }
+            }
             // Animation events precede the additive aim pose. Query only after that pose is applied.
             if (_hitBoxActive && _pendingInitialOverlap)
             {
@@ -176,6 +200,18 @@ namespace BattlePvp.Combat
         {
             _currentAttackData = data;
             _serverHitPoses.Clear();
+            _hasSweepPose = false;
+            _sampleAnimator = null;
+        }
+
+        public void BeginAnimationSampling(Animator animator)
+        {
+            _sampleAnimator = animator;
+            _sampleState = animator.GetCurrentAnimatorStateInfo(1).fullPathHash;
+            _animationWindow = AnimationHitWindow.Melee(animator, 1);
+            CaptureCurrentPose();
+            _previousPhase = 0;
+            _hasSweepPose = true;
         }
 
         public void EnableHitBox()
@@ -239,21 +275,44 @@ namespace BattlePvp.Combat
             ProcessContacts(count, bounds.center);
         }
 
-        private void ProcessSweptBox()
+        private void ProcessSweptBox(float from = 0f, float to = 1f)
         {
-            float distance = Vector3.Distance(_previousPosition, transform.position);
-            float angle = Quaternion.Angle(_previousRotation, transform.rotation);
+            if (_sampleAnimator != null && _playerCombat != null)
+            {
+                float phase = _sampleAnimator.GetCurrentAnimatorStateInfo(1).normalizedTime;
+                if (_playerCombat.TrySampleMeleeMotion(_previousPhase, out Pose expectedFrom) &&
+                    _playerCombat.TrySampleMeleeMotion(phase, out Pose expectedTo))
+                {
+                    var actualFrom = new Pose(_previousPosition, _previousRotation);
+                    var actualTo = new Pose(transform.position, transform.rotation);
+                    int steps = Mathf.Clamp(Mathf.CeilToInt((phase - _previousPhase) * (to - from) * 240), 1, 128);
+                    for (int i = 0; i <= steps; i++)
+                    {
+                        float t = Mathf.Lerp(from, to, i / (float)steps);
+                        _playerCombat.TrySampleMeleeMotion(Mathf.Lerp(_previousPhase, phase, t), out Pose sample);
+                        sample = MeleeMotionSample.MatchEndpoints(sample, expectedFrom, expectedTo, actualFrom, actualTo, t);
+                        ProcessBoxOverlap(sample.position, sample.rotation);
+                    }
+                    return;
+                }
+            }
+            Vector3 start = Vector3.Lerp(_previousPosition, transform.position, from);
+            Vector3 end = Vector3.Lerp(_previousPosition, transform.position, to);
+            Quaternion startRotation = Quaternion.Slerp(_previousRotation, transform.rotation, from);
+            Quaternion endRotation = Quaternion.Slerp(_previousRotation, transform.rotation, to);
+            float distance = Vector3.Distance(start, end);
+            float angle = Quaternion.Angle(startRotation, endRotation);
             Vector3 scale = Abs(transform.lossyScale);
             float radius = Vector3.Scale(Abs(_boxCollider.center) + _boxCollider.size * .5f, scale).magnitude;
             float thickness = Mathf.Min(_boxCollider.size.x * scale.x, _boxCollider.size.y * scale.y) + 2f * _sweepPadding;
             float spacing = Mathf.Max(.01f, Mathf.Min(_sweepSampleSpacing, thickness));
             int samples = Mathf.Clamp(Mathf.CeilToInt((distance + angle * Mathf.Deg2Rad * radius) / spacing), 1, 64);
 
-            for (int i = 1; i <= samples; i++)
+            for (int i = 0; i <= samples; i++)
             {
                 float t = i / (float)samples;
-                Vector3 samplePosition = Vector3.Lerp(_previousPosition, transform.position, t);
-                Quaternion sampleRotation = Quaternion.Slerp(_previousRotation, transform.rotation, t);
+                Vector3 samplePosition = Vector3.Lerp(start, end, t);
+                Quaternion sampleRotation = Quaternion.Slerp(startRotation, endRotation, t);
                 ProcessBoxOverlap(samplePosition, sampleRotation);
             }
         }

@@ -156,7 +156,7 @@ public class PlayerCombat : NetworkBehaviour
     private Vector3 _pendingAdvancedSkillDirection;
     private bool _isKickHitBoxEnabled;
     private readonly KickHitWindowAuthority _kickWindow = new KickHitWindowAuthority();
-    private Coroutine _kickHitBoxRoutine;
+    private bool _kickClosePending;
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
     private float _nextAttackDamageMultiplier = 1f;
     [SyncVar] private float _attackPowerBonusMultiplier = 1f;
@@ -463,6 +463,11 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     internal void RestoreMeleeAimPose() => _meleeAimPose?.Restore();
+
+    public bool TrySampleMeleeMotion(float phase, out Pose pose) => MeleeMotionSample.TryEvaluate(
+        CurrentMeleeData, transform, phase, MeleeAimVector,
+        Quaternion.AngleAxis(_lookPitch * _lookPoseWeight, transform.right) * transform.forward,
+        _meleeAimWeight, out pose);
 
     internal void UpdateMeleeAimPose()
     {
@@ -977,6 +982,7 @@ public class PlayerCombat : NetworkBehaviour
         ForceDisableHitBoxes();
         animator.Play(comboList[index].animationName, 1, 0f);
         animator.Update(0f);
+        foreach (var hitbox in _hitboxes) if (hitbox != null) hitbox.BeginAnimationSampling(animator);
         // State duration already includes Animator/state speed. Dividing again cuts fast swings short.
         GetComponent<BattlePvp.Combat.BlockAttackVfx>()?.Play(false,
             animator.GetCurrentAnimatorStateInfo(1).length);
@@ -1659,14 +1665,15 @@ public class PlayerCombat : NetworkBehaviour
         if (plan.ApplyAtStart)
             ApplyAdvancedSkill(plan, data, direction);
         _pendingAdvancedSkillHitKey = skillKey;
+        _pendingAdvancedSkillDirection = direction;
+        // Seeking can fire events; the approved clock window is installed after the state is known.
+        // LateUpdate opens/queries it even when a seek skipped the opening event.
+        PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
         if (plan.HasHitWindow)
         {
             ResolveKickAnimationWindow(data, out float opensAt, out float closesAt);
             _kickWindow.Begin(sequence, requestedStartTime + opensAt, requestedStartTime + closesAt);
         }
-        _pendingAdvancedSkillDirection = direction;
-        // Animation seeking may fire a hit event immediately; establish the approved window first.
-        PlaySkillAnimationNetworked(data, requestedStartTime, sequence);
         PlaySkillSfx(skillKey);
         if (_advancedSkillRoutine != null)
             StopCoroutine(_advancedSkillRoutine);
@@ -1682,15 +1689,19 @@ public class PlayerCombat : NetworkBehaviour
         foreach (AnimationClip clip in animator.runtimeAnimatorController.animationClips)
         {
             if (clip.name != data.CastAnimationStateName) continue;
+            int layer = Mathf.Clamp(data.CastAnimationLayer, 0, animator.layerCount - 1);
+            AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(layer);
+            float secondsPerClipSecond = state.IsName(data.CastAnimationStateName) && clip.length > 0f
+                ? state.length / clip.length : 1f;
             foreach (AnimationEvent animationEvent in clip.events)
             {
                 if (animationEvent.functionName == nameof(EnableKickHitBox) ||
                     animationEvent.functionName == nameof(EnableSkillHitBox) ||
                     animationEvent.functionName == nameof(OnSkillHitWindow))
-                    opensAt = animationEvent.time;
+                    opensAt = animationEvent.time * secondsPerClipSecond;
                 if (animationEvent.functionName == nameof(DisableKickHitBox) ||
                     animationEvent.functionName == nameof(DisableSkillHitBox))
-                    closesAt = Mathf.Max(closesAt, animationEvent.time + 1f / 30f);
+                    closesAt = animationEvent.time * secondsPerClipSecond + 1f / 30f;
             }
             return;
         }
@@ -1742,7 +1753,7 @@ public class PlayerCombat : NetworkBehaviour
 
     public void DisableKickHitBox()
     {
-        SetKickHitBoxEnabled(false);
+        _kickClosePending = true;
     }
 
     [Command]
@@ -1775,7 +1786,8 @@ public class PlayerCombat : NetworkBehaviour
 
     private void SetKickHitBoxEnabledServer(int skillKey, bool enabled)
     {
-        if (!NetworkServer.active || skillKey != (int)JobSkillKind.MonostatConKick ||
+        if ((NetworkClient.active && !NetworkServer.active) || !HasAuthoritativeCombatStats ||
+            skillKey != (int)JobSkillKind.MonostatConKick ||
             skillKey != _pendingAdvancedSkillHitKey || _healthSystem == null || _healthSystem.IsDead)
             return;
 
@@ -1794,9 +1806,6 @@ public class PlayerCombat : NetworkBehaviour
             if (_kickHitBox != null)
             {
                 _kickHitBox.SetActive(true);
-                if (_kickHitBoxRoutine != null)
-                    StopCoroutine(_kickHitBoxRoutine);
-                _kickHitBoxRoutine = StartCoroutine(CoProcessKickHitBox());
             }
             return;
         }
@@ -1807,29 +1816,26 @@ public class PlayerCombat : NetworkBehaviour
             _kickHitBox.SetActive(false);
     }
 
-    private System.Collections.IEnumerator CoProcessKickHitBox()
+    public void TickKickHitWindow()
     {
-        var wait = new WaitForFixedUpdate();
-        while (_isKickHitBoxEnabled)
-        {
+        if (NetworkClient.active && !NetworkServer.active) return;
+        SetKickHitBoxEnabledServer(ResolveKickHitBoxSkillKey(), true);
+        if (_isKickHitBoxEnabled)
             _kickHitBox?.ProcessCurrentOverlaps();
-            yield return wait;
+        if (_kickClosePending || (_isKickHitBoxEnabled && !_kickWindow.CanHit(_kickWindow.Sequence, SkillTime)))
+        {
+            _kickClosePending = false;
+            SetKickHitBoxEnabledServer(ResolveKickHitBoxSkillKey(), false);
         }
-
-        _kickHitBoxRoutine = null;
     }
 
     private void ForceDisableKickHitBox()
     {
         _kickWindow.Cancel();
+        _kickClosePending = false;
         _isKickHitBoxEnabled = false;
         if (_kickHitBox != null)
             _kickHitBox.SetActive(false);
-        if (_kickHitBoxRoutine != null)
-        {
-            StopCoroutine(_kickHitBoxRoutine);
-            _kickHitBoxRoutine = null;
-        }
         _kickHitTargets.Clear();
         _pendingAdvancedSkillHitKey = -1;
         _pendingAdvancedSkillDirection = Vector3.zero;
@@ -1868,7 +1874,8 @@ public class PlayerCombat : NetworkBehaviour
 
     public void TryProcessKickHit(Collider hit)
     {
-        if (!NetworkServer.active || !_isKickHitBoxEnabled || !_kickWindow.CanHit(_kickWindow.Sequence, SkillTime))
+        if ((NetworkClient.active && !NetworkServer.active) || !HasAuthoritativeCombatStats ||
+            !_isKickHitBoxEnabled || !_kickWindow.CanHit(_kickWindow.Sequence, SkillTime))
             return;
 
         JobSkillData data = ResolveAssignedAdvancedSkillData((int)JobSkillKind.MonostatConKick);
@@ -1878,11 +1885,11 @@ public class PlayerCombat : NetworkBehaviour
         if (_attackProcessor == null)
             _attackProcessor = GetComponent<AttackProcessor>();
 
-        CombatHitTargets.Resolve(hit, out IDamageReceiver target, out StatManager targetStats, out _);
-        if (target == null || targetStats == null)
+        CombatHitTargets.Resolve(hit, out IDamageReceiver target, out StatManager targetStats, out var bodyPart);
+        if (target == null || targetStats == null || (target is HealthSystem && bodyPart == null))
             return;
 
-        if (!_kickHitTargets.Add(target))
+        if (_kickHitTargets.Contains(target))
             return;
 
         Vector3 hitPosition = hit.ClosestPoint(_kickHitBox != null ? _kickHitBox.transform.position : transform.position);
@@ -1890,8 +1897,9 @@ public class PlayerCombat : NetworkBehaviour
             return;
         if (!_attackProcessor.ProcessSkillHit(data.KickDamageMultiplier, targetStats, target, hitPosition))
             return;
+        _kickHitTargets.Add(target);
 
-        if (target is Component targetComponent)
+        if (NetworkServer.active && target is Component targetComponent)
         {
             PlayerManager targetManager = targetComponent.GetComponentInParent<PlayerManager>();
             if (targetManager != null)

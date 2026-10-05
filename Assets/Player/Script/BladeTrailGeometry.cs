@@ -40,7 +40,7 @@ namespace BattlePvp.Combat
             Vector3 delta = bladeBase - _base;
             float travel = Mathf.Max(delta.magnitude, Vector3.Distance(_tip, bladeTip));
             // Teleports and a restarted animation must never draw a bridge across the scene.
-            if (travel > length * 3f || dt > Lifetime)
+            if (delta.magnitude > length * 3f || dt > Lifetime)
             {
                 BeginStroke(); Sample(bladeBase, bladeTip, now); return;
             }

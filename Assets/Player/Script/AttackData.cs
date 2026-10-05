@@ -9,6 +9,7 @@ public class AttackData : ScriptableObject
     public Vector3 aimBladePoint;
     public Vector3 aimBladeBase;
     public Vector3 aimBladeTip;
+    [HideInInspector] public BattlePvp.Combat.MeleeMotionSample[] motionSamples;
     public string animationName;      // 아아아아아
     public float comboWindowStart;    // �޺� �Է��� �ޱ� �����ϴ� ���� (0~1)
     public float comboWindowEnd;      // �޺� �Է��� �����Ǵ� ���� (0~1)

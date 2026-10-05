@@ -27,6 +27,7 @@ namespace BattlePvp.UI
         private bool _hasAnimationState;
         private bool _showingDeathAnimation;
         private bool _isSpectating;
+        private float[] _livingLayerWeights;
 
         public void Initialize(Transform player, Animator animator, string respawnPrompt, Color overlayColor)
         {
@@ -45,17 +46,31 @@ namespace BattlePvp.UI
         private void ApplyAnimation(bool dead, bool force = false)
         {
             if (!force && _hasAnimationState && _showingDeathAnimation == dead) return;
+            if (_animator == null || _animator.runtimeAnimatorController == null || _animator.layerCount == 0) return;
             _hasAnimationState = true;
             _showingDeathAnimation = dead;
-            if (_animator == null || _animator.runtimeAnimatorController == null) return;
+            _animator.speed = 1f;
             _animator.SetFloat(Speed, 0f);
             _animator.SetFloat(MoveX, 0f);
             _animator.SetFloat(MoveY, 0f);
             _animator.ResetTrigger(Die);
             _animator.SetBool(IsDead, dead);
-            if (dead) _animator.SetTrigger(Die);
+            if (dead)
+            {
+                // Attack/crouch masks otherwise keep overriding the full-body death pose.
+                if (_livingLayerWeights == null)
+                {
+                    _livingLayerWeights = new float[_animator.layerCount];
+                    for (int layer = 1; layer < _livingLayerWeights.Length; layer++)
+                        _livingLayerWeights[layer] = _animator.GetLayerWeight(layer);
+                }
+                for (int layer = 1; layer < _animator.layerCount; layer++) _animator.SetLayerWeight(layer, 0f);
+                if (_animator.HasState(0, Die)) _animator.CrossFadeInFixedTime(Die, .08f, 0, 0f);
+                else _animator.SetTrigger(Die);
+            }
             else
             {
+                RestoreLivingLayers();
                 _animator.Play(Movement, 0, 0f);
                 _animator.Update(0f);
             }
@@ -138,12 +153,22 @@ namespace BattlePvp.UI
 
         public void Suspend()
         {
+            RestoreLivingLayers();
             _isSpectating = false;
             StopCountdown();
             _model?.Restore();
             if (_hasLocalPresentation) PlayerHUD.UpdateLocalDeathOverlay(false);
             _hasLocalPresentation = false;
             _hasAnimationState = false;
+        }
+
+        private void RestoreLivingLayers()
+        {
+            if (_livingLayerWeights == null) return;
+            if (_animator != null)
+                for (int layer = 1; layer < Mathf.Min(_animator.layerCount, _livingLayerWeights.Length); layer++)
+                    _animator.SetLayerWeight(layer, _livingLayerWeights[layer]);
+            _livingLayerWeights = null;
         }
 
         private void StopCountdown()

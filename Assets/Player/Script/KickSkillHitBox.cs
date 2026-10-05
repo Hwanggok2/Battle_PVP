@@ -2,6 +2,7 @@ using UnityEngine;
 using BattlePvp.Combat;
 
 [RequireComponent(typeof(Collider))]
+[DefaultExecutionOrder(10)]
 public sealed class KickSkillHitBox : MonoBehaviour
 {
     [SerializeField] private PlayerCombat _owner;
@@ -97,6 +98,9 @@ public sealed class KickSkillHitBox : MonoBehaviour
     }
 
     private void OnDisable() => SetActive(false);
+
+    // Sample the animated foot after the animator and aim pose, including the closing frame.
+    private void LateUpdate() { if (_owner != null && _owner.isActiveAndEnabled) _owner.TickKickHitWindow(); }
 
     private void OnTriggerEnter(Collider other)
     {

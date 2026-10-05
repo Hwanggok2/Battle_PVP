@@ -32,7 +32,7 @@ public sealed class BowAttackController : NetworkBehaviour
     [Header("Aim")]
     [SerializeField] private float _aimDistance = 1000f;
     [SerializeField] private LayerMask _aimHitMask = ~0;
-    [SerializeField] private bool _applyBowCameraOffset = true;
+    [SerializeField] private bool _applyBowCameraOffset = false;
     [SerializeField] private Vector3 _bowCameraOffset = new Vector3(0.35f, 0.3f, -0.7f);
     [SerializeField] private Vector3 _bowCameraRotationOffset;
     [SerializeField] private bool _showCrosshair = true;
@@ -59,7 +59,6 @@ public sealed class BowAttackController : NetworkBehaviour
     private bool _releaseFinishedPending;
     private bool _isVisuallyCharging;
     private bool _isAimHoldReady;
-    private bool _releaseQueued;
     private bool _isReleaseLocked;
     private bool _chargeRingVisible;
     private Coroutine _releaseLockFallbackRoutine;
@@ -68,12 +67,11 @@ public sealed class BowAttackController : NetworkBehaviour
     private bool _serverOwnsTauntVisual;
     private float _drawDuration = 3f;
     private float _drawReadyAt = float.PositiveInfinity;
-    private float _releaseArrowAt = float.PositiveInfinity;
     private Transform _bowHand, _stringHand;
     private float _handArrowTailLocal = .29609093f;
 
     public bool IsCharging => _chargeStartedAt >= 0d;
-    public bool IsBusy => IsCharging || _isVisuallyCharging || _releaseQueued || _isReleaseLocked;
+    public bool IsBusy => IsCharging || _isVisuallyCharging || _isReleaseLocked;
     public bool ControlsAimPose => IsBusy || (_bowAimRigTarget != null && _bowAimRigTarget.IsPosing);
     private bool UsesLocalAim => (isLocalPlayer || (!NetworkClient.active && !NetworkServer.active)) &&
         !_serverOwnsTauntVisual && (_playerCombat == null || !_playerCombat.IsServerTaunted);
@@ -149,11 +147,6 @@ public sealed class BowAttackController : NetworkBehaviour
         // Clips may lose events at a transition boundary or when animation is culled.
         if (_isVisuallyCharging && !_isAimHoldReady && Time.time >= _drawReadyAt)
             OnBowDrawReady();
-        if (_isReleaseLocked && Time.time >= _releaseArrowAt)
-        {
-            _releaseArrowAt = float.PositiveInfinity;
-            OnBowReleaseArrow();
-        }
 
         UpdateNockedArrowPose();
 
@@ -202,7 +195,6 @@ public sealed class BowAttackController : NetworkBehaviour
             _chargeStartedAt = SkillTime;
             _activeChargeData = bowData;
             _hasPendingShot = false;
-            _releaseQueued = false;
             _isAimHoldReady = false;
             _isVisuallyCharging = true;
             _playerManager?.SetMovementEffect(CombatEffectSources.BowCharge, bowData.BowChargeMoveMultiplier, 86400f);
@@ -245,11 +237,10 @@ public sealed class BowAttackController : NetworkBehaviour
         _captureAimPointPending = false;
         _releaseArrowEventPending = false;
         _releaseFinishedPending = false;
-        _releaseQueued = false;
         _isAimHoldReady = false;
         _isReleaseLocked = false;
         _isVisuallyCharging = false;
-        _drawReadyAt = _releaseArrowAt = float.PositiveInfinity;
+        _drawReadyAt = float.PositiveInfinity;
         StopReleaseLockFallback();
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
@@ -265,11 +256,6 @@ public sealed class BowAttackController : NetworkBehaviour
         PlayBowAnimationLocal(AimHoldAnimationStateName, Vector3.zero);
         _isAimHoldReady = true;
 
-        if (_releaseQueued)
-        {
-            _releaseQueued = false;
-            TriggerBowReleaseNetworked();
-        }
     }
 
     public void OnBowNockArrow()
@@ -302,7 +288,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void QueueShot(JobSkillData bowData, float chargeSeconds, Vector3 direction)
     {
-        // Capture the camera ray when the string actually releases, after any queued draw animation.
+        // Release intent freezes damage now. LateUpdate spawns after this frame's camera/rig pose.
         _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _hasPendingAimPoint = false;
         _captureAimPointPending = false;
@@ -310,12 +296,6 @@ public sealed class BowAttackController : NetworkBehaviour
             Mathf.Max(.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds));
         _offlineShotMultiplier = Mathf.Lerp(bowData.MinimumBowDamageMultiplier, bowData.MaximumBowDamageMultiplier, progress);
         _hasPendingShot = true;
-        if (!_isAimHoldReady)
-        {
-            _releaseQueued = true;
-            return;
-        }
-
         TriggerBowReleaseNetworked();
     }
 
@@ -360,7 +340,7 @@ public sealed class BowAttackController : NetworkBehaviour
         JobSkillData data = _playerCombat.ServerBowData;
         bool accepted = _serverShotAuthority.TryRelease(NetworkTime.time, data.MinimumBowChargeSeconds,
             data.MaximumBowDamageChargeSeconds, data.MinimumBowDamageMultiplier,
-            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds, _drawDuration + .15f);
+            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds);
         if (accepted) _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
         return accepted;
     }
@@ -452,9 +432,9 @@ public sealed class BowAttackController : NetworkBehaviour
     private void TriggerBowReleaseLocal()
     {
         _isVisuallyCharging = false;
-        _releaseQueued = false;
         _isReleaseLocked = true;
-        _releaseArrowAt = Time.time + .12f;
+        _drawReadyAt = float.PositiveInfinity;
+        OnBowReleaseArrow();
         RestartReleaseLockFallback();
         if (_animator == null) return;
         _animator.speed = 1f;
@@ -501,9 +481,10 @@ public sealed class BowAttackController : NetworkBehaviour
         ResolveReferences();
         Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
         Vector3 spawnPosition = spawnPoint.position;
-        Vector3 direction = _hasPendingAimPoint
-            ? _pendingAimPoint - spawnPosition
-            : _pendingDirection;
+        Vector3 aimPoint = _hasPendingAimPoint
+            ? _pendingAimPoint
+            : spawnPosition + _pendingDirection.normalized * Mathf.Max(1f, _aimDistance);
+        Vector3 direction = aimPoint - spawnPosition;
         if (direction.sqrMagnitude <= 0.001f)
             direction = transform.forward;
 
@@ -511,9 +492,9 @@ public sealed class BowAttackController : NetworkBehaviour
         _hasPendingAimPoint = false;
 
         if (isClient && isLocalPlayer && !isServer)
-            CmdSpawnBowArrow(spawnPosition, direction.normalized);
+            CmdSpawnBowArrow(spawnPosition, aimPoint);
         else if (NetworkServer.active)
-            SpawnBowArrow(spawnPosition, direction.normalized);
+            SpawnBowArrow(spawnPosition, aimPoint);
         else if (!NetworkClient.active && ProjectilePrefab != null && _playerCombat != null &&
             CombatValidation.HasClearPath(transform.position + Vector3.up, spawnPosition, transform, transform))
         {
@@ -524,22 +505,24 @@ public sealed class BowAttackController : NetworkBehaviour
     }
 
     [Command]
-    private void CmdSpawnBowArrow(Vector3 spawnPosition, Vector3 direction)
+    private void CmdSpawnBowArrow(Vector3 spawnPosition, Vector3 aimPoint)
     {
         if (_playerCombat != null && _playerCombat.IsServerTaunted) return;
-        SpawnBowArrow(spawnPosition, direction);
+        SpawnBowArrow(spawnPosition, aimPoint);
     }
 
-    private void SpawnBowArrow(Vector3 requestedSpawnPosition, Vector3 direction)
+    private void SpawnBowArrow(Vector3 requestedSpawnPosition, Vector3 aimPoint)
     {
         BowArrowProjectile projectilePrefab = ProjectilePrefab;
         if (!NetworkServer.active || projectilePrefab == null || _playerCombat == null ||
-            !_playerCombat.CanServerUseBow || !CombatValidation.IsFinite(direction) ||
-            direction.sqrMagnitude <= 0.001f || !IsValidRequestedSpawnPosition(requestedSpawnPosition))
+            !_playerCombat.CanServerUseBow || !CombatValidation.IsFinite(aimPoint) ||
+            !IsValidRequestedSpawnPosition(requestedSpawnPosition))
             return;
 
         Transform spawnPoint = _arrowSpawnPoint != null ? _arrowSpawnPoint : transform;
         Vector3 spawnPosition = spawnPoint.position;
+        Vector3 direction = aimPoint - spawnPosition;
+        if (direction.sqrMagnitude <= .001f || direction.sqrMagnitude > Mathf.Pow(Mathf.Max(1f, _aimDistance) + 8f, 2f)) return;
         if (!CombatValidation.HasClearPath(transform.position + Vector3.up, spawnPosition, transform, transform) ||
             !_serverShotAuthority.TryConsume(NetworkTime.time, out float damageMultiplier))
             return;
@@ -623,7 +606,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private Vector3 ResolveAimPoint(Ray aimRay)
     {
-        RaycastHit[] hits = Physics.RaycastAll(aimRay, Mathf.Max(1f, _aimDistance), _aimHitMask, QueryTriggerInteraction.Ignore);
+        RaycastHit[] hits = Physics.RaycastAll(aimRay, Mathf.Max(1f, _aimDistance), _aimHitMask, QueryTriggerInteraction.Collide);
         float closestDistance = float.PositiveInfinity;
         Vector3 aimPoint = aimRay.origin + aimRay.direction * Mathf.Max(1f, _aimDistance);
 
@@ -632,6 +615,11 @@ public sealed class BowAttackController : NetworkBehaviour
             RaycastHit hit = hits[i];
             if (hit.collider == null || hit.collider.transform.IsChildOf(transform))
                 continue;
+            // Use the projectile's body-part rules, including trigger hitboxes, for the crosshair target.
+            CombatHitTargets.Resolve(hit.collider, out var receiver, out var stats, out var bodyPart);
+            if (receiver is HealthSystem && bodyPart == null) continue;
+            if (hit.collider.isTrigger && (receiver == null || stats == null ||
+                (receiver is Behaviour behaviour && !behaviour.isActiveAndEnabled))) continue;
 
             if (hit.distance >= closestDistance)
                 continue;
@@ -821,7 +809,6 @@ public sealed class BowAttackController : NetworkBehaviour
     private void UnlockReleaseInput()
     {
         _isReleaseLocked = false;
-        _releaseArrowAt = float.PositiveInfinity;
         SetBowAimRigActive(false);
         ClearBowAnimationLayer();
         StopReleaseLockFallback();
@@ -829,7 +816,7 @@ public sealed class BowAttackController : NetworkBehaviour
 
     private void ClearBowAnimationLayer()
     {
-        if (_animator == null || string.IsNullOrWhiteSpace(ResetAnimationStateName))
+        if (_animator == null || _animator.layerCount == 0 || string.IsNullOrWhiteSpace(ResetAnimationStateName))
             return;
 
         int safeLayer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
