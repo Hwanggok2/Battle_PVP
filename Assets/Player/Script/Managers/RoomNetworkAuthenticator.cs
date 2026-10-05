@@ -102,6 +102,12 @@ namespace BattlePvp.Networking
                 return;
             }
             pending.Verifying = true;
+            VerifyProof(connection, pending, playerId, 1);
+        }
+
+        private void VerifyProof(NetworkConnectionToClient connection, Pending pending, string playerId, int attempt)
+        {
+            if (!IsCurrent(connection, pending)) return;
             int epoch = _serverEpoch;
             try
             {
@@ -117,6 +123,13 @@ namespace BattlePvp.Networking
                     if (epoch != _serverEpoch || !IsCurrent(connection, pending)) return;
                     if (!IsMatchingResult(result, pending.RoomId, pending.Challenge, playerId))
                     {
+                        string code = RoomServiceErrors.Classify(result);
+                        RecordAuthenticationFailure("verify", code);
+                        if (RoomServiceErrors.CanRetryProof(code, attempt))
+                        {
+                            StartCoroutine(RetryProof(connection, pending, playerId, attempt, epoch));
+                            return;
+                        }
                         Reject(connection, ResponseCode.Rejected);
                         return;
                     }
@@ -124,10 +137,31 @@ namespace BattlePvp.Networking
                     Accept(connection, new AuthenticatedRoomPlayer(playerId, pending.RoomId));
                 }, _ =>
                 {
-                    if (epoch == _serverEpoch && IsCurrent(connection, pending)) Reject(connection, ResponseCode.Rejected);
+                    if (epoch != _serverEpoch || !IsCurrent(connection, pending)) return;
+                    RecordAuthenticationFailure("verify", "service_unavailable");
+                    if (RoomServiceErrors.CanRetryProof("service_unavailable", attempt))
+                        StartCoroutine(RetryProof(connection, pending, playerId, attempt, epoch));
+                    else Reject(connection, ResponseCode.Rejected);
                 });
             }
-            catch (Exception) { Reject(connection, ResponseCode.Rejected); }
+            catch (Exception)
+            {
+                RecordAuthenticationFailure("verify", "request_exception");
+                Reject(connection, ResponseCode.Rejected);
+            }
+        }
+
+        private IEnumerator RetryProof(NetworkConnectionToClient connection, Pending pending, string playerId, int attempt, int epoch)
+        {
+            // Re-read the same proof; never extend its challenge, reserve an account, or accept without verification.
+            yield return new WaitForSecondsRealtime(.35f * attempt);
+            if (epoch == _serverEpoch && IsCurrent(connection, pending)) VerifyProof(connection, pending, playerId, attempt + 1);
+        }
+
+        private static void RecordAuthenticationFailure(string stage, string code)
+        {
+            RoomConnectionDiagnostics.Record("authentication_" + stage + "_" + code);
+            Debug.LogWarning("[RoomAuthentication] " + stage + ": " + code);
         }
 
         private bool IsCurrent(NetworkConnectionToClient connection, Pending pending) =>
@@ -231,10 +265,21 @@ namespace BattlePvp.Networking
                 }, result =>
                 {
                     if (!IsCurrentClient(epoch, connection, message.RoomId)) return;
-                    if (!IsMatchingResult(result, message.RoomId, message.Challenge, playerId)) { RejectClient(); return; }
+                    if (!IsMatchingResult(result, message.RoomId, message.Challenge, playerId))
+                    {
+                        string code = RoomServiceErrors.Classify(result);
+                        RecordAuthenticationFailure("approve", code);
+                        PlayFabBattleManager.Instance?.NotifyRoomAuthenticationFailed(RoomServiceErrors.Message(code));
+                        RejectClient(); return;
+                    }
                     _clientProofSent = true;
                     NetworkClient.Send(new ProofMessage { PlayerId = playerId, Challenge = message.Challenge });
-                }, _ => { if (IsCurrentClient(epoch, connection, message.RoomId)) RejectClient(); });
+                }, _ =>
+                {
+                    if (!IsCurrentClient(epoch, connection, message.RoomId)) return;
+                    RecordAuthenticationFailure("approve", "service_unavailable");
+                    RejectClient();
+                });
             }
             catch (Exception) { RejectClient(); }
         }

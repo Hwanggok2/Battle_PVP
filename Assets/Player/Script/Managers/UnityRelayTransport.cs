@@ -77,7 +77,8 @@ namespace BattlePvp.Networking
                 token.ThrowIfCancellationRequested();
                 await ServiceTaskDeadline.WaitAsync(EnsureUnityServicesAsync(), token);
                 int relayConnections = BattleNetworkManager.PlayerCapacity - 1;
-                Allocation allocation = await CreatePreferredAllocationAsync(relayConnections, token);
+                Allocation allocation = await RunRelayApiWithRetryAsync("CreateAllocationAsync (QoS)",
+                    () => RelayService.Instance.CreateAllocationAsync(relayConnections), token);
                 string joinCode = await RunRelayApiWithRetryAsync("GetJoinCodeAsync",
                     () => RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId), token);
                 RelayServerData serverData = allocation.ToRelayServerData(GetRelayConnectionType());
@@ -91,40 +92,6 @@ namespace BattlePvp.Networking
                 return joinCode;
             }
             finally { FinishPreparation(preparation); }
-        }
-
-        private async Task<Allocation> CreatePreferredAllocationAsync(int relayConnections, CancellationToken token)
-        {
-            try
-            {
-                token.ThrowIfCancellationRequested();
-                Allocation allocation = await ServiceTaskDeadline.WaitAsync(
-                    RelayService.Instance.CreateAllocationAsync(relayConnections, SeoulRelayRegionId), token);
-                if (IsPreferredRegion(allocation.Region))
-                    return allocation;
-
-                Debug.LogWarning(
-                    $"[UnityRelayTransport] Seoul request returned unsupported region [{allocation.Region}]. " +
-                    "Trying Tokyo.");
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                Debug.LogWarning(
-                    $"[UnityRelayTransport] Seoul allocation failed. Trying Tokyo. " +
-                    $"{ex.GetType().Name}");
-            }
-
-            Allocation fallback = await RunRelayApiWithRetryAsync(
-                "CreateAllocationAsync (Tokyo)",
-                () => RelayService.Instance.CreateAllocationAsync(relayConnections, TokyoRelayRegionId), token);
-            if (!IsPreferredRegion(fallback.Region))
-            {
-                throw new InvalidOperationException(
-                    $"Tokyo request returned unsupported region [{fallback.Region}].");
-            }
-
-            return fallback;
         }
 
         public async Task PrepareClientAsync(string joinCode, CancellationToken cancellation = default)
@@ -183,12 +150,6 @@ namespace BattlePvp.Networking
         }
 
         private void OnDestroy() => CancelPendingPreparation();
-
-        private static bool IsPreferredRegion(string regionId)
-        {
-            return string.Equals(regionId, SeoulRelayRegionId, StringComparison.OrdinalIgnoreCase) ||
-                   string.Equals(regionId, TokyoRelayRegionId, StringComparison.OrdinalIgnoreCase);
-        }
 
         private static string GetRegionLabel(string regionId)
         {

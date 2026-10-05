@@ -41,18 +41,19 @@ namespace BattlePvp.Networking
             string summary = "[RoomConnection] " + string.Join(" | ", Events);
             if (eventCode == "room_left") Debug.Log(summary);
             else Debug.LogWarning(summary);
-#if UNITY_EDITOR
             try
             {
-                System.IO.Directory.CreateDirectory("Reports/NetworkDiagnostics");
-                System.IO.File.WriteAllText("Reports/NetworkDiagnostics/latest-room-exit.json", JsonUtility.ToJson(new Report
+                string directory = Application.isEditor ? "Reports/NetworkDiagnostics" :
+                    System.IO.Path.Combine(Application.persistentDataPath, "NetworkDiagnostics");
+                System.IO.Directory.CreateDirectory(directory);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "latest-room-exit.json"), JsonUtility.ToJson(new Report
                 {
                     timeUtc = DateTime.UtcNow.ToString("O"), host = _host,
                     secondsSinceJoin = Time.realtimeSinceStartupAsDouble - _started, events = Events.ToArray()
                 }, true));
             }
-            catch (System.IO.IOException) { Debug.LogWarning("[RoomConnection] Could not save the editor diagnostic report."); }
-#endif
+            catch (System.IO.IOException) { Debug.LogWarning("[RoomConnection] Could not save the diagnostic report."); }
+            catch (UnauthorizedAccessException) { Debug.LogWarning("[RoomConnection] Diagnostic directory is not writable."); }
         }
     }
 }

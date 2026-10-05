@@ -104,6 +104,7 @@ namespace BattlePvp.Networking
             public PlayFabAuthenticationContext Authentication;
             public bool IsHost;
             public RoomInfo Info;
+            public string AuthenticationNotice;
             public readonly HostRoomLease Lease = new HostRoomLease();
             private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
             public readonly CancellationToken Cancellation;
@@ -440,7 +441,14 @@ namespace BattlePvp.Networking
                 ExecuteCloudScriptResult result = await ExecuteRoomMutation(flow, JOIN_ROOM_FUNCTION,
                     new Dictionary<string, object> { { "roomId", roomId }, { "passwordHash", RoomAdmission.PasswordHash(roomId, password) } });
                 if (!IsCurrentRoomFlow(flow)) { ScheduleRoomCleanup(flow); return; }
-                if (result == null || result.Error != null) throw new InvalidOperationException("Room join failed.");
+                if (result == null || result.Error != null)
+                {
+                    string code = RoomServiceErrors.Classify(result);
+                    RoomConnectionDiagnostics.Record("room_join_" + code);
+                    Debug.LogWarning("[RoomAuthentication] join: " + code);
+                    LeaveRoomWithNotice(RoomServiceErrors.Message(code));
+                    return;
+                }
                 flow.Info = ParseRoomInfoFromCloudScript(result.FunctionResult, flow);
                 _joinedRoomId = roomId;
                 _currentRoomInfo = flow.Info;
@@ -868,6 +876,17 @@ namespace BattlePvp.Networking
 
         public void LeaveCurrentRoom() => LeaveRoomWithNotice(string.Empty);
 
+        public async Task LeaveBeforeApplicationQuitAsync()
+        {
+            _roomServiceStopped = true;
+            RoomFlow flow = _activeRoomFlow;
+            LeaveCurrentRoom();
+            // Give the normal cleanup request a bounded chance to remove the room/membership.
+            // A lost connection still relies on the existing host lease expiry.
+            for (int i = 0; i < 20 && flow != null && flow.State.MembershipPossible && flow.State.CleanupQueued; i++)
+                await Task.Delay(100);
+        }
+
         private void LeaveRoomWithNotice(string message, bool retainNotice = false)
         {
             uint notification = ++_roomStateNotification;
@@ -895,9 +914,13 @@ namespace BattlePvp.Networking
             LeaveRoomWithNotice("같은 계정이 이미 방에 연결되어 있습니다.");
         }
 
-        public void NotifyRoomAuthenticationFailed()
+        public void NotifyRoomAuthenticationFailed(string message = null)
         {
-            SetRoomFlowState(_networkRoomFlow, "방 참가자 인증에 실패했습니다. 다시 참가해 주세요.", false);
+            RoomFlow flow = _networkRoomFlow;
+            if (flow == null) return;
+            if (!string.IsNullOrEmpty(message)) flow.AuthenticationNotice = message;
+            if (string.IsNullOrEmpty(flow.AuthenticationNotice)) flow.AuthenticationNotice = RoomServiceErrors.Message("authentication_rejected");
+            SetRoomFlowState(flow, flow.AuthenticationNotice, false);
         }
 
         public void NotifyRoomNetworkDisconnected(bool preserveMembership, bool authenticationFailed)
@@ -915,7 +938,7 @@ namespace BattlePvp.Networking
                 _activeRoomFlow = null;
                 ClearCurrentRoomState();
                 LastRoomNotice = preserveMembership ? "같은 계정이 이미 방에 연결되어 있습니다." :
-                    authenticationFailed ? "방 참가자 인증에 실패했습니다. 다시 참가해 주세요." : RoomClosedMessage;
+                    authenticationFailed ? (flow.AuthenticationNotice ?? RoomServiceErrors.Message("authentication_rejected")) : RoomClosedMessage;
             }
             flow.Cancel();
             ScheduleRoomCleanup(flow);

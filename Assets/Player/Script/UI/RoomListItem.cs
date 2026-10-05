@@ -28,6 +28,8 @@ namespace BattlePvp.UI
         public bool IsSelected => _selectedItem == this;
         private Action<string> _onSelected;
         private Action<string> _onDeleteRequested;
+        private Graphic _rowBackground;
+        private Color _normalBackgroundColor;
 
         private void Awake()
         {
@@ -124,13 +126,18 @@ namespace BattlePvp.UI
 
         private void EnsureSelectionOutline()
         {
+            if (_rowBackground == null)
+            {
+                _rowBackground = GetComponent<Graphic>();
+                if (_rowBackground != null) _normalBackgroundColor = _rowBackground.color;
+            }
             if (_selectionOutline == null)
                 _selectionOutline = GetComponent<Outline>();
 
             if (_selectionOutline == null)
                 _selectionOutline = gameObject.AddComponent<Outline>();
 
-            _selectionOutline.effectColor = Color.black;
+            _selectionOutline.effectColor = new Color(.1f, .85f, 1f, 1f);
             _selectionOutline.effectDistance = new Vector2(2f, -2f);
             _selectionOutline.useGraphicAlpha = false;
         }
@@ -140,7 +147,7 @@ namespace BattlePvp.UI
             if (_selectButton == null) return;
 
             var graphic = _selectButton.targetGraphic;
-            if (graphic != null)
+            if (graphic != null && graphic.gameObject != gameObject)
             {
                 Color color = graphic.color;
                 color.a = 0f;
@@ -153,6 +160,12 @@ namespace BattlePvp.UI
         {
             EnsureSelectionOutline();
             _selectionOutline.enabled = selected;
+            if (_rowBackground != null)
+            {
+                Color color = selected ? _normalBackgroundColor * .55f : _normalBackgroundColor;
+                color.a = selected ? Mathf.Max(.95f, _normalBackgroundColor.a) : _normalBackgroundColor.a;
+                _rowBackground.color = color;
+            }
         }
 
         private void ConfigureDeleteButton(bool showDeleteButton)
