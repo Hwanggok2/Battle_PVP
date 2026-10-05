@@ -19,9 +19,10 @@ namespace BattlePvp.Logic
     {
         // 전역에서 접근 가능한 일시정지(메뉴) 상태
         private static bool _paused;
+        private static bool _webPointerMissing;
         private static bool _textInputActive;
         private static int _textInputConsumedFrame = -1;
-        public static bool IsPaused { get => _paused || HasModalInput; private set => _paused = value; }
+        public static bool IsPaused { get => _paused || _webPointerMissing || HasModalInput; private set => _paused = value; }
         public static bool IsTextInputActive
         {
             get => _textInputActive || HasFocusedTextInput || _textInputConsumedFrame == Time.frameCount;
@@ -54,12 +55,24 @@ namespace BattlePvp.Logic
         private HealthSystem _localHealth;
         private PlayerManager _localMovement;
         private static bool IsWebGlRuntime => Application.platform == RuntimePlatform.WebGLPlayer;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void BattlePvpPointerLock_SetEnabled(int enabled);
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int BattlePvpPointerLock_IsLocked();
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void BattlePvpPointerLock_Dispose();
+#endif
 
         public static GameInputController Instance { get; private set; }
 
         private void Awake()
         {
             Instance = this;
+            _webPointerMissing = false;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            WebGLInput.stickyCursorLock = false;
+#endif
             _followCamera = FindFirstObjectByType<FollowCamera>();
             // 씬 진입 시마다 초기화 (Lobby에서 공격이 안 되는 현상 방지)
             IsPaused = false;
@@ -106,6 +119,10 @@ namespace BattlePvp.Logic
             // 오브젝트가 사라지거나 씬이 바뀔 때 상태 초기화
             IsPaused = false;
             IsTextInputActive = false;
+            _webPointerMissing = false;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            BattlePvpPointerLock_Dispose();
+#endif
             ReleaseCursor();
             CurrentMode = GameInputMode.Gameplay;
         }
@@ -170,12 +187,8 @@ namespace BattlePvp.Logic
             {
                 ClearSelectedUiIfNotTextInput();
 
-                if (IsWebGlRuntime && CanLockCursorInCurrentScene() &&
-                    Cursor.lockState != CursorLockMode.Locked)
-                {
-                    Cursor.lockState = CursorLockMode.Locked;
-                    Cursor.visible = false;
-                }
+                // Browser locking happens synchronously in the canvas pointerdown handler.
+                // A Unity Update is outside that user gesture and can be rejected by the browser.
             }
 
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
@@ -235,6 +248,12 @@ namespace BattlePvp.Logic
                 _localMovement != null && _localMovement.IsMatchEndLocked,
                 BattleStateMachine.Instance != null && BattleStateMachine.Instance.IsResultPanelVisible);
             IsPaused = CurrentMode != GameInputMode.Gameplay && CurrentMode != GameInputMode.TextInput;
+            _webPointerMissing = false;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            bool wantsPointerLock = CanLockCursorInCurrentScene();
+            BattlePvpPointerLock_SetEnabled(wantsPointerLock ? 1 : 0);
+            _webPointerMissing = wantsPointerLock && BattlePvpPointerLock_IsLocked() == 0;
+#endif
             if (!CanLockCursorInCurrentScene())
             {
                 ReleaseCursor();
@@ -248,15 +267,15 @@ namespace BattlePvp.Logic
             else
             {
                 ClearSelectedUiIfNotTextInput();
-                // WebGL 잠금은 전투 씬의 사용자 클릭 경로에서만 요청한다.
-                Cursor.visible = Cursor.lockState != CursorLockMode.Locked;
+                Cursor.visible = _webPointerMissing;
             }
             if (_followCamera == null) _followCamera = FindFirstObjectByType<FollowCamera>();
-            if (_followCamera != null) _followCamera.IsLocked = CurrentMode != GameInputMode.Gameplay;
+            if (_followCamera != null) _followCamera.IsLocked = CurrentMode != GameInputMode.Gameplay || _webPointerMissing;
             if (_cursorHint != null)
             {
                 string hint = BattlePvp.UI.GameSettingsPanel.IsOpen ? "Esc 설정 닫기" :
-                    _isCursorUnlocked ? "커서 모드  ·  Esc 조작 복귀" : "Esc 커서  ·  Enter 채팅";
+                    _isCursorUnlocked ? "커서 모드  ·  Esc 조작 복귀" :
+                    _webPointerMissing ? "화면을 클릭해 조작 재개  ·  Esc 커서" : "Esc 커서  ·  Enter 채팅";
                 if (_cursorHint.text != hint) _cursorHint.text = hint;
             }
         }

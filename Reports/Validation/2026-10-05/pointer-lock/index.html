@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><title>Pointer lock validation</title>
+<style>body{background:#111a28;color:white;font:20px sans-serif;padding:30px}button{padding:15px;margin:12px}canvas{display:block;background:#154157;border:2px solid cyan;margin:15px}pre{font-size:18px}</style>
+<h1>Pointer lock validation</h1><p>Enable gameplay, click the canvas, press Esc. Menu releases the cursor.</p>
+<button id="enable">Enable gameplay</button><button id="menu">Menu / unlock</button><button id="dispose">Dispose</button>
+<canvas id="canvas" width="650" height="300"></canvas><pre id="status"></pre>
+<script>var Module={canvas:document.getElementById('canvas')};var LibraryManager={library:{}};function mergeInto(a,b){Object.assign(a,b)};var errors=0,enabled=false,attempts=0,denials=0,lastGesture='none';document.addEventListener('pointerlockerror',()=>denials++);Module.canvas.addEventListener('pointerdown',e=>{attempts++;lastGesture='trusted='+e.isTrusted+', active='+navigator.userActivation.isActive+', visible='+document.visibilityState;});window.addEventListener('unhandledrejection',()=>errors++);window.addEventListener('error',()=>errors++);</script>
+<script src="pointer.js"></script><script>
+var lib=LibraryManager.library;lib.BattlePvpPointerLock_SetEnabled(0);
+document.getElementById('enable').onclick=()=>{enabled=true;lib.BattlePvpPointerLock_SetEnabled(1)};
+document.getElementById('menu').onclick=()=>{enabled=false;lib.BattlePvpPointerLock_SetEnabled(0)};
+document.getElementById('dispose').onclick=()=>{enabled=false;lib.BattlePvpPointerLock_Dispose()};
+function frame(){if(enabled)lib.BattlePvpPointerLock_SetEnabled(1);document.getElementById('status').textContent='Enabled: '+enabled+'\nLocked: '+lib.BattlePvpPointerLock_IsLocked()+'\nUnhandled errors: '+errors+'\nClicks: '+attempts+' Denials: '+denials+'\n'+lastGesture;requestAnimationFrame(frame)}frame();
+</script>
