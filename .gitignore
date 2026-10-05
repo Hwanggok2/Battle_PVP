@@ -23,6 +23,8 @@ __pycache__/
 /Reports/**/editor-final-state.txt
 /Reports/**/*.pid
 /Reports/CommitPreparation/
+# Raw per-frame latency captures stay local; commit JSON analysis and result summaries.
+/Reports/PingDiagnosis/**/*.csv
 *.xlsx.inspect.ndjson
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.

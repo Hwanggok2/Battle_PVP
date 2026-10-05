@@ -1,0 +1,14 @@
+{
+  "job": "build-43e80719d0",
+  "platform": "StandaloneWindows64",
+  "development": false,
+  "result": "succeeded",
+  "durationSeconds": 28.4268065,
+  "sizeMb": 241.35,
+  "errors": 0,
+  "warnings": 3,
+  "output": "Builds/Windows-2026-10-05-NetworkFix/Battle_PvP.exe",
+  "deadlineIncluded": true,
+  "captureIncluded": true,
+  "testProbeIncluded": false
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-05",
+  "scenario": "Editor host, waiting room, Windows participant unable to connect",
+  "region": "asia-northeast1",
+  "sampleSource": "Mirror.NetworkLoop.OnLateUpdate realtime interval",
+  "rawFile": "editor-host-connection-wait.csv",
+  "excludedInitialCallbacks": 1,
+  "samples": 1798,
+  "measuredSeconds": 30.012114299999997,
+  "averageFps": 59.90914142293534,
+  "frameP50Ms": 16.4364,
+  "frameP95Ms": 21.183,
+  "frameP99Ms": 23.9188,
+  "frameMaxMs": 43.9692,
+  "maxRemotePeers": 0.0,
+  "focusedFrames": 0,
+  "onlineRttMeasured": false,
+  "limitation": "Host-only sample; not online RTT or eight-player performance validation. RTT -1 means no remote peer. The temporary observer unsubscribed after 30 seconds."
+}

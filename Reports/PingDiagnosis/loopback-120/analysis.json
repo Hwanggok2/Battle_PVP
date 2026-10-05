@@ -1,0 +1,58 @@
+[
+  {
+    "capture": "relay-20261005-060940-859-host",
+    "role": "host",
+    "region": "",
+    "protocol": "udp",
+    "completed": "success",
+    "warmupExcludedSeconds": 10.0,
+    "rawRttMs": {
+      "max": 8.6602,
+      "p99": 8.4042,
+      "p50": 8.3334,
+      "samples": 501,
+      "p95": 8.3337
+    },
+    "frameMs": {
+      "max": 9.3351,
+      "p99": 8.5327,
+      "p50": 8.3295,
+      "samples": 6019,
+      "p95": 8.4577
+    },
+    "queueFullDelta": 0,
+    "unreliableDropDelta": 0,
+    "sendErrorDelta": 0,
+    "maxBacklogBytes": 0.0,
+    "maxBacklogSeconds": 0.0,
+    "gc0Delta": 0
+  },
+  {
+    "capture": "relay-20261005-060940-968-client",
+    "role": "client",
+    "region": "",
+    "protocol": "udp",
+    "completed": "success",
+    "warmupExcludedSeconds": 10.0,
+    "rawRttMs": {
+      "max": 17.2466,
+      "p99": 16.752,
+      "p50": 16.6667,
+      "samples": 500,
+      "p95": 16.6672
+    },
+    "frameMs": {
+      "max": 9.4521,
+      "p99": 8.5145,
+      "p50": 8.3317,
+      "samples": 5999,
+      "p95": 8.444
+    },
+    "queueFullDelta": 0,
+    "unreliableDropDelta": 0,
+    "sendErrorDelta": 0,
+    "maxBacklogBytes": 0.0,
+    "maxBacklogSeconds": 0.0,
+    "gc0Delta": 0
+  }
+]

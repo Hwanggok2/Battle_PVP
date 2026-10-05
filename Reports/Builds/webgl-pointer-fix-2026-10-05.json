@@ -1,0 +1,17 @@
+{
+  "jobId": "build-bf7327e36a",
+  "result": "succeeded",
+  "target": "WebGL",
+  "development": false,
+  "errors": 0,
+  "warnings": 4,
+  "durationSeconds": 436.5240447,
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-05-PointerFix.zip",
+  "archiveFileCount": 19,
+  "archiveBytes": 80037648,
+  "archiveSha256": "0372fc0f864fb7936552c64f4cf991965d76ee53d8c26c55a241ffed66d287af",
+  "archiveContentsVerified": true,
+  "previewUrl": "http://127.0.0.1:8771/",
+  "network": "Relay/WSS; unchanged",
+  "latencyValidation": "No peer connected; not measured"
+}

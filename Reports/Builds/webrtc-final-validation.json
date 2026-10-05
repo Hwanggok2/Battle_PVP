@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-05",
+  "windows": {
+    "jobId": "build-b1e43dac9a",
+    "result": "succeeded",
+    "errors": 0,
+    "warnings": 7,
+    "durationSeconds": 173.0038595,
+    "output": "Builds/Windows-2026-10-05-WebRTC/Battle_PvP.exe"
+  },
+  "webgl": {
+    "jobId": "build-e62925f28b",
+    "result": "succeeded",
+    "errors": 0,
+    "warnings": 4,
+    "durationSeconds": 736.3088379,
+    "output": "Builds/WebGL-2026-10-05-WebRTC",
+    "archive": "Builds/Battle_PvP-WebGL-2026-10-05-WebRTC.zip",
+    "sha256": "747c204e08211f466e0a1356d606fbaceaf5382bafaf12d56cc0a9b34a400762",
+    "zipIntegrity": "passed",
+    "productionTitleScreen": "verified",
+    "browserErrors": 0
+  },
+  "unityTests": {
+    "job_id": "d3edf77073f5486db8e620ce0144b4f5",
+    "status": "succeeded",
+    "mode": "EditMode",
+    "started_unix_ms": 1791197368766,
+    "finished_unix_ms": 1791197376665,
+    "last_update_unix_ms": 1791197376665,
+    "progress": {
+      "completed": 46,
+      "total": 46,
+      "current_test_full_name": null,
+      "current_test_started_unix_ms": 1791197376405,
+      "last_finished_test_full_name": "BattlePvp.EditorTests.RoomRtcSessionTests.ReceiveBufferIsBoundedWhileRelayBarrierIsDelayed",
+      "last_finished_unix_ms": 1791197376405,
+      "stuck_suspected": false,
+      "editor_is_focused": false,
+      "blocked_reason": null,
+      "failures_so_far": [],
+      "failures_capped": false
+    },
+    "error": null,
+    "result": {
+      "mode": "EditMode",
+      "summary": {
+        "total": 46,
+        "passed": 46,
+        "failed": 0,
+        "skipped": 0,
+        "durationSeconds": 3.028189,
+        "resultState": "Passed"
+      },
+      "results": []
+    }
+  },
+  "nodeTests": {
+    "passed": 12,
+    "failed": 0,
+    "files": [
+      "Tools/Tests/WebRtcBridge.test.js",
+      "Tools/Tests/WebGlPointerLock.test.js"
+    ]
+  },
+  "limits": [
+    "RTT measurements use isolated network probe scenes on one PC, not full 8-player combat.",
+    "WebGL Relay/WSS 18KB reliable messages at 10Hz still fail with EndSend(-5).",
+    "Fallback retains Relay on negotiation failure; committed WebRTC failure disconnects."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "dateKst": "2026-10-05",
+  "jobId": "build-d95588dc51",
+  "result": "succeeded",
+  "unity": "6000.3.15f1",
+  "target": "Windows64",
+  "backend": "Mono",
+  "development": false,
+  "errors": 0,
+  "warnings": 0,
+  "durationSeconds": 5.1878009,
+  "executable": "C:\\Github\\Battle_PVP\\Builds\\Windows-2026-10-05-Release\\Battle_PvP.exe",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-Windows-2026-10-05.zip",
+  "archiveBytes": 110900468,
+  "archiveFileCount": 232,
+  "archiveContentsVerified": true,
+  "archiveSha256": "0479A7D204FE41AC42FA70F0F984EAB5973F14C52E9FBE3210ED3D29DA3DD499",
+  "cloudScriptDeployment": "User-managed; Live deployment not verified"
+}

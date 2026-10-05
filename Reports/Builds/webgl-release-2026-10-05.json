@@ -1,0 +1,30 @@
+{
+  "dateKst": "2026-10-05",
+  "jobId": "build-d3842f5f44",
+  "result": "succeeded",
+  "unity": "6000.3.15f1",
+  "target": "WebGL",
+  "backend": "IL2CPP",
+  "development": false,
+  "errors": 0,
+  "warnings": 4,
+  "warningSummary": "Existing unused fields: DamagePopup._moveYSpeed; UnityRelayTransport._connectionType; FollowCamera._moveSmoothTime; FollowCamera._rotSmoothSpeed",
+  "durationSeconds": 823.9168514,
+  "compression": "Brotli with decompression fallback",
+  "networking": "Unity Relay / WSS; WebRTC not implemented",
+  "previewUrl": "http://127.0.0.1:8770/",
+  "browserChecks": [
+    "Start screen rendered",
+    "Touch to start opens login screen",
+    "No browser error logs during these checks"
+  ],
+  "browserWarning": "Manual JS_FileSystem_Sync deprecation warning from Unity runtime",
+  "multiplayerValidated": false,
+  "latencyMeasured": false,
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-05.zip",
+  "archiveBytes": 80023359,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "archiveSha256": "304568DA1A787956FF721E90BBC763C1B4BB903223D4655F3AC7E1E79E7E6E63",
+  "cloudScriptDeployment": "User-managed; Live deployment not verified"
+}

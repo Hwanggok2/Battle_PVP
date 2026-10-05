@@ -1,0 +1,21 @@
+{
+  "dateKst": "2026-10-05",
+  "jobId": "build-2242a7ce9c",
+  "result": "succeeded",
+  "unity": "6000.3.15f1",
+  "target": "WebGL",
+  "backend": "IL2CPP",
+  "development": false,
+  "errors": 0,
+  "warnings": 4,
+  "durationSeconds": 443.5342298,
+  "output": "C:\\Github\\Battle_PVP\\Builds\\WebGL-2026-10-05-HudFix",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-05-HudFix.zip",
+  "archiveBytes": 80019642,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "archiveSha256": "2a525c1ab97c45607b3e7607d1ea9ab7592b48ce7cee01bcb322d10dd8871ae3",
+  "change": "Network HUD below room banner",
+  "network": "Relay/WSS; not WebRTC",
+  "previewUrl": "http://127.0.0.1:8771/"
+}

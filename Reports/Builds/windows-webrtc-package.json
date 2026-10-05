@@ -1,0 +1,10 @@
+{
+  "path": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-Windows-2026-10-05-WebRTC.zip",
+  "files": 235,
+  "bytes": 115634845,
+  "sha256": "9cf2ca4042933443ec250d16039fac572ac6f5a49bd85c818004a1313880158a",
+  "archiveCheck": "passed",
+  "probeTypeExcluded": true,
+  "nativeWebRtcIncluded": true,
+  "debugSymbolsExcluded": true
+}

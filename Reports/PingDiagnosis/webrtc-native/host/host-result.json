@@ -1,0 +1,18 @@
+{
+    "role": "host",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "route": "relay",
+    "targetFps": 120,
+    "tickRate": 60,
+    "renderInterval": 2,
+    "connected": true,
+    "publicCandidateAvailable": false,
+    "connectSeconds": 4.289842099999999,
+    "renderedFps": 0.0,
+    "directSocketSendFailures": 0,
+    "wallRttP50Ms": -1.0,
+    "wallRttP95Ms": -1.0,
+    "wallRttMaxMs": -1.0
+}

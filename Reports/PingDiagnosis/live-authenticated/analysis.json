@@ -1,0 +1,28 @@
+{
+  "capture": "relay-20261005-060956-836-host",
+  "role": "host",
+  "region": "asia-northeast1",
+  "protocol": "udp",
+  "completed": "duration_complete",
+  "warmupExcludedSeconds": 10.0,
+  "rawRttMs": {
+    "p95": 150.3122,
+    "p50": 100.8993,
+    "max": 1212.0128,
+    "samples": 945,
+    "p99": 195.8596
+  },
+  "frameMs": {
+    "p95": 21.4727,
+    "p50": 16.5756,
+    "max": 1145.529,
+    "samples": 6387,
+    "p99": 23.6363
+  },
+  "queueFullDelta": 0,
+  "unreliableDropDelta": 0,
+  "sendErrorDelta": 0,
+  "maxBacklogBytes": 0.0,
+  "maxBacklogSeconds": 0.0,
+  "gc0Delta": 6
+}

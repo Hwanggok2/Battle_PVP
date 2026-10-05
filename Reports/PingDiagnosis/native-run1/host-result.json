@@ -1,0 +1,8 @@
+{
+    "role": "host",
+    "outcome": "setup_ServicesInitializationException",
+    "protocol": "udp",
+    "region": "",
+    "connected": false,
+    "connectSeconds": -1.0
+}

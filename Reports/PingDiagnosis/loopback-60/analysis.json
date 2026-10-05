@@ -1,0 +1,28 @@
+{
+  "capture": "relay-20261005-054741-250-client",
+  "role": "client",
+  "region": "",
+  "protocol": "udp",
+  "completed": "client_disconnected",
+  "warmupExcludedSeconds": 10.0,
+  "rawRttMs": {
+    "max": null,
+    "p50": null,
+    "p95": null,
+    "samples": 0,
+    "p99": null
+  },
+  "frameMs": {
+    "max": null,
+    "p50": null,
+    "p95": null,
+    "samples": 0,
+    "p99": null
+  },
+  "queueFullDelta": null,
+  "unreliableDropDelta": null,
+  "sendErrorDelta": null,
+  "maxBacklogBytes": null,
+  "maxBacklogSeconds": null,
+  "gc0Delta": null
+}

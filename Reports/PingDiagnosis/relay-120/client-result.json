@@ -1,0 +1,10 @@
+{
+    "role": "client",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "route": "relay",
+    "targetFps": 120,
+    "connected": true,
+    "connectSeconds": 3.4937558000000008
+}

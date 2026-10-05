@@ -1,0 +1,14 @@
+{
+    "utc": "20261005-083953-741",
+    "role": "host",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "scene": "Battle_waiting",
+    "unity": "6000.3.15f1",
+    "reason": "duration_complete",
+    "route": "",
+    "frames": 6940,
+    "pongs": 0,
+    "seconds": 60.13564170000609,
+    "note": "RTT includes game-loop waiting. Raw host pongs aggregate peers. Bytes exclude transport headers. Diagnostic message hooks may add boxing allocations."
+}

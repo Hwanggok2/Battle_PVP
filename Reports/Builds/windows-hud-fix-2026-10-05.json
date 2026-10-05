@@ -1,0 +1,20 @@
+{
+  "dateKst": "2026-10-05",
+  "jobId": "build-ee5e1cd1a0",
+  "result": "succeeded",
+  "unity": "6000.3.15f1",
+  "target": "Windows64",
+  "backend": "Mono",
+  "development": false,
+  "errors": 0,
+  "warnings": 3,
+  "durationSeconds": 19.8669343,
+  "executable": "C:\\Github\\Battle_PVP\\Builds\\Windows-2026-10-05-HudFix\\Battle_PvP.exe",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-Windows-2026-10-05-HudFix.zip",
+  "archiveBytes": 109243035,
+  "archiveFileCount": 233,
+  "archiveContentsVerified": true,
+  "archiveSha256": "9064e0aac2237fb9c72d7414861a8883de98ee6413b58417a34fb53251f34a86",
+  "change": "Network HUD below room banner",
+  "cloudScriptDeployment": "User-managed"
+}

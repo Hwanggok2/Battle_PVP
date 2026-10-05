@@ -1,0 +1,10 @@
+{
+    "role": "client",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "",
+    "route": "loopback",
+    "targetFps": 60,
+    "connected": true,
+    "connectSeconds": 0.18871870000000003
+}

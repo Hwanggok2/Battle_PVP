@@ -1,0 +1,10 @@
+{
+    "role": "client",
+    "outcome": "client_disconnected",
+    "protocol": "udp",
+    "region": "",
+    "route": "loopback",
+    "targetFps": 60,
+    "connected": true,
+    "connectSeconds": 0.1926363000000002
+}

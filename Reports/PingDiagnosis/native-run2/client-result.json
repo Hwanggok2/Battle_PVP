@@ -1,0 +1,8 @@
+{
+    "role": "client",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "connected": true,
+    "connectSeconds": 4.3643509
+}

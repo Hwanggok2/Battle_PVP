@@ -1,0 +1,12 @@
+{
+    "role": "host",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "route": "auto-direct",
+    "targetFps": 120,
+    "tickRate": 60,
+    "renderInterval": 2,
+    "connected": true,
+    "connectSeconds": 3.7603065000000006
+}

@@ -1,0 +1,18 @@
+{
+    "role": "client",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "asia-northeast1",
+    "route": "relay",
+    "targetFps": 120,
+    "tickRate": 60,
+    "renderInterval": 2,
+    "connected": true,
+    "publicCandidateAvailable": false,
+    "connectSeconds": 4.275099900000001,
+    "renderedFps": 0.0,
+    "directSocketSendFailures": 0,
+    "wallRttP50Ms": 91.55730000000162,
+    "wallRttP95Ms": 149.9327000000008,
+    "wallRttMaxMs": 209.0089000000006
+}

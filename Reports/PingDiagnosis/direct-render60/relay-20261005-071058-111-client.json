@@ -1,0 +1,14 @@
+{
+    "utc": "20261005-071058-111",
+    "role": "client",
+    "protocol": "udp",
+    "region": "",
+    "scene": "RelayNetworkProbe",
+    "unity": "6000.3.15f1",
+    "reason": "success",
+    "route": "direct",
+    "frames": 7199,
+    "pongs": 600,
+    "seconds": 60.0447185,
+    "note": "RTT includes game-loop waiting. Raw host pongs aggregate peers. Bytes exclude transport headers. Diagnostic message hooks may add boxing allocations."
+}

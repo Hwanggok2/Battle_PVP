@@ -1,0 +1,13 @@
+{
+  "directEndpoint": true,
+  "stunInterface": true,
+  "networkTiming": true,
+  "roomAuthenticator": true,
+  "probeExcluded": true,
+  "mirrorEarlyFlush": true,
+  "buildJob": "build-0335c9eaf0",
+  "errors": 0,
+  "warnings": 3,
+  "cloudScriptDeployedByAgent": false,
+  "testsPassed": 78
+}

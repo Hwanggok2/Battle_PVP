@@ -1,0 +1,16 @@
+{
+  "outcome": "success",
+  "route": "WebRTC UDP",
+  "clientPlatform": "WebGL development probe",
+  "hostPlatform": "Windows",
+  "targetFps": 60,
+  "renderedFps": 60.56788642271546,
+  "wallRttP50Ms": 17.0,
+  "wallRttP95Ms": 17.0,
+  "wallRttMaxMs": 25.0,
+  "directSamples": 380,
+  "reliableEchoes": 0,
+  "directActiveUtc": "2026-10-05T10:26:43.922Z",
+  "finishedUtc": "2026-10-05T10:27:31.931Z",
+  "note": "Actual Mirror/Unity transport WebRTC UDP. Large-message stress was disabled for this latency run; the separate Relay bulk-transfer failure remains unresolved."
+}

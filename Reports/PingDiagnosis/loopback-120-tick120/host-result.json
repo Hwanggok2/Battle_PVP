@@ -1,0 +1,11 @@
+{
+    "role": "host",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "",
+    "route": "loopback",
+    "targetFps": 120,
+    "tickRate": 120,
+    "connected": true,
+    "connectSeconds": 0.1431081999999999
+}

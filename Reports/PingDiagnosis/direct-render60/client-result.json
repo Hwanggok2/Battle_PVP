@@ -1,0 +1,15 @@
+{
+    "role": "client",
+    "outcome": "success",
+    "protocol": "udp",
+    "region": "",
+    "route": "auto-direct",
+    "targetFps": 120,
+    "tickRate": 60,
+    "renderInterval": 2,
+    "connected": true,
+    "publicCandidateAvailable": true,
+    "connectSeconds": 2.4635884000000005,
+    "renderedFps": 0.0,
+    "directSocketSendFailures": 0
+}

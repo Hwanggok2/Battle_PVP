@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-05",
+  "deployedRevisionObserved": 15,
+  "failedRemoteAttempt": { "transportConnected": true, "stage": "verify", "reasonAvailable": false },
+  "legacyReadOnlyFailureProbe": { "error": "JavascriptException", "message": "JavascriptException", "emptyStackTrace": true },
+  "userRetryBeforePatch": { "succeeded": true, "differentAccounts": true, "memberPresent": true, "authenticated": true, "ready": true, "playerSpawned": true },
+  "editMode": { "job": "99045287a8b547a3a85b0ec97a737922", "passed": 56, "failed": 0, "skipped": 0, "seconds": 3.324917 },
+  "cloudScriptDiagnosticsDeployed": false,
+  "rootCauseConfirmed": false,
+  "note": "No account, room, challenge, join code or credentials recorded. Successful retry predates the bounded opaque-verification retry patch."
+}

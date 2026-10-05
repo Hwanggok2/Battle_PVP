@@ -1,0 +1,12 @@
+{
+  "job": "build-59024232c5",
+  "result": "succeeded",
+  "platform": "StandaloneWindows64",
+  "output": "Builds/Windows-2026-10-05-AuthFix/Battle_PvP.exe",
+  "development": false,
+  "durationSeconds": 4.0345654,
+  "sizeMb": 241.35,
+  "errors": 0,
+  "warnings": 0,
+  "note": "Final incremental rebuild after a full Editor refresh/compile; preceding full build succeeded with an uncompiled-editor warning and 3 existing unused-field warnings. Actual player DLL was inspected for the new retry code and exclusion of test-only probe."
+}
