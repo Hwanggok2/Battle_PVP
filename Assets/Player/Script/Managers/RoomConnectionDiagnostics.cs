@@ -33,6 +33,13 @@ namespace BattlePvp.Networking
             Events.Add((Time.realtimeSinceStartupAsDouble - _started).ToString("F2", System.Globalization.CultureInfo.InvariantCulture) + "s: " + eventCode);
         }
 
+        // Fixed stage names only: never log allocation data, room/account IDs or SDK responses.
+        public static void Stage(string eventCode)
+        {
+            Record(eventCode);
+            if (Application.isPlaying) Debug.Log("[RelayConnection] " + eventCode);
+        }
+
         public static void SaveExit(string eventCode)
         {
             if (!_active || _saved) return;

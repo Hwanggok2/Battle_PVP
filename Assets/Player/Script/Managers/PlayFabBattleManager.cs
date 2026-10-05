@@ -445,7 +445,7 @@ namespace BattlePvp.Networking
                 {
                     string code = RoomServiceErrors.Classify(result);
                     RoomConnectionDiagnostics.Record("room_join_" + code);
-                    Debug.LogWarning("[RoomAuthentication] join: " + code);
+                    Debug.LogWarning("[RoomAuthentication] join: " + RoomServiceErrors.Diagnostic(result));
                     LeaveRoomWithNotice(RoomServiceErrors.Message(code));
                     return;
                 }
@@ -921,6 +921,16 @@ namespace BattlePvp.Networking
             if (!string.IsNullOrEmpty(message)) flow.AuthenticationNotice = message;
             if (string.IsNullOrEmpty(flow.AuthenticationNotice)) flow.AuthenticationNotice = RoomServiceErrors.Message("authentication_rejected");
             SetRoomFlowState(flow, flow.AuthenticationNotice, false);
+        }
+
+        public void NotifyRoomConnectionFailed(bool timedOut)
+        {
+            RoomFlow flow = _networkRoomFlow;
+            if (!IsCurrentRoomFlow(flow)) return;
+            // Disconnect cleanup restores the buttons and preserves this specific connection reason.
+            flow.AuthenticationNotice = timedOut
+                ? "방 연결 시간이 초과되었습니다. 목록을 새로고침한 뒤 다시 참가해 주세요."
+                : "릴레이 게임 연결에 실패했습니다. 목록을 새로고침한 뒤 다시 참가해 주세요.";
         }
 
         public void NotifyRoomNetworkDisconnected(bool preserveMembership, bool authenticationFailed)

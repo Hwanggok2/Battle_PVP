@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const { load } = require('./NetworkProfileRoomCapacity.test.js');
+const host = 'ABC123', guest = 'DEF456', roomId = 'battle_abc123_' + '1'.repeat(32);
+for (const file of ['roomRegistry.js', 'combinedCloudScript.js']) {
+    const { context: c, options } = load(file), h = c.handlers, messages = [];
+    c.log.error = message => messages.push(message);
+    h.RegisterRoomToRegistry({ roomId, roomName: 'Diagnostic fixture', masterName: 'Host', relayJoinCode: 'relay' });
+    const proof = { roomId, playerId: guest, challenge: '2'.repeat(32) };
+    assert.throws(() => h.VerifyRoomConnection(proof), /must have joined/);
+    assert.equal(messages.pop(), 'ROOM_FAILURE:membership_missing');
+    c.currentPlayerId = guest;
+    h.JoinRoom({ roomId });
+    c.currentPlayerId = host;
+    assert.throws(() => h.VerifyRoomConnection(proof), /approval is absent/);
+    assert.equal(messages.pop(), 'ROOM_FAILURE:proof_not_ready');
+    c.currentPlayerId = guest;
+    h.ApproveRoomConnection(proof);
+    c.currentPlayerId = host;
+    assert.equal(h.VerifyRoomConnection(proof).ok, true);
+    assert.equal(messages.length, 0);
+    assert.throws(() => h.VerifyRoomConnection({ ...proof, challenge: '3'.repeat(32) }), /approval/);
+    assert.equal(messages.pop(), 'ROOM_FAILURE:proof_not_ready');
+    options.proofReadFailure = true;
+    assert.throws(() => h.VerifyRoomConnection(proof), /proof read failure/);
+    assert.equal(messages.pop(), 'ROOM_FAILURE:script_failed');
+    options.proofReadFailure = false;
+    const original = c.server.GetUserInternalData;
+    c.server.GetUserInternalData = () => { throw { apiErrorInfo: { apiError: { error: 'ServiceUnavailable' } } }; };
+    assert.throws(() => h.VerifyRoomConnection(proof));
+    assert.equal(messages.pop(), 'ROOM_FAILURE:service_unavailable');
+    c.server.GetUserInternalData = original;
+    assert.equal(messages.length, 0);
+    console.log(file + ': fixed failure codes, successful proof, rejected replay and original error contract passed');
+}

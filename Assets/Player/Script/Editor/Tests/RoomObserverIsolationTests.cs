@@ -335,6 +335,24 @@ namespace BattlePvp.EditorTests
             Assert.That(_manager.LastRoomNotice, Is.Null);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TransportFailureRestoresJoinUiAndPreservesSpecificReason(bool timeout)
+        {
+            _manager.JoinRoom(Room);
+            Set("_networkRoomFlow", Get<object>("_activeRoomFlow"));
+            bool busy = true;
+            _manager.OnRoomFlowStateChanged += (_, value) => busy = value;
+            _manager.NotifyRoomConnectionFailed(timeout);
+            _manager.NotifyRoomNetworkDisconnected(false, true);
+            Assert.That(busy, Is.False);
+            Assert.That(_manager.CurrentRoomId, Is.Null);
+            Assert.That(_manager.LastRoomNotice, Does.Contain(timeout ? "시간이 초과" : "게임 연결에 실패"));
+            _manager.JoinRoom(Room);
+            Assert.That(_manager.CurrentRoomId, Is.EqualTo(Room));
+            Assert.That(_manager.LastRoomNotice, Is.Null);
+        }
+
         private void Respond(ExecuteCloudScriptRequest request, Action<ExecuteCloudScriptResult> success, Action<PlayFabError> failure)
         {
             _requests.Add(request.FunctionName);

@@ -130,6 +130,10 @@ namespace BattlePvp.EditorTests
         [TestCase("ROOM_PASSWORD_INVALID", "password_invalid")]
         [TestCase("Connection approval is absent, expired or does not match.", "proof_not_ready")]
         [TestCase("The authenticated player must have joined the room.", "membership_missing")]
+        [TestCase("Connection approval is invalid.", "proof_invalid")]
+        [TestCase("Only the authenticated room owner may change this room.", "owner_required")]
+        [TestCase("A fresh connection challenge is required.", "challenge_invalid")]
+        [TestCase("A valid participant account is required.", "account_invalid")]
         public void ServiceFailuresKeepActionableSafeCodes(string message, string expected)
         {
             var result = new ExecuteCloudScriptResult { Error = new ScriptExecutionError { Message = message } };
@@ -144,6 +148,43 @@ namespace BattlePvp.EditorTests
             Assert.That(RoomServiceErrors.CanRetryProof("service_unavailable", 2), Is.True);
             Assert.That(RoomServiceErrors.CanRetryProof("room_closed", 1), Is.False);
             Assert.That(RoomServiceErrors.CanRetryProof("response_mismatch", 1), Is.False);
+            Assert.That(RoomServiceErrors.CanRetryProof("script_exception", 1), Is.True);
+            Assert.That(RoomServiceErrors.CanRetryProof("script_exception", 2), Is.True);
+            Assert.That(RoomServiceErrors.CanRetryProof("script_exception", 3), Is.False);
+            Assert.That(RoomServiceErrors.CanRetryProof("script_exception", 0), Is.False);
+            Assert.That(RoomServiceErrors.CanRetryProof("script_failed", 1), Is.False);
+            Assert.That(RoomServiceErrors.CanRetryProof("membership_missing", 1), Is.False);
+        }
+
+        [TestCase("proof_not_ready", true)]
+        [TestCase("membership_missing", false)]
+        [TestCase("kicked", false)]
+        [TestCase("proof_invalid", false)]
+        [TestCase("room_closed", false)]
+        public void CloudFailureCodesSurviveOpaqueExceptionAndKeepRejections(string code, bool retry)
+        {
+            var result = new ExecuteCloudScriptResult {
+                Error = new ScriptExecutionError { Error = "JavascriptException", Message = "JavascriptException" },
+                Logs = new System.Collections.Generic.List<LogStatement> { new LogStatement { Message = "ROOM_FAILURE:" + code } }
+            };
+            Assert.That(RoomServiceErrors.Classify(result), Is.EqualTo(code));
+            Assert.That(RoomServiceErrors.CanRetryProof(RoomServiceErrors.Classify(result), 1), Is.EqualTo(retry));
+        }
+
+        [Test]
+        public void LegacyOpaqueErrorIsRetryableButNeverPrintsArbitraryServerData()
+        {
+            var result = new ExecuteCloudScriptResult {
+                Revision = 15, APIRequestsIssued = 5,
+                Error = new ScriptExecutionError { Error = "JavascriptException", Message = "private-value" },
+                Logs = new System.Collections.Generic.List<LogStatement> {
+                    new LogStatement { Message = "ROOM_FAILURE:private-value", Data = "private-proof" }
+                }
+            };
+            Assert.That(RoomServiceErrors.Classify(result), Is.EqualTo("script_exception"));
+            Assert.That(RoomServiceErrors.Diagnostic(result), Is.EqualTo("script_exception revision=15 apiRequests=5"));
+            result.Error = null;
+            Assert.That(RoomServiceErrors.Classify(result), Is.EqualTo("response_mismatch"), "A malformed success is not an opaque script exception.");
         }
     }
 }

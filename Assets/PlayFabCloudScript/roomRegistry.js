@@ -716,3 +716,40 @@ for (var handlerName in handlers) {
 function disabledCloudScriptHandler(args, context) {
     throw "This CloudScript handler is disabled.";
 }
+
+// Preserve the original failure/return contract, but provide fixed codes even when Classic
+// CloudScript replaces a thrown string with an opaque JavascriptException response.
+function roomFailureCode(error) {
+    var message = getErrorText(error);
+    if (message.indexOf("ROOM_PASSWORD") !== -1) return "password_invalid";
+    if (message.indexOf("ROOM_KICKED") !== -1) return "kicked";
+    if (message.indexOf("Room is full") !== -1) return "room_full";
+    if (message.indexOf("lease has expired") !== -1 || message.indexOf("Room does not exist") !== -1 ||
+        message.indexOf("Room is not registered") !== -1) return "room_closed";
+    if (message.indexOf("Connection approval is absent") !== -1) return "proof_not_ready";
+    if (message.indexOf("Connection approval is invalid") !== -1) return "proof_invalid";
+    if (message.indexOf("must have joined") !== -1) return "membership_missing";
+    if (message.indexOf("room owner") !== -1) return "owner_required";
+    if (message.indexOf("fresh connection challenge") !== -1) return "challenge_invalid";
+    if (message.indexOf("participant account") !== -1 || message.indexOf("authenticated PlayFab player") !== -1)
+        return "account_invalid";
+    var details = error && error.apiErrorInfo ? error.apiErrorInfo : error;
+    if (details && details.apiError && typeof details.apiError === "object") details = details.apiError;
+    var apiError = details && (details.error || details.apiError);
+    if (apiError === "ServiceUnavailable" || apiError === "APIClientRequestRateLimitExceeded" ||
+        apiError === "DataUpdateRateExceeded") return "service_unavailable";
+    return "script_failed";
+}
+function withRoomFailureDiagnostics(handler) {
+    return function(args, context) {
+        try { return handler(args, context); }
+        catch (error) {
+            // Do not emit args, account IDs, room IDs, passwords, proofs or exception bodies.
+            log.error("ROOM_FAILURE:" + roomFailureCode(error));
+            throw error;
+        }
+    };
+}
+handlers.JoinRoom = withRoomFailureDiagnostics(handlers.JoinRoom);
+handlers.ApproveRoomConnection = withRoomFailureDiagnostics(handlers.ApproveRoomConnection);
+handlers.VerifyRoomConnection = withRoomFailureDiagnostics(handlers.VerifyRoomConnection);

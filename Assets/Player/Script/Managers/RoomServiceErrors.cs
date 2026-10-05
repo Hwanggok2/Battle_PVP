@@ -10,20 +10,43 @@ namespace BattlePvp.Networking
         {
             if (result == null) return "response_missing";
             if (result.Error == null) return "response_mismatch";
-            string message = result.Error.Message ?? string.Empty;
+            // Classic CloudScript can strip a thrown string to "JavascriptException".
+            // Only accept fixed diagnostic codes; never copy server messages or log data into the UI.
+            if (result.Logs != null)
+                foreach (LogStatement entry in result.Logs)
+                    if (entry != null && entry.Message != null && entry.Message.StartsWith("ROOM_FAILURE:", StringComparison.Ordinal))
+                    {
+                        string code = entry.Message.Substring("ROOM_FAILURE:".Length);
+                        if (IsDiagnosticCode(code)) return code;
+                    }
+            string message = (result.Error.Message ?? string.Empty) + "\n" + (result.Error.StackTrace ?? string.Empty);
             if (Contains(message, "ROOM_PASSWORD")) return "password_invalid";
             if (Contains(message, "ROOM_KICKED")) return "kicked";
             if (Contains(message, "Room is full")) return "room_full";
             if (Contains(message, "lease has expired") || Contains(message, "Room does not exist") ||
                 Contains(message, "Room is not registered")) return "room_closed";
             if (Contains(message, "Connection approval is absent")) return "proof_not_ready";
+            if (Contains(message, "Connection approval is invalid")) return "proof_invalid";
             if (Contains(message, "must have joined")) return "membership_missing";
+            if (Contains(message, "room owner")) return "owner_required";
+            if (Contains(message, "fresh connection challenge")) return "challenge_invalid";
+            if (Contains(message, "participant account") || Contains(message, "authenticated PlayFab player")) return "account_invalid";
             if (Contains(result.Error.Error, "FunctionNotFound")) return "function_missing";
+            if (result.Error.Error == "JavascriptException") return "script_exception";
             return "script_failed";
         }
 
-        public static bool CanRetryProof(string code, int attempt) => attempt < 3 &&
-            (code == "proof_not_ready" || code == "service_unavailable");
+        // Verification is read-only. Retry the SAME connection proof, within its existing deadline.
+        // An opaque legacy exception is not acceptance and must still produce a matching successful proof.
+        public static bool CanRetryProof(string code, int attempt) => attempt >= 1 && attempt < 3 &&
+            (code == "proof_not_ready" || code == "service_unavailable" || code == "script_exception");
+
+        private static bool IsDiagnosticCode(string code) => code is "password_invalid" or "kicked" or "room_full" or
+            "room_closed" or "proof_not_ready" or "membership_missing" or "proof_invalid" or
+            "owner_required" or "challenge_invalid" or "account_invalid" or "service_unavailable" or "script_failed";
+
+        public static string Diagnostic(ExecuteCloudScriptResult result) =>
+            Classify(result) + " revision=" + (result?.Revision ?? 0) + " apiRequests=" + (result?.APIRequestsIssued ?? 0);
 
         public static string Message(string code) => code switch
         {

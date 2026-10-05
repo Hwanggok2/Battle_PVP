@@ -124,7 +124,7 @@ namespace BattlePvp.Networking
                     if (!IsMatchingResult(result, pending.RoomId, pending.Challenge, playerId))
                     {
                         string code = RoomServiceErrors.Classify(result);
-                        RecordAuthenticationFailure("verify", code);
+                        RecordAuthenticationFailure("verify", RoomServiceErrors.Diagnostic(result) + " attempt=" + attempt);
                         if (RoomServiceErrors.CanRetryProof(code, attempt))
                         {
                             StartCoroutine(RetryProof(connection, pending, playerId, attempt, epoch));
@@ -236,6 +236,7 @@ namespace BattlePvp.Networking
 
         public override void OnClientAuthenticate()
         {
+            RoomConnectionDiagnostics.Stage("room_authentication_started");
             _clientWaiting = true;
             _clientRoomId = PlayFabBattleManager.Instance != null ? PlayFabBattleManager.Instance.CurrentRoomId : null;
             _clientDeadline = Time.realtimeSinceStartupAsDouble + RoomAuthenticationRules.TimeoutSeconds + 2d;
@@ -268,7 +269,7 @@ namespace BattlePvp.Networking
                     if (!IsMatchingResult(result, message.RoomId, message.Challenge, playerId))
                     {
                         string code = RoomServiceErrors.Classify(result);
-                        RecordAuthenticationFailure("approve", code);
+                        RecordAuthenticationFailure("approve", RoomServiceErrors.Diagnostic(result));
                         PlayFabBattleManager.Instance?.NotifyRoomAuthenticationFailed(RoomServiceErrors.Message(code));
                         RejectClient(); return;
                     }
@@ -311,6 +312,7 @@ namespace BattlePvp.Networking
                 (_clientProofSent || (NetworkClient.connection is LocalConnectionToServer && NetworkServer.active)))
             {
                 _clientWaiting = false;
+                RoomConnectionDiagnostics.Stage("room_authentication_accepted");
                 ClientAccept();
                 return;
             }

@@ -206,6 +206,8 @@ namespace BattlePvp.Networking
         public override void OnClientError(TransportError error, string reason)
         {
             RoomConnectionDiagnostics.Record("client_transport_error_" + error);
+            if (!NetworkClient.isConnected)
+                PlayFabBattleManager.Instance?.NotifyRoomConnectionFailed(error == TransportError.Timeout);
             Debug.LogWarning($"[BattleNetworkManager] Client transport error: {error}: {reason}");
         }
 
