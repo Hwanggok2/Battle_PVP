@@ -12,7 +12,10 @@ namespace BattlePvp.Combat
         StrategistPresetChange = 11,
         PolymathRoll = 20,
         PolymathPresetChange = 21,
-        PolymathWeaponSwap = 22
+        PolymathWeaponSwap = 22,
+        Hook = 100, WarCry = 101, Charge = 102, Stealth = 103, Knife = 104,
+        Berserk = 105, Recovery = 106, Bash = 107, Thorns = 108, Fortify = 109,
+        Trap = 110, Dice = 111, Steal = 112
     }
 
     public enum AdvancedSkillEffect { None, KickWindow, TauntReady, Roll, PresetChange, WeaponSwap }
@@ -22,7 +25,7 @@ namespace BattlePvp.Combat
     {
         public static int SlotCount(Identity identity) => identity.Type switch
         {
-            IdentityType.Monostat => 1,
+            IdentityType.Monostat => identity.PrimaryStat is StatKind.STR or StatKind.CON or StatKind.AGI or StatKind.DEF ? 2 : 0,
             IdentityType.Strategist => 2,
             IdentityType.Polymath => 2,
             _ => 0
@@ -32,6 +35,11 @@ namespace BattlePvp.Combat
         {
             kind = default;
             if (slot < 0 || slot >= SlotCount(identity)) return false;
+            if (slot == 1 && identity.Type == IdentityType.Monostat)
+            {
+                kind = identity.PrimaryStat switch { StatKind.STR => JobSkillKind.Hook, StatKind.CON => JobSkillKind.Berserk,
+                    StatKind.AGI => JobSkillKind.Stealth, _ => JobSkillKind.Bash }; return true;
+            }
             switch (identity.Type)
             {
                 case IdentityType.Monostat:
@@ -55,6 +63,9 @@ namespace BattlePvp.Combat
 
         public static bool Allows(Identity identity, JobSkillKind kind)
         {
+            if (SlotCount(identity) == 0) return false;
+            int job = identity.Type == IdentityType.Strategist ? 4 : identity.Type == IdentityType.Polymath ? 5 : identity.PrimaryStat switch { StatKind.STR => 0, StatKind.CON => 1, StatKind.AGI => 2, _ => 3 };
+            if (System.Array.IndexOf(AdditionalSkills[job], (int)kind) >= 0) return true;
             for (int slot = 0; slot < SlotCount(identity); slot++)
                 if (TrySelect(identity, slot, out JobSkillKind selected) && kind == selected) return true;
             return false;
@@ -69,6 +80,7 @@ namespace BattlePvp.Combat
             JobSkillKind.PolymathWeaponSwap => AdvancedSkillEffect.WeaponSwap,
             _ => AdvancedSkillEffect.None
         };
+        private static readonly int[][] AdditionalSkills = { new[] {100,101,102}, new[] {105,102,106}, new[] {103,104}, new[] {107,108,109}, new[] {110,111}, new[] {110,112} };
 
         public static bool LocksCastMovement(JobSkillKind kind) =>
             kind != JobSkillKind.MonostatAgiPoison && kind != JobSkillKind.PolymathWeaponSwap;

@@ -1,0 +1,922 @@
+{
+  "skills": [
+    {
+      "id": "AGI_Poison",
+      "kind": 1,
+      "cast": 1,
+      "duration": 7,
+      "cooldown": 30,
+      "params": {
+        "InputLockSeconds": 0,
+        "PoisonMaxStacks": 5,
+        "PoisonDamagePerStackPerSecond": 6,
+        "PoisonStackDurationSeconds": 6
+      },
+      "args": "DurationSeconds,PoisonMaxStacks,PoisonDamagePerStackPerSecond,PoisonStackDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "CON_Kick",
+      "kind": 2,
+      "cast": 0.3,
+      "duration": 0,
+      "cooldown": 10,
+      "params": {
+        "InputLockSeconds": 0,
+        "KickDamageMultiplier": 1.5,
+        "KickKnockbackDistance": 1.5,
+        "KickSlowMoveMultiplier": 0.2,
+        "KickSlowDurationSeconds": 0.65
+      },
+      "args": "KickDamageMultiplier,KickKnockbackDistance,KickSlowDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "DEF_Taunt",
+      "kind": 3,
+      "cast": 0.8,
+      "duration": 0,
+      "cooldown": 30,
+      "params": {
+        "InputLockSeconds": 0,
+        "TauntReadyDurationSeconds": 30,
+        "TauntDurationSeconds": 2.5,
+        "TauntStopDistance": 1.2,
+        "TauntIncomingDamageMultiplier": 0.7,
+        "TauntReflectMultiplier": 2,
+        "TauntReflectHealthCapRatio": 0.14
+      },
+      "args": "TauntDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "POLY_Weapon",
+      "kind": 22,
+      "cast": 0.75,
+      "duration": 0,
+      "cooldown": 10,
+      "params": {
+        "InputLockSeconds": 0,
+        "MinimumBowChargeSeconds": 0.25,
+        "MaximumBowDamageChargeSeconds": 1,
+        "MinimumBowDamageMultiplier": 0.4,
+        "MaximumBowDamageMultiplier": 0.75,
+        "BowChargeMoveMultiplier": 0.25,
+        "BowRange": 30,
+        "WeaponSwapMoveBonusDurationSeconds": 3,
+        "WeaponSwapMoveMultiplier": 1.2,
+        "WeaponSwapNextAttackMultiplier": 1.3
+      },
+      "args": "WeaponSwapMoveBonusDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "POLY_Preset",
+      "kind": 21,
+      "cast": 1.2,
+      "duration": 0,
+      "cooldown": 40,
+      "params": {
+        "InputLockSeconds": 0,
+        "MaxHealthIncreaseShieldRatio": 0.5,
+        "ShieldDurationSeconds": 20,
+        "StrategistStrNextAttackMultiplier": 1.2,
+        "StrategistStrAttackBonusDurationSeconds": 5,
+        "StrategistAgiBonusDurationSeconds": 4,
+        "StrategistAgiMoveMultiplier": 1.15,
+        "StrategistAgiAttackSpeedMultiplier": 1.35,
+        "StrategistConTargetMaxHpShieldRatio": 0.2,
+        "StrategistDefInvulnerableSeconds": 5,
+        "TargetPresetSTR": 0,
+        "TargetPresetCON": 0,
+        "TargetPresetAGI": 0,
+        "TargetPresetDEF": 0
+      },
+      "args": "",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": false
+    },
+    {
+      "id": "POLY_Roll",
+      "kind": 20,
+      "cast": 0.35,
+      "duration": 0,
+      "cooldown": 10,
+      "params": {
+        "InputLockSeconds": 0,
+        "RollDistance": 3.6,
+        "RollDurationSeconds": 0.35,
+        "MaxCharges": 2
+      },
+      "args": "RollDistance,MaxCharges,CooldownSeconds,RollDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "STR_Lifesteal",
+      "kind": 0,
+      "cast": 0.7,
+      "duration": 10,
+      "cooldown": 40,
+      "params": {
+        "InputLockSeconds": 0,
+        "LifestealRatio": 0.1
+      },
+      "args": "DurationSeconds,LifestealRatio",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "TACT_Preset",
+      "kind": 11,
+      "cast": 1.2,
+      "duration": 0,
+      "cooldown": 40,
+      "params": {
+        "InputLockSeconds": 0,
+        "MaxHealthIncreaseShieldRatio": 0.5,
+        "ShieldDurationSeconds": 20,
+        "StrategistStrNextAttackMultiplier": 1.2,
+        "StrategistStrAttackBonusDurationSeconds": 5,
+        "StrategistAgiBonusDurationSeconds": 4,
+        "StrategistAgiMoveMultiplier": 1.15,
+        "StrategistAgiAttackSpeedMultiplier": 1.35,
+        "StrategistConTargetMaxHpShieldRatio": 0.2,
+        "StrategistDefInvulnerableSeconds": 5,
+        "TargetPresetSTR": 0,
+        "TargetPresetCON": 0,
+        "TargetPresetAGI": 0,
+        "TargetPresetDEF": 0
+      },
+      "args": "",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "TACT_Dash",
+      "kind": 10,
+      "cast": 0.35,
+      "duration": 0,
+      "cooldown": 8,
+      "params": {
+        "InputLockSeconds": 0,
+        "RollDistance": 3.6,
+        "RollDurationSeconds": 0.35,
+        "MaxCharges": 2
+      },
+      "args": "RollDistance,MaxCharges,CooldownSeconds,RollDurationSeconds",
+      "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
+      "enabled": true
+    },
+    {
+      "id": "STR_Hook",
+      "kind": 100,
+      "cast": 0.25,
+      "duration": 0,
+      "cooldown": 15,
+      "params": {
+        "Range": 4,
+        "ProjectileSpeed": 12,
+        "PullSpeed": 8,
+        "Radius": 0.08,
+        "StopDistance": 1
+      },
+      "args": "Range",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "STR_WarCry",
+      "kind": 101,
+      "cast": 0.7,
+      "duration": 10,
+      "cooldown": 25,
+      "params": {
+        "MoveMultiplier": 1.2,
+        "IncomingMultiplier": 0.8
+      },
+      "args": "DurationSeconds,MoveMultiplier,IncomingMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "SHARED_Charge",
+      "kind": 102,
+      "cast": 0,
+      "duration": 4,
+      "cooldown": 20,
+      "params": {
+        "AccelerationSeconds": 2.5,
+        "InitialSpeedMultiplier": 0.8,
+        "MaximumAgiMultiplier": 1.3,
+        "TurnDegreesPerSecond": 60,
+        "DamageMultiplier": 1,
+        "StunSeconds": 1
+      },
+      "args": "DurationSeconds,AccelerationSeconds,StunSeconds,InitialSpeedMultiplier,MaximumAgiMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "AGI_Stealth",
+      "kind": 103,
+      "cast": 0.3,
+      "duration": 0,
+      "cooldown": 20,
+      "params": {
+        "BreakDistance": 1,
+        "BonusSeconds": 3,
+        "AttackMultiplier": 1.2
+      },
+      "args": "BreakDistance,BonusSeconds,AttackMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "AGI_Knife",
+      "kind": 104,
+      "cast": 0.15,
+      "duration": 0,
+      "cooldown": 0,
+      "params": {
+        "MaxCharges": 3,
+        "RechargeSeconds": 8,
+        "DamageMultiplier": 0.5,
+        "Range": 10,
+        "ProjectileSpeed": 16,
+        "Radius": 0.06,
+        "ThrowInterval": 0.3
+      },
+      "args": "MaxCharges,RechargeSeconds,DamageMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "CON_Berserk",
+      "kind": 105,
+      "cast": 0.4,
+      "duration": 0,
+      "cooldown": 20,
+      "params": {
+        "HealthDrainRatio": 0.03,
+        "MoveMultiplier": 1.2,
+        "AttackSpeedMultiplier": 1.3,
+        "AttackMultiplier": 2,
+        "RecoveryRegenMultiplier": 0.5
+      },
+      "args": "HealthDrainRatio,MoveMultiplier,AttackSpeedMultiplier,AttackMultiplier,CooldownSeconds",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "CON_Recovery",
+      "kind": 106,
+      "cast": 0.45,
+      "duration": 10,
+      "cooldown": 40,
+      "params": {
+        "HealthCostRatio": 0.3,
+        "HealRatio": 0.2,
+        "RegenMultiplier": 2
+      },
+      "args": "HealthCostRatio,DurationSeconds,HealRatio,RegenMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "DEF_Bash",
+      "kind": 107,
+      "cast": 0,
+      "duration": 30,
+      "cooldown": 10,
+      "params": {
+        "StunSeconds": 3,
+        "IncomingMultiplier": 2
+      },
+      "args": "StunSeconds,IncomingMultiplier,DurationSeconds",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "DEF_Thorns",
+      "kind": 108,
+      "cast": 0,
+      "duration": 10,
+      "cooldown": 25,
+      "params": {
+        "ReflectMultiplier": 2
+      },
+      "args": "DurationSeconds,ReflectMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "DEF_Fortify",
+      "kind": 109,
+      "cast": 0.25,
+      "duration": 3,
+      "cooldown": 20,
+      "params": {
+        "DefenseMultiplier": 2
+      },
+      "args": "DurationSeconds,DefenseMultiplier",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "SHARED_Trap",
+      "kind": 110,
+      "cast": 1.1,
+      "duration": 0,
+      "cooldown": 25,
+      "params": {
+        "Lifetime": 60,
+        "MaxHealthDamageRatio": 0.2,
+        "RootSeconds": 5,
+        "PlaceDistance": 1.2,
+        "MaxCharges": 3
+      },
+      "args": "Lifetime,MaxHealthDamageRatio,RootSeconds,CastSeconds,MaxCharges,CooldownSeconds",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "TACT_Dice",
+      "kind": 111,
+      "cast": 0.3,
+      "duration": 15,
+      "cooldown": 15,
+      "params": {
+        "Face1": -0.3,
+        "Face2": -0.2,
+        "Face3": -0.1,
+        "Face4": 0.1,
+        "Face5": 0.2,
+        "Face6": 0.3
+      },
+      "args": "DurationSeconds,Face1,Face2,Face3,Face4,Face5,Face6",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    },
+    {
+      "id": "POLY_Steal",
+      "kind": 112,
+      "cast": 0.25,
+      "duration": 0,
+      "cooldown": 20,
+      "params": {
+        "Range": 4
+      },
+      "args": "Range,CooldownSeconds",
+      "source": "사용자 지정; 미지정 값은 초기 밸런스",
+      "enabled": true
+    }
+  ],
+  "strings": [
+    [
+      "AGI_Poison_Name",
+      "독 바르기",
+      "Venom Blade",
+      0
+    ],
+    [
+      "AGI_Poison_Desc",
+      "{0:0.#}초 동안 검에 독을 바릅니다. 최대 {1:0}중첩, 중첩당 초당 {2:0.#} 피해, {3:0.#}초 지속.",
+      "Coat your sword for {0:0.#}s. Up to {1:0} stacks, {2:0.#} damage per stack per second for {3:0.#}s.",
+      4
+    ],
+    [
+      "CON_Kick_Name",
+      "발차기",
+      "Kick",
+      0
+    ],
+    [
+      "CON_Kick_Desc",
+      "공격력의 {0:0%} 피해와 {1:0.#}m 밀치기. {2:0.#}초 동안 적을 느리게 합니다.",
+      "Deal {0:0%} attack damage and knock back {1:0.#}m. Slow the target for {2:0.#}s.",
+      3
+    ],
+    [
+      "DEF_Taunt_Name",
+      "도발",
+      "Taunt",
+      0
+    ],
+    [
+      "DEF_Taunt_Desc",
+      "다음 검 적중 시 {0:0.#}초간 적을 끌어들입니다. 받는 피해 감소와 반사 강화가 적용됩니다.",
+      "Your next sword hit forces the enemy toward you for {0:0.#}s and grants damage reduction and stronger reflection.",
+      1
+    ],
+    [
+      "POLY_Weapon_Name",
+      "무기 스왑",
+      "Weapon Swap",
+      0
+    ],
+    [
+      "POLY_Weapon_Desc",
+      "검과 활을 교체합니다. {0:0.#}초 동안 이동 속도가 증가하고 다음 공격이 강화됩니다. 좌클릭을 길게 눌러 활을 충전합니다.",
+      "Swap between sword and bow. Gain movement speed for {0:0.#}s and empower your next hit. Hold attack to draw the bow.",
+      1
+    ],
+    [
+      "POLY_Preset_Name",
+      "프리셋 전환 (미사용)",
+      "Reconfigure (unused)",
+      0
+    ],
+    [
+      "POLY_Preset_Desc",
+      "이전 데이터 호환용 스킬입니다. 장착할 수 없습니다.",
+      "Legacy compatibility skill. Cannot be equipped.",
+      0
+    ],
+    [
+      "POLY_Roll_Name",
+      "구르기",
+      "Roll",
+      0
+    ],
+    [
+      "POLY_Roll_Desc",
+      "전방으로 {3:0.##}초 동안 {0:0.#}m 구릅니다. 최대 {1:0}회 충전, {2:0.#}초마다 1회 회복.",
+      "Roll {0:0.#}m forward in {3:0.##}s. Stores {1:0} charges; recovers one every {2:0.#}s.",
+      4
+    ],
+    [
+      "STR_Lifesteal_Name",
+      "광폭",
+      "Bloodlust",
+      0
+    ],
+    [
+      "STR_Lifesteal_Desc",
+      "{0:0.#}초 동안 검 피해의 {1:0%}를 회복합니다.",
+      "For {0:0.#}s, sword hits heal for {1:0%} of damage.",
+      2
+    ],
+    [
+      "TACT_Preset_Name",
+      "프리셋 전환",
+      "Reconfigure",
+      0
+    ],
+    [
+      "TACT_Preset_Desc",
+      "저장한 능력치 배분으로 전환하고 주 능력치에 맞는 보너스를 받습니다. 다시 사용하면 원래 배분으로 돌아갑니다.",
+      "Switch to your saved stat preset and gain a bonus based on its primary stat. Use again to return.",
+      0
+    ],
+    [
+      "TACT_Dash_Name",
+      "대시",
+      "Dash",
+      0
+    ],
+    [
+      "TACT_Dash_Desc",
+      "전방으로 {3:0.##}초 동안 {0:0.#}m 대시합니다. 최대 {1:0}회 충전, {2:0.#}초마다 1회 회복.",
+      "Dash {0:0.#}m forward in {3:0.##}s. Stores {1:0} charges; recovers one every {2:0.#}s.",
+      4
+    ],
+    [
+      "STR_Hook_Name",
+      "갈고리",
+      "Grappling Hook",
+      0
+    ],
+    [
+      "STR_Hook_Desc",
+      "사거리 {0:0.#}m. 갈고리에 직접 맞은 적을 앞으로 끌어옵니다. 던지고 회수하는 동안 이동·공격할 수 없습니다.",
+      "Range {0:0.#}m. Pull a directly hit enemy toward you. Movement and attacks are locked until the hook resolves.",
+      1
+    ],
+    [
+      "STR_WarCry_Name",
+      "힘찬 함성",
+      "Rallying Cry",
+      0
+    ],
+    [
+      "STR_WarCry_Desc",
+      "{0:0.#}초 동안 이동 속도가 기본의 {1:0%}, 받는 피해가 {2:0%}가 됩니다.",
+      "For {0:0.#}s, movement speed becomes {1:0%} and incoming damage becomes {2:0%} of normal.",
+      3
+    ],
+    [
+      "SHARED_Charge_Name",
+      "돌진",
+      "Charge",
+      0
+    ],
+    [
+      "SHARED_Charge_Desc",
+      "최대 {0:0.#}초 돌진. 걷기 속도의 {3:0%}로 출발, {1:0.#}초 후 AGI 몰빵 기본 속도의 {4:0%} 도달. 적마다 피해·{2:0.#}초 기절. 적중 후 계속 돌진. 점프·공격·스킬 키로 종료.",
+      "Charge up to {0:0.#}s. Start at {3:0%} walk speed; reach {4:0%} base AGI-specialist speed in {1:0.#}s. Damage and stun each enemy once for {2:0.#}s without stopping. Jump, attack or a skill key ends charge.",
+      5
+    ],
+    [
+      "AGI_Stealth_Name",
+      "은신",
+      "Stealth",
+      0
+    ],
+    [
+      "AGI_Stealth_Desc",
+      "모습을 숨깁니다. 공격·피격 또는 누적 {0:0.#}m 이동 시 해제됩니다. 해제 후 {1:0.#}초간 공격력이 기본의 {2:0%}가 됩니다.",
+      "Become invisible. Attacking, taking damage, or moving a total of {0:0.#}m breaks stealth and grants {2:0%} attack power for {1:0.#}s.",
+      3
+    ],
+    [
+      "AGI_Knife_Name",
+      "나이프 투척",
+      "Throwing Knives",
+      0
+    ],
+    [
+      "AGI_Knife_Desc",
+      "키를 눌러 준비하고 좌클릭으로 투척합니다. 최대 {0:0}개, {1:0.#}초마다 1개 충전. 공격력의 {2:0%} 피해와 독 1중첩. 다시 스킬 키를 누르면 준비를 취소합니다.",
+      "Press the skill key to ready, then attack to throw. Holds {0:0} knives; recharges one every {1:0.#}s. Deals {2:0%} attack damage and adds one poison stack. Press the skill key again to cancel.",
+      3
+    ],
+    [
+      "CON_Berserk_Name",
+      "광전사",
+      "Berserk",
+      0
+    ],
+    [
+      "CON_Berserk_Desc",
+      "켜짐/꺼짐. 매초 최대 체력 {0:0%} 소모. 부족하면 체력 1을 남기고 종료. 이동 {1:0%}, 공속 {2:0%}, 공격력 {3:0%}. 재생 불가. 종료 후 {4:0.#}초간 쿨타임·재생 절반.",
+      "Toggle. Drain {0:0%} max HP/s; stop at 1 HP. Movement {1:0%}, attack speed {2:0%}, attack power {3:0%}. No regeneration. On ending: {4:0.#}s cooldown and half regeneration.",
+      5
+    ],
+    [
+      "CON_Recovery_Name",
+      "체력 가속",
+      "Vital Surge",
+      0
+    ],
+    [
+      "CON_Recovery_Desc",
+      "최대 체력의 {0:0%}를 즉시 소모하고 {1:0.#}초에 걸쳐 {2:0%}를 회복합니다. 그동안 체력 재생은 {3:0%}. 소모량보다 체력이 많아야 합니다.",
+      "Spend {0:0%} max health to restore {2:0%} over {1:0.#}s. Regeneration becomes {3:0%} during the effect. Requires health above the cost.",
+      4
+    ],
+    [
+      "DEF_Bash_Name",
+      "후리기",
+      "Crushing Blow",
+      0
+    ],
+    [
+      "DEF_Bash_Desc",
+      "다음 공격 적중 시 {0:0.#}초간 이동·공격을 막고, 해당 시간에 적이 받는 피해를 {1:0%}로 만듭니다. 준비 상태는 {2:0.#}초 유지됩니다.",
+      "Your next hit stuns for {0:0.#}s and makes the target take {1:0%} damage during the stun. The ready effect lasts {2:0.#}s.",
+      3
+    ],
+    [
+      "DEF_Thorns_Name",
+      "가시",
+      "Thorns",
+      0
+    ],
+    [
+      "DEF_Thorns_Desc",
+      "{0:0.#}초 동안 반사 피해가 {1:0%}가 됩니다.",
+      "For {0:0.#}s, reflected damage becomes {1:0%}.",
+      2
+    ],
+    [
+      "DEF_Fortify_Name",
+      "굳히기",
+      "Fortify",
+      0
+    ],
+    [
+      "DEF_Fortify_Desc",
+      "{0:0.#}초 동안 이동할 수 없고 방어력이 {1:0%}가 됩니다. 공격과 시점 전환은 가능합니다.",
+      "For {0:0.#}s, movement is locked and defense becomes {1:0%}. You can still attack and look around.",
+      2
+    ],
+    [
+      "SHARED_Trap_Name",
+      "덫 깔기",
+      "Trap",
+      0
+    ],
+    [
+      "SHARED_Trap_Desc",
+      "최대 {4:0}회 충전, {5:0.#}초마다 1회 회복. 스킬 키로 앞을 조준, 클릭으로 {3:0.#}초간 설치. {0:0.#}초 유지. 적 최대 체력 {1:0%} 피해·{2:0.#}초 이동/방향 봉쇄.",
+      "Stores {4:0} charges; recovers one every {5:0.#}s. Skill key previews; click to place in {3:0.#}s. Lasts {0:0.#}s; deals {1:0%} max HP and locks movement/turning for {2:0.#}s.",
+      6
+    ],
+    [
+      "TACT_Dice_Name",
+      "주사위",
+      "Loaded Fate",
+      0
+    ],
+    [
+      "TACT_Dice_Desc",
+      "{0:0.#}초간 모든 능력치 변경. 1~3: {1:0%}/{2:0%}/{3:0%}, 4~6: +{4:0%}/+{5:0%}/+{6:0%}. 사용 직후 쿨타임 시작.",
+      "Change all stats for {0:0.#}s. 1–3: {1:0%}/{2:0%}/{3:0%}; 4–6: +{4:0%}/+{5:0%}/+{6:0%}. Cooldown starts immediately.",
+      7
+    ],
+    [
+      "POLY_Steal_Name",
+      "스틸",
+      "Skill Steal",
+      0
+    ],
+    [
+      "POLY_Steal_Desc",
+      "바라보는 {0:0.#}m 이내 적의 장착 스킬 하나를 복제합니다. 같은 키로 복제한 스킬을 1회 사용한 뒤 {1:0.#}초 쿨타임이 시작됩니다. 스틸 자체는 복제하지 않습니다.",
+      "Copy one equipped skill from the enemy you aim at within {0:0.#}m. Use it once with the same key, then begin a {1:0.#}s cooldown. Cannot copy Steal itself.",
+      2
+    ],
+    [
+      "JOB_STR_Name",
+      "힘 특화",
+      "Strength Specialist",
+      0
+    ],
+    [
+      "JOB_STR_Requirement",
+      "STR에 30 포인트 투자",
+      "Invest 30 points in STR",
+      0
+    ],
+    [
+      "JOB_STR_Desc",
+      "강력한 근접 공격과 추격으로 적을 압박합니다.",
+      "Pressure enemies with heavy melee attacks and pursuit.",
+      0
+    ],
+    [
+      "JOB_CON_Name",
+      "체력 특화",
+      "Vitality Specialist",
+      0
+    ],
+    [
+      "JOB_CON_Requirement",
+      "CON에 30 포인트 투자",
+      "Invest 30 points in CON",
+      0
+    ],
+    [
+      "JOB_CON_Desc",
+      "체력을 소모하거나 회복하며 오래 싸웁니다.",
+      "Spend and recover health to sustain a fight.",
+      0
+    ],
+    [
+      "JOB_AGI_Name",
+      "민첩 특화",
+      "Agility Specialist",
+      0
+    ],
+    [
+      "JOB_AGI_Requirement",
+      "AGI에 30 포인트 투자",
+      "Invest 30 points in AGI",
+      0
+    ],
+    [
+      "JOB_AGI_Desc",
+      "빠른 공격과 독, 은신으로 기회를 만듭니다.",
+      "Create openings with speed, poison, and stealth.",
+      0
+    ],
+    [
+      "JOB_DEF_Name",
+      "방어 특화",
+      "Defense Specialist",
+      0
+    ],
+    [
+      "JOB_DEF_Requirement",
+      "DEF에 30 포인트 투자",
+      "Invest 30 points in DEF",
+      0
+    ],
+    [
+      "JOB_DEF_Desc",
+      "공격을 버티고 반격하며 적을 제압합니다.",
+      "Withstand attacks, retaliate, and control enemies.",
+      0
+    ],
+    [
+      "JOB_TACT_Name",
+      "전략가",
+      "Tactician",
+      0
+    ],
+    [
+      "JOB_TACT_Requirement",
+      "최대·최소 투자 차이 8 이상, 몰빵 제외",
+      "Investment spread of at least 8; not a single-stat build",
+      0
+    ],
+    [
+      "JOB_TACT_Desc",
+      "대시, 프리셋, 덫과 주사위를 조합합니다.",
+      "Combine dashes, presets, traps, and fate.",
+      0
+    ],
+    [
+      "JOB_POLY_Name",
+      "팔방미인",
+      "Polymath",
+      0
+    ],
+    [
+      "JOB_POLY_Requirement",
+      "최대·최소 투자 차이 7 이하",
+      "Investment spread of at most 7",
+      0
+    ],
+    [
+      "JOB_POLY_Desc",
+      "무기 전환과 회피, 덫과 복제로 대응합니다.",
+      "Adapt with weapon swaps, evasion, traps, and copied skills.",
+      0
+    ],
+    [
+      "UI_Skill_Title",
+      "직업과 스킬",
+      "Jobs and Skills",
+      0
+    ],
+    [
+      "UI_Skill_Hint",
+      "직업마다 서로 다른 스킬 2개를 장착합니다.",
+      "Equip two different skills for each job.",
+      0
+    ],
+    [
+      "UI_Skill_Close",
+      "닫기",
+      "Close",
+      0
+    ],
+    [
+      "UI_Skill_Save",
+      "적용",
+      "Apply",
+      0
+    ],
+    [
+      "UI_Skill_Saved",
+      "장착 구성을 적용했습니다.",
+      "Loadout applied.",
+      0
+    ],
+    [
+      "UI_Skill_BattleLocked",
+      "전투 중에는 장착 스킬을 변경할 수 없습니다.",
+      "Skills cannot be changed during battle.",
+      0
+    ],
+    [
+      "UI_Skill_Slot1",
+      "1번 장착",
+      "Equip slot 1",
+      0
+    ],
+    [
+      "UI_Skill_Slot2",
+      "2번 장착",
+      "Equip slot 2",
+      0
+    ],
+    [
+      "UI_Skill_Current",
+      "현재 직업",
+      "Current job",
+      0
+    ],
+    [
+      "UI_Skill_Duplicate",
+      "같은 스킬을 두 슬롯에 넣을 수 없습니다.",
+      "The two slots must contain different skills.",
+      0
+    ],
+    [
+      "UI_Skill_Footer",
+      "Esc 닫기 · 장착 구성은 계정별로 이 기기에 저장됩니다.",
+      "Esc to close. Loadouts are saved per account on this device.",
+      0
+    ],
+    [
+      "UI_DiceResult",
+      "주사위 {0}  ·  모든 능력치 {1}{2}%",
+      "Dice {0}  ·  All stats {1}{2}%",
+      3
+    ],
+    [
+      "UI_SkillTiming",
+      "시전 {0:0.##}초 · 재사용 {1:0.##}초",
+      "Cast {0:0.##}s · Cooldown {1:0.##}s",
+      2
+    ]
+  ],
+  "jobs": [
+    [
+      "STR",
+      "힘 특화",
+      "Strength Specialist",
+      "STR에 30 포인트 투자",
+      "Invest 30 points in STR",
+      "강력한 근접 공격과 추격으로 적을 압박합니다.",
+      "Pressure enemies with heavy melee attacks and pursuit.",
+      [
+        0,
+        100,
+        101,
+        102
+      ]
+    ],
+    [
+      "CON",
+      "체력 특화",
+      "Vitality Specialist",
+      "CON에 30 포인트 투자",
+      "Invest 30 points in CON",
+      "체력을 소모하거나 회복하며 오래 싸웁니다.",
+      "Spend and recover health to sustain a fight.",
+      [
+        2,
+        105,
+        102,
+        106
+      ]
+    ],
+    [
+      "AGI",
+      "민첩 특화",
+      "Agility Specialist",
+      "AGI에 30 포인트 투자",
+      "Invest 30 points in AGI",
+      "빠른 공격과 독, 은신으로 기회를 만듭니다.",
+      "Create openings with speed, poison, and stealth.",
+      [
+        1,
+        103,
+        104
+      ]
+    ],
+    [
+      "DEF",
+      "방어 특화",
+      "Defense Specialist",
+      "DEF에 30 포인트 투자",
+      "Invest 30 points in DEF",
+      "공격을 버티고 반격하며 적을 제압합니다.",
+      "Withstand attacks, retaliate, and control enemies.",
+      [
+        3,
+        107,
+        108,
+        109
+      ]
+    ],
+    [
+      "TACT",
+      "전략가",
+      "Tactician",
+      "최대·최소 투자 차이 8 이상, 몰빵 제외",
+      "Investment spread of at least 8; not a single-stat build",
+      "대시, 프리셋, 덫과 주사위를 조합합니다.",
+      "Combine dashes, presets, traps, and fate.",
+      [
+        10,
+        11,
+        110,
+        111
+      ]
+    ],
+    [
+      "POLY",
+      "팔방미인",
+      "Polymath",
+      "최대·최소 투자 차이 7 이하",
+      "Investment spread of at most 7",
+      "무기 전환과 회피, 덫과 복제로 대응합니다.",
+      "Adapt with weapon swaps, evasion, traps, and copied skills.",
+      [
+        20,
+        22,
+        110,
+        112
+      ]
+    ]
+  ]
+}

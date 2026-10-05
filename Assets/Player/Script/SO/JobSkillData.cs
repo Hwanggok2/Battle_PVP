@@ -16,6 +16,9 @@ namespace BattlePvp.Combat
     [CreateAssetMenu(fileName = "NewJobSkillData", menuName = "Combat/Job Skill Data")]
     public sealed class JobSkillData : ScriptableObject
     {
+        [SerializeField] private bool _useGameData;
+        public bool UsesGameData => _useGameData;
+        private float ReadNumber(JobSkillKind kind, string key, float fallback) => _useGameData ? SkillGameData.Number(kind, key, fallback) : fallback;
         [SerializeField] private JobSkillKind _skillKind = JobSkillKind.MonostatStrLifesteal;
 
         [SerializeField] private string _displayName = "Skill";
@@ -32,6 +35,8 @@ namespace BattlePvp.Combat
         [Min(0)] [SerializeField] private int _castAnimationLayer = 0;
 
         [Min(0f)] [SerializeField] private float _lifestealRatio = 0f;
+        [Min(0f)] [SerializeField] private float _strAttackSpeedMultiplier = 1.2f;
+        [Min(0f)] [SerializeField] private float _strMoveMultiplier = 1.1f;
 
         [Min(0)] [SerializeField] private int _poisonMaxStacks = 0;
         [Min(0f)] [SerializeField] private float _poisonDamagePerStackPerSecond = 0f;
@@ -78,58 +83,71 @@ namespace BattlePvp.Combat
         [Range(0f, 1f)] [SerializeField] private float _sfxVolume = 0.9f;
 
         public JobSkillKind SkillKind => _skillKind;
-        public string DisplayName => _displayName;
+        public string DisplayName => _useGameData && SkillGameData.Instance != null && SkillGameData.Instance.Find((int)_skillKind) != null ? SkillGameData.Text(SkillGameData.Instance.Find((int)_skillKind).NameKey, _displayName) : _displayName;
         public Sprite IconSprite => _iconSprite;
-        public float CastSeconds => _castSeconds;
-        public float DurationSeconds => _durationSeconds;
-        public float CooldownSeconds => _cooldownSeconds;
+        public float CastSeconds => ReadNumber(_skillKind, "CastSeconds", _castSeconds);
+        public float DurationSeconds => ReadNumber(_skillKind, "DurationSeconds", _durationSeconds);
+        public float CooldownSeconds => ReadNumber(_skillKind, "CooldownSeconds", _cooldownSeconds);
         public SkillInputLockFlags InputLockFlags => _inputLockFlags != SkillInputLockFlags.None ? _inputLockFlags : GetDefaultInputLockFlags();
-        public float InputLockSeconds => _inputLockSeconds;
+        public float InputLockSeconds => ReadNumber(_skillKind, "InputLockSeconds", _inputLockSeconds);
         public float ResolveInputLockSeconds()
         {
-            if (_inputLockSeconds > 0f)
-                return _inputLockSeconds;
+            if (InputLockSeconds > 0f)
+                return InputLockSeconds;
 
             return GetDefaultInputLockSeconds();
         }
         public string CastAnimationStateName => _castAnimationStateName;
         public int CastAnimationLayer => _castAnimationLayer;
-        public float LifestealRatio => _lifestealRatio;
-        public int PoisonMaxStacks => _poisonMaxStacks;
-        public float PoisonDamagePerStackPerSecond => _poisonDamagePerStackPerSecond;
-        public float PoisonStackDurationSeconds => _poisonStackDurationSeconds;
+        public float LifestealRatio => ReadNumber(_skillKind, "LifestealRatio", _lifestealRatio);
+        public float StrAttackSpeedMultiplier => 1f + ReadNumber(_skillKind, "AttackSpeedBonus", _strAttackSpeedMultiplier - 1f);
+        public float StrMoveMultiplier => 1f + ReadNumber(_skillKind, "MoveBonus", _strMoveMultiplier - 1f);
+        public int PoisonMaxStacks => (int)ReadNumber(_skillKind, "PoisonMaxStacks", _poisonMaxStacks);
+        public float PoisonDamagePerStackPerSecond => ReadNumber(_skillKind, "PoisonDamagePerStackPerSecond", _poisonDamagePerStackPerSecond);
+        public float PoisonStackDurationSeconds => ReadNumber(_skillKind, "PoisonStackDurationSeconds", _poisonStackDurationSeconds);
         public Material SwordMaterial => _swordMaterial;
-        public float KickDamageMultiplier => _kickDamageMultiplier;
-        public float KickKnockbackDistance => _kickKnockbackDistance;
-        public float KickSlowMoveMultiplier => _kickSlowMoveMultiplier;
-        public float KickSlowDurationSeconds => _kickSlowDurationSeconds;
-        public float TauntReadyDurationSeconds => _tauntReadyDurationSeconds;
-        public float TauntDurationSeconds => _tauntDurationSeconds;
-        public float TauntStopDistance => _tauntStopDistance;
-        public float TauntIncomingDamageMultiplier => _tauntIncomingDamageMultiplier;
-        public float TauntReflectMultiplier => _tauntReflectMultiplier;
-        public float TauntReflectHealthCapRatio => _tauntReflectHealthCapRatio;
-        public float RollDistance => _rollDistance;
-        public float RollDurationSeconds => _rollDurationSeconds;
-        public BattlePvp.Stats.StatContainer TargetPreset => _targetPreset;
-        public float MaxHealthIncreaseShieldRatio => _maxHealthIncreaseShieldRatio;
-        public float ShieldDurationSeconds => _shieldDurationSeconds;
-        public float StrategistStrNextAttackMultiplier => _strategistStrNextAttackMultiplier;
-        public float StrategistStrAttackBonusDurationSeconds => _strategistStrAttackBonusDurationSeconds;
-        public float StrategistAgiBonusDurationSeconds => _strategistAgiBonusDurationSeconds;
-        public float StrategistAgiMoveMultiplier => _strategistAgiMoveMultiplier;
-        public float StrategistAgiAttackSpeedMultiplier => _strategistAgiAttackSpeedMultiplier;
-        public float StrategistConTargetMaxHpShieldRatio => _strategistConTargetMaxHpShieldRatio;
-        public float StrategistDefInvulnerableSeconds => _strategistDefInvulnerableSeconds;
-        public float MinimumBowChargeSeconds => _minimumBowChargeSeconds;
-        public float MaximumBowDamageChargeSeconds => _maximumBowDamageChargeSeconds;
-        public float MinimumBowDamageMultiplier => _minimumBowDamageMultiplier;
-        public float MaximumBowDamageMultiplier => _maximumBowDamageMultiplier;
-        public float BowChargeMoveMultiplier => _bowChargeMoveMultiplier;
-        public float BowRange => _bowRange;
-        public float WeaponSwapMoveBonusDurationSeconds => _weaponSwapMoveBonusDurationSeconds;
-        public float WeaponSwapMoveMultiplier => _weaponSwapMoveMultiplier;
-        public float WeaponSwapNextAttackMultiplier => _weaponSwapNextAttackMultiplier;
+        public float KickDamageMultiplier => ReadNumber(_skillKind, "KickDamageMultiplier", _kickDamageMultiplier);
+        public float KickKnockbackDistance => ReadNumber(_skillKind, "KickKnockbackDistance", _kickKnockbackDistance);
+        public float KickSlowMoveMultiplier => ReadNumber(_skillKind, "KickSlowMoveMultiplier", _kickSlowMoveMultiplier);
+        public float KickSlowDurationSeconds => ReadNumber(_skillKind, "KickSlowDurationSeconds", _kickSlowDurationSeconds);
+        public float TauntReadyDurationSeconds => ReadNumber(_skillKind, "TauntReadyDurationSeconds", _tauntReadyDurationSeconds);
+        public float TauntDurationSeconds => ReadNumber(_skillKind, "TauntDurationSeconds", _tauntDurationSeconds);
+        public float TauntStopDistance => ReadNumber(_skillKind, "TauntStopDistance", _tauntStopDistance);
+        public float TauntIncomingDamageMultiplier => ReadNumber(_skillKind, "TauntIncomingDamageMultiplier", _tauntIncomingDamageMultiplier);
+        public float TauntReflectMultiplier => ReadNumber(_skillKind, "TauntReflectMultiplier", _tauntReflectMultiplier);
+        public float TauntReflectHealthCapRatio => ReadNumber(_skillKind, "TauntReflectHealthCapRatio", _tauntReflectHealthCapRatio);
+        public float RollDistance => ReadNumber(_skillKind, "RollDistance", _rollDistance);
+        public float RollDurationSeconds => ReadNumber(_skillKind, "RollDurationSeconds", _rollDurationSeconds);
+        public BattlePvp.Stats.StatContainer TargetPreset
+        {
+            get
+            {
+                var preset=_targetPreset;
+                preset.STR.Invested=ReadNumber(_skillKind,"TargetPresetSTR",preset.STR.Invested);
+                preset.CON.Invested=ReadNumber(_skillKind,"TargetPresetCON",preset.CON.Invested);
+                preset.AGI.Invested=ReadNumber(_skillKind,"TargetPresetAGI",preset.AGI.Invested);
+                preset.DEF.Invested=ReadNumber(_skillKind,"TargetPresetDEF",preset.DEF.Invested);
+                return preset;
+            }
+        }
+        public float MaxHealthIncreaseShieldRatio => ReadNumber(_skillKind, "MaxHealthIncreaseShieldRatio", _maxHealthIncreaseShieldRatio);
+        public float ShieldDurationSeconds => ReadNumber(_skillKind, "ShieldDurationSeconds", _shieldDurationSeconds);
+        public float StrategistStrNextAttackMultiplier => ReadNumber(_skillKind, "StrategistStrNextAttackMultiplier", _strategistStrNextAttackMultiplier);
+        public float StrategistStrAttackBonusDurationSeconds => ReadNumber(_skillKind, "StrategistStrAttackBonusDurationSeconds", _strategistStrAttackBonusDurationSeconds);
+        public float StrategistAgiBonusDurationSeconds => ReadNumber(_skillKind, "StrategistAgiBonusDurationSeconds", _strategistAgiBonusDurationSeconds);
+        public float StrategistAgiMoveMultiplier => ReadNumber(_skillKind, "StrategistAgiMoveMultiplier", _strategistAgiMoveMultiplier);
+        public float StrategistAgiAttackSpeedMultiplier => ReadNumber(_skillKind, "StrategistAgiAttackSpeedMultiplier", _strategistAgiAttackSpeedMultiplier);
+        public float StrategistConTargetMaxHpShieldRatio => ReadNumber(_skillKind, "StrategistConTargetMaxHpShieldRatio", _strategistConTargetMaxHpShieldRatio);
+        public float StrategistDefInvulnerableSeconds => ReadNumber(_skillKind, "StrategistDefInvulnerableSeconds", _strategistDefInvulnerableSeconds);
+        public float MinimumBowChargeSeconds => ReadNumber(_skillKind, "MinimumBowChargeSeconds", _minimumBowChargeSeconds);
+        public float MaximumBowDamageChargeSeconds => ReadNumber(_skillKind, "MaximumBowDamageChargeSeconds", _maximumBowDamageChargeSeconds);
+        public float MinimumBowDamageMultiplier => ReadNumber(_skillKind, "MinimumBowDamageMultiplier", _minimumBowDamageMultiplier);
+        public float MaximumBowDamageMultiplier => ReadNumber(_skillKind, "MaximumBowDamageMultiplier", _maximumBowDamageMultiplier);
+        public float BowChargeMoveMultiplier => ReadNumber(_skillKind, "BowChargeMoveMultiplier", _bowChargeMoveMultiplier);
+        public float BowRange => ReadNumber(_skillKind, "BowRange", _bowRange);
+        public float WeaponSwapMoveBonusDurationSeconds => ReadNumber(_skillKind, "WeaponSwapMoveBonusDurationSeconds", _weaponSwapMoveBonusDurationSeconds);
+        public float WeaponSwapMoveMultiplier => ReadNumber(_skillKind, "WeaponSwapMoveMultiplier", _weaponSwapMoveMultiplier);
+        public float WeaponSwapNextAttackMultiplier => ReadNumber(_skillKind, "WeaponSwapNextAttackMultiplier", _weaponSwapNextAttackMultiplier);
         public AudioClip UseSfx => _useSfx;
         public float SfxVolume => _sfxVolume;
 
@@ -137,6 +155,7 @@ namespace BattlePvp.Combat
         {
             return _skillKind switch
             {
+                JobSkillKind.Bash or JobSkillKind.Thorns => SkillInputLockFlags.None,
                 JobSkillKind.PolymathWeaponSwap => SkillInputLockFlags.Move,
                 _ => SkillInputLockFlags.Move | SkillInputLockFlags.Attack | SkillInputLockFlags.Jump
             };
@@ -146,16 +165,17 @@ namespace BattlePvp.Combat
         {
             return _skillKind switch
             {
+                JobSkillKind.Bash or JobSkillKind.Thorns => 0f,
                 JobSkillKind.MonostatConKick => 0.75f,
                 JobSkillKind.MonostatDefTaunt => 1.2f,
-                JobSkillKind.MonostatStrLifesteal => Mathf.Max(0.7f, _castSeconds),
-                JobSkillKind.MonostatAgiPoison => Mathf.Max(1f, _castSeconds),
-                JobSkillKind.StrategistRoll => Mathf.Max(0.35f, _rollDurationSeconds),
-                JobSkillKind.StrategistPresetChange => Mathf.Max(0.35f, _castSeconds),
-                JobSkillKind.PolymathRoll => Mathf.Max(0.35f, _rollDurationSeconds),
-                JobSkillKind.PolymathPresetChange => Mathf.Max(0.35f, _castSeconds),
-                JobSkillKind.PolymathWeaponSwap => Mathf.Max(0.15f, _castSeconds),
-                _ => Mathf.Max(0.35f, _castSeconds)
+                JobSkillKind.MonostatStrLifesteal => Mathf.Max(0.7f, CastSeconds),
+                JobSkillKind.MonostatAgiPoison => Mathf.Max(1f, CastSeconds),
+                JobSkillKind.StrategistRoll => Mathf.Max(0.35f, RollDurationSeconds),
+                JobSkillKind.StrategistPresetChange => Mathf.Max(0.35f, CastSeconds),
+                JobSkillKind.PolymathRoll => Mathf.Max(0.35f, RollDurationSeconds),
+                JobSkillKind.PolymathPresetChange => Mathf.Max(0.35f, CastSeconds),
+                JobSkillKind.PolymathWeaponSwap => Mathf.Max(0.15f, CastSeconds),
+                _ => Mathf.Max(0.35f, CastSeconds)
             };
         }
     }

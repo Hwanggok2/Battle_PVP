@@ -12,6 +12,19 @@
 /[Uu]ser[Ss]ettings/
 *.log
 
+# Local tooling dependencies and transient validation sessions
+node_modules/
+__pycache__/
+/Reports/**/mcp.py
+/Reports/**/processes.json
+/Reports/**/host.log
+/Reports/**/participant.log
+/Reports/**/boot.log
+/Reports/**/editor-final-state.txt
+/Reports/**/*.pid
+/Reports/CommitPreparation/
+*.xlsx.inspect.ndjson
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
 *.blend1.meta

@@ -1,0 +1,922 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 05f3cc790eabc794fb6464de2c8f7407, type: 3}
+  m_Name: SkillGameData
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.SkillGameData
+  Skills:
+  - Id: AGI_Poison
+    NameKey: AGI_Poison_Name
+    DescriptionKey: AGI_Poison_Desc
+    DescriptionArgs: DurationSeconds,PoisonMaxStacks,PoisonDamagePerStackPerSecond,PoisonStackDurationSeconds
+    Kind: 1
+    Cast: 1
+    Duration: 7
+    Cooldown: 30
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: PoisonMaxStacks
+      Value: 5
+    - Key: PoisonDamagePerStackPerSecond
+      Value: 6
+    - Key: PoisonStackDurationSeconds
+      Value: 6
+  - Id: CON_Kick
+    NameKey: CON_Kick_Name
+    DescriptionKey: CON_Kick_Desc
+    DescriptionArgs: KickDamageMultiplier,KickKnockbackDistance,KickSlowDurationSeconds
+    Kind: 2
+    Cast: 0.3
+    Duration: 0
+    Cooldown: 10
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: KickDamageMultiplier
+      Value: 1.5
+    - Key: KickKnockbackDistance
+      Value: 1.5
+    - Key: KickSlowMoveMultiplier
+      Value: 0.2
+    - Key: KickSlowDurationSeconds
+      Value: 0.65
+  - Id: DEF_Taunt
+    NameKey: DEF_Taunt_Name
+    DescriptionKey: DEF_Taunt_Desc
+    DescriptionArgs: TauntDurationSeconds
+    Kind: 3
+    Cast: 0.8
+    Duration: 0
+    Cooldown: 30
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: TauntReadyDurationSeconds
+      Value: 30
+    - Key: TauntDurationSeconds
+      Value: 2.5
+    - Key: TauntStopDistance
+      Value: 1.2
+    - Key: TauntIncomingDamageMultiplier
+      Value: 0.7
+    - Key: TauntReflectMultiplier
+      Value: 2
+    - Key: TauntReflectHealthCapRatio
+      Value: 0.14
+  - Id: POLY_Weapon
+    NameKey: POLY_Weapon_Name
+    DescriptionKey: POLY_Weapon_Desc
+    DescriptionArgs: WeaponSwapMoveBonusDurationSeconds
+    Kind: 22
+    Cast: 0.75
+    Duration: 0
+    Cooldown: 10
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: MinimumBowChargeSeconds
+      Value: 0.25
+    - Key: MaximumBowDamageChargeSeconds
+      Value: 1
+    - Key: MinimumBowDamageMultiplier
+      Value: 0.4
+    - Key: MaximumBowDamageMultiplier
+      Value: 0.75
+    - Key: BowChargeMoveMultiplier
+      Value: 0.25
+    - Key: BowRange
+      Value: 30
+    - Key: WeaponSwapMoveBonusDurationSeconds
+      Value: 3
+    - Key: WeaponSwapMoveMultiplier
+      Value: 1.2
+    - Key: WeaponSwapNextAttackMultiplier
+      Value: 1.3
+  - Id: POLY_Roll
+    NameKey: POLY_Roll_Name
+    DescriptionKey: POLY_Roll_Desc
+    DescriptionArgs: RollDistance,MaxCharges,CooldownSeconds,RollDurationSeconds
+    Kind: 20
+    Cast: 0.35
+    Duration: 0
+    Cooldown: 10
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: RollDistance
+      Value: 3.6
+    - Key: RollDurationSeconds
+      Value: 0.35
+    - Key: MaxCharges
+      Value: 2
+  - Id: STR_Lifesteal
+    NameKey: STR_Lifesteal_Name
+    DescriptionKey: STR_Lifesteal_Desc
+    DescriptionArgs: DurationSeconds,AttackSpeedBonus,MoveBonus,LifestealRatio
+    Kind: 0
+    Cast: 0.7
+    Duration: 10
+    Cooldown: 40
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: LifestealRatio
+      Value: 0.1
+    - Key: AttackSpeedBonus
+      Value: 0.2
+    - Key: MoveBonus
+      Value: 0.1
+  - Id: TACT_Preset
+    NameKey: TACT_Preset_Name
+    DescriptionKey: TACT_Preset_Desc
+    DescriptionArgs: 
+    Kind: 11
+    Cast: 1.2
+    Duration: 0
+    Cooldown: 40
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: MaxHealthIncreaseShieldRatio
+      Value: 0.5
+    - Key: ShieldDurationSeconds
+      Value: 20
+    - Key: StrategistStrNextAttackMultiplier
+      Value: 1.2
+    - Key: StrategistStrAttackBonusDurationSeconds
+      Value: 5
+    - Key: StrategistAgiBonusDurationSeconds
+      Value: 4
+    - Key: StrategistAgiMoveMultiplier
+      Value: 1.15
+    - Key: StrategistAgiAttackSpeedMultiplier
+      Value: 1.35
+    - Key: StrategistConTargetMaxHpShieldRatio
+      Value: 0.2
+    - Key: StrategistDefInvulnerableSeconds
+      Value: 5
+    - Key: TargetPresetSTR
+      Value: 0
+    - Key: TargetPresetCON
+      Value: 0
+    - Key: TargetPresetAGI
+      Value: 0
+    - Key: TargetPresetDEF
+      Value: 0
+  - Id: TACT_Dash
+    NameKey: TACT_Dash_Name
+    DescriptionKey: TACT_Dash_Desc
+    DescriptionArgs: RollDistance,MaxCharges,CooldownSeconds,RollDurationSeconds
+    Kind: 10
+    Cast: 0.35
+    Duration: 0
+    Cooldown: 8
+    Parameters:
+    - Key: InputLockSeconds
+      Value: 0
+    - Key: RollDistance
+      Value: 3.6
+    - Key: RollDurationSeconds
+      Value: 0.35
+    - Key: MaxCharges
+      Value: 2
+  - Id: STR_Hook
+    NameKey: STR_Hook_Name
+    DescriptionKey: STR_Hook_Desc
+    DescriptionArgs: Range,FixedDamage
+    Kind: 100
+    Cast: 0.85
+    Duration: 0
+    Cooldown: 15
+    Parameters:
+    - Key: Range
+      Value: 6
+    - Key: ProjectileSpeed
+      Value: 12
+    - Key: PullSpeed
+      Value: 8
+    - Key: Radius
+      Value: 0.08
+    - Key: StopDistance
+      Value: 1
+    - Key: ThrowReleaseSeconds
+      Value: 0.24
+    - Key: RetrieveSeconds
+      Value: 0.6
+    - Key: FixedDamage
+      Value: 10
+  - Id: STR_WarCry
+    NameKey: STR_WarCry_Name
+    DescriptionKey: STR_WarCry_Desc
+    DescriptionArgs: DurationSeconds,MoveMultiplier,IncomingMultiplier
+    Kind: 101
+    Cast: 0.7
+    Duration: 10
+    Cooldown: 25
+    Parameters:
+    - Key: MoveMultiplier
+      Value: 1.2
+    - Key: IncomingMultiplier
+      Value: 0.8
+  - Id: SHARED_Charge
+    NameKey: SHARED_Charge_Name
+    DescriptionKey: SHARED_Charge_Desc
+    DescriptionArgs: DurationSeconds,AccelerationSeconds,StunSeconds,InitialSpeedMultiplier,MaximumAgiMultiplier
+    Kind: 102
+    Cast: 0
+    Duration: 4
+    Cooldown: 20
+    Parameters:
+    - Key: AccelerationSeconds
+      Value: 2.5
+    - Key: InitialSpeedMultiplier
+      Value: 0.8
+    - Key: MaximumAgiMultiplier
+      Value: 1.3
+    - Key: TurnDegreesPerSecond
+      Value: 60
+    - Key: DamageMultiplier
+      Value: 1
+    - Key: StunSeconds
+      Value: 1
+  - Id: AGI_Stealth
+    NameKey: AGI_Stealth_Name
+    DescriptionKey: AGI_Stealth_Desc
+    DescriptionArgs: BreakDistance,BonusSeconds,AttackMultiplier
+    Kind: 103
+    Cast: 0.3
+    Duration: 0
+    Cooldown: 20
+    Parameters:
+    - Key: BreakDistance
+      Value: 1
+    - Key: BonusSeconds
+      Value: 3
+    - Key: AttackMultiplier
+      Value: 1.2
+    - Key: LocalAlpha
+      Value: 0.5
+  - Id: AGI_Knife
+    NameKey: AGI_Knife_Name
+    DescriptionKey: AGI_Knife_Desc
+    DescriptionArgs: MaxCharges,RechargeSeconds,DamageMultiplier
+    Kind: 104
+    Cast: 0.55
+    Duration: 0
+    Cooldown: 0
+    Parameters:
+    - Key: MaxCharges
+      Value: 3
+    - Key: RechargeSeconds
+      Value: 8
+    - Key: DamageMultiplier
+      Value: 0.5
+    - Key: Range
+      Value: 10
+    - Key: ProjectileSpeed
+      Value: 16
+    - Key: Radius
+      Value: 0.06
+    - Key: ThrowInterval
+      Value: 0.3
+    - Key: ThrowReleaseSeconds
+      Value: 0.1
+  - Id: CON_Berserk
+    NameKey: CON_Berserk_Name
+    DescriptionKey: CON_Berserk_Desc
+    DescriptionArgs: HealthDrainRatio,MoveMultiplier,AttackSpeedMultiplier,AttackMultiplier,CooldownSeconds
+    Kind: 105
+    Cast: 0.4
+    Duration: 0
+    Cooldown: 20
+    Parameters:
+    - Key: HealthDrainRatio
+      Value: 0.03
+    - Key: MoveMultiplier
+      Value: 1.2
+    - Key: AttackSpeedMultiplier
+      Value: 1.3
+    - Key: AttackMultiplier
+      Value: 2
+    - Key: RecoveryRegenMultiplier
+      Value: 0.5
+  - Id: CON_Recovery
+    NameKey: CON_Recovery_Name
+    DescriptionKey: CON_Recovery_Desc
+    DescriptionArgs: HealthCostRatio,DurationSeconds,HealRatio,RegenMultiplier
+    Kind: 106
+    Cast: 0.45
+    Duration: 10
+    Cooldown: 40
+    Parameters:
+    - Key: HealthCostRatio
+      Value: 0.3
+    - Key: HealRatio
+      Value: 0.2
+    - Key: RegenMultiplier
+      Value: 2
+  - Id: DEF_Bash
+    NameKey: DEF_Bash_Name
+    DescriptionKey: DEF_Bash_Desc
+    DescriptionArgs: StunSeconds,IncomingMultiplier,DurationSeconds
+    Kind: 107
+    Cast: 0
+    Duration: 30
+    Cooldown: 10
+    Parameters:
+    - Key: StunSeconds
+      Value: 3
+    - Key: IncomingMultiplier
+      Value: 2
+  - Id: DEF_Thorns
+    NameKey: DEF_Thorns_Name
+    DescriptionKey: DEF_Thorns_Desc
+    DescriptionArgs: DurationSeconds,ReflectMultiplier
+    Kind: 108
+    Cast: 0
+    Duration: 10
+    Cooldown: 25
+    Parameters:
+    - Key: ReflectMultiplier
+      Value: 2
+  - Id: DEF_Fortify
+    NameKey: DEF_Fortify_Name
+    DescriptionKey: DEF_Fortify_Desc
+    DescriptionArgs: DurationSeconds,DefenseMultiplier
+    Kind: 109
+    Cast: 0.25
+    Duration: 3
+    Cooldown: 20
+    Parameters:
+    - Key: DefenseMultiplier
+      Value: 2
+  - Id: SHARED_Trap
+    NameKey: SHARED_Trap_Name
+    DescriptionKey: SHARED_Trap_Desc
+    DescriptionArgs: Lifetime,MaxHealthDamageRatio,RootSeconds,CastSeconds,MaxCharges,CooldownSeconds
+    Kind: 110
+    Cast: 1.1
+    Duration: 0
+    Cooldown: 25
+    Parameters:
+    - Key: Lifetime
+      Value: 60
+    - Key: MaxHealthDamageRatio
+      Value: 0.2
+    - Key: RootSeconds
+      Value: 5
+    - Key: PlaceDistance
+      Value: 1.2
+    - Key: MaxCharges
+      Value: 3
+  - Id: TACT_Dice
+    NameKey: TACT_Dice_Name
+    DescriptionKey: TACT_Dice_Desc
+    DescriptionArgs: DurationSeconds,Face1,Face2,Face3,Face4,Face5,Face6
+    Kind: 111
+    Cast: 0.3
+    Duration: 15
+    Cooldown: 15
+    Parameters:
+    - Key: Face1
+      Value: -0.3
+    - Key: Face2
+      Value: -0.2
+    - Key: Face3
+      Value: -0.1
+    - Key: Face4
+      Value: 0.1
+    - Key: Face5
+      Value: 0.2
+    - Key: Face6
+      Value: 0.3
+  - Id: POLY_Steal
+    NameKey: POLY_Steal_Name
+    DescriptionKey: POLY_Steal_Desc
+    DescriptionArgs: Range,CooldownSeconds
+    Kind: 112
+    Cast: 0.25
+    Duration: 0
+    Cooldown: 20
+    Parameters:
+    - Key: Range
+      Value: 4
+  Pools:
+  - Job: 0
+    Kind: 0
+    DefaultSlot: 0
+  - Job: 1
+    Kind: 2
+    DefaultSlot: 0
+  - Job: 2
+    Kind: 1
+    DefaultSlot: 0
+  - Job: 3
+    Kind: 3
+    DefaultSlot: 0
+  - Job: 4
+    Kind: 10
+    DefaultSlot: 0
+  - Job: 5
+    Kind: 20
+    DefaultSlot: 0
+  - Job: 0
+    Kind: 100
+    DefaultSlot: 1
+  - Job: 1
+    Kind: 105
+    DefaultSlot: 1
+  - Job: 2
+    Kind: 103
+    DefaultSlot: 1
+  - Job: 3
+    Kind: 107
+    DefaultSlot: 1
+  - Job: 4
+    Kind: 11
+    DefaultSlot: 1
+  - Job: 5
+    Kind: 22
+    DefaultSlot: 1
+  - Job: 0
+    Kind: 101
+    DefaultSlot: -1
+  - Job: 1
+    Kind: 102
+    DefaultSlot: -1
+  - Job: 2
+    Kind: 104
+    DefaultSlot: -1
+  - Job: 3
+    Kind: 108
+    DefaultSlot: -1
+  - Job: 4
+    Kind: 110
+    DefaultSlot: -1
+  - Job: 5
+    Kind: 110
+    DefaultSlot: -1
+  - Job: 0
+    Kind: 102
+    DefaultSlot: -1
+  - Job: 1
+    Kind: 106
+    DefaultSlot: -1
+  - Job: 3
+    Kind: 109
+    DefaultSlot: -1
+  - Job: 4
+    Kind: 111
+    DefaultSlot: -1
+  - Job: 5
+    Kind: 112
+    DefaultSlot: -1
+  Jobs:
+  - Index: 0
+    Id: STR
+    NameKey: JOB_STR_Name
+    RequirementKey: JOB_STR_Requirement
+    DescriptionKey: JOB_STR_Desc
+  - Index: 1
+    Id: CON
+    NameKey: JOB_CON_Name
+    RequirementKey: JOB_CON_Requirement
+    DescriptionKey: JOB_CON_Desc
+  - Index: 2
+    Id: AGI
+    NameKey: JOB_AGI_Name
+    RequirementKey: JOB_AGI_Requirement
+    DescriptionKey: JOB_AGI_Desc
+  - Index: 3
+    Id: DEF
+    NameKey: JOB_DEF_Name
+    RequirementKey: JOB_DEF_Requirement
+    DescriptionKey: JOB_DEF_Desc
+  - Index: 4
+    Id: TACT
+    NameKey: JOB_TACT_Name
+    RequirementKey: JOB_TACT_Requirement
+    DescriptionKey: JOB_TACT_Desc
+  - Index: 5
+    Id: POLY
+    NameKey: JOB_POLY_Name
+    RequirementKey: JOB_POLY_Requirement
+    DescriptionKey: JOB_POLY_Desc
+  Strings:
+  - SearchKey: AGI_Poison_Name
+    Content_Kor: "\uB3C5 \uBC14\uB974\uAE30"
+    Content_Eng: Venom Blade
+    FormatArgCount: 0
+  - SearchKey: AGI_Poison_Desc
+    Content_Kor: "{0:0.#}\uCD08 \uB3D9\uC548 \uAC80\uC5D0 \uB3C5\uC744 \uBC14\uB985\uB2C8\uB2E4.
+      \uCD5C\uB300 {1:0}\uC911\uCCA9, \uC911\uCCA9\uB2F9 \uCD08\uB2F9 {2:0.#} \uD53C\uD574,
+      {3:0.#}\uCD08 \uC9C0\uC18D."
+    Content_Eng: Coat your sword for {0:0.#}s. Up to {1:0} stacks, {2:0.#} damage
+      per stack per second for {3:0.#}s.
+    FormatArgCount: 4
+  - SearchKey: CON_Kick_Name
+    Content_Kor: "\uBC1C\uCC28\uAE30"
+    Content_Eng: Kick
+    FormatArgCount: 0
+  - SearchKey: CON_Kick_Desc
+    Content_Kor: "\uACF5\uACA9\uB825\uC758 {0:0%} \uD53C\uD574\uC640 {1:0.#}m \uBC00\uCE58\uAE30.
+      {2:0.#}\uCD08 \uB3D9\uC548 \uC801\uC744 \uB290\uB9AC\uAC8C \uD569\uB2C8\uB2E4."
+    Content_Eng: Deal {0:0%} attack damage and knock back {1:0.#}m. Slow the target
+      for {2:0.#}s.
+    FormatArgCount: 3
+  - SearchKey: DEF_Taunt_Name
+    Content_Kor: "\uB3C4\uBC1C"
+    Content_Eng: Taunt
+    FormatArgCount: 0
+  - SearchKey: DEF_Taunt_Desc
+    Content_Kor: "\uB2E4\uC74C \uAC80 \uC801\uC911 \uC2DC {0:0.#}\uCD08\uAC04 \uC801\uC744
+      \uB04C\uC5B4\uB4E4\uC785\uB2C8\uB2E4. \uBC1B\uB294 \uD53C\uD574 \uAC10\uC18C\uC640
+      \uBC18\uC0AC \uAC15\uD654\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4."
+    Content_Eng: Your next sword hit forces the enemy toward you for {0:0.#}s and
+      grants damage reduction and stronger reflection.
+    FormatArgCount: 1
+  - SearchKey: POLY_Weapon_Name
+    Content_Kor: "\uBB34\uAE30 \uC2A4\uC651"
+    Content_Eng: Weapon Swap
+    FormatArgCount: 0
+  - SearchKey: POLY_Weapon_Desc
+    Content_Kor: "\uAC80\uACFC \uD65C\uC744 \uAD50\uCCB4\uD569\uB2C8\uB2E4. {0:0.#}\uCD08
+      \uB3D9\uC548 \uC774\uB3D9 \uC18D\uB3C4\uAC00 \uC99D\uAC00\uD558\uACE0 \uB2E4\uC74C
+      \uACF5\uACA9\uC774 \uAC15\uD654\uB429\uB2C8\uB2E4. \uC88C\uD074\uB9AD\uC744
+      \uAE38\uAC8C \uB20C\uB7EC \uD65C\uC744 \uCDA9\uC804\uD569\uB2C8\uB2E4."
+    Content_Eng: Swap between sword and bow. Gain movement speed for {0:0.#}s and
+      empower your next hit. Hold attack to draw the bow.
+    FormatArgCount: 1
+  - SearchKey: POLY_Preset_Name
+    Content_Kor: "\uD504\uB9AC\uC14B \uC804\uD658 (\uBBF8\uC0AC\uC6A9)"
+    Content_Eng: Reconfigure (unused)
+    FormatArgCount: 0
+  - SearchKey: POLY_Preset_Desc
+    Content_Kor: "\uC774\uC804 \uB370\uC774\uD130 \uD638\uD658\uC6A9 \uC2A4\uD0AC\uC785\uB2C8\uB2E4.
+      \uC7A5\uCC29\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+    Content_Eng: Legacy compatibility skill. Cannot be equipped.
+    FormatArgCount: 0
+  - SearchKey: POLY_Roll_Name
+    Content_Kor: "\uAD6C\uB974\uAE30"
+    Content_Eng: Roll
+    FormatArgCount: 0
+  - SearchKey: POLY_Roll_Desc
+    Content_Kor: "\uC804\uBC29\uC73C\uB85C {3:0.##}\uCD08 \uB3D9\uC548 {0:0.#}m \uAD6C\uB985\uB2C8\uB2E4.
+      \uCD5C\uB300 {1:0}\uD68C \uCDA9\uC804, {2:0.#}\uCD08\uB9C8\uB2E4 1\uD68C \uD68C\uBCF5."
+    Content_Eng: Roll {0:0.#}m forward in {3:0.##}s. Stores {1:0} charges; recovers
+      one every {2:0.#}s.
+    FormatArgCount: 4
+  - SearchKey: STR_Lifesteal_Name
+    Content_Kor: "\uAD11\uD3ED"
+    Content_Eng: Bloodlust
+    FormatArgCount: 0
+  - SearchKey: STR_Lifesteal_Desc
+    Content_Kor: "{0:0.#}\uCD08 \uB3D9\uC548 \uACF5\uACA9\uC18D\uB3C4 {1:0%}, \uC774\uB3D9\uC18D\uB3C4
+      {2:0%} \uC0C1\uC2B9. \uAC80\uC73C\uB85C \uC900 \uD53C\uD574\uC758 {3:0%}\uB97C
+      \uCCB4\uB825\uC73C\uB85C \uD68C\uBCF5\uD569\uB2C8\uB2E4."
+    Content_Eng: Gain {1:0%} attack speed and {2:0%} movement speed for {0:0.#}s.
+      Heal for {3:0%} of sword damage dealt.
+    FormatArgCount: 4
+  - SearchKey: TACT_Preset_Name
+    Content_Kor: "\uD504\uB9AC\uC14B \uC804\uD658"
+    Content_Eng: Reconfigure
+    FormatArgCount: 0
+  - SearchKey: TACT_Preset_Desc
+    Content_Kor: "\uC800\uC7A5\uD55C \uB2A5\uB825\uCE58 \uBC30\uBD84\uC73C\uB85C
+      \uC804\uD658\uD558\uACE0 \uC8FC \uB2A5\uB825\uCE58\uC5D0 \uB9DE\uB294 \uBCF4\uB108\uC2A4\uB97C
+      \uBC1B\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC0AC\uC6A9\uD558\uBA74 \uC6D0\uB798
+      \uBC30\uBD84\uC73C\uB85C \uB3CC\uC544\uAC11\uB2C8\uB2E4."
+    Content_Eng: Switch to your saved stat preset and gain a bonus based on its primary
+      stat. Use again to return.
+    FormatArgCount: 0
+  - SearchKey: TACT_Dash_Name
+    Content_Kor: "\uB300\uC2DC"
+    Content_Eng: Dash
+    FormatArgCount: 0
+  - SearchKey: TACT_Dash_Desc
+    Content_Kor: "\uC804\uBC29\uC73C\uB85C {3:0.##}\uCD08 \uB3D9\uC548 {0:0.#}m \uB300\uC2DC\uD569\uB2C8\uB2E4.
+      \uCD5C\uB300 {1:0}\uD68C \uCDA9\uC804, {2:0.#}\uCD08\uB9C8\uB2E4 1\uD68C \uD68C\uBCF5."
+    Content_Eng: Dash {0:0.#}m forward in {3:0.##}s. Stores {1:0} charges; recovers
+      one every {2:0.#}s.
+    FormatArgCount: 4
+  - SearchKey: STR_Hook_Name
+    Content_Kor: "\uAC08\uACE0\uB9AC"
+    Content_Eng: Grappling Hook
+    FormatArgCount: 0
+  - SearchKey: STR_Hook_Desc
+    Content_Kor: "\uC0AC\uAC70\uB9AC {0:0.#}m\uC758 \uAC08\uACE0\uB9AC\uB97C \uB358\uC838
+      \uACE0\uC815 \uD53C\uD574 {1:0}\uC744 \uC8FC\uACE0 \uC55E\uC73C\uB85C \uB04C\uC5B4\uC635\uB2C8\uB2E4.
+      \uB04C\uB824\uC624\uB294 \uC801\uC740 \uC2DC\uC804\uC790\uB97C \uBC14\uB77C\uBCF4\uBA70
+      \uC774\uB3D9\xB7\uACF5\uACA9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4. \uC2DC\uC804\uC790\uB3C4
+      \uD68C\uC218\uAE4C\uC9C0 \uC774\uB3D9\xB7\uACF5\uACA9 \uBD88\uAC00."
+    Content_Eng: Throw a hook up to {0:0.#}m for {1:0} fixed damage and pull the
+      target toward you. The target faces you and cannot move or attack during the
+      pull. You cannot move or attack until retrieval.
+    FormatArgCount: 2
+  - SearchKey: STR_WarCry_Name
+    Content_Kor: "\uD798\uCC2C \uD568\uC131"
+    Content_Eng: Rallying Cry
+    FormatArgCount: 0
+  - SearchKey: STR_WarCry_Desc
+    Content_Kor: "{0:0.#}\uCD08 \uB3D9\uC548 \uC774\uB3D9 \uC18D\uB3C4\uAC00 \uAE30\uBCF8\uC758
+      {1:0%}, \uBC1B\uB294 \uD53C\uD574\uAC00 {2:0%}\uAC00 \uB429\uB2C8\uB2E4."
+    Content_Eng: For {0:0.#}s, movement speed becomes {1:0%} and incoming damage
+      becomes {2:0%} of normal.
+    FormatArgCount: 3
+  - SearchKey: SHARED_Charge_Name
+    Content_Kor: "\uB3CC\uC9C4"
+    Content_Eng: Charge
+    FormatArgCount: 0
+  - SearchKey: SHARED_Charge_Desc
+    Content_Kor: "\uCD5C\uB300 {0:0.#}\uCD08 \uB3CC\uC9C4. \uAC77\uAE30 \uC18D\uB3C4\uC758
+      {3:0%}\uB85C \uCD9C\uBC1C, {1:0.#}\uCD08 \uD6C4 AGI \uBAB0\uBE75 \uAE30\uBCF8
+      \uC18D\uB3C4\uC758 {4:0%} \uB3C4\uB2EC. \uC801\uB9C8\uB2E4 \uD53C\uD574\xB7{2:0.#}\uCD08
+      \uAE30\uC808. \uC801\uC911 \uD6C4 \uACC4\uC18D \uB3CC\uC9C4. \uC810\uD504\xB7\uACF5\uACA9\xB7\uC2A4\uD0AC
+      \uD0A4\uB85C \uC885\uB8CC."
+    Content_Eng: Charge up to {0:0.#}s. Start at {3:0%} walk speed; reach {4:0%}
+      base AGI-specialist speed in {1:0.#}s. Damage and stun each enemy once for
+      {2:0.#}s without stopping. Jump, attack or a skill key ends charge.
+    FormatArgCount: 5
+  - SearchKey: AGI_Stealth_Name
+    Content_Kor: "\uC740\uC2E0"
+    Content_Eng: Stealth
+    FormatArgCount: 0
+  - SearchKey: AGI_Stealth_Desc
+    Content_Kor: "\uC801\uC5D0\uAC8C \uBAA8\uC2B5\uC744 \uC228\uAE41\uB2C8\uB2E4.
+      \uBCF8\uC778\uC5D0\uAC8C\uB294 \uBC18\uD22C\uBA85\uD558\uAC8C \uBCF4\uC785\uB2C8\uB2E4.
+      \uACF5\uACA9\xB7\uD53C\uACA9 \uB610\uB294 \uB204\uC801 {0:0.#}m \uC774\uB3D9
+      \uC2DC \uD574\uC81C. \uD574\uC81C \uD6C4 {1:0.#}\uCD08\uAC04 \uACF5\uACA9\uB825\uC774
+      \uAE30\uBCF8\uC758 {2:0%}\uAC00 \uB429\uB2C8\uB2E4."
+    Content_Eng: Become invisible to enemies and translucent to yourself. Attack,
+      damage or {0:0.#}m total travel breaks stealth, granting {2:0%} attack power
+      for {1:0.#}s.
+    FormatArgCount: 3
+  - SearchKey: AGI_Knife_Name
+    Content_Kor: "\uB098\uC774\uD504 \uD22C\uCC99"
+    Content_Eng: Throwing Knives
+    FormatArgCount: 0
+  - SearchKey: AGI_Knife_Desc
+    Content_Kor: "\uC2A4\uD0AC \uD0A4\uB85C \uC624\uB978\uD314\uC744 \uB2F9\uACA8
+      \uC900\uBE44, \uC88C\uD074\uB9AD\uC73C\uB85C \uD22C\uCC99\uD569\uB2C8\uB2E4.
+      \uC900\uBE44 \uC911 \uC774\uB3D9\xB7\uC549\uAE30 \uAC00\uB2A5. \uCD5C\uB300
+      {0:0}\uAC1C, {1:0.#}\uCD08\uB9C8\uB2E4 1\uAC1C \uCDA9\uC804. \uACF5\uACA9\uB825\uC758
+      {2:0%} \uD53C\uD574\uC640 \uB3C5 1\uC911\uCCA9. \uB2E4\uC2DC \uD0A4\uB97C \uB204\uB974\uBA74
+      \uCDE8\uC18C."
+    Content_Eng: Ready with the skill key, then left-click to throw. Walk and crouch
+      while ready. Holds {0:0} knives; one recharges every {1:0.#}s. Deals {2:0%}
+      attack damage and one poison stack. Press the skill key again to cancel.
+    FormatArgCount: 3
+  - SearchKey: CON_Berserk_Name
+    Content_Kor: "\uAD11\uC804\uC0AC"
+    Content_Eng: Berserk
+    FormatArgCount: 0
+  - SearchKey: CON_Berserk_Desc
+    Content_Kor: "\uCF1C\uC9D0/\uAEBC\uC9D0. \uB9E4\uCD08 \uCD5C\uB300 \uCCB4\uB825
+      {0:0%} \uC18C\uBAA8. \uBD80\uC871\uD558\uBA74 \uCCB4\uB825 1\uC744 \uB0A8\uAE30\uACE0
+      \uC885\uB8CC. \uC774\uB3D9 {1:0%}, \uACF5\uC18D {2:0%}, \uACF5\uACA9\uB825
+      {3:0%}. \uC7AC\uC0DD \uBD88\uAC00. \uC885\uB8CC \uD6C4 {4:0.#}\uCD08\uAC04
+      \uCFE8\uD0C0\uC784\xB7\uC7AC\uC0DD \uC808\uBC18."
+    Content_Eng: 'Toggle. Drain {0:0%} max HP/s; stop at 1 HP. Movement {1:0%}, attack
+      speed {2:0%}, attack power {3:0%}. No regeneration. On ending: {4:0.#}s cooldown
+      and half regeneration.'
+    FormatArgCount: 5
+  - SearchKey: CON_Recovery_Name
+    Content_Kor: "\uCCB4\uB825 \uAC00\uC18D"
+    Content_Eng: Vital Surge
+    FormatArgCount: 0
+  - SearchKey: CON_Recovery_Desc
+    Content_Kor: "\uCD5C\uB300 \uCCB4\uB825\uC758 {0:0%}\uB97C \uC989\uC2DC \uC18C\uBAA8\uD558\uACE0
+      {1:0.#}\uCD08\uC5D0 \uAC78\uCCD0 {2:0%}\uB97C \uD68C\uBCF5\uD569\uB2C8\uB2E4.
+      \uADF8\uB3D9\uC548 \uCCB4\uB825 \uC7AC\uC0DD\uC740 {3:0%}. \uC18C\uBAA8\uB7C9\uBCF4\uB2E4
+      \uCCB4\uB825\uC774 \uB9CE\uC544\uC57C \uD569\uB2C8\uB2E4."
+    Content_Eng: Spend {0:0%} max health to restore {2:0%} over {1:0.#}s. Regeneration
+      becomes {3:0%} during the effect. Requires health above the cost.
+    FormatArgCount: 4
+  - SearchKey: DEF_Bash_Name
+    Content_Kor: "\uD6C4\uB9AC\uAE30"
+    Content_Eng: Crushing Blow
+    FormatArgCount: 0
+  - SearchKey: DEF_Bash_Desc
+    Content_Kor: "\uB2E4\uC74C \uACF5\uACA9 \uC801\uC911 \uC2DC {0:0.#}\uCD08\uAC04
+      \uC774\uB3D9\xB7\uACF5\uACA9\uC744 \uB9C9\uACE0, \uD574\uB2F9 \uC2DC\uAC04\uC5D0
+      \uC801\uC774 \uBC1B\uB294 \uD53C\uD574\uB97C {1:0%}\uB85C \uB9CC\uB4ED\uB2C8\uB2E4.
+      \uC900\uBE44 \uC0C1\uD0DC\uB294 {2:0.#}\uCD08 \uC720\uC9C0\uB429\uB2C8\uB2E4."
+    Content_Eng: Your next hit stuns for {0:0.#}s and makes the target take {1:0%}
+      damage during the stun. The ready effect lasts {2:0.#}s.
+    FormatArgCount: 3
+  - SearchKey: DEF_Thorns_Name
+    Content_Kor: "\uAC00\uC2DC"
+    Content_Eng: Thorns
+    FormatArgCount: 0
+  - SearchKey: DEF_Thorns_Desc
+    Content_Kor: "{0:0.#}\uCD08 \uB3D9\uC548 \uBC18\uC0AC \uD53C\uD574\uAC00 {1:0%}\uAC00
+      \uB429\uB2C8\uB2E4."
+    Content_Eng: For {0:0.#}s, reflected damage becomes {1:0%}.
+    FormatArgCount: 2
+  - SearchKey: DEF_Fortify_Name
+    Content_Kor: "\uAD73\uD788\uAE30"
+    Content_Eng: Fortify
+    FormatArgCount: 0
+  - SearchKey: DEF_Fortify_Desc
+    Content_Kor: "\uB545\uC5D0 \uC5CE\uB4DC\uB824 {0:0.#}\uCD08\uAC04 \uBC84\uD301\uB2C8\uB2E4.
+      \uC774\uB3D9\uD560 \uC218 \uC5C6\uC73C\uBA70 \uBC29\uC5B4\uB825\uC774 \uAE30\uBCF8\uC758
+      {1:0%}\uAC00 \uB429\uB2C8\uB2E4."
+    Content_Eng: Brace against the ground for {0:0.#}s. You cannot move; defense
+      becomes {1:0%} of its base value.
+    FormatArgCount: 2
+  - SearchKey: SHARED_Trap_Name
+    Content_Kor: "\uB36B \uAE54\uAE30"
+    Content_Eng: Trap
+    FormatArgCount: 0
+  - SearchKey: SHARED_Trap_Desc
+    Content_Kor: "\uCD5C\uB300 {4:0}\uD68C \uCDA9\uC804, {5:0.#}\uCD08\uB9C8\uB2E4
+      1\uD68C \uD68C\uBCF5. \uC2A4\uD0AC \uD0A4\uB85C \uC55E\uC744 \uC870\uC900,
+      \uD074\uB9AD\uC73C\uB85C {3:0.#}\uCD08\uAC04 \uC124\uCE58. {0:0.#}\uCD08 \uC720\uC9C0.
+      \uC801 \uCD5C\uB300 \uCCB4\uB825 {1:0%} \uD53C\uD574\xB7{2:0.#}\uCD08 \uC774\uB3D9/\uBC29\uD5A5
+      \uBD09\uC1C4."
+    Content_Eng: Stores {4:0} charges; recovers one every {5:0.#}s. Skill key previews;
+      click to place in {3:0.#}s. Lasts {0:0.#}s; deals {1:0%} max HP and locks movement/turning
+      for {2:0.#}s.
+    FormatArgCount: 6
+  - SearchKey: TACT_Dice_Name
+    Content_Kor: "\uC8FC\uC0AC\uC704"
+    Content_Eng: Loaded Fate
+    FormatArgCount: 0
+  - SearchKey: TACT_Dice_Desc
+    Content_Kor: "{0:0.#}\uCD08\uAC04 \uBAA8\uB4E0 \uB2A5\uB825\uCE58 \uBCC0\uACBD.
+      1~3: {1:0%}/{2:0%}/{3:0%}, 4~6: +{4:0%}/+{5:0%}/+{6:0%}. \uC0AC\uC6A9 \uC9C1\uD6C4
+      \uCFE8\uD0C0\uC784 \uC2DC\uC791."
+    Content_Eng: "Change all stats for {0:0.#}s. 1\u20133: {1:0%}/{2:0%}/{3:0%};
+      4\u20136: +{4:0%}/+{5:0%}/+{6:0%}. Cooldown starts immediately."
+    FormatArgCount: 7
+  - SearchKey: POLY_Steal_Name
+    Content_Kor: "\uC2A4\uD2F8"
+    Content_Eng: Skill Steal
+    FormatArgCount: 0
+  - SearchKey: POLY_Steal_Desc
+    Content_Kor: "\uBC14\uB77C\uBCF4\uB294 {0:0.#}m \uC774\uB0B4 \uC801\uC758 \uC7A5\uCC29
+      \uC2A4\uD0AC \uD558\uB098\uB97C \uBCF5\uC81C\uD569\uB2C8\uB2E4. \uAC19\uC740
+      \uD0A4\uB85C \uBCF5\uC81C\uD55C \uC2A4\uD0AC\uC744 1\uD68C \uC0AC\uC6A9\uD55C
+      \uB4A4 {1:0.#}\uCD08 \uCFE8\uD0C0\uC784\uC774 \uC2DC\uC791\uB429\uB2C8\uB2E4.
+      \uC2A4\uD2F8 \uC790\uCCB4\uB294 \uBCF5\uC81C\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    Content_Eng: Copy one equipped skill from the enemy you aim at within {0:0.#}m.
+      Use it once with the same key, then begin a {1:0.#}s cooldown. Cannot copy
+      Steal itself.
+    FormatArgCount: 2
+  - SearchKey: JOB_STR_Name
+    Content_Kor: "\uD798 \uD2B9\uD654"
+    Content_Eng: Strength Specialist
+    FormatArgCount: 0
+  - SearchKey: JOB_STR_Requirement
+    Content_Kor: "STR\uC5D0 30 \uD3EC\uC778\uD2B8 \uD22C\uC790"
+    Content_Eng: Invest 30 points in STR
+    FormatArgCount: 0
+  - SearchKey: JOB_STR_Desc
+    Content_Kor: "\uAC15\uB825\uD55C \uADFC\uC811 \uACF5\uACA9\uACFC \uCD94\uACA9\uC73C\uB85C
+      \uC801\uC744 \uC555\uBC15\uD569\uB2C8\uB2E4."
+    Content_Eng: Pressure enemies with heavy melee attacks and pursuit.
+    FormatArgCount: 0
+  - SearchKey: JOB_CON_Name
+    Content_Kor: "\uCCB4\uB825 \uD2B9\uD654"
+    Content_Eng: Vitality Specialist
+    FormatArgCount: 0
+  - SearchKey: JOB_CON_Requirement
+    Content_Kor: "CON\uC5D0 30 \uD3EC\uC778\uD2B8 \uD22C\uC790"
+    Content_Eng: Invest 30 points in CON
+    FormatArgCount: 0
+  - SearchKey: JOB_CON_Desc
+    Content_Kor: "\uCCB4\uB825\uC744 \uC18C\uBAA8\uD558\uAC70\uB098 \uD68C\uBCF5\uD558\uBA70
+      \uC624\uB798 \uC2F8\uC6C1\uB2C8\uB2E4."
+    Content_Eng: Spend and recover health to sustain a fight.
+    FormatArgCount: 0
+  - SearchKey: JOB_AGI_Name
+    Content_Kor: "\uBBFC\uCCA9 \uD2B9\uD654"
+    Content_Eng: Agility Specialist
+    FormatArgCount: 0
+  - SearchKey: JOB_AGI_Requirement
+    Content_Kor: "AGI\uC5D0 30 \uD3EC\uC778\uD2B8 \uD22C\uC790"
+    Content_Eng: Invest 30 points in AGI
+    FormatArgCount: 0
+  - SearchKey: JOB_AGI_Desc
+    Content_Kor: "\uBE60\uB978 \uACF5\uACA9\uACFC \uB3C5, \uC740\uC2E0\uC73C\uB85C
+      \uAE30\uD68C\uB97C \uB9CC\uB4ED\uB2C8\uB2E4."
+    Content_Eng: Create openings with speed, poison, and stealth.
+    FormatArgCount: 0
+  - SearchKey: JOB_DEF_Name
+    Content_Kor: "\uBC29\uC5B4 \uD2B9\uD654"
+    Content_Eng: Defense Specialist
+    FormatArgCount: 0
+  - SearchKey: JOB_DEF_Requirement
+    Content_Kor: "DEF\uC5D0 30 \uD3EC\uC778\uD2B8 \uD22C\uC790"
+    Content_Eng: Invest 30 points in DEF
+    FormatArgCount: 0
+  - SearchKey: JOB_DEF_Desc
+    Content_Kor: "\uACF5\uACA9\uC744 \uBC84\uD2F0\uACE0 \uBC18\uACA9\uD558\uBA70
+      \uC801\uC744 \uC81C\uC555\uD569\uB2C8\uB2E4."
+    Content_Eng: Withstand attacks, retaliate, and control enemies.
+    FormatArgCount: 0
+  - SearchKey: JOB_TACT_Name
+    Content_Kor: "\uC804\uB7B5\uAC00"
+    Content_Eng: Tactician
+    FormatArgCount: 0
+  - SearchKey: JOB_TACT_Requirement
+    Content_Kor: "\uCD5C\uB300\xB7\uCD5C\uC18C \uD22C\uC790 \uCC28\uC774 8 \uC774\uC0C1,
+      \uBAB0\uBE75 \uC81C\uC678"
+    Content_Eng: Investment spread of at least 8; not a single-stat build
+    FormatArgCount: 0
+  - SearchKey: JOB_TACT_Desc
+    Content_Kor: "\uB300\uC2DC, \uD504\uB9AC\uC14B, \uB36B\uACFC \uC8FC\uC0AC\uC704\uB97C
+      \uC870\uD569\uD569\uB2C8\uB2E4."
+    Content_Eng: Combine dashes, presets, traps, and fate.
+    FormatArgCount: 0
+  - SearchKey: JOB_POLY_Name
+    Content_Kor: "\uD314\uBC29\uBBF8\uC778"
+    Content_Eng: Polymath
+    FormatArgCount: 0
+  - SearchKey: JOB_POLY_Requirement
+    Content_Kor: "\uCD5C\uB300\xB7\uCD5C\uC18C \uD22C\uC790 \uCC28\uC774 7 \uC774\uD558"
+    Content_Eng: Investment spread of at most 7
+    FormatArgCount: 0
+  - SearchKey: JOB_POLY_Desc
+    Content_Kor: "\uBB34\uAE30 \uC804\uD658\uACFC \uD68C\uD53C, \uB36B\uACFC \uBCF5\uC81C\uB85C
+      \uB300\uC751\uD569\uB2C8\uB2E4."
+    Content_Eng: Adapt with weapon swaps, evasion, traps, and copied skills.
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Title
+    Content_Kor: "\uC9C1\uC5C5\uACFC \uC2A4\uD0AC"
+    Content_Eng: Jobs and Skills
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Hint
+    Content_Kor: "\uC9C1\uC5C5\uB9C8\uB2E4 \uC11C\uB85C \uB2E4\uB978 \uC2A4\uD0AC
+      2\uAC1C\uB97C \uC7A5\uCC29\uD569\uB2C8\uB2E4."
+    Content_Eng: Equip two different skills for each job.
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Close
+    Content_Kor: "\uB2EB\uAE30"
+    Content_Eng: Close
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Save
+    Content_Kor: "\uC801\uC6A9"
+    Content_Eng: Apply
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Saved
+    Content_Kor: "\uC7A5\uCC29 \uAD6C\uC131\uC744 \uC801\uC6A9\uD588\uC2B5\uB2C8\uB2E4."
+    Content_Eng: Loadout applied.
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_BattleLocked
+    Content_Kor: "\uC804\uD22C \uC911\uC5D0\uB294 \uC7A5\uCC29 \uC2A4\uD0AC\uC744
+      \uBCC0\uACBD\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+    Content_Eng: Skills cannot be changed during battle.
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Slot1
+    Content_Kor: "1\uBC88 \uC7A5\uCC29"
+    Content_Eng: Equip slot 1
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Slot2
+    Content_Kor: "2\uBC88 \uC7A5\uCC29"
+    Content_Eng: Equip slot 2
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Current
+    Content_Kor: "\uD604\uC7AC \uC9C1\uC5C5"
+    Content_Eng: Current job
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Duplicate
+    Content_Kor: "\uAC19\uC740 \uC2A4\uD0AC\uC744 \uB450 \uC2AC\uB86F\uC5D0 \uB123\uC744
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+    Content_Eng: The two slots must contain different skills.
+    FormatArgCount: 0
+  - SearchKey: UI_Skill_Footer
+    Content_Kor: "Esc \uB2EB\uAE30 \xB7 \uC7A5\uCC29 \uAD6C\uC131\uC740 \uACC4\uC815\uBCC4\uB85C
+      \uC774 \uAE30\uAE30\uC5D0 \uC800\uC7A5\uB429\uB2C8\uB2E4."
+    Content_Eng: Esc to close. Loadouts are saved per account on this device.
+    FormatArgCount: 0
+  - SearchKey: UI_DiceResult
+    Content_Kor: "\uC8FC\uC0AC\uC704 {0}  \xB7  \uBAA8\uB4E0 \uB2A5\uB825\uCE58 {1}{2}%"
+    Content_Eng: "Dice {0}  \xB7  All stats {1}{2}%"
+    FormatArgCount: 3
+  - SearchKey: UI_SkillTiming
+    Content_Kor: "\uC2DC\uC804 {0:0.##}\uCD08 \xB7 \uC7AC\uC0AC\uC6A9 {1:0.##}\uCD08"
+    Content_Eng: "Cast {0:0.##}s \xB7 Cooldown {1:0.##}s"
+    FormatArgCount: 2
+  - SearchKey: UI_TrapPreviewReady
+    Content_Kor: "\uC88C\uD074\uB9AD \uC124\uCE58 \xB7 \uC2A4\uD0AC \uD0A4 \uCDE8\uC18C"
+    Content_Eng: "Left-click to place \xB7 skill key to cancel"
+    FormatArgCount: 0
+  - SearchKey: UI_TrapPreviewBlocked
+    Content_Kor: "\uC124\uCE58\uD560 \uC218 \uC5C6\uB294 \uC704\uCE58 \xB7 \uC2A4\uD0AC
+      \uD0A4 \uCDE8\uC18C"
+    Content_Eng: "Cannot place here \xB7 skill key to cancel"
+    FormatArgCount: 0
+  - SearchKey: UI_TrainingDps
+    Content_Kor: DPS {0:0.0}
+    Content_Eng: DPS {0:0.0}
+    FormatArgCount: 1

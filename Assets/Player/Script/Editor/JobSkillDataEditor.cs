@@ -110,6 +110,9 @@ public sealed class JobSkillDataEditor : Editor
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
+        EditorGUILayout.PropertyField(serializedObject.FindProperty("_useGameData"));
+        if (((JobSkillData)target).UsesGameData)
+            EditorGUILayout.HelpBox("이름·설명·스킬 수치는 GameData Excel에서 관리합니다. 아래 수치는 데이터가 없을 때의 기본값입니다. 변경 후 Battle PvP > Data > Import Skill Workbooks를 실행하세요. 아이콘·모션·효과음은 이 에셋에서 설정합니다.", MessageType.Info);
 
         using (new EditorGUI.DisabledScope(true))
             EditorGUILayout.ObjectField("Script", MonoScript.FromScriptableObject((JobSkillData)target), typeof(JobSkillData), false);
@@ -172,6 +175,8 @@ public sealed class JobSkillDataEditor : Editor
             case JobSkillKind.MonostatStrLifesteal:
                 DrawSectionWithLabels(
                     "STR Lifesteal",
+                    (serializedObject.FindProperty("_strAttackSpeedMultiplier"), "Attack Speed Multiplier"),
+                    (serializedObject.FindProperty("_strMoveMultiplier"), "Move Multiplier"),
                     (_lifestealRatio, "Lifesteal Ratio"),
                     (_swordMaterial, "Sword Material"));
                 break;
