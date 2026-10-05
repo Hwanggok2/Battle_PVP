@@ -28,4 +28,9 @@
 ## 빌드
 
 - 대상: Windows 64비트 일반 게임. 로그인 → 로비 → 전투 대기실 → 전투 씬을 포함한다.
-- 출력 예정 위치: `Builds/Windows-2026-10-05/Battle_PvP.exe`.
+- 출력 위치: `Builds/Windows-2026-10-05/Battle_PvP.exe`.
+- 소스 커밋: `dd7890e` — 모든 디버프에 하강 화살표와 관전자 동기화 추가.
+- Unity 6000.3.15f1 / Mono / 일반 빌드 성공. 약 33.9초, 241.34 MB, 오류 0건.
+- 기존 미사용 필드 경고 3건: `FollowCamera._moveSmoothTime`, `FollowCamera._rotSmoothSpeed`, `DamagePopup._moveYSpeed`.
+- 완성된 일반 게임 실행본을 그래픽 없는 숨김 테스트 프로세스로 34초 구동했다. 프로세스가 유지됐고 로그의 런타임 예외는 0건이었다. 해당 검사에서는 실제 로그인·그래픽 화면·인터넷 방 입장을 확인하지 않았다.
+- 실행 파일, `Battle_PvP_Data`, `UnityPlayer.dll` 등 출력 폴더 전체가 함께 필요하다. 빌드 산출물은 Git에서 제외한다.

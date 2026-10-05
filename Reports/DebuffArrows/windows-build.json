@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-05",
+  "sourceCommit": "dd7890e",
+  "job_id": "build-34c10c0262",
+  "result": "succeeded",
+  "platform": "StandaloneWindows64",
+  "output_path": "Builds/Windows-2026-10-05/Battle_PvP.exe",
+  "started_at": "2026-10-05T05:00:27.058608Z",
+  "duration_seconds": 33.880903499999995,
+  "completed_at": "2026-10-05T05:01:00.9395115Z",
+  "total_size_mb": 241.34,
+  "errors": 0,
+  "warnings": 3,
+  "scriptingBackend": "Mono",
+  "development": false,
+  "scenes": [
+    "Assets/Scenes/Login.unity",
+    "Assets/Scenes/Lobby.unity",
+    "Assets/Scenes/Battle_waiting.unity",
+    "Assets/Scenes/Battle.unity"
+  ],
+  "warningDetails": [
+    "CS0414: FollowCamera._rotSmoothSpeed 미사용",
+    "CS0414: FollowCamera._moveSmoothTime 미사용",
+    "CS0414: DamagePopup._moveYSpeed 미사용"
+  ],
+  "startupReport": "Reports/DebuffArrows/startup-smoke.json"
+}

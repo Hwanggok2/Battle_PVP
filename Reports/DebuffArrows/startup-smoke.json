@@ -1,0 +1,8 @@
+{
+  "alive": true,
+  "elapsedSeconds": 34.0,
+  "exceptionCount": 0,
+  "exceptionLines": [],
+  "mode": "batchmode,nographics",
+  "note": "초기 실행 검사이며 실제 로그인, 그래픽 화면 및 인터넷 방 입장 검사는 포함하지 않음"
+}
