@@ -14,7 +14,7 @@ namespace BattlePvp.Networking
     {
         private const string ApproveFunction = "ApproveRoomConnection";
         private const string VerifyFunction = "VerifyRoomConnection";
-        private enum ResponseCode : byte { Rejected, Accepted, DuplicateAccount }
+        private enum ResponseCode : byte { Rejected, Accepted, DuplicateAccount, DirectUpgradeAvailable }
         public struct ChallengeMessage : NetworkMessage { public string RoomId; public string Challenge; }
         public struct ProofMessage : NetworkMessage { public string PlayerId; public string Challenge; }
         public struct ResultMessage : NetworkMessage { public byte Code; }
@@ -194,6 +194,10 @@ namespace BattlePvp.Networking
             connection.authenticationData = identity;
             connection.Send(new ResultMessage { Code = (byte)ResponseCode.Accepted });
             ServerAccept(connection);
+            // A separate, post-accept result preserves the old message layout. Old
+            // clients ignore it after _clientWaiting becomes false; old hosts never advertise it.
+            if (!(connection is LocalConnectionToClient) && Transport.active is UnityRelayTransport relay && relay.AllowRtcUpgrade)
+                connection.Send(new ResultMessage { Code = (byte)ResponseCode.DirectUpgradeAvailable });
         }
 
         private void Reject(NetworkConnectionToClient connection, ResponseCode code)
@@ -301,6 +305,12 @@ namespace BattlePvp.Networking
 
         private void OnResult(ResultMessage message)
         {
+            if (message.Code == (byte)ResponseCode.DirectUpgradeAvailable)
+            {
+                if (!_clientWaiting && NetworkClient.connection != null && NetworkClient.connection.isAuthenticated &&
+                    Transport.active is UnityRelayTransport relay) relay.EnableRtcUpgrade();
+                return;
+            }
             if (!_clientWaiting) return;
             if (PlayFabBattleManager.Instance == null || _clientRoomId != PlayFabBattleManager.Instance.CurrentRoomId ||
                 !RoomAuthenticationRules.IsBeforeDeadline(Time.realtimeSinceStartupAsDouble, _clientDeadline))

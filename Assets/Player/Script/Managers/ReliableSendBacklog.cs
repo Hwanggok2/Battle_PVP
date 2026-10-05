@@ -25,6 +25,7 @@ namespace BattlePvp.Networking
         }
 
         public bool HasExpired(double now) => Count > 0 && now - _packets.Peek().Enqueued >= MaxWaitSeconds;
+        public double OldestWaitSeconds(double now) => Count > 0 ? Math.Max(0d, now - _packets.Peek().Enqueued) : 0d;
         public ArraySegment<byte> Peek() => new ArraySegment<byte>(_packets.Peek().Bytes);
         public void RemoveFirst() => Bytes -= _packets.Dequeue().Bytes.Length;
         public void Clear() { _packets.Clear(); Bytes = 0; }

@@ -2,6 +2,14 @@
 
 이 폴더는 검토할 정책 조각을 제공한다. 실제 PlayFab 설정 조회·변경·배포는 수행하지 않았다. 개발자 비밀 키나 관리자 키를 게임 코드/이 폴더에 저장하지 않는다.
 
+## 2026-10-05 참가자 인증 진단 추가
+
+후속 직접 UDP 우선 연결: `RegisterRoomToRegistry`에 선택 인자 `directEndpoint`(공인 IPv4:UDP 포트)를 추가했다. `roomInfo`의 해당 값을 JoinRoom/목록에서 유지해 인터넷 참가자가 직접 접속을 먼저 시도하도록 한다. 기존 `relayJoinCode`의 의미/형식은 유지하며, 구버전 요청은 직접 후보 없이 정상 처리한다. 호스트만 등록할 수 있고 참가 인증은 그대로다. `node Tools/Tests/RoomDirectEndpoint.test.js`로 양쪽 배포 파일을 검사했다. **사용자가 직접 배포하기로 했으며 Live 반영은 아직 미확인이다.** 배포 대상은 `Assets/PlayFabCloudScript/combinedCloudScript.js`이고, 코드 반영 후 새 방을 생성해야 새 공인 후보가 게시된다.
+
+`Assets/PlayFabCloudScript/combinedCloudScript.js` (또는 동일 게임 핸들러의 `roomRegistry.js`)에 JoinRoom / ApproveRoomConnection / VerifyRoomConnection의 실패 코드 로그를 추가했다. `ROOM_FAILURE:<고정 코드>`만 기록하며 계정·방·암호·challenge·서버 예외 본문은 기록하지 않는다. 성공 응답과 실패 throw 계약은 유지한다. **이 변경은 아직 배포하지 않았다.** 기존 Live revision 15의 불투명 JavascriptException은 새 호스트가 최대 3회 같은 증명을 읽어 확인한다. 서버에 진단 코드를 배포하면 영구 거절과 일시적인 증명 읽기 실패를 구분할 수 있다. 승인 없는 입장 허용이나 개발자 비밀키 추가는 필요 없다.
+
+로컬 검증: `node Tools/Tests/RoomFailureDiagnostics.test.js`. 상세 실측과 한계는 [핑·접속 작업 기록](../../PING_FIX_PROGRESS_2026-10-05.md)에 저장했다.
+
 ## 반영 대상
 
 `ApiPolicy.room-and-statistics-deny.json`은 Client API 5개의 직접 쓰기를 막는 추가 Statements다. 현재 정책 전체를 대체하는 파일이나 완성된 UpdatePolicy 요청이 아니다. 로그인·프로필 프리셋 저장·공개 목록 읽기·ExecuteCloudScript와 Server API는 이 조각의 차단 대상이 아니다. API별 정책 형식은 [공식 API Access Policy](https://learn.microsoft.com/en-us/xbox/playfab/api-references/api-access-policy)를 따른다.

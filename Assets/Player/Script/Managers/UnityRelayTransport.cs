@@ -16,16 +16,17 @@ using UtpNetworkConnection = Unity.Networking.Transport.NetworkConnection;
 
 namespace BattlePvp.Networking
 {
-    public sealed class UnityRelayTransport : Transport
+    public sealed partial class UnityRelayTransport : Transport
     {
         [SerializeField] private string _connectionType = "udp";
 
         private const int RelayApiMaxAttempts = 3;
         public const int ReliablePacketCapacity = 60_000;
         public const int PacketBatchThreshold = 1_200;
-        private const int ReliableWindowSize = 128; // Room for all fragments of one declared 60 KB packet.
+        private const int ReliableWindowSize = 256; // Absorb a short burst of fragmented room/spawn messages.
         private const int RelayApiBackoffMilliseconds = 500;
         private const int RelayPreparationTimeoutMilliseconds = 30_000;
+        public const double ClientConnectTimeoutSeconds = 20d;
         private const string SeoulRelayRegionId = "asia-northeast3";
         private const string TokyoRelayRegionId = "asia-northeast1";
 
@@ -53,6 +54,8 @@ namespace BattlePvp.Networking
         private bool _clientDisconnectPending;
         private string _clientConnectFailure;
         private uint _clientAttempt;
+        private double _clientConnectDeadline;
+        private RelayConnectionStatus _lastClientRelayStatus;
         private long _preparationVersion;
         private CancellationTokenSource _preparationCancellation;
         private static Task _unityServicesReady;
@@ -60,6 +63,28 @@ namespace BattlePvp.Networking
         public string LastJoinCode { get; private set; }
         public string LastRelayRegion { get; private set; }
         public string LastRelayRegionLabel { get; private set; }
+        public string ConnectionProtocol => ClientUsingRtc ? "webrtc-udp" : GetRelayConnectionType();
+        public bool CollectDiagnostics { get; set; }
+        public long SentBytes { get; private set; }
+        public long ReceivedBytes { get; private set; }
+        public long SendQueueFullCount { get; private set; }
+        public long UnreliableSendDropCount { get; private set; }
+        public long SendErrorCount { get; private set; }
+        public double PollMilliseconds { get; private set; }
+        public double FlushMilliseconds { get; private set; }
+        public int BacklogBytes
+        {
+            get { int bytes = _clientBacklog.Bytes + RtcBacklogBytes; foreach (var queue in _serverBacklogs.Values) bytes += queue.Bytes; return bytes; }
+        }
+        public double OldestBacklogSeconds
+        {
+            get
+            {
+                double now = Time.realtimeSinceStartupAsDouble, oldest = _clientBacklog.OldestWaitSeconds(now);
+                foreach (var queue in _serverBacklogs.Values) oldest = Math.Max(oldest, queue.OldestWaitSeconds(now));
+                return Math.Max(oldest, RtcBacklogAge(now));
+            }
+        }
         public bool ServerRelayReady => _serverDriver.IsCreated &&
             _serverDriver.GetRelayConnectionStatus() == RelayConnectionStatus.Established;
         public bool ServerRelayFailed => !_serverDriver.IsCreated ||
@@ -82,9 +107,15 @@ namespace BattlePvp.Networking
                 string joinCode = await RunRelayApiWithRetryAsync("GetJoinCodeAsync",
                     () => RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId), token);
                 RelayServerData serverData = allocation.ToRelayServerData(GetRelayConnectionType());
+#if !UNITY_WEBGL
+                var stunServer = await RoomStunNetworkInterface.ResolveAsync(token);
+#endif
                 RequireCurrentPreparation(version, token);
                 // Commit only after every stage succeeds. Detached SDK tasks never write these fields.
                 _serverRelayData = serverData;
+#if !UNITY_WEBGL
+                _stunServer = stunServer;
+#endif
                 LastJoinCode = joinCode;
                 LastRelayRegion = allocation.Region;
                 LastRelayRegionLabel = GetRegionLabel(LastRelayRegion);
@@ -94,7 +125,7 @@ namespace BattlePvp.Networking
             finally { FinishPreparation(preparation); }
         }
 
-        public async Task PrepareClientAsync(string joinCode, CancellationToken cancellation = default)
+        public async Task PrepareClientAsync(string joinCode, CancellationToken cancellation = default, string roomId = null, string publicEndpoint = null)
         {
             if (string.IsNullOrWhiteSpace(joinCode))
                 throw new ArgumentException("Relay join code is empty.", nameof(joinCode));
@@ -104,15 +135,22 @@ namespace BattlePvp.Networking
             try
             {
                 token.ThrowIfCancellationRequested();
-                await ServiceTaskDeadline.WaitAsync(EnsureUnityServicesAsync(), token);
-                JoinAllocation allocation = await RunRelayApiWithRetryAsync("JoinAllocationAsync",
-                    () => RelayService.Instance.JoinAllocationAsync(joinCode.Trim()), token);
-                RelayServerData clientData = allocation.ToRelayServerData(GetRelayConnectionType());
+                var directEndpoint = await RoomLanDiscovery.FindAsync(RoomLanDiscovery.RoomKey(roomId, joinCode), token);
+                System.Net.IPEndPoint publicCandidate = null;
+#if !UNITY_WEBGL
+                RoomDirectEndpoint.TryParse(publicEndpoint, out publicCandidate);
+#endif
                 RequireCurrentPreparation(version, token);
-                _clientRelayData = clientData;
-                LastRelayRegion = allocation.Region;
-                LastRelayRegionLabel = GetRegionLabel(LastRelayRegion);
-                _hasPreparedClientRelay = true;
+                _clientRelayJoinCode = joinCode.Trim();
+                _directEndpoint = directEndpoint ?? publicCandidate;
+                _publicDirectCandidate = directEndpoint != null && !directEndpoint.Equals(publicCandidate) ? publicCandidate : null;
+                if (_directEndpoint != null)
+                {
+                    RoomConnectionDiagnostics.Stage("direct_udp_prepared");
+                    return; // Do not join the Relay allocation unless direct UDP is unavailable.
+                }
+                await PrepareClientRelayDataAsync(_clientRelayJoinCode, version, token);
+                RoomConnectionDiagnostics.Stage("relay_client_prepared_" + GetRelayConnectionType());
             }
             finally { FinishPreparation(preparation); }
         }
@@ -122,6 +160,10 @@ namespace BattlePvp.Networking
             CancelPendingPreparation();
             _hasPreparedClientRelay = false;
             _hasPreparedServerRelay = false;
+            _directEndpoint = null;
+            _publicDirectCandidate = null;
+            _clientRelayJoinCode = null;
+            _lanRoomKey = null;
             LastJoinCode = LastRelayRegion = LastRelayRegionLabel = string.Empty;
             var preparation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
             preparation.CancelAfter(RelayPreparationTimeoutMilliseconds);
@@ -135,6 +177,9 @@ namespace BattlePvp.Networking
             CancellationTokenSource pending = _preparationCancellation;
             _preparationCancellation = null;
             pending?.Cancel();
+            _clientFallbackCancellation?.Cancel();
+            _clientFallbackCancellation = null;
+            _clientPreparingFallback = false;
         }
 
         private void RequireCurrentPreparation(long version, CancellationToken token)
@@ -149,7 +194,7 @@ namespace BattlePvp.Networking
             preparation.Dispose();
         }
 
-        private void OnDestroy() => CancelPendingPreparation();
+        private void OnDestroy() { CancelPendingPreparation(); _lanDiscovery.Dispose(); }
 
         private static string GetRegionLabel(string regionId)
         {
@@ -231,9 +276,13 @@ namespace BattlePvp.Networking
         public override void ClientConnect(string address)
         {
             unchecked { _clientAttempt++; }
+            _clientConnected = false;
             _clientDisconnectPending = true;
+            _clientConnectDeadline = Time.realtimeSinceStartupAsDouble + ClientConnectTimeoutSeconds;
+            _lastClientRelayStatus = RelayConnectionStatus.NotEstablished;
             _clientConnectFailure = null;
-            if (!_hasPreparedClientRelay)
+            RoomConnectionDiagnostics.Stage("relay_client_connect_started");
+            if (!_hasPreparedClientRelay && _directEndpoint == null)
             {
                 _clientConnectFailure = "Relay client data was not prepared before ClientConnect.";
                 return;
@@ -241,15 +290,7 @@ namespace BattlePvp.Networking
 
             try
             {
-                var settings = new NetworkSettings();
-                settings.WithRelayParameters(serverData: ref _clientRelayData);
-                settings.WithFragmentationStageParameters(payloadCapacity: ReliablePacketCapacity);
-                settings.WithReliableStageParameters(windowSize: ReliableWindowSize);
-                _clientDriver = CreateRelayDriver(settings);
-                _clientReliablePipeline = _clientDriver.CreatePipeline(
-                    typeof(FragmentationPipelineStage),
-                    typeof(ReliableSequencedPipelineStage));
-                _clientConnection = _clientDriver.Connect();
+                CreateClientDriver(_directEndpoint != null);
             }
             catch (Exception)
             {
@@ -259,6 +300,8 @@ namespace BattlePvp.Networking
 
         public override void ClientSend(ArraySegment<byte> segment, int channelId = Channels.Reliable)
         {
+            if (_clientRtc != null && _clientRtc.SendingDirect && !_clientRtc.Ended)
+            { _clientRtc.Send(segment, channelId, Time.realtimeSinceStartupAsDouble); return; }
             if (!_clientDriver.IsCreated || !_clientConnection.IsCreated)
                 return;
 
@@ -280,15 +323,38 @@ namespace BattlePvp.Networking
 
         private void FinishClientDisconnect()
         {
+            ClearClientRtc();
             bool notify = _clientDisconnectPending;
             _clientDisconnectPending = false;
             _clientConnectFailure = null;
             _clientConnected = false;
+            _clientConnectDeadline = 0d;
+            _directConnectDeadline = 0d;
+            _clientUsingDirect = false;
+            _directEndpoint = null;
+            _publicDirectCandidate = null;
+            _clientFallbackCancellation?.Cancel();
+            _clientFallbackCancellation = null;
+            _clientPreparingFallback = false;
             _clientBacklog.Clear();
             _clientConnection = default;
             DisposeClientDriver();
             // Mirror's callback calls Shutdown -> ClientDisconnect again. Commit cleanup first.
             if (notify) OnClientDisconnected?.Invoke();
+        }
+
+        // This also runs when an interrupted network loop is no longer polling the driver.
+        // Use wall time so a low frame rate/timeScale cannot extend an abandoned join indefinitely.
+        private new void Update() => CheckClientConnectTimeout(Time.realtimeSinceStartupAsDouble);
+
+        private bool CheckClientConnectTimeout(double now)
+        {
+            if (_directConnectDeadline > 0 && now >= _directConnectDeadline && TryAdvanceClientRoute()) return false;
+            if (!_clientDisconnectPending || _clientConnected || _clientConnectDeadline <= 0d || now < _clientConnectDeadline)
+                return false;
+            RoomConnectionDiagnostics.Stage("relay_client_connect_timeout");
+            FailConnection(true, 0, "Relay game connection did not complete within 20 seconds.", TransportError.Timeout);
+            return true;
         }
 
         public override Uri ServerUri() => new Uri("relay://localhost");
@@ -303,14 +369,7 @@ namespace BattlePvp.Networking
                 return;
             }
 
-            var settings = new NetworkSettings();
-            settings.WithRelayParameters(serverData: ref _serverRelayData);
-            settings.WithFragmentationStageParameters(payloadCapacity: ReliablePacketCapacity);
-            settings.WithReliableStageParameters(windowSize: ReliableWindowSize);
-            _serverDriver = CreateRelayDriver(settings);
-            _serverReliablePipeline = _serverDriver.CreatePipeline(
-                typeof(FragmentationPipelineStage),
-                typeof(ReliableSequencedPipelineStage));
+            _serverDriver = CreateRoomDriver(true, ref _serverRelayData, out _serverReliablePipeline);
 
             if (_serverDriver.Bind(NetworkEndpoint.AnyIpv4) < 0)
             {
@@ -325,51 +384,70 @@ namespace BattlePvp.Networking
                 OnServerError?.Invoke(0, TransportError.Unexpected, "Failed to listen on Unity Relay transport.");
                 return;
             }
+            StartDirectServer();
         }
 
         public override void ServerSend(int connectionId, ArraySegment<byte> segment, int channelId = Channels.Reliable)
         {
-            if (!_serverDriver.IsCreated || !_serverConnections.TryGetValue(connectionId, out UtpNetworkConnection connection))
+            if (_serverRtc.TryGetValue(connectionId, out var rtc) && rtc.SendingDirect && !rtc.Ended)
+            { rtc.Send(segment, channelId, Time.realtimeSinceStartupAsDouble); return; }
+            bool direct = _directConnections.Contains(connectionId);
+            ref NetworkDriver driver = ref ServerDriver(direct);
+            if (!driver.IsCreated || !_serverConnections.TryGetValue(connectionId, out UtpNetworkConnection connection))
                 return;
 
-            Send(_serverDriver, GetServerPipeline(channelId), connection, segment, channelId, false, connectionId);
+            Send(driver, channelId == Channels.Reliable ? (direct ? _directServerPipeline : _serverReliablePipeline) : NetworkPipeline.Null,
+                connection, segment, channelId, false, connectionId);
         }
 
         public override void ServerDisconnect(int connectionId)
         {
+            ClearServerRtc(connectionId);
             if (!_serverConnections.TryGetValue(connectionId, out UtpNetworkConnection connection)) return;
+            bool direct = _directConnections.Remove(connectionId);
+            ref NetworkDriver driver = ref ServerDriver(direct);
             _serverConnections.Remove(connectionId);
             _serverBacklogs.Remove(connectionId);
             try
             {
-                if (_serverDriver.IsCreated && connection.IsCreated)
+                if (driver.IsCreated && connection.IsCreated)
                 {
-                    connection.Disconnect(_serverDriver);
-                    _serverDriver.ScheduleUpdate().Complete();
+                    connection.Disconnect(driver);
+                    driver.ScheduleUpdate().Complete();
                 }
             }
             finally { OnServerDisconnected?.Invoke(connectionId); }
         }
 
-        public override string ServerGetClientAddress(int connectionId) => $"relay:{connectionId}";
+        public override string ServerGetClientAddress(int connectionId) =>
+            (_directConnections.Contains(connectionId) ? "direct:" : "relay:") + connectionId;
 
         public override void ServerStop()
         {
+            ClearServerRtc();
             bool disconnectedAny = false;
-            foreach (UtpNetworkConnection connection in _serverConnections.Values)
+            _lanDiscovery.Dispose();
+            foreach (var pair in _serverConnections)
             {
-                if (connection.IsCreated && _serverDriver.IsCreated)
+                ref NetworkDriver driver = ref ServerDriver(_directConnections.Contains(pair.Key));
+                if (pair.Value.IsCreated && driver.IsCreated)
                 {
-                    connection.Disconnect(_serverDriver);
+                    pair.Value.Disconnect(driver);
                     disconnectedAny = true;
                 }
             }
 
             if (disconnectedAny && _serverDriver.IsCreated)
                 _serverDriver.ScheduleUpdate().Complete();
+            if (disconnectedAny && _directServerDriver.IsCreated) _directServerDriver.ScheduleUpdate().Complete();
 
             _serverConnections.Clear();
             _serverBacklogs.Clear();
+            _directConnections.Clear();
+            if (_directServerDriver.IsCreated) _directServerDriver.Dispose();
+#if !UNITY_WEBGL
+            _directNetwork = null;
+#endif
             DisposeServerDriver();
         }
 
@@ -398,14 +476,18 @@ namespace BattlePvp.Networking
         {
             if (_isPolling) return;
             _isPolling = true;
-            try { PollClient(); }
-            finally { _isPolling = false; }
+            double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
+            try { PollClient(); PollRtc(true); }
+            finally { if (started > 0d) PollMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d; _isPolling = false; }
         }
 
         private void PollClient()
         {
+            if (CheckClientConnectTimeout(Time.realtimeSinceStartupAsDouble)) return;
+            if (_clientPreparingFallback) return;
             if (_clientConnectFailure != null)
             {
+                if (TryAdvanceClientRoute()) return;
                 uint failedAttempt = _clientAttempt;
                 string failure = _clientConnectFailure;
                 _clientConnectFailure = null;
@@ -415,10 +497,20 @@ namespace BattlePvp.Networking
                 return;
             }
             if (!_clientDriver.IsCreated || !_clientConnection.IsCreated)
+            {
+                if (_clientDisconnectPending)
+                    FailConnection(true, 0, "Relay client has no valid driver or connection.");
                 return;
+            }
 
             _clientDriver.ScheduleUpdate().Complete();
-            if (_clientDriver.GetRelayConnectionStatus() == RelayConnectionStatus.AllocationInvalid)
+            RelayConnectionStatus status = _clientDriver.GetRelayConnectionStatus();
+            if (status != _lastClientRelayStatus)
+            {
+                _lastClientRelayStatus = status;
+                RoomConnectionDiagnostics.Stage("relay_client_status_" + status);
+            }
+            if (status == RelayConnectionStatus.AllocationInvalid)
             {
                 FailConnection(true, 0, "Relay allocation is no longer valid.");
                 return;
@@ -438,14 +530,19 @@ namespace BattlePvp.Networking
                 {
                     case NetworkEvent.Type.Connect:
                         _clientConnected = true;
+                        _clientConnectDeadline = 0d;
+                        _directConnectDeadline = 0d;
+                        RoomConnectionDiagnostics.Stage(_clientUsingDirect ? "direct_udp_transport_connected" : "relay_client_transport_connected");
                         OnClientConnected?.Invoke();
                         break;
                     case NetworkEvent.Type.Data:
-                        OnClientDataReceived?.Invoke(
+                        ReceiveRoomData(true, 0,
                             ReadPayload(reader),
                             ResolveReceivedChannel(pipeline, _clientReliablePipeline));
                         break;
                     case NetworkEvent.Type.Disconnect:
+                        if (TryAdvanceClientRoute()) return;
+                        RoomConnectionDiagnostics.Stage("relay_client_disconnected_code_" + (reader.Length > 0 ? reader.ReadByte() : 0));
                         FinishClientDisconnect();
                         return;
                 }
@@ -460,30 +557,35 @@ namespace BattlePvp.Networking
         {
             if (_isPolling) return;
             _isPolling = true;
-            try { PollServer(); }
-            finally { _isPolling = false; }
+            double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
+            try { _lanDiscovery.Poll(); PollServer(false); PollServer(true); PollRtc(false); }
+            finally { if (started > 0d) PollMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d; _isPolling = false; }
         }
 
-        private void PollServer()
+        private void PollServer(bool direct)
         {
-            if (!_serverDriver.IsCreated)
+            ref NetworkDriver driver = ref ServerDriver(direct);
+            NetworkPipeline reliable = direct ? _directServerPipeline : _serverReliablePipeline;
+            if (!driver.IsCreated)
                 return;
 
-            _serverDriver.ScheduleUpdate().Complete();
-            if (_serverDriver.GetRelayConnectionStatus() == RelayConnectionStatus.AllocationInvalid)
+            driver.ScheduleUpdate().Complete();
+            if (!direct && driver.GetRelayConnectionStatus() == RelayConnectionStatus.AllocationInvalid)
             {
                 // The room service observes this terminal state and stops advertising the host.
                 return;
             }
 
             UtpNetworkConnection connection;
-            while ((connection = _serverDriver.Accept()) != default)
+            while ((connection = driver.Accept()) != default)
             {
                 int connectionId = _nextConnectionId++;
                 _serverConnections[connectionId] = connection;
+                if (direct) _directConnections.Add(connectionId);
                 _serverBacklogs[connectionId] = new ReliableSendBacklog();
+                RoomConnectionDiagnostics.Stage(direct ? "direct_udp_peer_accepted" : "relay_server_peer_accepted");
                 OnServerConnectedWithAddress?.Invoke(connectionId, ServerGetClientAddress(connectionId));
-                if (!_serverDriver.IsCreated) return;
+                if (!driver.IsCreated) return;
             }
 
             _disconnectedIds.Clear();
@@ -491,15 +593,16 @@ namespace BattlePvp.Networking
             _connectionIds.AddRange(_serverConnections.Keys);
             foreach (int connectionId in _connectionIds)
             {
+                if (_directConnections.Contains(connectionId) != direct) continue;
                 if (!_serverConnections.TryGetValue(connectionId, out UtpNetworkConnection serverConnection))
                     continue;
                 if (_serverBacklogs.TryGetValue(connectionId, out ReliableSendBacklog backlog))
-                    FlushBacklog(backlog, _serverDriver, _serverReliablePipeline, serverConnection, false, connectionId);
-                if (!_serverDriver.IsCreated) return;
+                    FlushBacklog(backlog, driver, reliable, serverConnection, false, connectionId);
+                if (!driver.IsCreated) return;
                 if (!_serverConnections.ContainsKey(connectionId)) continue;
 
                 NetworkEvent.Type eventType;
-                while ((eventType = _serverDriver.PopEventForConnection(
+                while ((eventType = driver.PopEventForConnection(
                            serverConnection,
                            out DataStreamReader reader,
                            out NetworkPipeline pipeline)) != NetworkEvent.Type.Empty)
@@ -507,24 +610,25 @@ namespace BattlePvp.Networking
                     switch (eventType)
                     {
                         case NetworkEvent.Type.Data:
-                            OnServerDataReceived?.Invoke(
-                                connectionId,
+                            ReceiveRoomData(false, connectionId,
                                 ReadPayload(reader),
-                                ResolveReceivedChannel(pipeline, _serverReliablePipeline));
+                                ResolveReceivedChannel(pipeline, reliable));
                             break;
                         case NetworkEvent.Type.Disconnect:
                             _disconnectedIds.Add(connectionId);
                             break;
                     }
                     // A Mirror callback may synchronously disconnect or shut down the server.
-                    if (!_serverDriver.IsCreated) return;
+                    if (!driver.IsCreated) return;
                     if (!_serverConnections.ContainsKey(connectionId)) break;
                 }
             }
 
             foreach (int connectionId in _disconnectedIds)
             {
+                ClearServerRtc(connectionId);
                 _serverBacklogs.Remove(connectionId);
+                _directConnections.Remove(connectionId);
                 if (_serverConnections.Remove(connectionId)) OnServerDisconnected?.Invoke(connectionId);
             }
         }
@@ -532,13 +636,19 @@ namespace BattlePvp.Networking
         public override void ClientLateUpdate()
         {
             if (_clientDriver.IsCreated)
+            {
+                double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
                 _clientDriver.ScheduleFlushSend().Complete();
+                if (CollectDiagnostics) FlushMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d;
+            }
         }
 
         public override void ServerLateUpdate()
         {
-            if (_serverDriver.IsCreated)
-                _serverDriver.ScheduleFlushSend().Complete();
+            double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
+            if (_directServerDriver.IsCreated) _directServerDriver.ScheduleFlushSend().Complete();
+            if (_serverDriver.IsCreated) _serverDriver.ScheduleFlushSend().Complete();
+            if (CollectDiagnostics) FlushMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d;
         }
 
         private NetworkPipeline GetClientPipeline(int channelId)
@@ -553,11 +663,6 @@ namespace BattlePvp.Networking
 #else
             return NetworkDriver.Create(settings);
 #endif
-        }
-
-        private NetworkPipeline GetServerPipeline(int channelId)
-        {
-            return channelId == Channels.Reliable ? _serverReliablePipeline : NetworkPipeline.Null;
         }
 
         private static int ResolveReceivedChannel(NetworkPipeline pipeline, NetworkPipeline reliablePipeline)
@@ -601,7 +706,13 @@ namespace BattlePvp.Networking
             int result = driver.BeginSend(pipeline, connection, out DataStreamWriter writer, segment.Count);
             if (result < 0)
             {
-                if (result == (int)Unity.Networking.Transport.Error.StatusCode.NetworkSendQueueFull) return false;
+                if (result == (int)Unity.Networking.Transport.Error.StatusCode.NetworkSendQueueFull)
+                {
+                    SendQueueFullCount++;
+                    if (channelId != Channels.Reliable) UnreliableSendDropCount++;
+                    return false;
+                }
+                SendErrorCount++;
                 FailConnection(client, connectionId, $"Relay BeginSend failed ({result}).");
                 return true;
             }
@@ -614,14 +725,18 @@ namespace BattlePvp.Networking
             result = driver.EndSend(writer);
             if (result < 0)
             {
+                SendErrorCount++;
+                if (channelId != Channels.Reliable) UnreliableSendDropCount++;
                 if (channelId == Channels.Reliable)
                     FailConnection(client, connectionId, $"Relay reliable EndSend failed ({result}); delivery is unconfirmed.");
                 else RaiseSendError(client, connectionId, result);
             }
-            else if (client)
-                OnClientDataSent?.Invoke(segment, channelId);
             else
-                OnServerDataSent?.Invoke(connectionId, segment, channelId);
+            {
+                SentBytes += segment.Count;
+                if (client) OnClientDataSent?.Invoke(segment, channelId);
+                else OnServerDataSent?.Invoke(connectionId, segment, channelId);
+            }
             return true;
         }
 
@@ -644,19 +759,19 @@ namespace BattlePvp.Networking
             {
                 if (!TrySend(driver, pipeline, connection, backlog.Peek(), Channels.Reliable, client, connectionId)) return;
                 // Send callbacks may synchronously shut down and clear the queue/driver.
-                if (client ? !_clientDriver.IsCreated : !_serverDriver.IsCreated || !_serverConnections.ContainsKey(connectionId)) return;
+                if (client ? !_clientDriver.IsCreated : !ServerDriver(_directConnections.Contains(connectionId)).IsCreated || !_serverConnections.ContainsKey(connectionId)) return;
                 if (backlog.Count > 0) backlog.RemoveFirst();
             }
         }
 
-        private void FailConnection(bool client, int connectionId, string message)
+        private void FailConnection(bool client, int connectionId, string message, TransportError error = TransportError.Unexpected)
         {
             // These messages are generated here from transport status codes, never SDK credentials.
             RoomConnectionDiagnostics.Record((client ? "client_relay_failure: " : "server_relay_failure: ") + message);
             if (client)
             {
                 uint attempt = _clientAttempt;
-                try { OnClientError?.Invoke(TransportError.Unexpected, message); }
+                try { OnClientError?.Invoke(error, message); }
                 finally { if (attempt == _clientAttempt) ClientDisconnect(); }
             }
             else
@@ -677,6 +792,7 @@ namespace BattlePvp.Networking
 
         private ArraySegment<byte> ReadPayload(DataStreamReader reader)
         {
+            ReceivedBytes += reader.Length;
             if (!_receiveBuffer.IsCreated)
                 _receiveBuffer = new NativeArray<byte>(ReliablePacketCapacity, Allocator.Persistent);
             reader.ReadBytes(_receiveBuffer.GetSubArray(0, reader.Length));

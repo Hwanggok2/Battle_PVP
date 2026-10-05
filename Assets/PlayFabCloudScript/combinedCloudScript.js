@@ -341,6 +341,8 @@ handlers.RegisterRoomToRegistry = function(args, context) {
     var roomName = requireString(args, "roomName");
     var masterName = getString(args, "masterName", "Unknown");
     var relayJoinCode = getString(args, "relayJoinCode", "");
+    var directEndpoint = normalizeDirectEndpoint(getString(args, "directEndpoint", ""));
+    if (args && args.directEndpoint && !directEndpoint) throw "Invalid direct UDP endpoint.";
     ensureSharedGroup(ROOM_REGISTRY_ID);
     var registryData = readRoomRegistry();
     var lease = readRoomLease(registryData, roomId);
@@ -356,6 +358,7 @@ handlers.RegisterRoomToRegistry = function(args, context) {
     var roomInfo = existed ? readRegisteredRoomInfo(registryData, roomId) : null;
     roomInfo = roomInfo || { roomName: roomName, masterName: masterName, playerCount: 1, relayJoinCode: relayJoinCode };
     roomInfo.relayJoinCode = relayJoinCode;
+    roomInfo.directEndpoint = directEndpoint;
     ensureSharedGroup(roomId);
     roomInfo.playerCount = joinRoomWithinCapacity(roomId);
     server.UpdateSharedGroupData({ SharedGroupId: roomId, Data: buildRoomData(roomInfo) });
@@ -946,9 +949,29 @@ function normalizeRoomInfo(roomInfo, roomId) {
         masterName: roomInfo.masterName || "Unknown",
         playerCount: Math.max(0, parseCount(roomInfo.playerCount, 0)),
         relayJoinCode: roomInfo.relayJoinCode || "",
+        directEndpoint: normalizeDirectEndpoint(roomInfo.directEndpoint),
         capacity: Math.max(2, Math.min(8, parseCount(roomInfo.capacity, 8))),
         isPrivate: roomInfo.isPrivate === true
     };
+}
+
+// Only the existing owner-authorized registration can publish this optional candidate.
+// It is an address for a bounded UDP attempt, never an admission proof or a hostname.
+function normalizeDirectEndpoint(value) {
+    if (typeof value !== "string" || value.length > 21) return "";
+    var match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3}):(\d{4,5})$/.exec(value);
+    if (!match) return "";
+    var b = [];
+    for (var i = 1; i <= 4; i++) {
+        b.push(Number(match[i]));
+        if (b[i - 1] > 255 || String(b[i - 1]) !== match[i]) return "";
+    }
+    var port = Number(match[5]);
+    if (port < 1024 || port > 65535 || b[0] === 0 || b[0] === 10 || b[0] === 127 || b[0] >= 224 ||
+        (b[0] === 100 && b[1] >= 64 && b[1] <= 127) || (b[0] === 169 && b[1] === 254) ||
+        (b[0] === 172 && b[1] >= 16 && b[1] <= 31) || (b[0] === 192 && b[1] === 168) ||
+        (b[0] === 198 && (b[1] === 18 || b[1] === 19))) return "";
+    return value;
 }
 
 function getRecordValue(data, key) {

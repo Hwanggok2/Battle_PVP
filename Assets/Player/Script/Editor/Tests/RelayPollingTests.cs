@@ -14,6 +14,75 @@ namespace BattlePvp.EditorTests
     public sealed class RelayPollingTests
     {
         [Test]
+        public void MissingConnectionHandleFailsInsteadOfWaitingForever()
+        {
+            var root = new GameObject("Missing relay connection test");
+            var relay = root.AddComponent<UnityRelayTransport>();
+            try
+            {
+                SetField(relay, "_clientDriver", NetworkDriver.Create());
+                SetField(relay, "_clientDisconnectPending", true);
+                int errors = 0, exits = 0;
+                relay.OnClientError = (error, message) => errors++;
+                relay.OnClientDisconnected = () => exits++;
+                relay.ClientEarlyUpdate();
+                relay.ClientEarlyUpdate();
+                Assert.That(errors, Is.EqualTo(1));
+                Assert.That(exits, Is.EqualTo(1));
+                Assert.That(GetField<NetworkDriver>(relay, "_clientDriver").IsCreated, Is.False);
+            }
+            finally { relay.Shutdown(); UnityEngine.Object.DestroyImmediate(root); }
+        }
+
+        [Test]
+        public void ConnectDeadlineWorksWithoutDriverPollingAndDoesNotKillCallbackRetry()
+        {
+            var root = new GameObject("Relay connect deadline test");
+            var relay = root.AddComponent<UnityRelayTransport>();
+            var timeout = typeof(UnityRelayTransport).GetMethod("CheckClientConnectTimeout", BindingFlags.Instance | BindingFlags.NonPublic);
+            try
+            {
+                int errors = 0, exits = 0;
+                SetField(relay, "_clientDisconnectPending", true);
+                SetField(relay, "_clientConnectDeadline", 100d);
+                relay.OnClientError = (error, message) => { Assert.That(error, Is.EqualTo(TransportError.Timeout)); errors++; relay.ClientDisconnect(); };
+                relay.OnClientDisconnected = () =>
+                {
+                    exits++;
+                    if (exits == 1)
+                    {
+                        relay.ClientConnect("relay");
+                        SetField(relay, "_clientConnectDeadline", 200d);
+                    }
+                };
+                Assert.That(timeout.Invoke(relay, new object[] { 99.9d }), Is.False);
+                Assert.That(timeout.Invoke(relay, new object[] { 100d }), Is.True);
+                Assert.That(errors, Is.EqualTo(1)); Assert.That(exits, Is.EqualTo(1));
+                Assert.That(GetField<double>(relay, "_clientConnectDeadline"), Is.EqualTo(200d));
+                Assert.That(timeout.Invoke(relay, new object[] { 101d }), Is.False);
+                relay.ClientDisconnect();
+                Assert.That(timeout.Invoke(relay, new object[] { 500d }), Is.False);
+                Assert.That(errors, Is.EqualTo(1)); Assert.That(exits, Is.EqualTo(2));
+            }
+            finally { relay.Shutdown(); UnityEngine.Object.DestroyImmediate(root); }
+        }
+
+        [Test]
+        public void SuccessfulConnectionCannotExpireUsingItsOldJoinDeadline()
+        {
+            WithLoopback((relay, id) =>
+            {
+                int errors = 0;
+                relay.OnClientError = (error, message) => errors++;
+                SetField(relay, "_clientConnectDeadline", 1d);
+                typeof(UnityRelayTransport).GetMethod("CheckClientConnectTimeout", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(relay, new object[] { 500d });
+                Assert.That(relay.ClientConnected(), Is.True);
+                Assert.That(errors, Is.Zero);
+            });
+        }
+
+        [Test]
         public void VoluntaryDisconnectNotifiesOnceAfterDisposingTheClient()
         {
             WithLoopback((transport, connectionId) =>

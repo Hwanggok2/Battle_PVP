@@ -36,7 +36,7 @@ namespace BattlePvp.Networking
         public struct RoomInfo
         {
             public RoomInfo(string roomName, string masterName, int playerCount, string relayJoinCode = "",
-                double validUntil = double.PositiveInfinity, int capacity = 8, bool isPrivate = false)
+                double validUntil = double.PositiveInfinity, int capacity = 8, bool isPrivate = false, string directEndpoint = "")
             {
                 RoomName = roomName;
                 MasterName = masterName;
@@ -45,6 +45,7 @@ namespace BattlePvp.Networking
                 ValidUntil = validUntil;
                 Capacity = Mathf.Clamp(capacity, 2, 8);
                 IsPrivate = isPrivate;
+                DirectEndpoint = RoomDirectEndpoint.TryParse(directEndpoint, out var endpoint) ? endpoint.ToString() : string.Empty;
             }
 
             public string RoomName { get; private set; }
@@ -54,6 +55,7 @@ namespace BattlePvp.Networking
             public double ValidUntil { get; private set; }
             public int Capacity { get; private set; }
             public bool IsPrivate { get; private set; }
+            public string DirectEndpoint { get; private set; }
         }
 
 
@@ -298,12 +300,13 @@ namespace BattlePvp.Networking
 
         private async System.Threading.Tasks.Task StartRelayHostAsync(UnityRelayTransport transport, RoomFlow flow)
         {
-            SetRoomFlowState(flow, "릴레이 방을 준비하는 중...", true);
+            SetRoomFlowState(flow, "방 연결을 준비하는 중...", true);
             string joinCode = await transport.PrepareHostAsync(NetworkManager.singleton.maxConnections, flow.Cancellation);
             if (!IsCurrentRoomFlow(flow)) return;
             flow.Info = new RoomInfo(flow.Info.RoomName, flow.Info.MasterName, 1, joinCode);
             _currentRoomInfo = flow.Info;
             _networkRoomFlow = flow;
+            transport.ConfigureLocalRoom(flow.Ticket.RoomId, joinCode);
             NetworkManager.singleton.StartHost();
             double deadline = Time.realtimeSinceStartupAsDouble + 15d;
             while (IsCurrentRoomFlow(flow) && !transport.ServerRelayReady)
@@ -312,16 +315,20 @@ namespace BattlePvp.Networking
                     throw new InvalidOperationException("Relay host did not become ready.");
                 await Task.Delay(25, flow.Cancellation);
             }
-            if (IsCurrentRoomFlow(flow)) RegisterRoomToRegistry(flow, joinCode);
+            string publicEndpoint = await transport.GatherPublicEndpointAsync(flow.Cancellation);
+            if (!IsCurrentRoomFlow(flow)) return;
+            flow.Info = new RoomInfo(flow.Info.RoomName, flow.Info.MasterName, 1, joinCode, directEndpoint: publicEndpoint);
+            _currentRoomInfo = flow.Info;
+            RegisterRoomToRegistry(flow, joinCode);
         }
 
         private async System.Threading.Tasks.Task StartRelayClientAsync(UnityRelayTransport transport, RoomFlow flow)
         {
-            SetRoomFlowState(flow, "릴레이 서버에 연결하는 중...", true);
+            SetRoomFlowState(flow, "직접 연결을 확인하는 중...", true);
             string joinCode = await WaitForRelayJoinCodeAsync(flow);
             if (!IsCurrentRoomFlow(flow)) return;
             if (string.IsNullOrWhiteSpace(joinCode)) throw new InvalidOperationException("Room has no Relay code.");
-            await transport.PrepareClientAsync(joinCode, flow.Cancellation);
+            await transport.PrepareClientAsync(joinCode, flow.Cancellation, flow.Ticket.RoomId, flow.Info.DirectEndpoint);
             if (!IsCurrentRoomFlow(flow)) return;
             _networkRoomFlow = flow;
             NetworkManager.singleton.networkAddress = "relay";
@@ -477,7 +484,8 @@ namespace BattlePvp.Networking
                     GetStringValue(infoDict, "masterName", fallback.MasterName),
                     GetIntValue(infoDict, "playerCount", fallback.PlayerCount),
                     GetStringValue(infoDict, "relayJoinCode", fallback.RelayJoinCode), capacity: GetIntValue(infoDict, "capacity", fallback.Capacity > 0 ? fallback.Capacity : 8),
-                    isPrivate: infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom);
+                    isPrivate: infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom,
+                    directEndpoint: GetStringValue(infoDict, "directEndpoint", fallback.DirectEndpoint));
             }
 
             return fallback;
@@ -498,7 +506,8 @@ namespace BattlePvp.Networking
                     new Dictionary<string, object>
                     {
                         { "roomId", flow.Ticket.RoomId }, { "roomName", flow.Info.RoomName },
-                        { "masterName", flow.Info.MasterName }, { "relayJoinCode", relayJoinCode }
+                        { "masterName", flow.Info.MasterName }, { "relayJoinCode", relayJoinCode },
+                        { "directEndpoint", flow.Info.DirectEndpoint }
                     });
                 if (!IsCurrentRoomFlow(flow)) { ScheduleRoomCleanup(flow); return; }
                 if (result == null || result.Error != null) throw new InvalidOperationException("Room registration failed.");
@@ -699,7 +708,7 @@ namespace BattlePvp.Networking
             // A Join/Relay response does not grant a new list lease or make an unlisted room discoverable.
             if (_lastLoadedRoomInfos.TryGetValue(roomId, out RoomInfo listed))
                 _lastLoadedRoomInfos[roomId] = new RoomInfo(info.RoomName, info.MasterName, info.PlayerCount,
-                    info.RelayJoinCode, listed.ValidUntil, info.Capacity, info.IsPrivate);
+                    info.RelayJoinCode, listed.ValidUntil, info.Capacity, info.IsPrivate, info.DirectEndpoint);
             _roomListSnapshot.Invalidate();
         }
 
@@ -708,7 +717,7 @@ namespace BattlePvp.Networking
             if (hostClosed || count <= 0) _lastLoadedRoomInfos.Remove(roomId);
             else if (_lastLoadedRoomInfos.TryGetValue(roomId, out RoomInfo listed))
                 _lastLoadedRoomInfos[roomId] = new RoomInfo(listed.RoomName, listed.MasterName, count,
-                    listed.RelayJoinCode, listed.ValidUntil, listed.Capacity, listed.IsPrivate);
+                    listed.RelayJoinCode, listed.ValidUntil, listed.Capacity, listed.IsPrivate, listed.DirectEndpoint);
             _roomListSnapshot.Invalidate();
         }
 
@@ -750,7 +759,8 @@ namespace BattlePvp.Networking
                     continue;
 
                 roomInfos[kv.Key] = new RoomInfo(roomName, masterName, playerCount, relayJoinCode, deadline,
-                    GetIntValue(infoDict, "capacity", 8), infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom);
+                    GetIntValue(infoDict, "capacity", 8), infoDict.TryGetValue("isPrivate", out object privateValue) && privateValue is bool privateRoom && privateRoom,
+                    GetStringValue(infoDict, "directEndpoint", ""));
             }
 
             return roomInfos;
@@ -1155,7 +1165,8 @@ namespace BattlePvp.Networking
                 session.PlayerCount > 0 ? session.PlayerCount : listed.PlayerCount > 0 ? listed.PlayerCount : 1,
                 !string.IsNullOrWhiteSpace(session.RelayJoinCode) ? session.RelayJoinCode : listed.RelayJoinCode,
                 capacity: session.Capacity > 0 ? session.Capacity : listed.Capacity > 0 ? listed.Capacity : 8,
-                isPrivate: session.Capacity > 0 ? session.IsPrivate : listed.IsPrivate);
+                isPrivate: session.Capacity > 0 ? session.IsPrivate : listed.IsPrivate,
+                directEndpoint: !string.IsNullOrWhiteSpace(session.DirectEndpoint) ? session.DirectEndpoint : listed.DirectEndpoint);
         }
 
         private string GetCurrentPlayerNickname()
