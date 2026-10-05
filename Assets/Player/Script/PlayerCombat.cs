@@ -2825,9 +2825,13 @@ public class PlayerCombat : NetworkBehaviour
         if (!_poisonStacks.Add(target, hitPosition, SkillTime, MonostatAgiPoisonStackDurationSecondsValue,
                 MonostatAgiPoisonMaxStackCount)) return;
 
+        if (target is Component component) component.GetComponent<DebuffIndicator>()?.TrackPoison(this);
+
         if (_monostatAgiPoisonRoutine == null)
             _monostatAgiPoisonRoutine = StartCoroutine(CoMonostatAgiPoisonTick());
     }
+
+    internal double PoisonExpiresAt(IDamageReceiver target) => _poisonStacks.ExpiresAt(target);
 
     private System.Collections.IEnumerator CoMonostatAgiPoisonTick()
     {

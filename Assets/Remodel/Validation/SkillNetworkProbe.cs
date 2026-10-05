@@ -19,7 +19,14 @@ namespace BattlePvp.Remodel.Validation
     public sealed class SkillNetworkProbe : MonoBehaviour
     {
         public GameObject PlayerPrefab;
-        const string Folder="Reports/TrapNetwork";
+        static string Folder
+        {
+            get
+            {
+                var args=Environment.GetCommandLineArgs(); int index=Array.IndexOf(args,"-skill-report");
+                return index>=0 && index+1<args.Length ? args[index+1] : "Reports/TrapNetwork";
+            }
+        }
         const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
         readonly List<string> _checks=new(), _errors=new();
         bool _host, _finished;
@@ -105,6 +112,9 @@ namespace BattlePvp.Remodel.Validation
             NetworkServer.Spawn(_actor); Equip(4,JobSkillKind.Trap); yield return new WaitForSeconds(1);
             var health=_actor.GetComponent<HealthSystem>(); var skills=_actor.GetComponent<ExpandedSkillController>();
             var combat=_actor.GetComponent<PlayerCombat>();
+            yield return Phase("debuff-stun",()=>skills.ApplyControl(.65f,false,true),1.4f,3);
+            yield return Phase("debuff-slow",()=>_actor.GetComponent<PlayerManager>().SetMovementEffect(CombatEffectSources.KickSlow,.5f,.65f),1.4f,3);
+            yield return Phase("debuff-poison",()=>combat.AddKnifePoison(health,_actor.transform.position),7.2f,3);
             yield return Phase("shield",()=>health.GrantDecayingShield(80,15),.7f,1);
             yield return Phase("shield-hit",()=>health.ApplyDamage(10,DamageSource.Poison,_actor.transform.position+Vector3.forward+Vector3.up),.65f,1);
             Equip(4,JobSkillKind.StrategistRoll); yield return new WaitForSeconds(.3f);
@@ -191,7 +201,16 @@ namespace BattlePvp.Remodel.Validation
                 case "charge": if(State("ExpandedSkills","Skill_SHARED_Charge"))_seen|=1;if(skills.IsCharging && Vector3.Distance(_start,_actor.transform.position)>.5f)_seen|=2; break;
                 case "trap-place": if(State("ExpandedSkills","Skill_SHARED_Trap"))_seen|=1;if(skills.Traps.Count>0 && FindObjectsByType<SkillTrapVisual>(FindObjectsSortMode.None).Length>0)_seen|=2; break;
                 case "trap-persist": if(skills.Traps.Count>0 && FindObjectsByType<SkillTrapVisual>(FindObjectsSortMode.None).Length>0)_seen|=1; break;
-                case "dice": if(skills.Active(JobSkillKind.Dice))_seen|=1;if(Child("DiceAura(Clone)"))_seen|=2; break;
+                case "dice": if(skills.Active(JobSkillKind.Dice))_seen|=1;if(Child("DiceAura(Clone)")||Child("Debuff downward arrows"))_seen|=2; break;
+                case "debuff-stun": case "debuff-slow": case "debuff-poison":
+                    bool active=_actor.GetComponent<HealthSystem>().HasDebuff && Child("Debuff downward arrows");
+                    if(active)
+                    {
+                        var block=new MaterialPropertyBlock(); _actor.transform.Find("Debuff downward arrows").GetComponent<Renderer>().GetPropertyBlock(block);
+                        if(block.GetFloat("_Direction")==-1) _seen|=1;
+                    }
+                    if((_seen&1)!=0 && !active) _seen|=2;
+                    break;
                 case "trap-close":
                     foreach(var trap in FindObjectsByType<SkillTrapVisual>(FindObjectsSortMode.None))
                         if(Quaternion.Angle(trap.transform.Find("TrapLeftJaw").localRotation,Quaternion.identity)>30)_seen|=1;

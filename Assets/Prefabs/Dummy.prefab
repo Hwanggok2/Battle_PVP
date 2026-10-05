@@ -129,6 +129,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02a432da8cd30f049bee0aca1667714c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.DummyHealth
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   _statData: {fileID: 11400000, guid: 2d8ecf14fb874e345b84feed66cd24ec, type: 2}
   _requireBodyPartHitboxes: 0
   _currentHp: 0

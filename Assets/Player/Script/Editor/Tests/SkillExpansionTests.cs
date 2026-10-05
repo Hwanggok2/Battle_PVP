@@ -193,6 +193,113 @@ namespace BattlePvp.EditorTests
             color = properties.GetColor("_BaseColor"); Assert.That(color.g, Is.GreaterThan(color.r + color.b));
             Assert.That(_player.transform.Find("Recovery buff symbols").gameObject.activeSelf, Is.True);
         }
+
+        DebuffIndicator Debuffs(GameObject target)
+        {
+            var indicator = target.GetComponent<DebuffIndicator>() ?? target.AddComponent<DebuffIndicator>();
+            EditorTestLifecycle.Invoke(indicator, "Awake");
+            return indicator;
+        }
+        [TestCase("_stunnedUntil")] [TestCase("_rootUntil")]
+        [TestCase("_hookedUntil")] [TestCase("_vulnerableUntil")]
+        public void ControlDebuffsShowOnePurpleDownwardGroupAndExpire(string field)
+        {
+            var indicator = Debuffs(_player);
+            Set(_skills, field, _skills.Now + 3); Call(indicator, "LateUpdate");
+            var arrows = _player.transform.Find("Debuff downward arrows");
+            Assert.That(arrows.gameObject.activeSelf && _health.HasDebuff, Is.True);
+            var block = new MaterialPropertyBlock(); arrows.GetComponent<Renderer>().GetPropertyBlock(block);
+            Assert.That(block.GetFloat("_Direction"), Is.EqualTo(-1));
+            Color color = block.GetColor("_BaseColor"); Assert.That(color.b > color.g && color.r > color.g, Is.True);
+            Set(_skills, field, 0d); Call(indicator, "LateUpdate");
+            Assert.That(arrows.gameObject.activeSelf || _health.HasDebuff, Is.False);
+            Set(_skills, field, _skills.Now + 3); Call(indicator, "LateUpdate");
+            Assert.That(_player.transform.Find("Debuff downward arrows"), Is.SameAs(arrows));
+            Set(_health, "_isDead", true); Call(indicator, "LateUpdate");
+            Assert.That(arrows.gameObject.activeSelf || _health.HasDebuff, Is.False);
+        }
+        [Test] public void StatPenaltiesOverlapWithoutDoublingArrowsOrHidingBehindRecovery()
+        {
+            var indicator = Debuffs(_player);
+            Active(JobSkillKind.Dice); Set(_skills, "_diceFace", 1);
+            _skills.States[(int)JobSkillKind.Berserk] = new SkillRuntime { CooldownUntil = _skills.Now + 20 };
+            Active(JobSkillKind.Recovery); Call(indicator, "LateUpdate");
+            var arrows = _player.transform.Find("Debuff downward arrows");
+            Assert.That(arrows.gameObject.activeSelf, Is.True);
+            _skills.States.Remove((int)JobSkillKind.Dice); Call(indicator, "LateUpdate");
+            Assert.That(arrows.gameObject.activeSelf, Is.True, "a positive regen bonus does not remove the negative effect");
+            _skills.States.Remove((int)JobSkillKind.Berserk); Call(indicator, "LateUpdate");
+            Assert.That(arrows.gameObject.activeSelf, Is.False);
+            Assert.That(_player.GetComponentsInChildren<MeshRenderer>(true).Count(r => r.name == "Debuff downward arrows"), Is.EqualTo(1));
+        }
+        [Test] public void AppliedSlowsAndTauntShowArrowsButVoluntarySkillPosturesDoNot()
+        {
+            var indicator = Debuffs(_player); var move = _player.GetComponent<PlayerManager>();
+            move.SetMovementEffect(CombatEffectSources.BowCharge, .5f, 5);
+            int postureSource = (int)typeof(ExpandedSkillController).GetField("MoveSource", BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
+            move.SetMovementEffect(postureSource, 0, 5);
+            Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.False);
+            move.SetMovementEffect(CombatEffectSources.KickSlow, .5f, 5);
+            move.SetMovementEffect(CombatEffectSources.WeaponSwap, 3, 5);
+            Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.True, "a speed buff cannot hide an active slow");
+            move.RemoveMovementEffect(CombatEffectSources.KickSlow);
+            Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.False);
+            var combat = _player.GetComponent<PlayerCombat>();
+            Set(combat, "_tauntedByNetId", 123u); Set(combat, "_tauntedUntil", _skills.Now + 3);
+            Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.True);
+            Set(combat, "_tauntedUntil", 0d);
+            Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.False);
+        }
+        [Test] public void PoisonArrowsTrackEachSourceAndStopOnStackCancellation()
+        {
+            var other = Object.Instantiate(_player);
+            try
+            {
+                var indicator = Debuffs(_player);
+                var a = _player.GetComponent<PlayerCombat>(); var b = other.GetComponent<PlayerCombat>();
+                var stackA = (PoisonStackCollection<IDamageReceiver, Vector3>)typeof(PlayerCombat).GetField("_poisonStacks", Private).GetValue(a);
+                var stackB = (PoisonStackCollection<IDamageReceiver, Vector3>)typeof(PlayerCombat).GetField("_poisonStacks", Private).GetValue(b);
+                stackA.Add(_health, Vector3.zero, _skills.Now, 3, 5); stackB.Add(_health, Vector3.zero, _skills.Now, 6, 5);
+                Call(indicator, "TrackPoison", a); Call(indicator, "TrackPoison", b); Call(indicator, "LateUpdate");
+                Assert.That(_health.HasDebuff, Is.True);
+                stackA.Clear(); Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.True);
+                stackB.Clear(); Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.False);
+                stackA.Add(_health, Vector3.zero, _skills.Now - 10, 1, 5); Call(indicator, "TrackPoison", a);
+                Call(indicator, "LateUpdate"); Assert.That(_health.HasDebuff, Is.False);
+            }
+            finally { Object.DestroyImmediate(other); }
+        }
+        [Test] public void DebuffFlagReplicatesForLateObserversAndClearsWithoutBreakingOtherHealthState()
+        {
+            var indicator = Debuffs(_player); _skills.ApplyControl(3, false, false); Call(indicator, "LateUpdate");
+            var writer = new Mirror.NetworkWriter(); _health.OnSerialize(writer, true);
+            Call(_health, "SetDebuffPresentation", false); _health.OnDeserialize(new Mirror.NetworkReader(writer.ToArraySegment()), true);
+            Assert.That(_health.HasDebuff, Is.True); Assert.That(_health.CurrentHp, Is.EqualTo(100));
+            Set(_skills, "_stunnedUntil", 0d); Call(indicator, "LateUpdate");
+            writer = new Mirror.NetworkWriter(); _health.OnSerialize(writer, true);
+            Call(_health, "SetDebuffPresentation", true); _health.OnDeserialize(new Mirror.NetworkReader(writer.ToArraySegment()), true);
+            Assert.That(_health.HasDebuff, Is.False);
+        }
+        [Test] public void DummyDebuffsShowDownwardArrowsAndReplicateTheirClearState()
+        {
+            var target = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Dummy.prefab"));
+            try
+            {
+                EditorTestLifecycle.BindNetwork(target);
+                var dummy = target.GetComponent<DummyHealth>(); Set(dummy, "_currentHp", 100f);
+                var indicator = Debuffs(target); dummy.ApplyStun(3, true); Call(indicator, "LateUpdate");
+                var arrows = target.transform.Find("Debuff downward arrows");
+                Assert.That(arrows.gameObject.activeSelf && dummy.HasDebuff, Is.True);
+                var writer = new Mirror.NetworkWriter(); dummy.OnSerialize(writer, true);
+                Call(dummy, "SetDebuffPresentation", false); dummy.OnDeserialize(new Mirror.NetworkReader(writer.ToArraySegment()), true);
+                Assert.That(dummy.HasDebuff, Is.True);
+                Set(dummy, "_stunnedUntil", 0d); Call(indicator, "LateUpdate");
+                Assert.That(arrows.gameObject.activeSelf, Is.True, "vulnerability still remains");
+                Set(dummy, "_vulnerableUntil", 0d); Call(indicator, "LateUpdate");
+                Assert.That(arrows.gameObject.activeSelf || dummy.HasDebuff, Is.False);
+            }
+            finally { Object.DestroyImmediate(target); }
+        }
         [TestCase("bad {1}",1)] [TestCase("{0} {2}",2)] [TestCase("{0",1)]
         public void InvalidStringSchemaIsRejected(string text,int count) => Assert.Throws<InvalidDataException>(()=>SkillWorkbookImporter.ValidateFormat(text,count));
 

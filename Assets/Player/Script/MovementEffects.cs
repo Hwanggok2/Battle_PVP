@@ -54,6 +54,15 @@ namespace BattlePvp.Combat
             return Mathf.Clamp(multiplier, 0f, 4f);
         }
 
+        public bool HasSlow(double now, int ignoredSource, int otherIgnoredSource)
+        {
+            foreach (var effect in _effects)
+                if (effect.Until > now && effect.Multiplier < 1f &&
+                    effect.Source != ignoredSource && effect.Source != otherIgnoredSource)
+                    return true;
+            return false;
+        }
+
         public MovementEffectSnapshot[] Capture(double now)
         {
             Evaluate(now);

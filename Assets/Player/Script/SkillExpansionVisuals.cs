@@ -229,7 +229,8 @@ namespace BattlePvp.Combat
             }
             if(_diceAura!=null)
             {
-                _diceAura.SetActive(dice && !hide);
+                // Negative rolls use the common debuff arrows, avoiding a second overlapping group.
+                _diceAura.SetActive(dice && _owner.DiceFace >= 4 && !hide);
                 Color color=_owner.DiceFace<=3 ? new Color(.7f,.2f,1) : new Color(1,.12f,.08f);
                 float sign=_owner.DiceFace<=3 ? -1 : 1;
                 for(int i=0;i<_diceAura.transform.childCount;i++)

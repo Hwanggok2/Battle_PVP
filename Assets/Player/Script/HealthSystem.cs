@@ -49,6 +49,9 @@ namespace BattlePvp.Combat
         public float MaxHp => _maxHp;
         public float CurrentRegen => _currentRegen;
         public float CurrentShield => _currentShield;
+        [SyncVar] private bool _hasDebuff;
+        public bool HasDebuff => _hasDebuff;
+        internal void SetDebuffPresentation(bool active) { if (CanChangeHealth) _hasDebuff = active; }
         private double SkillTime => NetworkServer.active || NetworkClient.active ? NetworkTime.time : Time.timeAsDouble;
         public bool HasDefensiveSkillBuff => SkillTime < _tauntDefenseUntil &&
             (_tauntIncomingDamageMultiplier < 1f || _tauntReflectMultiplier > 1f);
@@ -103,6 +106,7 @@ namespace BattlePvp.Combat
 
             _damageCalculator = new DamageCalculator();
             _strategistRules = new StrategistRules();
+            if (Application.isPlaying && GetComponent<DebuffIndicator>() == null) gameObject.AddComponent<DebuffIndicator>();
         }
 
         private void OnEnable()

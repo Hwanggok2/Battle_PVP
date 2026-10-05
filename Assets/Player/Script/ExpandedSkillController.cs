@@ -58,7 +58,7 @@ namespace BattlePvp.Combat
         private readonly List<Collider> _chargeContacts = new();
         private CharacterController _chargeController;
         private readonly List<SkillTrap> _traps = new();
-        private const int MoveSource = 8100;
+        internal const int MoveSource = 8100;
         public bool Authority => (netIdentity != null && isServer) || (!NetworkServer.active && !NetworkClient.active);
         public bool Owner => (netIdentity != null && isLocalPlayer) || (!NetworkServer.active && !NetworkClient.active);
         public double Now => NetworkServer.active || NetworkClient.active ? NetworkTime.time : Time.timeAsDouble;
@@ -86,6 +86,9 @@ namespace BattlePvp.Combat
         public double DiceStarted => _diceStarted;
         public bool Berserking => Active(JobSkillKind.Berserk);
         public bool HasAmbushBonus => Now < _ambushUntil;
+        public bool HasDebuff => IsStunned || LookLocked || Now < _vulnerableUntil ||
+            (Active(JobSkillKind.Dice) && Value(JobSkillKind.Dice,"Face"+DiceFace) < 0) ||
+            (!Berserking && Now < Read(JobSkillKind.Berserk).CooldownUntil && Value(JobSkillKind.Berserk,"RecoveryRegenMultiplier",.5f) < 1);
         public float AttackMultiplier => (Berserking ? Value(JobSkillKind.Berserk,"AttackMultiplier",2) : 1) *
             (Now < _ambushUntil ? Value(JobSkillKind.Stealth,"AttackMultiplier",1.2f) : 1);
         public float AttackSpeedMultiplier => Berserking ? Value(JobSkillKind.Berserk,"AttackSpeedMultiplier",1.3f) : 1;

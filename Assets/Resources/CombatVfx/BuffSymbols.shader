@@ -5,6 +5,7 @@ Shader "BattlePvp/BuffSymbols"
         [HDR] _BaseColor ("Light", Color) = (1,1,1,1)
         _Phase ("Rise phase", Float) = 0
         _Offset ("Skill separation", Float) = 0
+        _Direction ("Vertical direction", Float) = 1
     }
     SubShader
     {
@@ -20,7 +21,7 @@ Shader "BattlePvp/BuffSymbols"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
-                float _Phase, _Offset;
+                float _Phase, _Offset, _Direction;
             CBUFFER_END
             struct Attributes { float4 positionOS : POSITION; float2 seed : TEXCOORD0; half4 color : COLOR; };
             struct Varyings { float4 positionCS : SV_POSITION; half alpha : TEXCOORD0; };
@@ -29,9 +30,10 @@ Shader "BattlePvp/BuffSymbols"
                 Varyings output;
                 float phase=frac(_Phase+input.seed.y+_Offset);
                 float angle=input.seed.x*2*PI+_Offset;
-                float3 center=TransformObjectToWorld(float3(cos(angle)*.68,.15+phase*1.8,sin(angle)*.68));
+                float height=_Direction<0 ? 1-phase : phase;
+                float3 center=TransformObjectToWorld(float3(cos(angle)*.68,.15+height*1.8,sin(angle)*.68));
                 // Camera-facing glyphs stay legible from either side, including reflected views.
-                float3 position=center+UNITY_MATRIX_V[0].xyz*input.positionOS.x+UNITY_MATRIX_V[1].xyz*input.positionOS.y;
+                float3 position=center+UNITY_MATRIX_V[0].xyz*input.positionOS.x+UNITY_MATRIX_V[1].xyz*input.positionOS.y*_Direction;
                 output.positionCS=TransformWorldToHClip(position);
                 half fade=smoothstep(0,.12,phase)*(1-smoothstep(.78,1,phase));
                 // Keep the owner's FPS view clear while retaining the effect on distant players.

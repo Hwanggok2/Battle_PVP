@@ -62,7 +62,7 @@ namespace BattlePvp.Remodel.Editor
     }
     public sealed class SkillNativeProbe : MonoBehaviour
     {
-        const string Folder="Reports/SkillExpansion";
+        static string Folder => SessionState.GetString("BattlePvp.SkillNativeValidation.ReportFolder", "Reports/SkillExpansion");
         const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
         readonly List<string> _checks=new();
         readonly List<string> _errors=new();
@@ -323,10 +323,15 @@ namespace BattlePvp.Remodel.Editor
             var diceGlow=_a.GetComponentsInChildren<SkinnedMeshRenderer>().FirstOrDefault(r=>r.name=="Skill buff body glow" && r.enabled);
             if(diceGlow!=null) diceGlow.GetPropertyBlock(penaltyProperties); var diceTint=penaltyProperties.GetColor("_BaseColor");
             Check(diceGlow!=null && diceTint.r>diceTint.g && diceTint.b>diceTint.g,"negative dice uses purple body light");
+            var debuffArrows=_a.transform.Find("Debuff downward arrows");
+            Check(debuffArrows!=null && debuffArrows.gameObject.activeInHierarchy,"negative dice uses common downward arrows");
+            var debuffProperties=new MaterialPropertyBlock(); debuffArrows.GetComponent<Renderer>().GetPropertyBlock(debuffProperties);
+            Check(debuffProperties.GetFloat("_Direction")==-1,"debuff symbols point and travel down");
             var stateCameraPosition=_camera.transform.position; var stateCameraRotation=_camera.transform.rotation;
             _camera.transform.position=_a.transform.position+new Vector3(2,1.5f,2.5f); _camera.transform.LookAt(_a.transform.position+Vector3.up); Capture("debuff-purple");
             Equip(_a,4,JobSkillKind.StrategistPresetChange);
             berserkHealth.GrantDecayingShield(30,1.5f); yield return null;
+            Check(!debuffArrows.gameObject.activeInHierarchy,"cleared debuff hides arrows without hiding the shield");
             var presetShield=_a.transform.Find("Preset yellow shield");
             Check(presetShield!=null && presetShield.gameObject.activeInHierarchy,"preset shield displays an independent shell");
             var presetTint=presetShield.GetComponent<Renderer>().sharedMaterial.GetColor("_BaseColor");

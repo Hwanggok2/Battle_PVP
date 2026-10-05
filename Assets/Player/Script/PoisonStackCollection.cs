@@ -60,6 +60,12 @@ namespace BattlePvp.Combat
         }
 
         public void Clear() => _stacks.Clear();
+        public double ExpiresAt(TTarget target)
+        {
+            foreach (var stack in _stacks)
+                if (ReferenceEquals(stack.Target, target)) return stack.ExpiresAt;
+            return 0;
+        }
         private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
     }
 }

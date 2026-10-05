@@ -179,6 +179,9 @@ public class PlayerManager : NetworkBehaviour
         SetMovementEffect(0, multiplier, durationSeconds);
     }
 
+    // A bow stance or our own skill posture is not an applied movement debuff.
+    public bool HasMovementDebuff => _movementEffects.HasSlow(MovementTime, CombatEffectSources.BowCharge, ExpandedSkillController.MoveSource);
+
     public void SetMovementEffect(int sourceId, float multiplier, float durationSeconds)
     {
         _movementEffects.Set(sourceId, multiplier, durationSeconds, MovementTime);

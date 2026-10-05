@@ -5,15 +5,15 @@ using UnityEngine.Rendering;
 
 namespace BattlePvp.Combat
 {
-    /// <summary>Six rising holograms per active buff, batched into one mesh and draw per skill.</summary>
+    /// <summary>Six rising or falling holograms, batched into one mesh and draw per status group.</summary>
     public sealed class SkillBuffSymbols : IDisposable
     {
-        private readonly GameObject[] _groups = new GameObject[3];
-        private readonly Mesh[] _meshes = new Mesh[3];
-        private readonly MeshRenderer[] _renderers = new MeshRenderer[3];
+        private readonly GameObject[] _groups = new GameObject[4];
+        private readonly Mesh[] _meshes = new Mesh[4];
+        private readonly MeshRenderer[] _renderers = new MeshRenderer[4];
         private readonly MaterialPropertyBlock _properties = new();
         private Material _material;
-        private static readonly int ColorId = Shader.PropertyToID("_BaseColor"), PhaseId = Shader.PropertyToID("_Phase"), OffsetId = Shader.PropertyToID("_Offset");
+        private static readonly int ColorId = Shader.PropertyToID("_BaseColor"), PhaseId = Shader.PropertyToID("_Phase"), OffsetId = Shader.PropertyToID("_Offset"), DirectionId = Shader.PropertyToID("_Direction");
 
         public void Tick(ExpandedSkillController owner, PlayerCombat combat, bool visible)
         {
@@ -24,23 +24,34 @@ namespace BattlePvp.Combat
 
         private void UpdateGroup(ExpandedSkillController owner, int kind, bool active, Color color)
         {
-            if (active && _groups[kind] == null) Create(owner.transform, kind);
+            UpdateGroup(owner.transform, owner.Now, kind, active, color, owner.IsStealthed ? .5f : 1f);
+        }
+
+        public void TickDebuff(Transform owner, double now, bool active, float alpha)
+        {
+            UpdateGroup(owner, now, 3, active, new Color(1.25f, .12f, 2.4f), alpha);
+        }
+
+        private void UpdateGroup(Transform owner, double now, int kind, bool active, Color color, float alpha)
+        {
+            if (active && _groups[kind] == null) Create(owner, kind);
             var group = _groups[kind];
             if (group == null) return;
             group.SetActive(active);
             if (!active) return;
-            color.a = owner.IsStealthed ? .5f : 1f;
+            color.a = alpha;
             _properties.SetColor(ColorId, color);
             // Match the dice's 0.7 cycles/second and staggered upward movement.
-            _properties.SetFloat(PhaseId, (float)((owner.Now * .7) % 1));
+            _properties.SetFloat(PhaseId, (float)((now * .7) % 1));
             _properties.SetFloat(OffsetId, kind * .38f);
+            _properties.SetFloat(DirectionId, kind == 3 ? -1 : 1);
             _renderers[kind].SetPropertyBlock(_properties);
         }
 
         private void Create(Transform owner, int kind)
         {
             if (_material == null) _material = new Material(Resources.Load<Shader>("CombatVfx/BuffSymbols")) { name = "Rising buff holograms" };
-            var go = new GameObject(kind == 0 ? "STR buff symbols" : kind == 1 ? "WarCry buff symbols" : "Recovery buff symbols");
+            var go = new GameObject(kind == 0 ? "STR buff symbols" : kind == 1 ? "WarCry buff symbols" : kind == 2 ? "Recovery buff symbols" : "Debuff downward arrows");
             go.transform.SetParent(owner, false); go.layer = owner.gameObject.layer;
             var mesh = BuildMesh(kind);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -93,11 +104,11 @@ namespace BattlePvp.Combat
                     for (int lace = 0; lace < 3; lace++)
                         Stroke(icon, .32f, false, new(-.08f+lace*.12f,.08f-lace*.05f),new(-.15f+lace*.12f,-.04f-lace*.045f));
                 }
-                Vector2 arrow = kind == 2 ? Vector2.zero : new Vector2(.17f, .025f);
+                Vector2 arrow = kind >= 2 ? Vector2.zero : new Vector2(.17f, .025f);
                 Stroke(arrow, .3f, false, new(0,-.38f),new(0,.4f));
                 Stroke(arrow, .3f, false, new(-.22f,.13f),new(0,.4f),new(.22f,.13f));
             }
-            var result = new Mesh { name = kind == 0 ? "Fists and upward arrows" : kind == 1 ? "Shoes and upward arrows" : "Recovery upward arrows" };
+            var result = new Mesh { name = kind == 0 ? "Fists and upward arrows" : kind == 1 ? "Shoes and upward arrows" : kind == 2 ? "Recovery upward arrows" : "Debuff arrows (shader inverted)" };
             result.SetVertices(vertices); result.SetColors(colors); result.SetUVs(0, seeds); result.SetTriangles(triangles, 0);
             // The shader moves the six glyphs around a body-sized volume.
             result.bounds = new Bounds(Vector3.up, new Vector3(2.4f, 3f, 2.4f));

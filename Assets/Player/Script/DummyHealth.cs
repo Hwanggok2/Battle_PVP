@@ -48,6 +48,10 @@ namespace BattlePvp.Combat
         private double Now => NetworkServer.active || NetworkClient.active ? NetworkTime.time : Time.timeAsDouble;
         public float CurrentDps => _currentDps;
         public bool IsStunned => Now < _stunnedUntil;
+        [SyncVar] private bool _hasDebuff;
+        public bool HasDebuff => _hasDebuff;
+        internal bool HasControlDebuff => IsStunned || Now < _vulnerableUntil || _pull != null;
+        internal void SetDebuffPresentation(bool active) { if (Authority) _hasDebuff = active; }
 
         public void ApplyStun(float seconds, bool vulnerable)
         {
@@ -67,6 +71,7 @@ namespace BattlePvp.Combat
             if(Application.isPlaying)
             {
                 if (GetComponent<StunIndicator>() == null) gameObject.AddComponent<StunIndicator>();
+                if (GetComponent<DebuffIndicator>() == null) gameObject.AddComponent<DebuffIndicator>();
                 var source=GetComponentInChildren<TMP_Text>();
                 var label=new GameObject("Training DPS",typeof(TextMeshPro),typeof(TrainingDpsLabel)).GetComponent<TextMeshPro>();
                 label.transform.SetParent(transform,false); label.transform.localPosition=Vector3.up*3.35f;
