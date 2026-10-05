@@ -6,7 +6,7 @@ namespace BattlePvp.UI
     [RequireComponent(typeof(CanvasGroup))]
     public sealed class HudVisibilitySettings : MonoBehaviour
     {
-        private bool _showInWaitingRoom;
+        [SerializeField] private bool _showInWaitingRoom;
         public bool ShowInWaitingRoom
         {
             get => _showInWaitingRoom;

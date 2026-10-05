@@ -18,7 +18,7 @@ namespace BattlePvp.Lobby
         [SerializeField] private GameObject _targetPlayer;
         [SerializeField] private GameObject _fallbackPlayerPrefab;
         [SerializeField] private string _playerNameInScene = "Player";
-        [SerializeField] private Vector3 _fallbackSpawnPosition = Vector3.zero;
+        [SerializeField] private Vector3 _fallbackSpawnPosition = new Vector3(0f, .2f, -2f);
 
         private Coroutine _ensureRoutine;
 

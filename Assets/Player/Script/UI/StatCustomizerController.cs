@@ -239,6 +239,15 @@ namespace BattlePvp.UI
             RefreshSliderVisuals();
         }
 
+        public void RefreshForOpen()
+        {
+            if (!CanOwnLocalUi) return;
+            TryFindTarget();
+            LoadFromSavedStatsOrTarget();
+            RebuildBudgetAndPreview();
+            RefreshPresetSelectionVisuals();
+        }
+
         private bool TryLoadFromSavedStats()
         {
             if (_profileData == null || !_profileData.HasLoadedPlayerStats)

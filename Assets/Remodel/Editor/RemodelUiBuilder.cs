@@ -135,9 +135,10 @@ namespace BattlePvp.Remodel.Editor
             string[] tabs={"System","Sound","Controls"}, labels={"시스템","사운드","조작"};
             for(int i=0;i<3;i++) Button(tabs[i]+"Tab",panel,labels[i],new Vector2(208,42),new Vector2(-230+i*230,202));
             var system=Rect("System",panel,new Vector2(700,390),new Vector2(0,-10));
-            RowButton("Quality",system,"그래픽 품질",150,"보통"); RowButton("Fps",system,"최대 프레임",90,"60 FPS");
-            Slider("Brightness",system,"밝기",30,.6f,1.4f); Slider("HudScale",system,"HUD 크기",-30,.8f,1.25f); Slider("HudOpacity",system,"HUD 불투명도",-90,.35f,1f);
-            RowButton("Fullscreen",system,"전체화면",-150,"전환");
+            RowButton("Quality",system,"그래픽 품질",156,"보통"); RowButton("Fps",system,"최대 프레임",104,"60 FPS");
+            Slider("Brightness",system,"밝기",52,.6f,1.4f); Slider("HudScale",system,"HUD 크기",0,.8f,1.25f); Slider("HudOpacity",system,"HUD 불투명도",-52,.35f,1f);
+            RowButton("Fullscreen",system,"전체화면",-104,"전환");
+            RowButton("Quit",system,"게임 종료",-163,"종료");
             var sound=Rect("Sound",panel,new Vector2(700,390),new Vector2(0,-10));
             Slider("Master",sound,"전체 음량",150,0,1); Slider("Music",sound,"배경 음악",96,0,1); Slider("Effects",sound,"효과음",42,0,1); Slider("Ui",sound,"UI 효과음",-12,0,1);
             RowButton("Mute",sound,"음소거",-66,"꺼짐"); RowButton("BackgroundMute",sound,"백그라운드 음소거",-120,"켜짐");
@@ -145,7 +146,7 @@ namespace BattlePvp.Remodel.Editor
             var controls=Rect("Controls",panel,new Vector2(700,390),new Vector2(0,-10));
             Slider("Sensitivity",controls,"마우스 감도",150,.25f,2f); RowButton("InvertY",controls,"상하 반전",85,"꺼짐");
             RowButton("Key1",controls,"스킬 1",20,"Q"); RowButton("Key2",controls,"스킬 2",-45,"E");
-            Text("ControlsHelp",controls,"WASD 이동   ·   Space 점프   ·   Ctrl 앉기\n클릭 공격 / 활 당기기   ·   Enter 채팅   ·   Esc 설정",new Vector2(650,85),new Vector2(0,-145),18).textWrappingMode=TextWrappingModes.Normal;
+            Text("ControlsHelp",controls,"WASD 이동   ·   Space 점프   ·   Ctrl 앉기\n클릭 공격 / 활 당기기   ·   Enter 채팅   ·   Esc 커서",new Vector2(650,85),new Vector2(0,-145),18).textWrappingMode=TextWrappingModes.Normal;
             Text("Notice",panel,"",new Vector2(700,42),new Vector2(0,-237),17);
             Button("Defaults",panel,"기본값",new Vector2(126,42),new Vector2(-271,-285));
             Button("Cancel",panel,"취소",new Vector2(126,42),new Vector2(127,-285));
@@ -283,7 +284,7 @@ namespace BattlePvp.Remodel.Editor
             var help=canvas.Find("Waiting Controls")?.GetComponent<TMP_Text>()??
                 Text("Waiting Controls",canvas,"",new Vector2(540,30),Vector2.zero,18);
             Place(help.transform,new Vector2(540,30),new Vector2(-315,23),new Vector2(1,0));
-            help.text="T 커서  ·  Enter 채팅  ·  Esc 설정";
+            help.text="Esc 커서  ·  Enter 채팅";
             help.alignment=TextAlignmentOptions.Right;help.raycastTarget=false;
         }
 
@@ -375,7 +376,7 @@ namespace BattlePvp.Remodel.Editor
                     if(root.name=="Lobby_UI")RoomBrowserLayout(root.transform);
                     ConfigureImpactAndDebug(root);
                     foreach(var text in root.GetComponentsInChildren<TMP_Text>(true))
-                        if(text.name=="ControlsHelp")text.text="WASD 이동   ·   Space 점프   ·   Ctrl 앉기\n클릭 공격 / 활 당기기   ·   Enter 채팅\nT 커서 전환   ·   Esc 설정   ·   대기실 방장 G 시작";
+                        if(text.name=="ControlsHelp")text.text="WASD 이동   ·   Space 점프   ·   Ctrl 앉기\n클릭 공격 / 활 당기기   ·   Enter 채팅\nEsc 커서 전환   ·   대기실 방장 G 시작";
                 }
                 if(name=="Battle_waiting" || name=="Battle")
                 {
@@ -383,7 +384,7 @@ namespace BattlePvp.Remodel.Editor
                     var hint=canvas.Find("Waiting Controls")?.GetComponent<TMP_Text>() ??
                         Text("Waiting Controls",canvas,"",new Vector2(580,30),Vector2.zero,18);
                     Place(hint.transform,new Vector2(580,30),new Vector2(0,23),new Vector2(.5f,0));
-                    hint.text="T 커서  ·  Enter 채팅  ·  Esc 설정";hint.alignment=TextAlignmentOptions.Center;
+                    hint.text="Esc 커서  ·  Enter 채팅";hint.alignment=TextAlignmentOptions.Center;
                     var input=scene.GetRootGameObjects().SelectMany(g=>g.GetComponentsInChildren<BattlePvp.Logic.GameInputController>(true)).First();
                     Ref(input,"_cursorHint",hint);
                     var banner=canvas.GetComponentInChildren<BattleRoomInfoBanner>(true);
@@ -569,7 +570,8 @@ namespace BattlePvp.Remodel.Editor
             Place(health,new Vector2(340,108),new Vector2(200,85),Vector2.zero);
             if(health!=null)
             {
-                if(health.GetComponent<HudVisibilitySettings>()==null)health.gameObject.AddComponent<HudVisibilitySettings>();
+                var visibility=health.GetComponent<HudVisibilitySettings>() ?? health.gameObject.AddComponent<HudVisibilitySettings>();
+                visibility.ShowInWaitingRoom=true;
                 var back=health.Find("HP_Back"); if(back!=null){Fill(back);Image((RectTransform)back,Panel);}
                 Place(health.Find("HP_Fill"),new Vector2(286,16),new Vector2(0,4));
                 Place(health.Find("Overflow_Fill"),new Vector2(286,6),new Vector2(0,-20));

@@ -91,6 +91,7 @@ namespace BattlePvp.UI
         public void SetTouchHeld(bool held) => _touchHeld = held;
         private void Open()
         {
+            JobGuidePanel.CloseIfOpen();
             _touchHeld = false; _prompt.SetActive(false);
             _panel.SetActive(true); RefreshSettings();
             GameInputController.RefreshCursorState();

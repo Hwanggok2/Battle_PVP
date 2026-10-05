@@ -81,6 +81,10 @@ namespace BattlePvp.UI
             if (_slider == null)
                 return;
 
+            // Saved data can arrive while the panel is inactive, before this row's Awake.
+            _slider.wholeNumbers = true;
+            _slider.minValue = 0f;
+            _slider.maxValue = MaxInvested;
             _slider.SetValueWithoutNotify(Clamp(invested, 0f, MaxInvested));
             RefreshVisual();
         }

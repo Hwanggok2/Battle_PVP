@@ -22,6 +22,7 @@ namespace BattlePvp.UI
         private TMP_Text _notice;
         private bool _refreshing;
         private int _listening;
+        private bool _quitting;
 
         private void Awake()
         {
@@ -52,6 +53,7 @@ namespace BattlePvp.UI
             _buttons["Close"].onClick.AddListener(Cancel);
             _buttons["Apply"].onClick.AddListener(Save);
             _buttons["Defaults"].onClick.AddListener(() => { _draft = new LocalGameSettingsData(); Preview(); });
+            if (_buttons.TryGetValue("Quit", out var quit)) quit.onClick.AddListener(QuitGame);
             foreach (string tab in new[] { "System", "Sound", "Controls" })
             {
                 string page = tab; _buttons[tab + "Tab"].onClick.AddListener(() => ShowTab(page));
@@ -63,14 +65,15 @@ namespace BattlePvp.UI
         public void Toggle() { if (IsOpen) Cancel(); else Open(); }
         public void Open()
         {
-            if (IsOpen) return;
+            if (IsOpen || _quitting) return;
+            JobGuidePanel.CloseIfOpen();
             CharacterInfoController.CloseOpenPanel();
             if (LobbyUIManager.Instance != null) LobbyUIManager.Instance.CloseInputPanels();
             _saved = LocalGameSettings.Current.Copy(); _draft = _saved.Copy(); _listening = 0;
             _panel.SetActive(true); _notice.text = string.Empty; ShowTab("System"); Refresh();
             GameInputController.RefreshCursorState();
         }
-        public void Cancel() { if (_saved != null) LocalGameSettings.Apply(_saved, false); Close(); }
+        public void Cancel() { if (_quitting) return; if (_saved != null) LocalGameSettings.Apply(_saved, false); Close(); }
         private void Save() { LocalGameSettings.Apply(_draft, true); Close(); }
         private void Close()
         {
@@ -97,6 +100,28 @@ namespace BattlePvp.UI
             _refreshing = false;
         }
         private void Listen(int slot) { _listening = slot; _notice.text = "새 키를 누르세요 · Q E R F Z X V / 1~5"; }
+        public async void QuitGame()
+        {
+            if (_quitting) return;
+            _quitting = true;
+            _notice.text = "게임을 종료하는 중…";
+            foreach (var button in _buttons.Values) button.interactable = false;
+            if (_saved != null) LocalGameSettings.Apply(_saved, false);
+            try
+            {
+                var rooms = BattlePvp.Networking.PlayFabBattleManager.Instance;
+                if (rooms != null) await rooms.LeaveBeforeApplicationQuitAsync();
+            }
+            catch (Exception) { Debug.LogWarning("[Settings] Room cleanup was not confirmed before exit."); }
+            finally
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+                Application.Quit();
+#endif
+            }
+        }
         private void Update()
         {
             if (!IsOpen || _listening == 0 || Keyboard.current == null) return;

@@ -2916,7 +2916,7 @@ MonoBehaviour:
   _targetPlayer: {fileID: 0}
   _fallbackPlayerPrefab: {fileID: 2299886053629091809, guid: c377d1d192637934798ae1c57f82befb, type: 3}
   _playerNameInScene: Player
-  _fallbackSpawnPosition: {x: 0, y: -2.1, z: -0.5}
+  _fallbackSpawnPosition: {x: 0, y: 0.2, z: -2}
 --- !u!1 &2263171141453080456
 GameObject:
   m_ObjectHideFlags: 0

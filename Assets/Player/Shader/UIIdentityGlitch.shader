@@ -19,6 +19,7 @@ Shader "UI/IdentityGlitch"
         _GlitchAmount ("Glitch Amount", Range(0, 1)) = 0
         _StatColor ("Stat Influence Color", Color) = (1, 1, 1, 1)
         _EmissionPulse ("Emission Pulse", Float) = 1
+        _HealthAlphaBoost ("Missing Health Alpha Boost", Range(0, 1)) = 0
         _OverlapPercent ("Overlap Percent", Range(0, 1)) = 0
         _ReassembleProgress ("Reassemble Progress", Range(0, 1)) = 1
         _MirrorActive ("Mirror Active (0 or 1)", Float) = 0
@@ -95,6 +96,7 @@ Shader "UI/IdentityGlitch"
             float _GlitchAmount;
             fixed4 _StatColor;
             float _EmissionPulse;
+            float _HealthAlphaBoost;
             float _OverlapPercent;
             float _ReassembleProgress;
             float _MirrorActive;
@@ -175,7 +177,9 @@ Shader "UI/IdentityGlitch"
 
                 // 최종 출력: i.color(틴트)와 noiseMask(침식)를 곱해 중앙을 완전히 투명하게 만듭니다.
                 baseCol.rgb *= i.color.rgb;
-                baseCol.a *= i.color.a * noiseMask;
+                // At full health: alpha 0.25. Missing HP adds a smooth 1.2 Hz pulse, peaking at 0.5.
+                float healthAlpha = 1.0 + _HealthAlphaBoost * (0.5 - 0.5 * cos(t * 7.539822));
+                baseCol.a *= i.color.a * noiseMask * healthAlpha;
 
                 #ifdef UNITY_UI_CLIP_RECT
                 baseCol.a *= UnityGet2DClipping(i.worldPosition.xy, _ClipRect);

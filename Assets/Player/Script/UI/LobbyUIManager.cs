@@ -234,7 +234,7 @@ namespace BattlePvp.UI
             }
 
             float rttMs = (float)(NetworkTime.rtt * 1000d);
-            float jitterMs = (float)(NetworkTime.rttVariance * 1000d);
+            float jitterMs = (float)(System.Math.Sqrt(System.Math.Max(0d, NetworkTime.rttVariance)) * 1000d);
             _latencyText.text = AppendRelayRegion($"RTT {rttMs:F0} ms\nJitter {jitterMs:F0} ms");
             _latencyText.color = ResolveLatencyColor(rttMs);
         }
@@ -276,6 +276,7 @@ namespace BattlePvp.UI
 
         private void CloseStartupPanels()
         {
+            JobGuidePanel.CloseIfOpen();
             if (_room_UI != null) _room_UI.SetActive(false);
             if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
             SetCustomizerActive(false);
@@ -701,6 +702,7 @@ namespace BattlePvp.UI
 
             if (active)
             {
+                JobGuidePanel.CloseIfOpen();
                 CharacterInfoController.CloseOpenPanel();
                 if (_room_UI != null) _room_UI.SetActive(false);
                 if (_roomSettingPanel != null) _roomSettingPanel.SetActive(false);
@@ -708,6 +710,7 @@ namespace BattlePvp.UI
             }
 
             _canvas_Customizer.SetActive(active);
+            if (active) StatCustomizerController.Instance?.RefreshForOpen();
             GameInputController.RefreshCursorState();
         }
 

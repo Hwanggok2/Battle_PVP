@@ -22,6 +22,9 @@ namespace BattlePvp.UI
         private static readonly int MirrorActiveId = Shader.PropertyToID("_MirrorActive");
         private static readonly int VignetteRadiusId = Shader.PropertyToID("_VignetteRadius");
         private static readonly int VignetteSoftnessId = Shader.PropertyToID("_VignetteSoftness");
+        private static readonly int HealthAlphaBoostId = Shader.PropertyToID("_HealthAlphaBoost");
+        private const float BaseAlpha = 0.25f;
+        private const float LowHealthAlpha = 0.5f;
 
         [Header("Target")]
         [SerializeField] private Graphic _targetGraphic;
@@ -70,6 +73,7 @@ namespace BattlePvp.UI
         private float _lastMirrorActive;
         private float _lastVignetteRadius;
         private float _lastVignetteSoftness;
+        private float _lastHealthAlphaBoost;
         private Coroutine _resolveSourcesRoutine;
         private bool _isSubscribed;
 
@@ -86,6 +90,12 @@ namespace BattlePvp.UI
         private void OnEnable()
         {
             StatManager.LocalChanged += OnLocalPlayerChanged;
+            if (_targetGraphic != null)
+            {
+                Color color = _targetGraphic.color;
+                color.a = BaseAlpha;
+                _targetGraphic.color = color;
+            }
             EnsureRuntimeMaterial();
 
             TryAutoResolveSources();
@@ -381,6 +391,8 @@ namespace BattlePvp.UI
                 return;
 
             float dynamicPulse = Mathf.Lerp(10f, _emissionPulse, _hpPercent); // HP 낮을수록 10에 가까워짐
+            // Shader-side pulsing avoids rebuilding the UI mesh every frame and preserves CanvasGroup fades.
+            float healthAlphaBoost = (LowHealthAlpha / BaseAlpha - 1f) * (1f - _hpPercent);
 
             float glitchAmount = ResolveGlitchAmount(_currentIdentity.Type);
             Color statColor = ResolveIdentityColor(_currentIdentity);
@@ -393,7 +405,8 @@ namespace BattlePvp.UI
                            || !Mathf.Approximately(_lastReassembleProgress, _reassembleProgress)
                            || !Mathf.Approximately(_lastMirrorActive, mirrorActive)
                            || !Mathf.Approximately(_lastVignetteRadius, _vignetteMainRadius)
-                           || !Mathf.Approximately(_lastVignetteSoftness, _vignetteMainSoftness);
+                           || !Mathf.Approximately(_lastVignetteSoftness, _vignetteMainSoftness)
+                           || !Mathf.Approximately(_lastHealthAlphaBoost, healthAlphaBoost);
 
             if (!changed)
                 return;
@@ -406,6 +419,7 @@ namespace BattlePvp.UI
             _lastMirrorActive = mirrorActive;
             _lastVignetteRadius = _vignetteMainRadius;
             _lastVignetteSoftness = _vignetteMainSoftness;
+            _lastHealthAlphaBoost = healthAlphaBoost;
             _hasAppliedMaterialValues = true;
 
             _runtimeMaterial.SetFloat(GlitchAmountId, glitchAmount);
@@ -416,6 +430,7 @@ namespace BattlePvp.UI
             _runtimeMaterial.SetFloat(MirrorActiveId, mirrorActive);
             _runtimeMaterial.SetFloat(VignetteRadiusId, _vignetteMainRadius);
             _runtimeMaterial.SetFloat(VignetteSoftnessId, _vignetteMainSoftness);
+            _runtimeMaterial.SetFloat(HealthAlphaBoostId, healthAlphaBoost);
             if (_targetGraphic != null)
                 _targetGraphic.SetMaterialDirty();
         }

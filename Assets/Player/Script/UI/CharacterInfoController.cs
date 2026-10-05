@@ -191,6 +191,7 @@ namespace BattlePvp.UI
             if (_infoPanel == null) return;
             
             bool isActive = _infoPanel.activeSelf;
+            if (!isActive) JobGuidePanel.CloseIfOpen();
             if (!isActive && LobbyUIManager.Instance != null) LobbyUIManager.Instance.CloseInputPanels();
             _infoPanel.SetActive(!isActive);
             _openController = isActive ? null : this;

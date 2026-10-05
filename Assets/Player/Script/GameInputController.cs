@@ -27,7 +27,7 @@ namespace BattlePvp.Logic
             get => _textInputActive || HasFocusedTextInput || _textInputConsumedFrame == Time.frameCount;
             private set => _textInputActive = value;
         }
-        private static bool HasModalInput => BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
+        private static bool HasModalInput => BattlePvp.UI.JobGuidePanel.IsOpen || BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
             BattlePvp.UI.CharacterInfoController.HasOpenPanel ||
             (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.HasOpenInputPanel);
         private static bool HasFocusedTextInput
@@ -126,10 +126,11 @@ namespace BattlePvp.Logic
         public static void HandleEscape()
         {
             if (!InputGate.TryConsumeEscape(Time.frameCount)) return;
-            if (BattlePvp.UI.RoomPasswordPrompt.IsOpen) { BattlePvp.UI.RoomPasswordPrompt.Instance.Close(); return; }
-            if (BattlePvp.UI.GameSettingsPanel.IsOpen) { BattlePvp.UI.GameSettingsPanel.Instance.Cancel(); return; }
-            if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) { BattlePvp.UI.WaitingRoomTerminal.Instance.Close(); return; }
-            if (BattlePvp.UI.CharacterInfoController.CloseOpenPanel()) return;
+            if (BattlePvp.UI.JobGuidePanel.IsOpen) { BattlePvp.UI.JobGuidePanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
+            if (BattlePvp.UI.RoomPasswordPrompt.IsOpen) { BattlePvp.UI.RoomPasswordPrompt.Instance.Close(); Instance?.ResetToPlayMode(); return; }
+            if (BattlePvp.UI.GameSettingsPanel.IsOpen) { BattlePvp.UI.GameSettingsPanel.Instance.Cancel(); Instance?.ResetToPlayMode(); return; }
+            if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) { BattlePvp.UI.WaitingRoomTerminal.Instance.Close(); Instance?.ResetToPlayMode(); return; }
+            if (BattlePvp.UI.CharacterInfoController.CloseOpenPanel()) { Instance?.ResetToPlayMode(); return; }
             if (IsTextInputActive)
             {
                 TextInputCancelled?.Invoke();
@@ -138,11 +139,9 @@ namespace BattlePvp.Logic
                 return;
             }
             if (Instance == null) return;
-            if (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.CloseInputPanels()) return;
+            if (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.CloseInputPanels()) { Instance.ResetToPlayMode(); return; }
             Instance.ApplyCursorState();
-            if (InputModeRules.CanToggleMenu(CurrentMode) && BattlePvp.UI.GameSettingsPanel.Instance != null)
-            { BattlePvp.UI.GameSettingsPanel.Instance.Open(); return; }
-            if (InputModeRules.CanToggleMenu(CurrentMode)) Instance.ToggleCursor();
+            Instance.ToggleCursorMode();
         }
 
         private void Start()
@@ -155,7 +154,6 @@ namespace BattlePvp.Logic
         {
             ApplyCursorState();
             var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.tKey.wasPressedThisFrame) ToggleCursorMode();
             if (IsTextInputActive && keyboard != null &&
                 (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
                 ConsumeSubmit();
@@ -215,6 +213,7 @@ namespace BattlePvp.Logic
                 !InputModeRules.CanToggleMenu(CurrentMode)) return;
             if (_isCursorUnlocked || HasModalInput)
             {
+                BattlePvp.UI.JobGuidePanel.CloseIfOpen();
                 if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) BattlePvp.UI.WaitingRoomTerminal.Instance.Close();
                 BattlePvp.UI.CharacterInfoController.CloseOpenPanel();
                 if (BattlePvp.UI.LobbyUIManager.Instance != null) BattlePvp.UI.LobbyUIManager.Instance.CloseInputPanels();
@@ -257,7 +256,7 @@ namespace BattlePvp.Logic
             if (_cursorHint != null)
             {
                 string hint = BattlePvp.UI.GameSettingsPanel.IsOpen ? "Esc 설정 닫기" :
-                    _isCursorUnlocked ? "커서 모드  ·  T 조작 복귀  ·  Esc 설정" : "T 커서  ·  Enter 채팅  ·  Esc 설정";
+                    _isCursorUnlocked ? "커서 모드  ·  Esc 조작 복귀" : "Esc 커서  ·  Enter 채팅";
                 if (_cursorHint.text != hint) _cursorHint.text = hint;
             }
         }
