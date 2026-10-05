@@ -87,7 +87,7 @@ namespace BattlePvp.UI
         public static void Apply(LocalGameSettingsData settings, bool save)
         {
             _current = settings.Copy(); _current.Sanitize();
-            Application.targetFrameRate = _current.fps;
+            BattlePvp.Networking.RoomNetworkTiming.ApplyFrameRate(_current.fps, BattlePvp.Networking.RoomNetworkTiming.LowLatencyActive);
             QualitySettings.vSyncCount = 0;
             QualitySettings.shadows = _current.quality == 0 ? UnityEngine.ShadowQuality.Disable : UnityEngine.ShadowQuality.All;
             QualitySettings.shadowDistance = _current.quality == 2 ? 55 : 35;

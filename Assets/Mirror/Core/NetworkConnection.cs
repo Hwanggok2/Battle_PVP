@@ -141,7 +141,11 @@ namespace Mirror
         protected abstract void SendToTransport(ArraySegment<byte> segment, int channelId = Channels.Reliable);
 
         // flush batched messages at the end of every Update.
-        internal virtual void Update()
+        internal virtual void Update() => FlushBatches();
+
+        // Battle_PVP: the main-thread receive phase may flush queued responses before world/render work.
+        // This drains every channel in order; it does not run the world, generate snapshots, or prioritize Ping.
+        public void FlushBatches()
         {
             // go through batches for all channels
             // foreach ((int key, Batcher batcher) in batches) // Unity 2020 doesn't support deconstruct yet

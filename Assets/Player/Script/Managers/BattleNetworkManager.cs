@@ -44,6 +44,8 @@ namespace BattlePvp.Networking
             roomAuthenticator.enabled = true;
             authenticator = roomAuthenticator;
             base.Awake();
+            if (singleton == this && GetComponent<RoomNetworkTiming>() == null)
+                gameObject.AddComponent<RoomNetworkTiming>();
             Debug.Log($"[BattleNetworkManager] Awake - Singleton check: {singleton == this}");
         }
 
