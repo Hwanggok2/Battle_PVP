@@ -1,0 +1,21 @@
+{
+    "passed": true,
+    "checks": [
+        "shield observed flags=1 travel=0",
+        "shield-hit observed flags=1 travel=0",
+        "dash observed flags=3 travel=3.678489",
+        "roll observed flags=3 travel=3.613589",
+        "hook observed flags=3 travel=0",
+        "knife-ready observed flags=3 travel=0",
+        "knife-throw observed flags=1 travel=0",
+        "fortify observed flags=3 travel=0",
+        "charge observed flags=3 travel=0",
+        "trap-place observed flags=3 travel=0",
+        "trap-persist observed flags=1 travel=0",
+        "dice observed flags=3 travel=0",
+        "trap-close observed flags=3 travel=0",
+        "trap-expiry observed flags=15 travel=0",
+        "host completed all phases"
+    ],
+    "errors": []
+}

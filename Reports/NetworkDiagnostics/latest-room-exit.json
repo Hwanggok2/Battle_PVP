@@ -1,12 +1,12 @@
 {
-    "timeUtc": "2026-09-28T15:41:18.9119862Z",
+    "timeUtc": "2026-10-05T01:42:43.7935991Z",
     "host": true,
-    "secondsSinceJoin": 49.17645129999801,
+    "secondsSinceJoin": 200.79728859999887,
     "events": [
         "0.00s: room_entry_started",
-        "1.82s: mirror_connected",
-        "1.90s: local_player_stats_start",
-        "1.94s: server_stats_accepted",
-        "49.18s: mirror_disconnected"
+        "2.95s: mirror_connected",
+        "3.03s: local_player_stats_start",
+        "3.07s: server_stats_accepted",
+        "200.80s: room_left"
     ]
 }

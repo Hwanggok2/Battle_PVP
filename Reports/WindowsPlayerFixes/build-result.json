@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-02",
+  "jobId": "build-9163109896",
+  "unityVersion": "6000.3.15f1",
+  "target": "StandaloneWindows64",
+  "scriptingBackend": "Mono",
+  "development": false,
+  "result": "Succeeded",
+  "outputPath": "Builds/Windows-2026-10-02/Battle_PvP.exe",
+  "durationSeconds": 3.8905972,
+  "reportedSizeMb": 237.64,
+  "errors": 0,
+  "warnings": 0,
+  "note": "최초 빌드의 미반영 컴파일 상태 경고를 해소하도록 새로고침과 재컴파일 완료 후 증분 빌드했다.",
+  "startupSmokeTest": {
+    "mode": "batchmode, nographics",
+    "aliveAfterSeconds": 12,
+    "observedExceptions": 0,
+    "logPath": "Reports/WindowsPlayerFixes/player-smoke.log",
+    "note": "테스트용 프로세스만 종료했다. Unity 분석/설정 서버 연결 오류가 있었으며, 이 검사는 그래픽 표시나 실제 로그인 및 온라인 방 연결을 검증하지 않는다."
+  },
+  "scenes": [
+    "Assets/Scenes/Login.unity",
+    "Assets/Scenes/Lobby.unity",
+    "Assets/Scenes/Battle_waiting.unity",
+    "Assets/Scenes/Battle.unity"
+  ]
+}

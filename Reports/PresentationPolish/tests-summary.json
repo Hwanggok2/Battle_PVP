@@ -1,0 +1,17 @@
+{
+  "editor": "Unity 6000.3.15f1",
+  "fullSuite": {
+    "jobId": "305dfc3b188743e996d82ff48723623b",
+    "passed": 706,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 25.1335681
+  },
+  "afterFinalUiChanges": {
+    "jobId": "1ad8e1f7df8b4cf58e75351218cf9e0a",
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 1.665503
+  }
+}

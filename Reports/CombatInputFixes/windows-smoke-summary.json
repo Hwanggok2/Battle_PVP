@@ -1,0 +1,9 @@
+{
+  "durationSeconds": 46,
+  "mode": "batchmode-nographics",
+  "processResponding": true,
+  "runtimeExceptionsFound": false,
+  "initializationFailuresFound": false,
+  "networkLimitations": ["Unity analytics endpoints could not connect in the restricted execution environment"],
+  "onlineMultiplayerTested": false
+}

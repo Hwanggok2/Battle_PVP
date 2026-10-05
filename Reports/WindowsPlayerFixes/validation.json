@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-02",
+  "unityVersion": "6000.3.15f1",
+  "editModeTests": {
+    "jobId": "b4be1a14eeb2443886a65cd82f34ef19",
+    "passed": 675,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 23.6677539
+  },
+  "nativeLobbyChecks": {
+    "fallbackSpawnY": 0.2,
+    "settledRootY": -0.0500000566,
+    "floorTopY": -0.0300000012,
+    "bowDrawCameraPositionDeltaMetres": 0,
+    "bowDrawCameraDirectionDeltaDegrees": 0,
+    "arrowLineDistanceFromAimPointMetres": 0.0000002588083,
+    "deathBaseLayerState": "Die",
+    "deathAttackLayerWeight": 0,
+    "deathCrouchLayerWeight": 0,
+    "headYBeforeDeath": 1.48373187,
+    "headYAfterDeath": 0.104844138,
+    "consoleErrors": 0,
+    "consoleWarnings": 0
+  },
+  "observedBeforeFix": {
+    "connection": "Windows host, Editor client, same PC",
+    "relayRegion": "asia-northeast1",
+    "rttMilliseconds": 99.8628346,
+    "windowsJoinFailureStage": "authentication_rejected"
+  },
+  "remainingChecks": [
+    "Updated editor host to updated Windows client authenticated room entry",
+    "Selected relay region and actual RTT after reconnect",
+    "Online bow target hits and remote death presentation"
+  ]
+}

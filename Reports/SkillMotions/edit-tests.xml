@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="79" result="Passed" total="79" passed="79" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:34Z" duration="2.0755277">
+  <test-suite type="TestSuite" id="1000" name="Battle_PvP" fullname="Battle_PvP" runstate="Runnable" testcasecount="740" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:34Z" duration="2.075528" total="79" passed="79" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1908" name="Assembly-CSharp-Editor.dll" fullname="C:/Github/Battle_PVP/Library/ScriptAssemblies/Assembly-CSharp-Editor.dll" runstate="Runnable" testcasecount="740" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:34Z" duration="2.061831" total="79" passed="79" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="14020" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1909" name="BattlePvp" fullname="BattlePvp" runstate="Runnable" testcasecount="740" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:34Z" duration="2.053424" total="79" passed="79" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1910" name="EditorTests" fullname="BattlePvp.EditorTests" runstate="Runnable" testcasecount="740" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:34Z" duration="2.045101" total="79" passed="79" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1141" name="CombatInputRegressionTests" fullname="BattlePvp.EditorTests.CombatInputRegressionTests" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" testcasecount="18" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:33Z" duration="0.763104" total="18" passed="18" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1151" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" testcasecount="9" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:33Z" duration="0.711237" total="9" passed="9" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1142" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,-45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,-45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="2023862955" result="Passed" start-time="2026-10-04 11:41:32Z" end-time="2026-10-04 11:41:33Z" duration="0.652360" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1143" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,0)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1969502373" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.007348" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1144" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(1,45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1627556762" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006708" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1145" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,-45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,-45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="289882441" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006562" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1146" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,0)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="58377141" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006405" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1147" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(2,45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1172048201" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006353" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1148" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,-45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,-45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="2119805476" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006302" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1149" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,0)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="339319351" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006282" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1150" name="BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,45)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.BakedMeleeTrackMatchesTheVisibleAimedWeapon(3,45)" methodname="BakedMeleeTrackMatchesTheVisibleAimedWeapon" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="744727196" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006344" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1162" name="EscapeTogglesCursorWithoutOpeningTheSettingsPanel" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.EscapeTogglesCursorWithoutOpeningTheSettingsPanel" methodname="EscapeTogglesCursorWithoutOpeningTheSettingsPanel" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1303545765" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.005905" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[GameInput] Pause Mode: Cursor Free, Camera Fixed, Attack Disabled
+]]></output>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1158" name="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" testcasecount="4" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.008159" total="4" passed="4" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1154" name="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.45f,0.75f,True,0.2666667f,0.7333333f)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.45f,0.75f,True,0.2666667f,0.7333333f)" methodname="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1367615138" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.000930" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1155" name="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.1f,0.4f,False,0,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.1f,0.4f,False,0,0)" methodname="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="741246047" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.000045" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1156" name="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.8f,0.9f,False,0,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.8f,0.9f,False,0,0)" methodname="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="270587648" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.000034" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1157" name="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.6f,0.6f,False,0,0)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.FastAnimationSegmentsAreClippedToTheAuthoredHitWindow(0.6f,0.6f,False,0,0)" methodname="FastAnimationSegmentsAreClippedToTheAuthoredHitWindow" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="590094038" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.000030" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1153" name="InactiveSliderAcceptsTheSavedAllocationBeforeAwake" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.InactiveSliderAcceptsTheSavedAllocationBeforeAwake" methodname="InactiveSliderAcceptsTheSavedAllocationBeforeAwake" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1127964599" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.001581" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1161" name="KickWindowUsesTheActualAnimatorPlaybackRate" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.KickWindowUsesTheActualAnimatorPlaybackRate" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.028094" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1159" name="KickWindowUsesTheActualAnimatorPlaybackRate(1.0f)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.KickWindowUsesTheActualAnimatorPlaybackRate(1.0f)" methodname="KickWindowUsesTheActualAnimatorPlaybackRate" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="29288028" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.015392" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1160" name="KickWindowUsesTheActualAnimatorPlaybackRate(2.0f)" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.KickWindowUsesTheActualAnimatorPlaybackRate(2.0f)" methodname="KickWindowUsesTheActualAnimatorPlaybackRate" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="506093166" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.006769" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1152" name="ReconstructedArcPreservesBothVisibleEndpoints" fullname="BattlePvp.EditorTests.CombatInputRegressionTests.ReconstructedArcPreservesBothVisibleEndpoints" methodname="ReconstructedArcPreservesBothVisibleEndpoints" classname="BattlePvp.EditorTests.CombatInputRegressionTests" runstate="Runnable" seed="1862851348" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.001113" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1245" name="FpsAndChatRestoreTests" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="27" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.545134" total="27" passed="27" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="ParameterizedMethod" id="1276" name="CameraSetupAddsMissingFollowComponent" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CameraSetupAddsMissingFollowComponent" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.041442" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1274" name="CameraSetupAddsMissingFollowComponent(&quot;Lobby&quot;)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CameraSetupAddsMissingFollowComponent(&quot;Lobby&quot;)" methodname="CameraSetupAddsMissingFollowComponent" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1318866071" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.025060" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1275" name="CameraSetupAddsMissingFollowComponent(&quot;Battle_waiting&quot;)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CameraSetupAddsMissingFollowComponent(&quot;Battle_waiting&quot;)" methodname="CameraSetupAddsMissingFollowComponent" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1096187507" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.015887" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1273" name="ChatDragUsesPanelCoordinatesAtAnyScale" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatDragUsesPanelCoordinatesAtAnyScale" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.064854" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1270" name="ChatDragUsesPanelCoordinatesAtAnyScale(0.5f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatDragUsesPanelCoordinatesAtAnyScale(0.5f)" methodname="ChatDragUsesPanelCoordinatesAtAnyScale" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="213279983" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.023104" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1271" name="ChatDragUsesPanelCoordinatesAtAnyScale(1.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatDragUsesPanelCoordinatesAtAnyScale(1.0f)" methodname="ChatDragUsesPanelCoordinatesAtAnyScale" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="105399952" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.016707" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1272" name="ChatDragUsesPanelCoordinatesAtAnyScale(2.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatDragUsesPanelCoordinatesAtAnyScale(2.0f)" methodname="ChatDragUsesPanelCoordinatesAtAnyScale" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="150227713" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.018623" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1268" name="ChatResizeKeepsBottomAndLatestMessagesPinned" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatResizeKeepsBottomAndLatestMessagesPinned" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.115211" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1265" name="ChatResizeKeepsBottomAndLatestMessagesPinned(0.5f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatResizeKeepsBottomAndLatestMessagesPinned(0.5f)" methodname="ChatResizeKeepsBottomAndLatestMessagesPinned" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1522074803" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.069938" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1266" name="ChatResizeKeepsBottomAndLatestMessagesPinned(1.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatResizeKeepsBottomAndLatestMessagesPinned(1.0f)" methodname="ChatResizeKeepsBottomAndLatestMessagesPinned" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1044977833" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.019737" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1267" name="ChatResizeKeepsBottomAndLatestMessagesPinned(2.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.ChatResizeKeepsBottomAndLatestMessagesPinned(2.0f)" methodname="ChatResizeKeepsBottomAndLatestMessagesPinned" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="425456935" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.019465" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1263" name="CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.062082" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1261" name="CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding(1.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding(1.0f)" methodname="CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="828851766" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.029494" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1262" name="CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding(1.2f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding(1.2f)" methodname="CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="737344496" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.014920" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1253" name="CursorPolicyFollowsSceneAndModalState" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="7" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.090340" total="7" passed="7" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1246" name="CursorPolicyFollowsSceneAndModalState(&quot;Battle&quot;,Gameplay,True)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Battle&quot;,Gameplay,True)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="329584278" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.013566" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1247" name="CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,Gameplay,True)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,Gameplay,True)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1158845526" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.013967" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1248" name="CursorPolicyFollowsSceneAndModalState(&quot;Lobby&quot;,Gameplay,False)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Lobby&quot;,Gameplay,False)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1489575768" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012796" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1249" name="CursorPolicyFollowsSceneAndModalState(&quot;Login&quot;,Gameplay,False)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Login&quot;,Gameplay,False)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="2038329486" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.011789" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1250" name="CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,Menu,False)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,Menu,False)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="2004683777" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012276" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1251" name="CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,TextInput,False)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Battle_waiting&quot;,TextInput,False)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="246606997" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012820" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1252" name="CursorPolicyFollowsSceneAndModalState(&quot;Battle&quot;,Results,False)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.CursorPolicyFollowsSceneAndModalState(&quot;Battle&quot;,Results,False)" methodname="CursorPolicyFollowsSceneAndModalState" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1739012472" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.011544" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1264" name="GameplayCannotActivateTheRoomLeaveButton" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.GameplayCannotActivateTheRoomLeaveButton" methodname="GameplayCannotActivateTheRoomLeaveButton" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="539484330" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012275" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1269" name="IdentityEffectFillsItsCanvasAndDoesNotInterceptInput" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.IdentityEffectFillsItsCanvasAndDoesNotInterceptInput" methodname="IdentityEffectFillsItsCanvasAndDoesNotInterceptInput" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1850716170" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.022945" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1279" name="LobbyWheelUsesTheInputSystemsNormalizedNotch" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.LobbyWheelUsesTheInputSystemsNormalizedNotch" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.047975" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1277" name="LobbyWheelUsesTheInputSystemsNormalizedNotch(1.0f,-0.75f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.LobbyWheelUsesTheInputSystemsNormalizedNotch(1.0f,-0.75f)" methodname="LobbyWheelUsesTheInputSystemsNormalizedNotch" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1349212145" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.032811" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1278" name="LobbyWheelUsesTheInputSystemsNormalizedNotch(-1.0f,0.75f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.LobbyWheelUsesTheInputSystemsNormalizedNotch(-1.0f,0.75f)" methodname="LobbyWheelUsesTheInputSystemsNormalizedNotch" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="2041567547" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.014342" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1260" name="StrafeAndBackpedalKeepTheCameraHeading" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" testcasecount="6" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.084462" total="6" passed="6" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1254" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,1.0f,0.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,1.0f,0.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1828454880" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.017420" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1255" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,-1.0f,0.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,-1.0f,0.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1565433546" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.013114" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1256" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,0.0f,-1.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle&quot;,0.0f,-1.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="474504762" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012586" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1257" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,1.0f,0.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,1.0f,0.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="1750055914" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.012747" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1258" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,-1.0f,0.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,-1.0f,0.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="964756302" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.013985" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+              <test-case id="1259" name="StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,0.0f,-1.0f)" fullname="BattlePvp.EditorTests.FpsAndChatRestoreTests.StrafeAndBackpedalKeepTheCameraHeading(&quot;Battle_waiting&quot;,0.0f,-1.0f)" methodname="StrafeAndBackpedalKeepTheCameraHeading" classname="BattlePvp.EditorTests.FpsAndChatRestoreTests" runstate="Runnable" seed="208223108" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:33Z" duration="0.013161" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Animator is not playing an AnimatorController
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1727" name="SkillExpansionTests" fullname="BattlePvp.EditorTests.SkillExpansionTests" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" testcasecount="34" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:34Z" duration="0.714538" total="34" passed="34" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1735" name="AllJobsHaveTwoDistinctValidatedSlots" fullname="BattlePvp.EditorTests.SkillExpansionTests.AllJobsHaveTwoDistinctValidatedSlots" methodname="AllJobsHaveTwoDistinctValidatedSlots" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1887355715" result="Passed" start-time="2026-10-04 11:41:33Z" end-time="2026-10-04 11:41:34Z" duration="0.283673" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1737" name="BerserkDrainAndRecoveryPenaltyFollowToggle" fullname="BattlePvp.EditorTests.SkillExpansionTests.BerserkDrainAndRecoveryPenaltyFollowToggle" methodname="BerserkDrainAndRecoveryPenaltyFollowToggle" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="326088820" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.024815" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1762" name="CancellationRemovesDiceVisualsAndAllowsTheNextLifeToRender" fullname="BattlePvp.EditorTests.SkillExpansionTests.CancellationRemovesDiceVisualsAndAllowsTheNextLifeToRender" methodname="CancellationRemovesDiceVisualsAndAllowsTheNextLifeToRender" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="601911381" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.015300" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1755" name="CastCueSurvivesVisualTickBeforeAnimatorEvaluation" fullname="BattlePvp.EditorTests.SkillExpansionTests.CastCueSurvivesVisualTickBeforeAnimatorEvaluation" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.031840" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1752" name="CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Trap,&quot;ExpandedSkills&quot;,&quot;Skill_SHARED_Trap&quot;)" fullname="BattlePvp.EditorTests.SkillExpansionTests.CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Trap,&quot;ExpandedSkills&quot;,&quot;Skill_SHARED_Trap&quot;)" methodname="CastCueSurvivesVisualTickBeforeAnimatorEvaluation" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1842528791" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008631" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1753" name="CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Hook,&quot;ExpandedUpperBody&quot;,&quot;Skill_STR_Hook&quot;)" fullname="BattlePvp.EditorTests.SkillExpansionTests.CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Hook,&quot;ExpandedUpperBody&quot;,&quot;Skill_STR_Hook&quot;)" methodname="CastCueSurvivesVisualTickBeforeAnimatorEvaluation" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1158077215" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008981" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1754" name="CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Knife,&quot;ExpandedUpperBody&quot;,&quot;Skill_AGI_Knife&quot;)" fullname="BattlePvp.EditorTests.SkillExpansionTests.CastCueSurvivesVisualTickBeforeAnimatorEvaluation(Knife,&quot;ExpandedUpperBody&quot;,&quot;Skill_AGI_Knife&quot;)" methodname="CastCueSurvivesVisualTickBeforeAnimatorEvaluation" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1254420685" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007581" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1736" name="CastingRejectsUnselectedSkillSlotsAndNonFiniteAim" fullname="BattlePvp.EditorTests.SkillExpansionTests.CastingRejectsUnselectedSkillSlotsAndNonFiniteAim" methodname="CastingRejectsUnselectedSkillSlotsAndNonFiniteAim" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1885084271" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007271" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1739" name="ChargeCooldownStartsOnCancellationAndTurnRateIsBounded" fullname="BattlePvp.EditorTests.SkillExpansionTests.ChargeCooldownStartsOnCancellationAndTurnRateIsBounded" methodname="ChargeCooldownStartsOnCancellationAndTurnRateIsBounded" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="54210514" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.009082" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1761" name="CopiedBerserkCanBeTurnedOffWithTheStealSlot" fullname="BattlePvp.EditorTests.SkillExpansionTests.CopiedBerserkCanBeTurnedOffWithTheStealSlot" methodname="CopiedBerserkCanBeTurnedOffWithTheStealSlot" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="324540893" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008021" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1746" name="FortifyChangesDefenseWithoutChangingJobOrInvestment" fullname="BattlePvp.EditorTests.SkillExpansionTests.FortifyChangesDefenseWithoutChangingJobOrInvestment" methodname="FortifyChangesDefenseWithoutChangingJobOrInvestment" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1689809998" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.009242" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1757" name="HookRetrievalKeepsItsLockAndStunCancelsTheOldCast" fullname="BattlePvp.EditorTests.SkillExpansionTests.HookRetrievalKeepsItsLockAndStunCancelsTheOldCast" methodname="HookRetrievalKeepsItsLockAndStunCancelsTheOldCast" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="36872355" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008127" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1759" name="InterruptedCastCannotFinishOrClearTheNextSkillsLock" fullname="BattlePvp.EditorTests.SkillExpansionTests.InterruptedCastCannotFinishOrClearTheNextSkillsLock" methodname="InterruptedCastCannotFinishOrClearTheNextSkillsLock" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1659993189" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008430" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1732" name="InvalidStringSchemaIsRejected" fullname="BattlePvp.EditorTests.SkillExpansionTests.InvalidStringSchemaIsRejected" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.031539" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1729" name="InvalidStringSchemaIsRejected(&quot;bad {1}&quot;,1)" fullname="BattlePvp.EditorTests.SkillExpansionTests.InvalidStringSchemaIsRejected(&quot;bad {1}&quot;,1)" methodname="InvalidStringSchemaIsRejected" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="2145707914" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.010884" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1730" name="InvalidStringSchemaIsRejected(&quot;{0} {2}&quot;,2)" fullname="BattlePvp.EditorTests.SkillExpansionTests.InvalidStringSchemaIsRejected(&quot;{0} {2}&quot;,2)" methodname="InvalidStringSchemaIsRejected" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="531663362" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007031" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1731" name="InvalidStringSchemaIsRejected(&quot;{0&quot;,1)" fullname="BattlePvp.EditorTests.SkillExpansionTests.InvalidStringSchemaIsRejected(&quot;{0&quot;,1)" methodname="InvalidStringSchemaIsRejected" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1783819668" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.006875" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1733" name="InvalidWorkbookCannotReplaceTheLastImportedData" fullname="BattlePvp.EditorTests.SkillExpansionTests.InvalidWorkbookCannotReplaceTheLastImportedData" methodname="InvalidWorkbookCannotReplaceTheLastImportedData" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1999683462" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.075115" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1765" name="KnifeAddsOnePoisonStackEvenWithCoating" fullname="BattlePvp.EditorTests.SkillExpansionTests.KnifeAddsOnePoisonStackEvenWithCoating" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.023534" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1763" name="KnifeAddsOnePoisonStackEvenWithCoating(False)" fullname="BattlePvp.EditorTests.SkillExpansionTests.KnifeAddsOnePoisonStackEvenWithCoating(False)" methodname="KnifeAddsOnePoisonStackEvenWithCoating" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1108403422" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.014467" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1764" name="KnifeAddsOnePoisonStackEvenWithCoating(True)" fullname="BattlePvp.EditorTests.SkillExpansionTests.KnifeAddsOnePoisonStackEvenWithCoating(True)" methodname="KnifeAddsOnePoisonStackEvenWithCoating" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="580385202" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007530" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1744" name="KnifeRefillsSequentiallyAndStopsAtThree" fullname="BattlePvp.EditorTests.SkillExpansionTests.KnifeRefillsSequentiallyAndStopsAtThree" methodname="KnifeRefillsSequentiallyAndStopsAtThree" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="474714737" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007748" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1749" name="LocalStealthIsHalfTransparentAndDoesNotModifySharedMaterials" fullname="BattlePvp.EditorTests.SkillExpansionTests.LocalStealthIsHalfTransparentAndDoesNotModifySharedMaterials" methodname="LocalStealthIsHalfTransparentAndDoesNotModifySharedMaterials" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1164726707" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.029594" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1748" name="NearestWallBlocksHookAndStealAndRangeIsStrict" fullname="BattlePvp.EditorTests.SkillExpansionTests.NearestWallBlocksHookAndStealAndRangeIsStrict" methodname="NearestWallBlocksHookAndStealAndRangeIsStrict" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="338651113" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.009574" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1751" name="ReadiedKnifeLeavesLocomotionAndCrouchingUnlocked" fullname="BattlePvp.EditorTests.SkillExpansionTests.ReadiedKnifeLeavesLocomotionAndCrouchingUnlocked" methodname="ReadiedKnifeLeavesLocomotionAndCrouchingUnlocked" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1555781470" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007746" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1738" name="RecoveryChargesThirtyPercentAndDoublesRegeneration" fullname="BattlePvp.EditorTests.SkillExpansionTests.RecoveryChargesThirtyPercentAndDoublesRegeneration" methodname="RecoveryChargesThirtyPercentAndDoublesRegeneration" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="291501303" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007417" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1750" name="RemoteStealthHidesNewRenderersAndRestoresWithoutRevivingDeadMeshes" fullname="BattlePvp.EditorTests.SkillExpansionTests.RemoteStealthHidesNewRenderersAndRestoresWithoutRevivingDeadMeshes" methodname="RemoteStealthHidesNewRenderersAndRestoresWithoutRevivingDeadMeshes" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1946039161" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.009074" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1734" name="ReplicatedSkillAndTrapStateRoundTripsForLateJoiners" fullname="BattlePvp.EditorTests.SkillExpansionTests.ReplicatedSkillAndTrapStateRoundTripsForLateJoiners" methodname="ReplicatedSkillAndTrapStateRoundTripsForLateJoiners" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1993306212" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.013087" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1747" name="RootPreventsChargingButAllowsNonMovementSkills" fullname="BattlePvp.EditorTests.SkillExpansionTests.RootPreventsChargingButAllowsNonMovementSkills" methodname="RootPreventsChargingButAllowsNonMovementSkills" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1972194198" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007713" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1756" name="SkillBonesKeepEvaluatingWhileCulledAndRestoreOnCancellation" fullname="BattlePvp.EditorTests.SkillExpansionTests.SkillBonesKeepEvaluatingWhileCulledAndRestoreOnCancellation" methodname="SkillBonesKeepEvaluatingWhileCulledAndRestoreOnCancellation" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1792845111" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007483" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1742" name="StealthBreaksOnDamageOrAttackAndGrantsAmbush" fullname="BattlePvp.EditorTests.SkillExpansionTests.StealthBreaksOnDamageOrAttackAndGrantsAmbush" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.016389" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1740" name="StealthBreaksOnDamageOrAttackAndGrantsAmbush(False)" fullname="BattlePvp.EditorTests.SkillExpansionTests.StealthBreaksOnDamageOrAttackAndGrantsAmbush(False)" methodname="StealthBreaksOnDamageOrAttackAndGrantsAmbush" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="342961674" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007623" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1741" name="StealthBreaksOnDamageOrAttackAndGrantsAmbush(True)" fullname="BattlePvp.EditorTests.SkillExpansionTests.StealthBreaksOnDamageOrAttackAndGrantsAmbush(True)" methodname="StealthBreaksOnDamageOrAttackAndGrantsAmbush" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1891169791" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007054" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-case id="1743" name="StealthUsesCumulativeDistance" fullname="BattlePvp.EditorTests.SkillExpansionTests.StealthUsesCumulativeDistance" methodname="StealthUsesCumulativeDistance" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="869740753" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.008648" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1745" name="StunBlocksAttacksWhileTrapOnlyLocksMovementAndLook" fullname="BattlePvp.EditorTests.SkillExpansionTests.StunBlocksAttacksWhileTrapOnlyLocksMovementAndLook" methodname="StunBlocksAttacksWhileTrapOnlyLocksMovementAndLook" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="555624155" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007468" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1758" name="TrapPreviewCanCancelWithoutSpendingCooldownOrStolenCopy" fullname="BattlePvp.EditorTests.SkillExpansionTests.TrapPreviewCanCancelWithoutSpendingCooldownOrStolenCopy" methodname="TrapPreviewCanCancelWithoutSpendingCooldownOrStolenCopy" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="299734924" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.007776" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1760" name="TrapRejectsWallsCliffsAndArbitraryClientPositions" fullname="BattlePvp.EditorTests.SkillExpansionTests.TrapRejectsWallsCliffsAndArbitraryClientPositions" methodname="TrapRejectsWallsCliffsAndArbitraryClientPositions" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="729039405" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.009635" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+            <test-case id="1728" name="WorkbooksImportEveryActiveSkillAndValidateStrings" fullname="BattlePvp.EditorTests.SkillExpansionTests.WorkbooksImportEveryActiveSkillAndValidateStrings" methodname="WorkbooksImportEveryActiveSkillAndValidateStrings" classname="BattlePvp.EditorTests.SkillExpansionTests" runstate="Runnable" seed="1370331288" result="Passed" start-time="2026-10-04 11:41:34Z" end-time="2026-10-04 11:41:34Z" duration="0.025183" asserts="0">
+              <properties>
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/JW/AppData/LocalLow/Junu/Battle_PvP\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

@@ -1,0 +1,6 @@
+Late-created presenter reads both existing active states
+Concealment hides shield and all weapon glows
+Reveal reuses the existing shield mesh
+Both visual types expire from state deadlines
+Dispose removes owned objects
+Reactivation rebuilds one set without duplicates

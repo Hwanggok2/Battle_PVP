@@ -1,0 +1,2 @@
+dead base=0.25,peak=0.5
+revived boost=0

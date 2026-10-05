@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-01",
+  "jobId": "build-07f18a6f20",
+  "unityVersion": "6000.3.15f1",
+  "target": "StandaloneWindows64",
+  "scriptingBackend": "Mono",
+  "development": false,
+  "result": "Succeeded",
+  "outputPath": "Builds/Windows/Battle_PvP.exe",
+  "durationSeconds": 43.4106555,
+  "reportedSizeMb": 237.64,
+  "errors": 0,
+  "warnings": [
+    "CS0414: DamagePopup._moveYSpeed is assigned but never used",
+    "CS0414: FollowCamera._moveSmoothTime is assigned but never used",
+    "CS0414: FollowCamera._rotSmoothSpeed is assigned but never used"
+  ],
+  "scenes": [
+    "Assets/Scenes/Login.unity",
+    "Assets/Scenes/Lobby.unity",
+    "Assets/Scenes/Battle_waiting.unity",
+    "Assets/Scenes/Battle.unity"
+  ],
+  "startupSmokeTest": {
+    "mode": "batchmode, nographics",
+    "aliveAfterSeconds": 12,
+    "observedExceptions": 0,
+    "note": "초기 실행 유지 확인 후 테스트 프로세스를 종료했다. 제한된 네트워크에서 Unity 분석 서버 연결 오류가 있었으며 로그인, 온라인 접속, 그래픽 표시는 이 검사에 포함하지 않았다.",
+    "logPath": "Reports/WindowsBuild/player-smoke.log"
+  }
+}

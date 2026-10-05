@@ -1,0 +1,7 @@
+Run loops beyond the original short cast; no root displacement
+Run cadence responds proportionally to movement rate
+Attack releases run immediately even while replicated charge remains active
+Next charge resumes after cancellation
+Expiry returns to base locomotion
+Active state recovers animation without receiving start cue
+Death/disable cleanup releases animation layer

@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "message": "Build Succeeded.",
+  "data": {
+    "job_id": "build-987397f1fa",
+    "result": "succeeded",
+    "platform": "StandaloneWindows64",
+    "output_path": "C:/Github/Battle_PVP/Builds/Windows-2026-10-02/Battle_PvP.exe",
+    "started_at": "2026-10-02T06:47:51.810601Z",
+    "duration_seconds": 41.986680899999996,
+    "completed_at": "2026-10-02T06:48:33.7972819Z",
+    "total_size_mb": 238.17,
+    "errors": 0,
+    "warnings": 3
+  }
+}

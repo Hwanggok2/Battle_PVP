@@ -1,0 +1,3 @@
+PASS: 40 cursor scene/mode policy assertions.
+PASS: 59791 assertions against linked production sources; 56254 existing assertions preserved, 3537 follow-up assertions added.
+Synthetic input regression only: no actual FPS measurement or performance acceptance is claimed. Unity lifecycle, physics, network, Windows/WebGL workload, and hardware execution are not covered.
