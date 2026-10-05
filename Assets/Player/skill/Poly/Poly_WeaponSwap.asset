@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48a1b7f500a8b26498c78173cbfc771e, type: 3}
   m_Name: Poly_WeaponSwap
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
+  _useGameData: 1
   _skillKind: 22
   _displayName: "\uBB34\uAE30 \uC2A4\uC651"
   _iconSprite: {fileID: 21300000, guid: a7210d66aad2c48459e5bb20dc10e302, type: 3}
@@ -26,12 +27,14 @@ MonoBehaviour:
   _poisonMaxStacks: 0
   _poisonDamagePerStackPerSecond: 0
   _poisonStackDurationSeconds: 0
+  _swordMaterial: {fileID: 0}
   _kickDamageMultiplier: 1.5
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65
   _tauntReadyDurationSeconds: 30
   _tauntDurationSeconds: 1.2
+  _tauntStopDistance: 1.8
   _tauntIncomingDamageMultiplier: 0.7
   _tauntReflectMultiplier: 2
   _tauntReflectHealthCapRatio: 0.14
@@ -68,5 +71,5 @@ MonoBehaviour:
   _weaponSwapMoveBonusDurationSeconds: 3
   _weaponSwapMoveMultiplier: 1.2
   _weaponSwapNextAttackMultiplier: 1.3
-  _useSfx: {fileID: 0}
-  _sfxVolume: 0.9
+  _useSfx: {fileID: 8300000, guid: 34f15e731688e524db5ba24f1828276e, type: 3}
+  _sfxVolume: 0.7

@@ -41,7 +41,9 @@ namespace BattlePvp.CameraLogic
         private Vector3 _temporaryRotationOffset;
         private Transform _forcedLookTarget;
         private PlayerManager _targetPlayer;
+        private BattlePvp.Combat.ExpandedSkillController _targetSkills;
         private float _crouchDrop, _crouchVelocity;
+        private bool HasForcedLook => _forcedLookTarget!=null || (_targetSkills!=null && _targetSkills.IsBeingHooked);
 
         /// <summary>
         /// ESC 토글 등에 의해 카메라 회전만 막아야 할 때 설정합니다.
@@ -64,14 +66,17 @@ namespace BattlePvp.CameraLogic
             var mouse = UnityEngine.InputSystem.Mouse.current;
             bool overUi = IsLobby && UnityEngine.EventSystems.EventSystem.current != null &&
                 UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
-            bool canLook = !IsLobby || (mouse != null && mouse.rightButton.isPressed && !overUi);
-            if (!IsLocked && _forcedLookTarget == null && canLook)
+            var skillControl = _target.GetComponentInParent<BattlePvp.Combat.ExpandedSkillController>();
+            bool canLook = (skillControl == null || !skillControl.LookLocked) && (!IsLobby || (mouse != null && mouse.rightButton.isPressed && !overUi));
+            if (!IsLocked && !HasForcedLook && canLook)
             {
                 if (mouse != null)
                 {
                     Vector2 delta = mouse.delta.ReadValue();
                     var settings = BattlePvp.UI.LocalGameSettings.Current;
-                    _yaw += delta.x * _mouseSensitivity * 0.1f * settings.sensitivity;
+                    float yawDelta = delta.x * _mouseSensitivity * 0.1f * settings.sensitivity;
+                    if (skillControl != null && skillControl.IsCharging) yawDelta = Mathf.Clamp(yawDelta, -skillControl.ChargeTurnRate * Time.deltaTime, skillControl.ChargeTurnRate * Time.deltaTime);
+                    _yaw += yawDelta;
                     _pitch -= delta.y * _mouseSensitivity * 0.1f * settings.sensitivity * (settings.invertY ? -1f : 1f);
                     _pitch = Mathf.Clamp(_pitch, IsLobby ? -10f : _minPitch, IsLobby ? 65f : _maxPitch);
                 }
@@ -97,7 +102,7 @@ namespace BattlePvp.CameraLogic
             // 3. 카메라 위치 계산 (대상 위치 + 회전된 오프셋)
             Vector3 targetPosition = GetActiveCameraPosition(targetRotation);
 
-            if (_forcedLookTarget != null)
+            if (HasForcedLook)
             {
                 Vector3 lookDirection = GetForcedLookPoint() - targetPosition;
                 if (lookDirection.sqrMagnitude > 0.001f)
@@ -111,7 +116,9 @@ namespace BattlePvp.CameraLogic
 
         private void UpdateCrouchHeight(float deltaTime)
         {
-            _crouchDrop = Mathf.SmoothDamp(_crouchDrop, _targetPlayer != null ? _targetPlayer.CrouchCameraDrop : 0f,
+            float drop=Mathf.Max(_targetPlayer != null ? _targetPlayer.CrouchCameraDrop : 0f,
+                _targetSkills!=null ? _targetSkills.SkillCameraDrop : 0f);
+            _crouchDrop = Mathf.SmoothDamp(_crouchDrop, drop,
                 ref _crouchVelocity, .1f, Mathf.Infinity, deltaTime);
         }
 
@@ -129,6 +136,7 @@ namespace BattlePvp.CameraLogic
         {
             _viewInitialized = true;
             _targetPlayer = _target != null ? _target.GetComponent<PlayerManager>() : null;
+            _targetSkills = _target != null ? _target.GetComponent<BattlePvp.Combat.ExpandedSkillController>() : null;
             _crouchDrop = _targetPlayer != null ? _targetPlayer.CrouchCameraDrop : 0f;
             _crouchVelocity = 0f;
             _yaw = transform.eulerAngles.y;
@@ -197,17 +205,23 @@ namespace BattlePvp.CameraLogic
 
         private void UpdateForcedLookYaw()
         {
-            if (_forcedLookTarget == null || _target == null)
+            if (!HasForcedLook || _target == null)
                 return;
 
-            Vector3 direction = _forcedLookTarget.position - _target.position;
+            Vector3 direction = GetForcedLookPoint() - _target.position;
             direction.y = 0f;
             if (direction.sqrMagnitude > 0.001f)
                 _yaw = Quaternion.LookRotation(direction.normalized, Vector3.up).eulerAngles.y;
+            if(_targetSkills!=null && _targetSkills.IsBeingHooked)
+            {
+                var look=GetForcedLookPoint()-GetActiveCameraPosition(GetActiveRotation());
+                if(look.sqrMagnitude>.001f) _pitch=Mathf.DeltaAngle(0,Quaternion.LookRotation(look).eulerAngles.x);
+            }
         }
 
         private Vector3 GetForcedLookPoint()
         {
+            if(_targetSkills!=null && _targetSkills.TryGetHookLookPoint(out var point)) return point;
             return _forcedLookTarget.position + Vector3.up * 1.2f;
         }
 

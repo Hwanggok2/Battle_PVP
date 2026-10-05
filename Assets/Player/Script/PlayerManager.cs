@@ -16,8 +16,8 @@ public class PlayerManager : NetworkBehaviour
     [Header("Movement Settings")]
     [SerializeField] private StatManager _statManager;
     [SerializeField] private float moveSpeed = 5.0f; // 기본 이동 속도
-    [SerializeField] private float gravity = 9.81f; // 중력 값
-    [SerializeField] private float jumpHeight = 1.4f;
+    [SerializeField] private float gravity = 22f; // 일정한 가속도, 0.8m 점프의 체공 시간 약 0.54초
+    [SerializeField] private float jumpHeight = 0.8f;
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
     [SerializeField] private float _rotationOnlyTransformSyncInterval = 0.1f;
@@ -44,6 +44,8 @@ public class PlayerManager : NetworkBehaviour
     [Header("Crouch Settings")]
     [SerializeField] private float crouchSpeedMultiplier = 0.7f;
     [SerializeField] private float crouchControllerHeightMultiplier = 0.55f;
+    [Tooltip("Idle와 Crouch Walk의 머리 높이 차이(캐릭터 기본 크기 기준). 충돌체 축소량과 별도로 적용합니다.")]
+    [SerializeField] private float crouchCameraHeightDrop = 0.35f;
 
     [Header("Emotes")]
     [SerializeField] private EmoteData[] _emotes;
@@ -123,6 +125,7 @@ public class PlayerManager : NetworkBehaviour
     private bool _wasMoveInputLocked;
     private bool _skillMovementLocked => IsSkillInputLocked(SkillInputLockFlags.Move);
     private double _jumpRequestedUntil;
+    private double _jumpAfterChargeUntil;
     private double _lastGroundedAt = double.NegativeInfinity;
     private bool _forcedTauntActive;
     private Vector3 _forcedTauntTargetPosition;
@@ -141,8 +144,8 @@ public class PlayerManager : NetworkBehaviour
     private bool IsFollowingServerMotion => _serverMotionActive || _ownerServerMotionActive;
     public double RemotePoseRenderTime => isLocalPlayer ? NetworkTime.time : NetworkTime.time - _remoteRenderDelay;
     public bool IsCrouching => isCrouching;
-    public float CrouchCameraDrop => controller != null && _standingControllerHeight > 0f
-        ? Mathf.Max(0f, _standingControllerHeight - controller.height) * Mathf.Abs(transform.lossyScale.y)
+    public float CrouchCameraDrop => isCrouching
+        ? Mathf.Max(0f, crouchCameraHeightDrop) * Mathf.Abs(transform.lossyScale.y)
         : 0f;
     public bool IsEmoteBlockingAttack => _activeEmote != null && _activeEmote.LockAttack;
     public bool IsEmoteBlockingMovement => _activeEmote != null && _activeEmote.LockMovement;
@@ -251,7 +254,8 @@ public class PlayerManager : NetworkBehaviour
 
     public void ClearSkillInputLock() => RemoveInputLock(CombatEffectSources.LegacySkillInput);
 
-    public bool IsSkillInputLocked(SkillInputLockFlags flag) => (_inputLocks.Evaluate(MovementTime) & flag) != 0;
+    public bool IsSkillInputLocked(SkillInputLockFlags flag) => ((_inputLocks.Evaluate(MovementTime) |
+        (GetComponent<ExpandedSkillController>()?.ControlFlags ?? SkillInputLockFlags.None)) & flag) != 0;
 
     public void SetForcedTauntControl(bool active, Vector3 targetPosition, float stopDistance)
     {
@@ -565,6 +569,7 @@ public class PlayerManager : NetworkBehaviour
         _movementEffects.Clear();
         _inputLocks.Clear();
         _wasMoveInputLocked = false;
+        _jumpAfterChargeUntil = 0d;
         _jumpRequestedUntil = 0d;
         inputVector = Vector2.zero;
         isAttacking = false;
@@ -807,6 +812,7 @@ public class PlayerManager : NetworkBehaviour
         }
         if (GameInputController.IsPaused || GameInputController.IsTextInputActive)
         {
+            _jumpAfterChargeUntil = 0d;
             // UI blocks voluntary input, not gravity. Opening chat/terminal in midair must not hover.
             if (controller != null && controller.enabled) { MoveBallistic(Vector3.zero, Time.deltaTime); TrySyncTransform(); }
             UpdateLocalLocomotion(Vector2.zero);
@@ -843,6 +849,9 @@ public class PlayerManager : NetworkBehaviour
         if (!CanQueueJumpRequest())
             return;
 
+        bool cancelledCharge = GetComponent<ExpandedSkillController>()?.CancelChargeFromInput() == true;
+        // Do not lose the jump in the old forced-motion epoch while waiting for server release.
+        if (cancelledCharge && isClient && !isServer) _jumpAfterChargeUntil = LocalInputTime + 2d;
         _jumpRequestedUntil = LocalInputTime + Mathf.Max(0.01f, _jumpBufferSeconds);
     }
 
@@ -912,6 +921,16 @@ public class PlayerManager : NetworkBehaviour
     private bool TryConsumeJumpRequest()
     {
         double now = LocalInputTime;
+        if (_jumpAfterChargeUntil > 0d)
+        {
+            if (now > _jumpAfterChargeUntil || !CanQueueJumpRequest()) _jumpAfterChargeUntil = 0d;
+            else
+            {
+                if (IsFollowingServerMotion || GetComponent<ExpandedSkillController>()?.IsCharging == true) return false;
+                _jumpAfterChargeUntil = 0d;
+                _jumpRequestedUntil = now + Mathf.Max(.01f, _jumpBufferSeconds);
+            }
+        }
         if (_jumpRequestedUntil < now || velocityY > 0f || !CanConsumeJumpRequest())
             return false;
 
@@ -1048,6 +1067,9 @@ public class PlayerManager : NetworkBehaviour
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
             }
         }
+
+        if(TryGetComponent<ExpandedSkillController>(out var localSkillControl))
+            transform.rotation=localSkillControl.RestrictRotation(transform.rotation);
 
         // 3. 중력 처리
         bool groundedForJump = velocityY <= 0f && IsGroundedForJump();
@@ -1228,13 +1250,14 @@ public class PlayerManager : NetworkBehaviour
         _nextForcedInputAt = now + Mathf.Max(0.01f, _transformSyncInterval);
         bool blocked = isDead || _matchEndLocked || IsBattleLoadingOrNotStarted() ||
             GameInputController.IsPaused || GameInputController.IsTextInputActive;
+        if (blocked) _jumpAfterChargeUntil = 0d;
         Vector3 direction = !blocked && inputVector.sqrMagnitude > 0.001f ? GetSkillMoveDirection() : Vector3.zero;
         direction.y = 0f;
         Quaternion rotation = followCamera != null ? Quaternion.Euler(0f, followCamera.GetYaw(), 0f) : transform.rotation;
         if (!blocked)
         {
             PollJumpInputFallback();
-            if (_jumpRequestedUntil > 0d && _jumpRequestedUntil >= LocalInputTime)
+            if (_jumpAfterChargeUntil <= 0d && _jumpRequestedUntil > 0d && _jumpRequestedUntil >= LocalInputTime)
             {
                 _forcedJumpSequence = CombatRequestSequences.Next(_forcedJumpSequence);
                 _jumpRequestedUntil = 0d;
@@ -1253,7 +1276,7 @@ public class PlayerManager : NetworkBehaviour
         if (epoch != _movementEpoch || !CombatValidation.IsFinite(direction) || Mathf.Abs(direction.y) > 0.001f ||
             !ServerMovementValidator.IsValidRotation(rotation) ||
             !_serverForcedMotion.TrySetOwnerInput(direction.x, direction.z, jumpSequence, sampleTime, NetworkTime.time)) return;
-        _serverInputRotation = rotation.normalized;
+        _serverInputRotation = TryGetComponent<ExpandedSkillController>(out var skills) ? skills.RestrictRotation(rotation.normalized) : rotation.normalized;
     }
 
     private void UpdateServerForcedMovement(double now, bool finishWhenComplete)
@@ -1306,6 +1329,7 @@ public class PlayerManager : NetworkBehaviour
             }
             else if (_serverForcedMotion.HasInput(now))
                 transform.rotation = Quaternion.Slerp(transform.rotation, _serverInputRotation, rotationSpeed * step);
+            if (TryGetComponent<ExpandedSkillController>(out var skillControl)) transform.rotation = skillControl.RestrictRotation(transform.rotation);
             MoveBallistic(forcedVelocity + voluntaryVelocity, step);
             remainingStep -= step;
         }
@@ -1587,6 +1611,7 @@ public class PlayerManager : NetworkBehaviour
         double serverTime = NetworkTime.time;
         if (!CombatValidation.IsFinite(position) || !ServerMovementValidator.IsValidRotation(rotation) ||
             !double.IsFinite(sampleTime)) return;
+        if (TryGetComponent<ExpandedSkillController>(out var skillControl)) rotation = skillControl.RestrictRotation(rotation);
         if (!isLocalPlayer)
         {
             // Reliable and unreliable snapshots may arrive out of order.
@@ -1635,7 +1660,7 @@ public class PlayerManager : NetworkBehaviour
     {
         if (!isServer) return default;
         double now = NetworkTime.time;
-        SkillInputLockFlags flags = _inputLocks.Evaluate(now);
+        SkillInputLockFlags flags = _inputLocks.Evaluate(now) | (GetComponent<ExpandedSkillController>()?.ControlFlags ?? SkillInputLockFlags.None);
         bool moveLocked = (flags & SkillInputLockFlags.Move) != 0 || IsEmoteBlockingMovement;
         bool jumpLocked = _forcedTauntActive || moveLocked || (flags & SkillInputLockFlags.Jump) != 0 || IsEmoteBlockingJump;
         bool crouchLocked = _forcedTauntActive || moveLocked || (flags & SkillInputLockFlags.Crouch) != 0 || IsEmoteBlockingJump;

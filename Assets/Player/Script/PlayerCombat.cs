@@ -158,11 +158,12 @@ public class PlayerCombat : NetworkBehaviour
     private readonly KickHitWindowAuthority _kickWindow = new KickHitWindowAuthority();
     private bool _kickClosePending;
     private readonly HashSet<IDamageReceiver> _kickHitTargets = new HashSet<IDamageReceiver>();
-    private float _nextAttackDamageMultiplier = 1f;
+    [SyncVar] private float _nextAttackDamageMultiplier = 1f;
     [SyncVar] private float _attackPowerBonusMultiplier = 1f;
     [SyncVar] private double _attackPowerBonusUntil;
     [SyncVar] private float _attackSpeedBonusMultiplier = 1f;
     [SyncVar] private double _attackSpeedBonusUntil;
+    [SyncVar] private double _skillMoveBonusUntil;
     [SyncVar] private int _acceptedSkillAnimationKey = -1;
     [SyncVar] private double _acceptedSkillStartedAt;
     [SyncVar] private double _acceptedSkillAnimationUntil;
@@ -206,8 +207,13 @@ public class PlayerCombat : NetworkBehaviour
         (!NetworkClient.active && !NetworkServer.active && !isClient && !isServer);
     public bool IsMonostatStrLifestealActive => SkillTime < _monostatStrSkillActiveUntil;
     public float MonostatStrSkillLifestealRatio => ResolveMonostatStrLifestealRatio();
+    public float MonostatStrMoveMultiplier => IsMonostatStrLifestealActive ? (MonostatStrSkillData != null ? MonostatStrSkillData.StrMoveMultiplier : 1.1f) : 1f;
     public bool IsMonostatAgiPoisonCoatingActive => SkillTime < _monostatAgiSkillActiveUntil;
-    public float AttackPowerBonusMultiplier => SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f;
+    public bool HasAttackPowerSkillBonus => SkillTime < _attackPowerBonusUntil && _attackPowerBonusMultiplier > 1f;
+    public bool HasAttackSpeedSkillBonus => SkillTime < _attackSpeedBonusUntil && _attackSpeedBonusMultiplier > 1f;
+    public bool HasMovementSkillBonus => SkillTime < _skillMoveBonusUntil;
+    public bool HasNextAttackSkillBonus => _nextAttackDamageMultiplier > 1f;
+    public float AttackPowerBonusMultiplier => (SkillTime < _attackPowerBonusUntil ? Mathf.Max(0f, _attackPowerBonusMultiplier) : 1f) * (GetComponent<ExpandedSkillController>()?.AttackMultiplier ?? 1f);
     public uint CurrentAttackPredictionId => _currentAttackSequence;
     public bool IsAttackActive => isAttacking;
     private MeleeAimPose _meleeAimPose;
@@ -481,7 +487,8 @@ public class PlayerCombat : NetworkBehaviour
         bool alive = _healthSystem == null || !_healthSystem.IsDead;
         bool lookEnabled = alive && BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name) &&
             (_playerManager == null || !_playerManager.IsEmoteBlockingAttack) &&
-            (_bowAttackController == null || !_bowAttackController.IsBusy) && !IsSkillCastingOrAttackLocked();
+            (_bowAttackController == null || !_bowAttackController.IsBusy) && !IsSkillCastingOrAttackLocked() &&
+            (_expanded == null || !_expanded.Active(JobSkillKind.Fortify));
         _lookPoseWeight = Mathf.MoveTowards(_lookPoseWeight, lookEnabled ? 1f : 0f, Time.deltaTime * 12f);
         // Owners use this frame's camera pitch; observers smoothly follow the replicated pitch.
         _lookPitch = ShouldHandleLocalInput ? _networkLookPitch :
@@ -586,11 +593,51 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     private bool _skillButtonRequest;
+    private SkillLoadout _loadout;
+    private ExpandedSkillController _expanded;
+    public Vector3 SkillAimDirection => GetCurrentAimDirection();
+    private bool TrySelectEquipped(int slot, out JobSkillKind kind)
+    {
+        if (_loadout == null) _loadout = GetComponent<SkillLoadout>();
+        if (_loadout != null) return _loadout.Select(slot, out kind);
+        kind = default; return _statManager != null && CombatSkillRules.TrySelect(_statManager.CurrentIdentity, slot, out kind);
+    }
+    public bool AllowsEquipped(JobSkillKind kind)
+    {
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
+        if (_expanded != null && _expanded.AllowsBorrowed(kind)) return true;
+        return HasEquippedOnly(kind);
+    }
+    private bool HasEquippedOnly(JobSkillKind kind) => (TrySelectEquipped(0, out var first) && first == kind) || (TrySelectEquipped(1, out var second) && second == kind);
+    public void OnSkillLoadoutChanged()
+    {
+        CancelAllCombatActions();
+        if (NetworkServer.active || !NetworkClient.active) _isBowEquipped = false;
+        ApplyIdentityVisuals();
+        PublishSkillHudState();
+    }
+    public bool CanBeginExpandedSkill => HasAuthoritativeCombatStats && !IsBattleLoadingOrNotStarted() &&
+        (_healthSystem == null || !_healthSystem.IsDead) && !isAttacking && !IsAimingBow && !IsSkillCastingOrAttackLocked();
+    public bool BeginCopiedLegacy(JobSkillKind kind)
+    {
+        if (!AllowsEquipped(kind) || !CanBeginExpandedSkill) return false;
+        if (kind == JobSkillKind.MonostatStrLifesteal) { _monostatStrSkillCooldownUntil = SkillTime; return BeginMonostatStrSkill(SkillTime, NextSkillSequence()); }
+        if (kind == JobSkillKind.MonostatAgiPoison) { _monostatAgiSkillCooldownUntil = SkillTime; return BeginMonostatAgiSkill(SkillTime, NextSkillSequence()); }
+        SetAdvancedCooldownUntil((int)kind, SkillTime);
+        return BeginAdvancedSkillCore((int)kind, SkillAimDirection, SkillTime, NextSkillSequence(), true);
+    }
+    public void AddKnifePoison(IDamageReceiver target, Vector3 position)
+    {
+        // ProcessSkillHit already applies the coating's stack. A knife hit must add one,
+        // including when coating and knives are equipped together.
+        if (!IsMonostatAgiPoisonCoatingActive) ApplyMonostatAgiPoisonStack(target, position);
+    }
     public void OnSkill1(InputValue value) { if (value.isPressed) UseSkillSlot(0); }
     public void OnSkill2(InputValue value) { if (value.isPressed) UseSkillSlot(1); }
     public void UseSkillSlot(int index, bool fromHud = false)
     {
-        if (!fromHud && WaitingRoomTerminal.ConsumesSkillInput(index)) return;
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
+        if (!fromHud && (_expanded == null || !_expanded.IsCharging) && WaitingRoomTerminal.ConsumesSkillInput(index)) return;
         if (!ShouldHandleLocalInput || index < 0 || index >= ResolveAvailableSkillCount()) return;
         if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)) return;
         _skillButtonRequest = fromHud;
@@ -717,6 +764,9 @@ public class PlayerCombat : NetworkBehaviour
             return;
 
         _lastAttackPressedAt = pressedAt;
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
+        if (!BattlePvp.Logic.GameInputController.IsPaused && !BattlePvp.Logic.GameInputController.IsTextInputActive &&
+            !_isPointerOverUI && _expanded != null && _expanded.HandleAttackInput()) return;
         if (_playerManager != null && _playerManager.IsSkillAttackLocked) return;
         if (IsPolymath() && _isBowEquipped)
         {
@@ -798,6 +848,7 @@ public class PlayerCombat : NetworkBehaviour
             _currentAttackSequence = NextAttackSequence();
             if (isServer) _lastServerAttackSequence = _currentAttackSequence;
         }
+        GetComponent<ExpandedSkillController>()?.NotifyAttackStarted();
         isAttacking = true;
         hasComboReserved = false;
         currentComboIndex = index;
@@ -944,14 +995,6 @@ public class PlayerCombat : NetworkBehaviour
             _currentAttackSpeed = ResolveCurrentAttackSpeed();
         }
 
-        if (animator != null)
-            PlayAttackAnimation(index);
-
-        if (_comboRoutine != null)
-            StopCoroutine(_comboRoutine);
-        _comboRoutine = StartCoroutine(CoComboMonitor(index));
-
-        var pm = _playerManager != null ? _playerManager : GetComponent<PlayerManager>();
         foreach (var hb in _hitboxes)
         {
             if (hb != null)
@@ -959,6 +1002,11 @@ public class PlayerCombat : NetworkBehaviour
                 hb.SetAttackData(comboList[index]);
             }
         }
+        if (animator != null)
+            PlayAttackAnimation(index);
+        if (_comboRoutine != null)
+            StopCoroutine(_comboRoutine);
+        _comboRoutine = StartCoroutine(CoComboMonitor(index));
     }
 
     private float ResolveCurrentAttackSpeed()
@@ -966,7 +1014,9 @@ public class PlayerCombat : NetworkBehaviour
         float attackSpeed = _statManager != null ? _statManager.GetDerivedStats().AttackSpeed : 1f;
         if (SkillTime < _attackSpeedBonusUntil)
             attackSpeed *= Mathf.Max(0f, _attackSpeedBonusMultiplier);
-        return Mathf.Max(0.01f, attackSpeed);
+        if(IsMonostatStrLifestealActive)
+            attackSpeed*=MonostatStrSkillData != null ? MonostatStrSkillData.StrAttackSpeedMultiplier : 1.2f;
+        return Mathf.Max(0.01f, attackSpeed * (GetComponent<ExpandedSkillController>()?.AttackSpeedMultiplier ?? 1f));
     }
 
     private void PlayAttackAnimation(int index)
@@ -1400,6 +1450,7 @@ public class PlayerCombat : NetworkBehaviour
         _attackPowerBonusUntil = 0d;
         _attackSpeedBonusMultiplier = 1f;
         _attackSpeedBonusUntil = 0d;
+        _skillMoveBonusUntil = 0d;
         _auraPresentation?.Cancel();
         _playerManager?.RemoveMovementEffect(CombatEffectSources.WeaponSwap);
         _playerManager?.RemoveMovementEffect(CombatEffectSources.StrategistMove);
@@ -1414,6 +1465,7 @@ public class PlayerCombat : NetworkBehaviour
 
     public void NotifyPhysicalDamageDealt(float actualDamage, IDamageReceiver defender = null, Vector3 hitPosition = default)
     {
+        if (actualDamage > 0) GetComponent<ExpandedSkillController>()?.NotifyPhysicalHit(defender);
         if (actualDamage > 0f && IsMonostatStrLifestealActive)
         {
             if (_healthSystem == null)
@@ -1474,9 +1526,14 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseSkillInput())
             return;
 
-        if (_statManager == null || !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, _selectedSkillIndex, out JobSkillKind kind))
+        if (_statManager == null || !TrySelectEquipped(_selectedSkillIndex, out JobSkillKind kind))
             return;
 
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
+        if (_expanded != null && _expanded.CancelChargeFromInput()) return;
+
+        if ((int)kind >= 100)
+        { if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>(); _expanded?.RequestUse(_selectedSkillIndex); return; }
         if (kind == JobSkillKind.MonostatStrLifesteal)
         {
             TryUseMonostatStrSkill();
@@ -1515,7 +1572,7 @@ public class PlayerCombat : NetworkBehaviour
     [Command]
     private void CmdUseMonostatStrSkill(uint sequence, double requestedStartTime)
     {
-        bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
+        bool accepted = HasEquippedOnly(JobSkillKind.MonostatStrLifesteal) && TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
                         BeginMonostatStrSkill(acceptedStartTime, sequence);
         TargetResolveSkillRequest(connectionToClient, sequence, accepted);
     }
@@ -1523,7 +1580,7 @@ public class PlayerCombat : NetworkBehaviour
     [Command]
     private void CmdUseMonostatAgiSkill(uint sequence, double requestedStartTime)
     {
-        bool accepted = TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
+        bool accepted = HasEquippedOnly(JobSkillKind.MonostatAgiPoison) && TryAcceptSkillSequence(sequence, out double acceptedStartTime, requestedStartTime) &&
                         BeginMonostatAgiSkill(acceptedStartTime, sequence);
         TargetResolveSkillRequest(connectionToClient, sequence, accepted);
     }
@@ -1537,7 +1594,7 @@ public class PlayerCombat : NetworkBehaviour
         uint sequence,
         double requestedStartTime)
     {
-        if (!CombatValidation.IsFinite(direction) ||
+        if (!HasEquippedOnly((JobSkillKind)skillKey) || !CombatValidation.IsFinite(direction) ||
             (hasStrategistTargetPreset && (_statManager == null ||
                 !StatValidation.TryValidateClientStats(strategistTargetPreset, _statManager.GetStatsCopy(), out strategistTargetPreset))))
         {
@@ -1633,19 +1690,28 @@ public class PlayerCombat : NetworkBehaviour
     }
 
     private bool BeginAdvancedSkill(int skillKey, Vector3 direction, double requestedStartTime, uint sequence)
+        => BeginAdvancedSkillCore(skillKey, direction, requestedStartTime, sequence, false);
+
+    private bool BeginAdvancedSkillCore(int skillKey, Vector3 direction, double requestedStartTime, uint sequence, bool copied)
     {
         if (!HasAuthoritativeCombatStats) return false;
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
         JobSkillData data = ResolveAdvancedSkillData(skillKey);
         double now = SkillTime;
         if (data == null || (_healthSystem != null && _healthSystem.IsDead))
             return false;
+        if (CombatSkillRules.EffectOf(data.SkillKind)==AdvancedSkillEffect.Roll &&
+            (GetComponent<ExpandedSkillController>()?.BlocksVoluntaryDisplacement ?? false)) return false;
         TryGetAdvancedCooldownUntil(skillKey, out double cooldown);
+        bool charged=ExpandedSkillController.UsesCharges(data.SkillKind) && _expanded!=null;
+        if(charged) cooldown=0;
         var execution = new CombatSkillExecution(_advancedCastingSkillKey >= 0, _advancedCastCompleteAt, 0d, cooldown);
         if (!AdvancedSkillPlan.TryBegin(data.SkillKind, execution, now, requestedStartTime,
                 data.CastSeconds, data.CooldownSeconds, HasSkillCastAnimation(data), out AdvancedSkillPlan plan))
             return false;
 
-        if (data.CooldownSeconds > 0f)
+        if(charged && !copied && !_expanded.SpendCharge(data.SkillKind)) return false;
+        if (!charged && data.CooldownSeconds > 0f)
             SetAdvancedCooldownUntil(skillKey, plan.Execution.CooldownUntil);
 
         CancelCurrentAttack();
@@ -2048,16 +2114,21 @@ public class PlayerCombat : NetworkBehaviour
     private void ApplyMoveBonusLocal(int source, float moveMultiplier, float durationSeconds)
     {
         _playerManager?.SetMovementEffect(source, moveMultiplier, durationSeconds);
+        if (moveMultiplier > 1f && durationSeconds > 0f)
+            _skillMoveBonusUntil = Math.Max(_skillMoveBonusUntil, SkillTime + durationSeconds);
     }
 
     private void ShowStrategistPresetAuraLocal(StatKind statKind, float durationSeconds)
     {
+        if (GetComponent<ExpandedSkillController>() != null) return;
         AuraPresentation.ShowTimed(statKind, durationSeconds, SkillTime,
             _healthSystem != null ? _healthSystem.CurrentShield : 0f);
     }
 
     private void UpdateStrategistStrAura()
     {
+        // The shared body glow reads replicated buff state, including late joiners.
+        if (GetComponent<ExpandedSkillController>() != null) { _auraPresentation?.Cancel(); return; }
         AuraPresentation.Update(SkillTime, _healthSystem != null ? _healthSystem.CurrentShield : 0f);
     }
 
@@ -2189,7 +2260,7 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        if (!IsMonostatStr())
+        if (!AllowsEquipped(JobSkillKind.MonostatStrLifesteal))
         {
             _monostatStrSkillRoutine = null;
             yield break;
@@ -2343,7 +2414,7 @@ public class PlayerCombat : NetworkBehaviour
             yield break;
         }
 
-        if (!IsMonostatAgi())
+        if (!AllowsEquipped(JobSkillKind.MonostatAgiPoison))
         {
             _monostatAgiSkillRoutine = null;
             yield break;
@@ -2398,6 +2469,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!CanUseSkillInput()) return false;
         if (data == null) return false;
         TryGetAdvancedCooldownUntil((int)data.SkillKind, out double cooldownUntil);
+        if(ExpandedSkillController.UsesCharges(data.SkillKind) && _expanded!=null)
+        { if(_expanded.ChargeState(data.SkillKind).Charges<=0) return false; cooldownUntil=0; }
         var execution = new CombatSkillExecution(_advancedCastingSkillKey >= 0, _advancedCastCompleteAt,
             _advancedActiveSkillKey == (int)data.SkillKind ? _advancedActiveUntil : 0d, cooldownUntil);
         if (!execution.CanBegin(SkillTime)) return false;
@@ -2428,7 +2501,7 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (!StrengthExecution.CanBegin(now)) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
-        if (!IsMonostatStr()) return false;
+        if (!AllowsEquipped(JobSkillKind.MonostatStrLifesteal)) return false;
 
         return true;
     }
@@ -2437,14 +2510,14 @@ public class PlayerCombat : NetworkBehaviour
     {
         if (!AgilityExecution.CanBegin(now)) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
-        if (!IsMonostatAgi()) return false;
+        if (!AllowsEquipped(JobSkillKind.MonostatAgiPoison)) return false;
 
         return true;
     }
 
     private bool IsSkillCastingOrAttackLocked()
     {
-        return _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
+        return (GetComponent<ExpandedSkillController>()?.BlocksCombat ?? false) || _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
                AcceptedOwnerAction.HasAnimation(SkillTime) || _actionLocks.IsLocked(SkillTime);
     }
 
@@ -2490,7 +2563,7 @@ public class PlayerCombat : NetworkBehaviour
     private JobSkillData ResolveSelectedAdvancedSkillData()
     {
         if (_statManager == null ||
-            !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, _selectedSkillIndex, out JobSkillKind kind))
+            !TrySelectEquipped(_selectedSkillIndex, out JobSkillKind kind))
             return null;
         return ResolveAssignedAdvancedSkillData((int)kind);
     }
@@ -2500,7 +2573,7 @@ public class PlayerCombat : NetworkBehaviour
         if (_statManager == null)
             return null;
         JobSkillKind kind = (JobSkillKind)skillKey;
-        return CombatSkillRules.Allows(_statManager.CurrentIdentity, kind)
+        return AllowsEquipped(kind)
             ? ResolveAssignedAdvancedSkillData(skillKey) : null;
     }
 
@@ -2620,12 +2693,22 @@ public class PlayerCombat : NetworkBehaviour
         int count = ResolveAvailableSkillCount();
         if (index < 0 || index >= count)
             return new SkillHudState(false, string.Empty, index, count, SkillHudPhase.Hidden, 0f, 0f);
+        TrySelectEquipped(index, out JobSkillKind equipped);
+        if ((int)equipped >= 100 && TryGetComponent<ExpandedSkillController>(out var extra)) return extra.Hud(index, equipped);
+        if(ExpandedSkillController.UsesCharges(equipped) && TryGetComponent<ExpandedSkillController>(out var charges))
+        {
+            var hud=charges.Hud(index,equipped);
+            if(_advancedCastingSkillKey==(int)equipped || (_advancedActiveSkillKey==(int)equipped && _advancedActiveUntil>SkillTime))
+                return new SkillHudState(hud.Visible,hud.Name,index,count,SkillHudPhase.Casting,1,
+                    (float)(Math.Max(_advancedCastCompleteAt,_advancedActiveUntil)-SkillTime),hud.IconSprite);
+            return hud;
+        }
         JobSkillData data;
         bool casting = false;
         double castCompleteAt = 0d, activeUntil = 0d, cooldownUntil = 0d;
         float castSeconds = 0f, cooldownSeconds = 0f;
 
-        if (IsMonostatStr() && index == 0)
+        if (equipped == JobSkillKind.MonostatStrLifesteal)
         {
             data = MonostatStrSkillData;
             casting = _isCastingMonostatStrSkill;
@@ -2635,7 +2718,7 @@ public class PlayerCombat : NetworkBehaviour
             castSeconds = MonostatStrCastSeconds;
             cooldownSeconds = MonostatStrCooldownSeconds;
         }
-        else if (IsMonostatAgi() && index == 0)
+        else if (equipped == JobSkillKind.MonostatAgiPoison)
         {
             data = MonostatAgiSkillData;
             casting = _isCastingMonostatAgiSkill;
@@ -2647,7 +2730,7 @@ public class PlayerCombat : NetworkBehaviour
         }
         else
         {
-            data = _statManager != null && CombatSkillRules.TrySelect(_statManager.CurrentIdentity, index, out JobSkillKind kind)
+            data = _statManager != null && TrySelectEquipped(index, out JobSkillKind kind)
                 ? ResolveAssignedAdvancedSkillData((int)kind) : null;
             if (data != null)
             {
@@ -2673,7 +2756,10 @@ public class PlayerCombat : NetworkBehaviour
     public string GetSkillDescription(int index)
     {
         if (index < 0 || index >= _describedSkills.Length || _statManager == null ||
-            !CombatSkillRules.TrySelect(_statManager.CurrentIdentity, index, out JobSkillKind kind)) return string.Empty;
+            !TrySelectEquipped(index, out JobSkillKind kind)) return string.Empty;
+        if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
+        if (kind == JobSkillKind.Steal && _expanded != null && _expanded.CopiedKind >= 0)
+            kind = (JobSkillKind)_expanded.CopiedKind;
         var data = ResolveSkillData((int)kind);
         if (_describedSkills[index] != data)
         { _describedSkills[index] = data; _skillDescriptions[index] = SkillDescription.Build(data); }
@@ -2724,7 +2810,7 @@ public class PlayerCombat : NetworkBehaviour
             (int)JobSkillKind.PolymathRoll => _polymathRollSkillData,
             (int)JobSkillKind.PolymathPresetChange => _polymathPresetSkillData,
             (int)JobSkillKind.PolymathWeaponSwap => _polymathWeaponSwapSkillData,
-            _ => null
+            _ => SkillPresentationCatalog.Data(skillId)
         };
     }
 

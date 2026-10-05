@@ -317,6 +317,8 @@ public sealed class BowAttackController : NetworkBehaviour
             CombatValidation.IsFinite(aimDirection) && aimDirection.sqrMagnitude > 0.001f &&
             _serverShotAuthority.TryBegin(NetworkTime.time);
         if (accepted)
+            GetComponent<ExpandedSkillController>()?.NotifyAttackStarted();
+        if (accepted)
             _playerManager?.SetMovementEffect(CombatEffectSources.BowCharge,
                 _playerCombat.ServerBowData.BowChargeMoveMultiplier, 86400f);
         return accepted;

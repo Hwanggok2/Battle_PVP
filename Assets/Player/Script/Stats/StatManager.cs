@@ -75,6 +75,16 @@ namespace BattlePvp.Stats
         public event Action<StatContainer> StatsChanged;
         public event Action DerivedStatsChanged;
 
+        [SyncVar(hook = nameof(OnCombatMultiplierChanged))] private float _allCombatMultiplier = 1f;
+        [SyncVar(hook = nameof(OnCombatMultiplierChanged))] private float _defenseCombatMultiplier = 1f;
+        private void OnCombatMultiplierChanged(float oldValue, float newValue) { _derivedStatsDirty = true; DerivedStatsChanged?.Invoke(); }
+        public void SetCombatMultipliers(float all, float defense)
+        {
+            if (NetworkClient.active && !isServer) return;
+            if (!float.IsFinite(all) || !float.IsFinite(defense) || all <= 0 || defense <= 0) return;
+            if (Mathf.Approximately(all, _allCombatMultiplier) && Mathf.Approximately(defense, _defenseCombatMultiplier)) return;
+            _allCombatMultiplier = all; _defenseCombatMultiplier = defense; OnCombatMultiplierChanged(0, 0);
+        }
         private DerivedCombatStats _cachedDerivedStats;
         private StatBalanceConfig _cachedBalanceConfig;
         private int _cachedBalanceRevision = -1;
@@ -131,7 +141,7 @@ namespace BattlePvp.Stats
         /// <summary>
         /// FinalTotal(아이템 포함)을 스탯 종류별로 반환한다.
         /// </summary>
-        public float GetFinalTotal(StatKind kind) => StatMath.FinalTotal(kind, _stats);
+        public float GetFinalTotal(StatKind kind) => StatMath.FinalTotal(kind, _stats) * _allCombatMultiplier * (kind == StatKind.DEF ? _defenseCombatMultiplier : 1f);
 
         /// <summary>
         /// 현재 스탯 스냅샷을 값 복사로 반환한다.
@@ -143,7 +153,7 @@ namespace BattlePvp.Stats
             StatBalanceConfig config = StatBalanceCalculator.Config;
             if (_derivedStatsDirty || _cachedBalanceConfig != config || _cachedBalanceRevision != config.Revision)
             {
-                _cachedDerivedStats = StatBalanceCalculator.Calculate(_stats, CurrentIdentity, config);
+                _cachedDerivedStats = StatBalanceCalculator.Calculate(GetFinalTotal(StatKind.STR), GetFinalTotal(StatKind.CON), GetFinalTotal(StatKind.AGI), GetFinalTotal(StatKind.DEF), CurrentIdentity);
                 _cachedBalanceConfig = config;
                 _cachedBalanceRevision = config.Revision;
                 _derivedStatsDirty = false;

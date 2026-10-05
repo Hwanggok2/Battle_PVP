@@ -2371,7 +2371,7 @@ MonoBehaviour:
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
-  m_FillClockwise: 1
+  m_FillClockwise: 0
   m_FillOrigin: 2
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
@@ -3435,7 +3435,7 @@ MonoBehaviour:
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
-  m_FillClockwise: 1
+  m_FillClockwise: 0
   m_FillOrigin: 2
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
@@ -5641,6 +5641,12 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       insertIndex: -1
       addedObject: {fileID: 6960307794535012976}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 63241935435340836}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5192704002929282936}
   m_SourcePrefab: {fileID: 100100000, guid: 06971eb51a256cc40bfb279440136224, type: 3}
 --- !u!4 &1197372836843505602 stripped
 Transform:
@@ -5719,7 +5725,7 @@ MonoBehaviour:
   syncInterval: 0
   _statManager: {fileID: 4931861078861440238}
   moveSpeed: 5
-  gravity: 9.81
+  gravity: 22
   jumpHeight: 0.8
   rotationSpeed: 720
   _transformSyncInterval: 0.033
@@ -5741,6 +5747,7 @@ MonoBehaviour:
   _remoteLocomotionDampTime: 0.08
   crouchSpeedMultiplier: 0.7
   crouchControllerHeightMultiplier: 0.55
+  crouchCameraHeightDrop: 0.35
   _emotes: []
   _defaultEmoteIndex: 0
   _respawnPromptText: Press Space to Respawn
@@ -5872,7 +5879,7 @@ MonoBehaviour:
   _aimHitMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  _applyBowCameraOffset: 1
+  _applyBowCameraOffset: 0
   _bowCameraOffset: {x: 0.4, y: 0.2, z: -1.2}
   _bowCameraRotationOffset: {x: 0, y: 0, z: 0}
   _showCrosshair: 1
@@ -6266,6 +6273,39 @@ MonoBehaviour:
   - {fileID: 8300000, guid: f4e6d8743e7e96348b34b7617c3a764f, type: 3}
   - {fileID: 8300000, guid: 0b038d489ec060f45b17f1dd94cc1fc5, type: 3}
   _death: {fileID: 8300000, guid: 3f588ad6ca1dac2448b88962314edfca, type: 3}
+--- !u!114 &63241935435340836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4696774b333e211499e8c8490e86f2ac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.SkillLoadout
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &5192704002929282936
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19906f11b2730c4492e95cc478f094a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.ExpandedSkillController
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  KnifeReady: 0
+  TrapReady: 0
+  CopiedKind: -1
 --- !u!4 &2868093296466155944 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3811800481406761752, guid: 06971eb51a256cc40bfb279440136224, type: 3}

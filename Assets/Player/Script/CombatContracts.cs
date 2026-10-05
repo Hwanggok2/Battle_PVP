@@ -9,7 +9,8 @@ namespace BattlePvp.Combat
     {
         Physical = 0,
         Thorns = 1,
-        Poison = 2
+        Poison = 2,
+        Fixed = 3 // Fixed skill damage; shields and invulnerability still apply.
     }
 
     /// <summary>

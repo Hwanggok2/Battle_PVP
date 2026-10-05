@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e5ba92e897e18b4499d012eed64781a, type: 3}
+  m_Name: SkillPresentationCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.SkillPresentationCatalog
+  Font: {fileID: 11400000, guid: 02e51bcc51403a145816e25671493371, type: 2}
+  Entries:
+  - Kind: 1
+    Data: {fileID: 11400000, guid: 05f8cf419408da6469ce258e8c1f7cf6, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 2
+    Data: {fileID: 11400000, guid: 69ac0f1c56b300346a90d492ebfb63af, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 3
+    Data: {fileID: 11400000, guid: 5aaa0bbbd6554974c9b566e56c1f645f, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 22
+    Data: {fileID: 11400000, guid: f871b314ec0b80b41b44bdba3b3d2835, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 20
+    Data: {fileID: 11400000, guid: a357684c44735964bae03a09b28591e5, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 0
+    Data: {fileID: 11400000, guid: 5a50ed52fa85e0841b0c8ee1f9d1c5ab, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 11
+    Data: {fileID: 11400000, guid: 1ffc76eb352b89949b0e449e711a14e7, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 10
+    Data: {fileID: 11400000, guid: bee418ed14f145047a0103373470075d, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 100
+    Data: {fileID: 11400000, guid: eac6c7a17b8c79b4f81b0e1147a08209, type: 2}
+    Prefab: {fileID: 2865709760170772089, guid: 3183b99c0d7305b46b054701a0717650, type: 3}
+  - Kind: 101
+    Data: {fileID: 11400000, guid: 32c84900e91cbb24dbb3e0ad63d8eb0f, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 102
+    Data: {fileID: 11400000, guid: 224466bcc89ad9f4eaf60d7ce64304ff, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 103
+    Data: {fileID: 11400000, guid: da10ca7d2f8e1dd4999f379e589b4f01, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 104
+    Data: {fileID: 11400000, guid: a9703f89450ede54ea3fe94db1c031eb, type: 2}
+    Prefab: {fileID: 794799274834904433, guid: f22ea3d6ddb5a1e468cbe664ed2dfb06, type: 3}
+  - Kind: 105
+    Data: {fileID: 11400000, guid: e85d754269b776945b791280042670fe, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 106
+    Data: {fileID: 11400000, guid: f805390a7b8973748b6ef1bb3f9706ee, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 107
+    Data: {fileID: 11400000, guid: 52e2287bbae2df942be04b7dc48234dd, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 108
+    Data: {fileID: 11400000, guid: 8afef92dc363a95419b3ef5b362847c0, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 109
+    Data: {fileID: 11400000, guid: e73434ed94110f545b3f80309ac2598a, type: 2}
+    Prefab: {fileID: 0}
+  - Kind: 110
+    Data: {fileID: 11400000, guid: e1a8b72d706d78b4399b7eec20bf19a2, type: 2}
+    Prefab: {fileID: 8879537634367067467, guid: 27cb5e55d6e70694988c809dc00b2366, type: 3}
+  - Kind: 111
+    Data: {fileID: 11400000, guid: 5e5d22a1056725f46aad65c47fbfefe9, type: 2}
+    Prefab: {fileID: 7575736147188973439, guid: 7c7b1850ffd50494d8086fedba89cb60, type: 3}
+  - Kind: 112
+    Data: {fileID: 11400000, guid: 60ea5ba0c1270b841a4a26c139f50fa2, type: 2}
+    Prefab: {fileID: 0}

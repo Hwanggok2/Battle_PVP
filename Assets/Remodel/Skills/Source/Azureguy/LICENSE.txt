@@ -1,0 +1,9 @@
+Grappling Hook by azureguy (2015)
+Source: https://opengameart.org/content/grappling-hook
+License: CC0 1.0 Universal Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+GrapplingHook.svg is the original free vector artwork. GrapplingHook.obj adapts
+its hook outline into a solid 3D mesh, retaining the eyelet and omitting the rope.
+Adaptation: Tools/SkillExpansion/build_hook_mesh.py. This is an extruded adaptation,
+not an original third-party 3D model. No script from the source archive is used.

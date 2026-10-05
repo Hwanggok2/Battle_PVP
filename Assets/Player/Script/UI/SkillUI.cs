@@ -111,7 +111,7 @@ namespace BattlePvp.UI
 
             bool showTimer = state.Phase == SkillHudPhase.Casting ||
                              state.Phase == SkillHudPhase.Active ||
-                             state.Phase == SkillHudPhase.Cooldown;
+                             state.Phase == SkillHudPhase.Cooldown || state.RemainingSeconds > 0;
 
             if (_timerText != null)
             {
@@ -242,7 +242,7 @@ namespace BattlePvp.UI
 
             _overlayImage.fillMethod = Image.FillMethod.Radial360;
             _overlayImage.fillOrigin = (int)Image.Origin360.Top;
-            _overlayImage.fillClockwise = phase != SkillHudPhase.Cooldown;
+            _overlayImage.fillClockwise = phase == SkillHudPhase.Casting;
             _overlayImage.raycastTarget = false;
         }
 

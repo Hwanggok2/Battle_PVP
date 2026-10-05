@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48a1b7f500a8b26498c78173cbfc771e, type: 3}
   m_Name: Roll_Polymath
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.JobSkillData
+  _useGameData: 1
   _skillKind: 20
   _displayName: "\uAD6C\uB974\uAE30"
   _iconSprite: {fileID: 21300000, guid: 432acf0c757e67a4089b7fa90be0c5a0, type: 3}
@@ -33,10 +34,11 @@ MonoBehaviour:
   _kickSlowDurationSeconds: 0.65
   _tauntReadyDurationSeconds: 30
   _tauntDurationSeconds: 1.2
+  _tauntStopDistance: 1.8
   _tauntIncomingDamageMultiplier: 0.7
   _tauntReflectMultiplier: 2
   _tauntReflectHealthCapRatio: 0.14
-  _rollDistance: 3
+  _rollDistance: 3.6
   _rollDurationSeconds: 0.35
   _targetPreset:
     STR:
@@ -69,5 +71,5 @@ MonoBehaviour:
   _weaponSwapMoveBonusDurationSeconds: 3
   _weaponSwapMoveMultiplier: 1.2
   _weaponSwapNextAttackMultiplier: 1.3
-  _useSfx: {fileID: 0}
-  _sfxVolume: 0.9
+  _useSfx: {fileID: 8300000, guid: f83953e39d5794c4d86b493a0fa2b853, type: 3}
+  _sfxVolume: 0.7

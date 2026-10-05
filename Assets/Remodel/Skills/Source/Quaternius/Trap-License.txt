@@ -1,0 +1,11 @@
+Bear Trap / BearTrap_Open.fbx by Quaternius.
+CC0 1.0 Universal Public Domain Dedication.
+Model source: https://poly.pizza/m/fqv7qtGQYH
+Creator: https://poly.pizza/u/Quaternius
+License: https://creativecommons.org/publicdomain/zero/1.0/
+Downloaded 2026-10-05 via the model page's Download FBX control.
+The page identifies the model as Public Domain (CC0), usable in personal and commercial projects without attribution.
+
+Battle PVP changes: scaled to a 0.85 m footprint, grounded pivot, shared URP steel and cyan materials.
+The source FBX geometry is retained. Its disconnected mesh parts are split into a grounded base and two hinged jaws for the closing animation; generated TrapBase/TrapLeftJaw/TrapRightJaw meshes preserve the source triangles.
+Gameplay uses the existing server-side trap trigger.

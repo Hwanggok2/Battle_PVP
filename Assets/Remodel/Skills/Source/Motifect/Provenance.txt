@@ -1,0 +1,25 @@
+Fortify prone source: army_crawl.fbx
+Creator: Motifect
+Pack: Motifect Locomotion Motion Pack, version 1.0
+Downloaded: 2026-10-04
+Official page: https://motifect.itch.io/motifect-locomotion-motion-pack
+Official preview/download: https://motifect.io/en/packs/locomotion
+
+Free for commercial and non-commercial game/interactive projects.
+Raw animation data may not be redistributed or resold as a standalone asset.
+The original README.txt is included alongside this file.
+Creator discloses that this is AI-generated motion data, reviewed before release.
+
+Battle_PVP adaptation:
+- Imported as Unity Humanoid and retargeted to Player.prefab.
+- Sampled the prone pose at 0.15 seconds, removed horizontal displacement,
+  and aligned it to the player's forward direction.
+- Combined with existing standing and Quaternius kneeling poses for a
+  three-second enter / brace / stand sequence (DEF_Fortify.anim).
+- Build reproducibly with FortifyMotionInstaller.Apply().
+
+2026-10-05 update:
+- DEF_Fortify's hold was replaced with a curled defensive guard authored
+  against Player.prefab's limb lengths: lowered hips, rounded back, tucked
+  head and closed fists shielding it. Apply() no longer samples army_crawl.
+- This original source and its license are retained for reference.

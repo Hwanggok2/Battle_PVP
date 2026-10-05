@@ -1,0 +1,8 @@
+Knife_1.fbx by Quaternius, Toon Shooter Game Kit (December 2022).
+CC0 1.0 Universal Public Domain Dedication.
+https://creativecommons.org/publicdomain/zero/1.0/
+Official source: https://quaternius.com/packs/toonshootergamekit.html
+Official download: https://drive.google.com/drive/folders/1IP49ne2eq1-xi90xl-w1bCNZ3p1lcYFm
+
+Battle PVP changes: normalized to a 0.38 m projectile, placed at the hand grip,
+and rendered with a shared URP steel material. Geometry remains the source FBX.

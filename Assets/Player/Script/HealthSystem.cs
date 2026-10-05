@@ -49,6 +49,9 @@ namespace BattlePvp.Combat
         public float MaxHp => _maxHp;
         public float CurrentRegen => _currentRegen;
         public float CurrentShield => _currentShield;
+        private double SkillTime => NetworkServer.active || NetworkClient.active ? NetworkTime.time : Time.timeAsDouble;
+        public bool HasDefensiveSkillBuff => SkillTime < _tauntDefenseUntil &&
+            (_tauntIncomingDamageMultiplier < 1f || _tauntReflectMultiplier > 1f);
         [SyncVar] private double _reviveAllowedAt;
         public double ReviveAllowedAt => _reviveAllowedAt;
         [SyncVar(hook = nameof(OnLifeStateSynced))]
@@ -62,6 +65,7 @@ namespace BattlePvp.Combat
 
         public event Action<float, float> HpChanged;
         public event Action<float> ShieldChanged;
+        public event Action<Vector3> ShieldHit;
         public event Action<bool, float> OverflowChanged;
         public event Action OnDied;
         public event Action OnRevived;
@@ -249,7 +253,7 @@ namespace BattlePvp.Combat
 
             float existingShield = _currentShield > 0.5f ? _currentShield : 0f;
             _currentShield = existingShield + amount;
-            _shieldExpiresAt = NetworkTime.time + durationSeconds;
+            _shieldExpiresAt = SkillTime + durationSeconds;
             RaiseShieldChanged();
             _shieldRoutine = StartCoroutine(CoDecayShield());
         }
@@ -258,7 +262,7 @@ namespace BattlePvp.Combat
         {
             if (!CanChangeHealth || IsDead || !float.IsFinite(durationSeconds))
                 return;
-            _skillInvulnerableUntil = Math.Max(_skillInvulnerableUntil, NetworkTime.time + Math.Max(0f, durationSeconds));
+            _skillInvulnerableUntil = Math.Max(_skillInvulnerableUntil, SkillTime + Math.Max(0f, durationSeconds));
         }
 
         public void SetTauntDefense(float durationSeconds, float incomingDamageMultiplier, float reflectMultiplier, float reflectHealthCapRatio)
@@ -267,7 +271,7 @@ namespace BattlePvp.Combat
                 !float.IsFinite(incomingDamageMultiplier) || !float.IsFinite(reflectMultiplier) ||
                 !float.IsFinite(reflectHealthCapRatio))
                 return;
-            _tauntDefenseUntil = NetworkTime.time + Math.Max(0f, durationSeconds);
+            _tauntDefenseUntil = SkillTime + Math.Max(0f, durationSeconds);
             _tauntIncomingDamageMultiplier = Mathf.Clamp01(incomingDamageMultiplier);
             _tauntReflectMultiplier = Mathf.Max(0f, reflectMultiplier);
             _tauntReflectHealthCapRatio = Mathf.Clamp01(reflectHealthCapRatio);
@@ -275,9 +279,9 @@ namespace BattlePvp.Combat
 
         private IEnumerator CoDecayShield()
         {
-            while (CanChangeHealth && _currentShield > 0f && NetworkTime.time < _shieldExpiresAt)
+            while (CanChangeHealth && _currentShield > 0f && SkillTime < _shieldExpiresAt)
             {
-                float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - NetworkTime.time));
+                float remaining = Mathf.Max(0.001f, (float)(_shieldExpiresAt - SkillTime));
                 float deltaSeconds = Mathf.Max(Time.deltaTime, _shieldSyncIntervalSeconds);
                 _currentShield = Mathf.Max(0f, _currentShield - ((_currentShield / remaining) * deltaSeconds));
                 RaiseShieldChanged();
@@ -311,16 +315,18 @@ namespace BattlePvp.Combat
 
         public DamageResult ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
         {
-            if (!CanChangeHealth || IsDead || isInvincible || NetworkTime.time < _skillInvulnerableUntil ||
+            if (!CanChangeHealth || IsDead || isInvincible || SkillTime < _skillInvulnerableUntil ||
                 (NetworkServer.active && _statManager != null && !_statManager.HasServerStats) ||
                 (NetworkServer.active && connectionToClient != null && !connectionToClient.isReady) ||
                 !float.IsFinite(amount) || amount <= 0f || !float.IsFinite(attackerAttackPower) ||
                 attackerAttackPower < 0f || !CombatValidation.IsFinite(hitPosition))
                 return default;
 
+            var expanded = GetComponent<ExpandedSkillController>();
+            if (expanded != null) { expanded.NotifyDamaged(); if(source != DamageSource.Fixed) amount *= expanded.IncomingMultiplier; }
             float hpBeforeDamage = _currentHp;
-            bool tauntDefenseActive = NetworkTime.time < _tauntDefenseUntil;
-            if (tauntDefenseActive)
+            bool tauntDefenseActive = SkillTime < _tauntDefenseUntil;
+            if (tauntDefenseActive && source != DamageSource.Fixed)
                 amount *= _tauntIncomingDamageMultiplier;
             if (amount <= 0f)
                 return default;
@@ -333,7 +339,12 @@ namespace BattlePvp.Combat
             float absorbedByShield = Mathf.Min(_currentShield, amount);
             _currentShield -= absorbedByShield;
             if (absorbedByShield > 0f)
+            {
                 RaiseShieldChanged();
+                Vector3 localHit = transform.InverseTransformPoint(hitPosition);
+                if (NetworkServer.active && netId != 0) RpcShieldHit(localHit);
+                else ShieldHit?.Invoke(localHit);
+            }
             float hpDamage = amount - absorbedByShield;
             float next = _currentHp - hpDamage;
             
@@ -357,9 +368,10 @@ namespace BattlePvp.Combat
             // - Monostat DEF일 때만
             // - Physical 피해일 때만
             // - attacker 정보가 있어야 반사 가능
-            if (source == DamageSource.Physical && attacker != null && attackerAttackPower > 0f && IsMonostatDef())
+            if (source == DamageSource.Physical && attacker != null && attackerAttackPower > 0f &&
+                (IsMonostatDef() || (expanded != null && expanded.Active(JobSkillKind.Thorns))))
             {
-                float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, attacker.MaxHp);
+                float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, attacker.MaxHp) * (GetComponent<ExpandedSkillController>()?.ReflectMultiplier ?? 1f);
                 if (tauntDefenseActive)
                 {
                     thorns *= _tauntReflectMultiplier;
@@ -382,6 +394,9 @@ namespace BattlePvp.Combat
             UpdateOverflowState();
             return result;
         }
+
+        [ClientRpc]
+        private void RpcShieldHit(Vector3 localHit) => ShieldHit?.Invoke(localHit);
 
         [Server]
         private void RecordMatchDamage(float actualHpDamage, IDamageReceiver attacker)
@@ -587,6 +602,7 @@ namespace BattlePvp.Combat
                     effectiveRegen = Mathf.Max(effectiveRegen, _maxHp * 0.5f);
                 }
 
+                effectiveRegen *= GetComponent<ExpandedSkillController>()?.RegenMultiplier ?? 1f;
                 if (effectiveRegen > 0f && _currentHp < _maxHp)
                 {
                     // 일반 재생 로직 (로비도 로컬 환경이므로 허용)
