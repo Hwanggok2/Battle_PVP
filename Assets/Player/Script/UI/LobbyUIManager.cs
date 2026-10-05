@@ -171,8 +171,9 @@ namespace BattlePvp.UI
             rect.anchorMin = new Vector2(1f, 1f);
             rect.anchorMax = new Vector2(1f, 1f);
             rect.pivot = new Vector2(1f, 1f);
-            rect.anchoredPosition = new Vector2(-4f, -114f);
-            rect.sizeDelta = new Vector2(190f, 62f);
+            // Keep all three network lines below the room banner (bottom: 135 canvas units).
+            rect.anchoredPosition = new Vector2(-28f, -160f);
+            rect.sizeDelta = new Vector2(240f, 76f);
 
             TextMeshProUGUI buttonLabel = _battleButton != null
                 ? _battleButton.GetComponentInChildren<TextMeshProUGUI>(true)
@@ -241,13 +242,10 @@ namespace BattlePvp.UI
 
         private static string AppendRelayRegion(string latencyText)
         {
-            if (Transport.active is not UnityRelayTransport relay || string.IsNullOrWhiteSpace(relay.LastRelayRegion))
+            if (Transport.active is not UnityRelayTransport relay)
                 return latencyText;
 
-            string regionLabel = string.IsNullOrWhiteSpace(relay.LastRelayRegionLabel)
-                ? relay.LastRelayRegion
-                : relay.LastRelayRegionLabel;
-            return $"{latencyText}\nRelay {regionLabel}";
+            return $"{latencyText}\n{relay.GameplayRouteLabel}";
         }
 
         private static Color ResolveLatencyColor(float rttMs)
