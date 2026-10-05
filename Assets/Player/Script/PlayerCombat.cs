@@ -2708,7 +2708,7 @@ public class PlayerCombat : NetworkBehaviour
     private void PlaySkillSfxLocal(int skillId)
     {
         JobSkillData data = ResolveSkillData(skillId);
-        if (data != null) SkillPresentation.PlaySound(data.UseSfx, data.SfxVolume);
+        if (data != null) SkillPresentation.PlaySound(data.UseSfx, data.SfxVolume, !NetworkClient.active || isLocalPlayer);
     }
 
     private JobSkillData ResolveSkillData(int skillId)

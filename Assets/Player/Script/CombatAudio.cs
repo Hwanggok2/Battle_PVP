@@ -43,13 +43,13 @@ namespace BattlePvp.Combat
 
         public void PlaySwing()
         {
-            if (!CanHear || _swings == null || _swings.Length == 0 || _worldSource == null) return;
+            if (!CanHear || (_health != null && _health.IsDead) || _swings == null || _swings.Length == 0 || _worldSource == null) return;
             _worldSource.spatialBlend = IsLocal ? 0 : 1;
             _worldSource.PlayOneShot(_swings[_swingIndex++ % _swings.Length], .58f * LocalGameSettings.Current.effects);
         }
         public void PlayConfirmedHit()
         {
-            if (!CanHear || !IsLocal || _hits == null || _hits.Length == 0 || _feedbackSource == null ||
+            if (!CanHear || (_health != null && _health.IsDead) || !IsLocal || _hits == null || _hits.Length == 0 || _feedbackSource == null ||
                 Time.unscaledTime - _lastHitAt < .055f) return;
             _lastHitAt = Time.unscaledTime;
             _feedbackSource.PlayOneShot(_hits[_hitIndex++ % _hits.Length], .7f * LocalGameSettings.Current.effects);
@@ -57,8 +57,8 @@ namespace BattlePvp.Combat
         private void PlayDeath()
         {
             if (!CanHear || _death == null || _worldSource == null) return;
-            _worldSource.Stop(); _worldSource.spatialBlend = IsLocal ? 0 : 1;
-            _worldSource.PlayOneShot(_death, .7f * LocalGameSettings.Current.effects);
+            _worldSource.Stop(); _feedbackSource.Stop(); _worldSource.spatialBlend = IsLocal ? 0 : 1;
+            _worldSource.PlayOneShot(_death, .9f * LocalGameSettings.Current.effects);
         }
     }
 }

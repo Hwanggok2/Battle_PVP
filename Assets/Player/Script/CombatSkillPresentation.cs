@@ -21,8 +21,11 @@ namespace BattlePvp.Combat
         {
             _owner = owner;
             _animator = animator;
-            _audioSource = owner.GetComponent<AudioSource>();
-            if (_audioSource == null) _audioSource = owner.AddComponent<AudioSource>();
+            _audioSource = owner.AddComponent<AudioSource>();
+            _audioSource.playOnAwake = false;
+            _audioSource.dopplerLevel = 0;
+            _audioSource.rolloffMode = AudioRolloffMode.Linear;
+            _audioSource.minDistance = 2; _audioSource.maxDistance = 24;
         }
 
         public void Cancel()
@@ -33,13 +36,20 @@ namespace BattlePvp.Combat
         public void Dispose()
         {
             Cancel();
+            if (_audioSource != null)
+            {
+                if (Application.isPlaying) UnityEngine.Object.Destroy(_audioSource);
+                else UnityEngine.Object.DestroyImmediate(_audioSource);
+            }
             _skillSwordRenderers = null;
             _sword = null;
         }
 
-        public void PlaySound(AudioClip clip, float volume)
+        public void PlaySound(AudioClip clip, float volume, bool local = true)
         {
-            if (clip != null && _audioSource != null) _audioSource.PlayOneShot(clip, volume * LocalGameSettings.Current.effects);
+            if (clip == null || _audioSource == null) return;
+            _audioSource.spatialBlend = local ? 0 : 1;
+            _audioSource.PlayOneShot(clip, volume * LocalGameSettings.Current.effects);
         }
 
         public void PlayAnimation(string stateName, int layer, double visualStartedAt, double now)
