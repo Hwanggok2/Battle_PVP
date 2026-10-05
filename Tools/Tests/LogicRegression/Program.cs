@@ -129,7 +129,9 @@ internal static class Program
         {
             Require(InputModeRules.CanLockCursor("Battle", mode) == (mode == GameInputMode.Gameplay),
                 "Only active battle gameplay may lock the cursor; menus/chat/death/results stay free.");
-            foreach (string scene in new[] { "Lobby", "Battle_waiting", "Battle_wait", "Login", "Battle_preview", "", null })
+            Require(InputModeRules.CanLockCursor("Battle_waiting", mode) == (mode == GameInputMode.Gameplay),
+                "Waiting-room practice uses the same FPS cursor policy as battle.");
+            foreach (string scene in new[] { "Lobby", "Battle_wait", "Login", "Battle_preview", "", null })
                 Require(!InputModeRules.CanLockCursor(scene, mode),
                     $"UI scene '{scene}' must keep its cursor free, including after clicking or resetting to {mode}.");
         }

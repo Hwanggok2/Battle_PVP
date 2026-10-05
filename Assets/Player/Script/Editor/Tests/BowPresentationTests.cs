@@ -39,6 +39,33 @@ namespace BattlePvp.EditorTests
             Assert.That(authority.TryConsume(17, out _), Is.False);
         }
 
+        [TestCase(.05f,.4f)]
+        [TestCase(.625f,.575f)]
+        [TestCase(1f,.75f)]
+        public void ReleaseIntentSchedulesArrowBeforeDrawReadyAndKeepsChargeDamage(float charge,float damage)
+        {
+            var bow=EditorTestLifecycle.AddNetwork<BowAttackController>(_root);
+            var data=AssetDatabase.LoadAssetAtPath<JobSkillData>("Assets/Player/skill/Poly/Poly_WeaponSwap.asset");
+            _root.SetActive(true);
+            Set(bow,"_showCrosshair",false); Set(bow,"_isVisuallyCharging",true);
+            typeof(BowAttackController).GetMethod("QueueShot",Private).Invoke(bow,new object[]{data,charge,Vector3.forward});
+            Assert.That(Get<bool>(bow,"_isAimHoldReady"),Is.False,"The draw animation has not reached aim hold.");
+            Assert.That(Get<bool>(bow,"_releaseArrowEventPending"),Is.True,"Arrow must be ready for this frame's LateUpdate.");
+            Assert.That(Get<float>(bow,"_offlineShotMultiplier"),Is.EqualTo(damage).Within(.001f));
+            Assert.That(Get<bool>(bow,"_isReleaseLocked"),Is.True,"Recovery still prevents a new draw.");
+        }
+
+        [Test] public void ImmediateServerReleaseConsumesOnceAndPreservesRecovery()
+        {
+            var authority=new BowShotAuthority(); authority.TryBegin(10);
+            Assert.That(authority.TryRelease(10.05,.25f,1,.4f,.75f,.48f),Is.True);
+            Assert.That(authority.TryConsume(10.05,out float damage),Is.True);
+            Assert.That(damage,Is.EqualTo(.4f));
+            Assert.That(authority.TryConsume(10.05,out _),Is.False);
+            Assert.That(authority.TryBegin(10.1),Is.False);
+            Assert.That(authority.TryBegin(10.54),Is.True);
+        }
+
         [Test]
         public void EndEventCannotDiscardAnArrowWhenTheReleaseEventWasMissed()
         {
@@ -63,10 +90,10 @@ namespace BattlePvp.EditorTests
         }
 
         [Test]
-        public void ReleaseEventDuringDrawCannotFireAQueuedShotEarly()
+        public void StaleReleaseEventDuringDrawCannotFireWithoutReleaseIntent()
         {
             var bow = EditorTestLifecycle.AddNetwork<BowAttackController>(_root);
-            Set(bow, "_hasPendingShot", true); Set(bow, "_releaseQueued", true);
+            Set(bow, "_hasPendingShot", true); Set(bow, "_isVisuallyCharging", true);
             bow.OnBowReleaseArrow();
             Assert.That(Get<bool>(bow, "_releaseArrowEventPending"), Is.False);
             Assert.That(Get<bool>(bow, "_hasPendingShot"), Is.True);

@@ -60,13 +60,15 @@ namespace BattlePvp.EditorTests
             Assert.That(Quaternion.Angle(player.transform.rotation,Quaternion.Euler(0,73,0)),Is.LessThan(.01f));
         }
 
-        [Test]
-        public void CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding()
+        [TestCase(1f)]
+        [TestCase(1.2f)]
+        public void CrouchingLowersBothCameraAndAimOriginAndRestoresOnStanding(float scale)
         {
             _scene.name = "Battle_waiting";
             var input = new GameObject("Input").AddComponent<GameInputController>();
             EditorTestLifecycle.Invoke(input, "Awake"); input.ResetToPlayMode();
             var player = new GameObject("Crouch camera target");
+            player.transform.localScale = Vector3.one * scale;
             var movement = EditorTestLifecycle.AddNetwork<PlayerManager>(player);
             EditorTestLifecycle.Invoke(movement, "Awake");
             Set(movement, "animator", null);
@@ -78,7 +80,7 @@ namespace BattlePvp.EditorTests
             var smooth = typeof(FollowCamera).GetMethod("UpdateCrouchHeight", BindingFlags.Instance | BindingFlags.NonPublic);
             for (int i = 0; i < 120; i++) smooth.Invoke(camera, new object[] { 1f / 60 });
             EditorTestLifecycle.Invoke(camera, "LateUpdate");
-            Assert.That(movement.CrouchCameraDrop, Is.GreaterThan(.5f));
+            Assert.That(movement.CrouchCameraDrop, Is.EqualTo(.35f * scale).Within(.001f));
             Assert.That(camera.GetAimRay().origin.y, Is.EqualTo(standing.y - movement.CrouchCameraDrop).Within(.002f));
             Assert.That(Vector3.Distance(camera.transform.position, camera.GetAimRay().origin), Is.LessThan(.001f));
             crouch.Invoke(movement, new object[] { false, false });
@@ -138,6 +140,7 @@ namespace BattlePvp.EditorTests
             Assert.That(rect.sizeDelta,Is.EqualTo(Vector2.zero));Assert.That(graphic.raycastTarget,Is.False);
             Assert.That(graphic.material.HasProperty("_StatColor"),Is.True);
             Assert.That(graphic.color.r,Is.EqualTo(1));
+            Assert.That(graphic.color.a,Is.EqualTo(.4f).Within(.001f));
         }
 
         [TestCase(.5f)]

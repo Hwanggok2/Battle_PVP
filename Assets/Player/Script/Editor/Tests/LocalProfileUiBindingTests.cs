@@ -58,6 +58,20 @@ namespace BattlePvp.EditorTests
         }
 
         [Test]
+        public void ReopeningCustomizerRestoresTheSelectedSavedAllocationWithoutSwitchingSlots()
+        {
+            LoadProfile(Preset(0, 0, 30, 0), true);
+            var customizer = CreateCustomizer();
+            Invoke(customizer, "OnEnable");
+            var agi = Get<StatSlider>(customizer, "_agi");
+            agi.SetInvestedWithoutNotify(1);
+            customizer.RefreshForOpen();
+            Assert.That(agi.Invested, Is.EqualTo(30));
+            Assert.That(Get<StatContainer>(customizer, "_virtualStats").AGI.Invested, Is.EqualTo(30));
+            Assert.That(_profile.SelectedStatPresetSlot, Is.Zero);
+        }
+
+        [Test]
         public void LoadedEmptyProfileIsVisibleAsLoadedInsideEveryPresetEvent()
         {
             int events = 0;

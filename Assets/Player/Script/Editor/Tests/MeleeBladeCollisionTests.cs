@@ -66,6 +66,35 @@ namespace BattlePvp.EditorTests
             Assert.That(target.DamageCalls, Is.EqualTo(1));
         }
 
+        [Test] public void FastWindowOpeningAndClosingInOneFrameStillSweepsOnlyTheContactInterval()
+        {
+            var controller = new UnityEditor.Animations.AnimatorController();
+            var clip = new AnimationClip();
+            try
+            {
+                controller.AddLayer("Base"); controller.AddLayer("Attack");
+                clip.SetCurve("Clock", typeof(Transform), "localPosition.x", AnimationCurve.Linear(0, 0, 1, 0));
+                UnityEditor.AnimationUtility.SetAnimationEvents(clip, new[] { new AnimationEvent { time = .53f, functionName = "EnableHitBox" },
+                    new AnimationEvent { time = .67f, functionName = "DisableHitBox" } });
+                var state = controller.layers[1].stateMachine.AddState("Swing"); state.motion = clip;
+                var clock = New("Clock", _origin); clock.transform.SetParent(_blade.transform.parent, false);
+                var animator = _blade.transform.parent.gameObject.AddComponent<Animator>();
+                animator.runtimeAnimatorController = controller; animator.fireEvents = false;
+                animator.Rebind(); animator.SetLayerWeight(1, 1); animator.Play("Swing", 1, 0); animator.Update(0);
+                _blade.BeginAnimationSampling(animator);
+                var target = Target(_origin + Vector3.forward);
+                var windup = Target(_origin + Quaternion.Euler(0, -70, 0) * Vector3.forward);
+                animator.Play("Swing", 1, .45f); animator.Update(0);
+                _blade.transform.rotation = Quaternion.Euler(0, -80, 0); Tick();
+                animator.Play("Swing", 1, .75f); animator.Update(0);
+                _blade.transform.rotation = Quaternion.Euler(0, 80, 0);
+                Physics.SyncTransforms(); _blade.EnableHitBox(); _blade.EndHitWindow(); Tick(); Tick();
+                Assert.That(target.DamageCalls, Is.EqualTo(1));
+                Assert.That(windup.DamageCalls, Is.Zero, "The pre-contact windup must not deal damage.");
+            }
+            finally { Object.DestroyImmediate(controller); Object.DestroyImmediate(clip); }
+        }
+
         [Test] public void CancellationDoesNotApplyThePendingSweep()
         {
             var target = Target(_origin + Vector3.forward);

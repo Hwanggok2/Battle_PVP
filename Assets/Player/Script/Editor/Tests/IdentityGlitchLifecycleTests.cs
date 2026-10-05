@@ -89,6 +89,29 @@ namespace BattlePvp.EditorTests
             AssertMaterial(4f, 0.5f);
         }
 
+        [TestCase(100f, 100f, .25f)]
+        [TestCase(50f, 100f, .375f)]
+        [TestCase(10f, 100f, .475f)]
+        [TestCase(0f, 100f, .5f)]
+        [TestCase(-10f, 100f, .5f)]
+        [TestCase(150f, 100f, .25f)]
+        [TestCase(10f, 0f, .25f)]
+        public void HealthControlsAlphaPeakAndHealingStopsThePulse(float hp, float maxHp, float peak)
+        {
+            _source.SetSnapshot(hp, maxHp);
+            EditorTestLifecycle.SetActive(_binder, true);
+            Material runtime = Get<Material>("_runtimeMaterial");
+            var graphic = _root.GetComponent<Image>();
+            Assert.That(graphic.color.a, Is.EqualTo(.25f).Within(.0001f));
+            Assert.That(graphic.color.a * (1f + runtime.GetFloat("_HealthAlphaBoost")),
+                Is.EqualTo(peak).Within(.0001f));
+            _source.Publish(100f, 100f);
+            Assert.That(runtime.GetFloat("_HealthAlphaBoost"), Is.Zero.Within(.0001f));
+            _source.Publish(hp, maxHp);
+            Assert.That(graphic.color.a * (1f + runtime.GetFloat("_HealthAlphaBoost")),
+                Is.EqualTo(peak).Within(.0001f));
+        }
+
         [TestCase(0f)]
         [TestCase(-1f)]
         public void InvalidMaximumRestoresNormalPulseAndClearsOldOverflow(float maximum)

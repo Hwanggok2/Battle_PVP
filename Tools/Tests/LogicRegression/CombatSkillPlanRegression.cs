@@ -17,11 +17,12 @@ internal static class CombatSkillPlanRegression
         };
         var expected = new[]
         {
-            new[] { JobSkillKind.MonostatStrLifesteal }, new[] { JobSkillKind.MonostatAgiPoison },
-            new[] { JobSkillKind.MonostatConKick }, new[] { JobSkillKind.MonostatDefTaunt },
+            new[] { JobSkillKind.MonostatStrLifesteal, JobSkillKind.Hook }, new[] { JobSkillKind.MonostatAgiPoison, JobSkillKind.Stealth },
+            new[] { JobSkillKind.MonostatConKick, JobSkillKind.Berserk }, new[] { JobSkillKind.MonostatDefTaunt, JobSkillKind.Bash },
             new[] { JobSkillKind.StrategistRoll, JobSkillKind.StrategistPresetChange },
             new[] { JobSkillKind.PolymathRoll, JobSkillKind.PolymathWeaponSwap }
         };
+        int[][] available = { new[]{0,100,101,102}, new[]{1,103,104}, new[]{2,105,102,106}, new[]{3,107,108,109}, new[]{10,11,110,111}, new[]{20,22,110,112} };
         for (int i = 0; i < identities.Length; i++)
         {
             require(CombatSkillRules.SlotCount(identities[i]) == expected[i].Length, "skill slot count");
@@ -30,7 +31,7 @@ internal static class CombatSkillPlanRegression
             for (int slot = 0; slot < expected[i].Length; slot++)
                 require(CombatSkillRules.TrySelect(identities[i], slot, out JobSkillKind selected) && selected == expected[i][slot], "skill selection matches identity");
             foreach (JobSkillKind kind in Enum.GetValues<JobSkillKind>())
-                require(CombatSkillRules.Allows(identities[i], kind) == Array.Exists(expected[i], entry => entry == kind), "server and owner share skill availability");
+                require(CombatSkillRules.Allows(identities[i], kind) == Array.Exists(available[i], entry => entry == (int)kind), "server and owner share skill availability");
         }
         require(CombatSkillRules.SlotCount(new Identity((IdentityType)99, StatKind.STR)) == 0, "unknown identity has no skills");
         require(!CombatSkillRules.TrySelect(new Identity(IdentityType.Monostat, (StatKind)99), 0, out _), "unknown monostat rejected");

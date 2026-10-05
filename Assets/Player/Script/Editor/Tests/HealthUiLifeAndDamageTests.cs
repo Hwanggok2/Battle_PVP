@@ -176,6 +176,34 @@ namespace BattlePvp.EditorTests
             return health;
         }
 
+        [Test] public void DpsUsesATrailingSecondAndExpiresWithoutAnotherHit()
+        {
+            var window=new DamageDpsWindow(); window.Record(10,10); window.Record(10.4,20);
+            Assert.That(window.Sample(10.9),Is.EqualTo(30));
+            Assert.That(window.Sample(11),Is.EqualTo(20));
+            Assert.That(window.Sample(11.4),Is.Zero);
+            window.Record(12,float.NaN); window.Record(12,-5); window.Record(12,10); window.Clear();
+            Assert.That(window.Sample(12),Is.Zero);
+        }
+        [Test] public void DummyDpsCountsActualLethalDamageAcrossImmediateRefills()
+        {
+            _object=new GameObject("DPS target"); _object.SetActive(false);
+            var dummy=EditorTestLifecycle.AddNetwork<DummyHealth>(_object);
+            SetField(dummy,"_maxHp",100f); SetField(dummy,"_currentHp",5f);
+            dummy.ApplyDamage(Request(10)); dummy.ApplyDamage(Request(10));
+            Assert.That(dummy.CurrentDps,Is.EqualTo(15)); Assert.That(dummy.CurrentHp,Is.EqualTo(90));
+        }
+        [Test] public void FixedHookDamageIgnoresReductionButStillUsesShieldsAndInvulnerability()
+        {
+            var health=CreateHealth(100,3);
+            SetField(health,"_tauntDefenseUntil",Mirror.NetworkTime.time+10);
+            SetField(health,"_tauntIncomingDamageMultiplier",.2f);
+            var result=health.ApplyDamage(new DamageRequest(10,DamageSource.Fixed,0,null,Vector3.zero,DamageSource.Physical));
+            Assert.That(result.HpDamage,Is.EqualTo(7)); Assert.That(result.ShieldDamage,Is.EqualTo(3));
+            health.isInvincible=true;
+            Assert.That(health.ApplyDamage(new DamageRequest(10,DamageSource.Fixed,0,null,Vector3.zero)).Accepted,Is.False);
+        }
+
         private static DamageRequest Request(float amount) =>
             new DamageRequest(amount, DamageSource.Poison, 0f, null, Vector3.zero);
 
