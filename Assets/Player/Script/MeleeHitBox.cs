@@ -50,7 +50,7 @@ namespace BattlePvp.Combat
 
         private bool _hitBoxActive;
         private Transform _poseSource;
-        private Transform PoseSource => _poseSource != null ? _poseSource : transform;
+        internal Transform PoseSource => _poseSource != null ? _poseSource : transform;
 
         public void SetPoseSource(Transform source)
         {

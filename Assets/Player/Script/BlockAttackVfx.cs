@@ -8,13 +8,16 @@ using System.Collections.Generic;
 namespace BattlePvp.Combat
 {
     /// <summary>World-space sword afterimages; never used for hit detection.</summary>
-    [DefaultExecutionOrder(20)]
+    [DefaultExecutionOrder(1200)]
     public sealed class BlockAttackVfx : MonoBehaviour
     {
         [SerializeField] private Mesh _cube;
         [SerializeField] private Material _material;
         [SerializeField] private Material _accentMaterial;
         [SerializeField] private Transform _blade;
+        private MeleeHitBox _bladeHitbox;
+        private Transform _sampleBlade;
+        private Transform BladePose => _bladeHitbox != null ? _bladeHitbox.PoseSource : _blade;
         [SerializeField] private Vector3 _bladeBase = new Vector3(0, 0, .14f);
         [SerializeField] private Vector3 _bladeTip = new Vector3(0, 0, 1.09f);
         [SerializeField] private Material _bladeMaterial;
@@ -52,6 +55,7 @@ namespace BattlePvp.Combat
             _health = GetComponent<HealthSystem>(); _identity = GetComponent<NetworkIdentity>();
             _animator = GetComponent<Animator>();
             _combat = GetComponent<PlayerCombat>();
+            _bladeHitbox = _blade != null ? _blade.GetComponent<MeleeHitBox>() : null;
             _stats = GetComponent<BattlePvp.Stats.StatManager>();
             var lightObject = new GameObject("Attack Glow"); lightObject.transform.SetParent(transform, false);
             _light = lightObject.AddComponent<Light>(); _light.type = LightType.Point;
@@ -78,13 +82,7 @@ namespace BattlePvp.Combat
             _hasBladeSample = false;
             _emitting = !bow; _finishEmission = false;
             if (bow) _bladeTrail.Clear(); else _bladeTrail.BeginStroke();
-            if (!bow && _blade != null)
-            {
-                _lastBladePose = new Pose(_blade.position, _blade.rotation);
-                _lastBladeBase = _blade.TransformPoint(_bladeBase); _lastBladeTip = _blade.TransformPoint(_bladeTip);
-                _lastPhase = 0; _lastSampleTime = _start; _hasBladeSample = true;
-                _bladeTrail.Sample(_lastBladeBase, _lastBladeTip, _start);
-            }
+            // Play runs before native retargeting. Seed the stroke from the first corrected late pose.
         }
         private static bool CanShowAttackEffects(string scene) => scene == "Lobby" || InputModeRules.UsesFpsLook(scene);
         public void StopMelee() { if (!_bow) { _emitting = false; _finishEmission = false; } }
@@ -145,22 +143,28 @@ namespace BattlePvp.Combat
         private void UpdateBladeTrail(float age)
         {
             float now = _start + age;
+            var blade = BladePose;
+            if (_sampleBlade != blade)
+            {
+                // Character changes must not connect two different swords with a phantom sweep.
+                _sampleBlade = blade; _hasBladeSample = false; _bladeTrail.BeginStroke();
+            }
             if (_emitting)
             {
                 bool sameAnimation = _animator == null ? age < _swingDuration :
                     _animator.GetCurrentAnimatorStateInfo(1).fullPathHash == _animationState;
-                if (!sameAnimation || _blade == null || !_blade.gameObject.activeInHierarchy) StopMelee();
+                if (!sameAnimation || blade == null || !blade.gameObject.activeInHierarchy) StopMelee();
                 else
                 {
                     float phase = _animator != null ? _animator.GetCurrentAnimatorStateInfo(1).normalizedTime : age / _swingDuration;
-                    Vector3 bladeBase = _blade.TransformPoint(_bladeBase), bladeTip = _blade.TransformPoint(_bladeTip);
-                    var currentPose = new Pose(_blade.position, _blade.rotation);
+                    Vector3 bladeBase = blade.TransformPoint(_bladeBase), bladeTip = blade.TransformPoint(_bladeTip);
+                    var currentPose = new Pose(blade.position, blade.rotation);
                     float end = phase > _lastPhase ? Mathf.Clamp01((_emissionEndPhase - _lastPhase) / (phase - _lastPhase)) : 1f;
                     if (_hasBladeSample && phase > _lastPhase && _combat != null &&
                         _combat.TrySampleMeleeMotion(_lastPhase, out Pose expectedFrom) && _combat.TrySampleMeleeMotion(phase, out Pose expectedTo))
                     {
                         int steps = Mathf.Clamp(Mathf.CeilToInt((phase - _lastPhase) * end * 240), 1, 128);
-                        Vector3 scale = _blade.lossyScale;
+                        Vector3 scale = blade.lossyScale;
                         for (int i = 1; i <= steps; i++)
                         {
                             float t = end * i / steps;
@@ -210,7 +214,7 @@ namespace BattlePvp.Combat
             if (_light != null)
             {
                 _light.enabled = _local && _emitting && LocalGameSettings.Current.quality > 0 && _bladeVertices.Count > 0;
-                if (_light.enabled) { _light.color = _strokeColor; _light.transform.position = _blade.TransformPoint((_bladeBase + _bladeTip) * .5f); _light.intensity = .35f; }
+                if (_light.enabled) { _light.color = _strokeColor; _light.transform.position = blade.TransformPoint((_bladeBase + _bladeTip) * .5f); _light.intensity = .35f; }
             }
         }
 

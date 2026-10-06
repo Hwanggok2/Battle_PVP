@@ -1,14 +1,14 @@
 {
   "date": "2026-10-06",
   "unityVersion": "6000.3.15f1",
-  "relativeHeightTarget": 0.85,
+  "relativeHeightTarget": 0.95,
   "characters": ["security-officer", "megumi", "casual-1"],
-  "selectionBasis": "Used the requested 85% numeric target. The existing characters were already approximately 86%, 93% and 91% of the default standing height, so this target reduces their size slightly.",
+  "selectionBasis": "Updated to the user's revised target: 95% of the default character height.",
   "standingHeightMeters": {
     "default": 1.749828,
-    "security-officer": 1.475855,
-    "megumi": 1.482974,
-    "casual-1": 1.495825,
+    "security-officer": 1.649485,
+    "megumi": 1.657441,
+    "casual-1": 1.671805,
     "picochan": 1.484586,
     "brute": 2.140227
   },
@@ -18,14 +18,20 @@
     "impactCoordinateConversion": "Replicated player-local hit position converted into the resized shield's local coordinates.",
     "meshReusedDuringResizing": true
   },
+  "attackEffect": {
+    "baselineJobId": "ca6a88295f584c59b467259b03138af6",
+    "baseline": "The default character passed; all five native skins failed at 1x and 1.2x. Sword-base trail separation reached 0.306868017 m for Security Officer, 0.299562693 m for Megumi and 0.2259157 m for Casual 1 at normal scale.",
+    "fix": "Use the same fitted sword pose as melee hit detection, update effects after native poses, defer the first stroke sample until that late pose, and start a new stroke when the fitted sword changes.",
+    "regressionCoverage": "All three combo animations, all six characters, 1x and 1.2x player scales; the final trail edge meets both rendered blade endpoints within 2 mm."
+  },
   "tests": {
-    "jobId": "bf719eb8b3464aa5a21d0c068ac3af13",
-    "total": 92,
-    "passed": 92,
+    "jobId": "e074866982be4cbc90704f5f5e9c25e7",
+    "total": 115,
+    "passed": 115,
     "failed": 0,
     "skipped": 0,
-    "durationSeconds": 5.3360587,
-    "coverage": ["Standing silhouette height", "Camera and sword alignment", "Bow alignment", "Native animation and geometry", "Damage capsules and server hit history", "Character stat modifiers", "Shield changes during character and preset switching", "World-space shield impact positioning", "Shield consumption and concealment"]
+    "durationSeconds": 5.2185836,
+    "coverage": ["Standing silhouette height", "Camera and sword alignment", "Bow alignment", "Damage capsules and server hit history", "Visible sword trails across all combo animations", "Blade-trail fading and geometry", "Shield changes during character and preset switching", "World-space shield impact positioning", "Shield consumption and concealment"]
   },
   "visualEvidence": "lineup.png",
   "visualOrderLeftToRight": ["brute", "picochan", "casual-1", "megumi", "security-officer", "default"],
