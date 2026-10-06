@@ -58,19 +58,21 @@ public sealed class BowArrowProjectile : NetworkBehaviour
     private void Start()
     {
         if (_hasHit || _trailMaterial == null || (NetworkServer.active && !NetworkClient.active)) return;
-        var effect = new GameObject("Arrow flight trail");
-        UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(effect, gameObject.scene);
-        _trail = effect.AddComponent<ArrowFlightTrail>();
-        _trail.Initialize(_trailMaterial, _trailColor, transform.position);
+        _trail = ArrowFlightTrail.Acquire(_trailMaterial, _trailColor, transform.position, gameObject.scene);
     }
 
     private void LateUpdate() { if (_trail != null && !_hasHit) _trail.Sample(transform.position); }
-    private void OnDestroy() { if (_trail != null) _trail.Finish(transform.position); }
+    private void OnDestroy() => FinishTrail(transform.position);
+    private void FinishTrail(Vector3 position)
+    {
+        if (_trail != null) _trail.Finish(position);
+        _trail = null; // A fading trail can be rented by another shot after it finishes.
+    }
 
     private void FinishFlight()
     {
         _hasHit = true;
-        if (_trail != null) _trail.Finish(transform.position);
+        FinishTrail(transform.position);
         if (isServer)
         {
             RpcFinishFlight(transform.position);
@@ -85,7 +87,7 @@ public sealed class BowArrowProjectile : NetworkBehaviour
         if (isServer) return;
         _hasHit = true;
         transform.position = finalPosition;
-        if (_trail != null) _trail.Finish(finalPosition);
+        FinishTrail(finalPosition);
     }
 
     private void Update()

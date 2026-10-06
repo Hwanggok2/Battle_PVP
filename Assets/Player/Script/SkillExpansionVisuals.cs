@@ -87,16 +87,17 @@ namespace BattlePvp.Combat
         {
             var prefab=SkillPresentationCatalog.Instance?.Find((int)kind)?.Prefab;
             if(prefab==null) return;
-            var go=UnityEngine.Object.Instantiate(prefab,start,Quaternion.LookRotation(direction));
-            var flight=go.AddComponent<SkillProjectileVisual>();
+            var go=CombatVisualPool.Rent(prefab,start,Quaternion.LookRotation(direction),_owner.gameObject.scene);
+            var flight=go.GetComponent<SkillProjectileVisual>() ?? go.AddComponent<SkillProjectileVisual>();
             flight.Configure(_owner,kind,start,direction,duration);
+            go.SetActive(true);
             if(kind==JobSkillKind.Hook) { _hookProjectile=flight; _localHookHeldUntil=0; }
             else if(kind==JobSkillKind.Knife) _localKnifeHeldUntil=0;
         }
         public void RetrieveHook(Vector3 point,float seconds)
         {
             PlayHookRetrieval(seconds);
-            if(_hookProjectile!=null) _hookProjectile.BeginRetrieval(point,seconds);
+            if(_hookProjectile!=null && _hookProjectile.IsOwnedBy(_owner)) _hookProjectile.BeginRetrieval(point,seconds);
         }
         private void PlayHookRetrieval(float seconds)
         {
@@ -327,7 +328,9 @@ namespace BattlePvp.Combat
             if(_animator!=null) foreach(string name in new[]{"ExpandedSkills","ExpandedUpperBody"})
             { int layer=_animator.GetLayerIndex(name); if(layer>=0) { _animator.Play("Empty",layer,0); _animator.SetLayerWeight(layer,0); } }
             _localHookHeldUntil=_localKnifeHeldUntil=0;
-            DestroyVisual(_diceAura); DestroyVisual(_diceCanvas); DestroyVisual(_readyKnife); DestroyVisual(_heldHook); DestroyVisual(_hookProjectile!=null ? _hookProjectile.gameObject : null); DestroyVisual(_audio); _pips.Clear();
+            if(_hookProjectile!=null && _hookProjectile.IsOwnedBy(_owner)) _hookProjectile.Release();
+            _hookProjectile=null;
+            DestroyVisual(_diceAura); DestroyVisual(_diceCanvas); DestroyVisual(_readyKnife); DestroyVisual(_heldHook); DestroyVisual(_audio); _pips.Clear();
         }
         private static void DestroyVisual(UnityEngine.Object value)
         { if(value==null) return; if(Application.isPlaying) UnityEngine.Object.Destroy(value); else UnityEngine.Object.DestroyImmediate(value); }
@@ -340,13 +343,21 @@ namespace BattlePvp.Combat
         private float _createdAt;
         private float _returnDuration, _returnElapsed;
         private Transform _hitTarget; private Vector3 _hitOffset, _returnStart;
+        public bool IsOwnedBy(ExpandedSkillController owner) => _owner!=null && _owner==owner;
+        public void Release()
+        {
+            _owner=null; _hitTarget=null; _chain?.Hide();
+            CombatVisualPool.Return(gameObject);
+        }
         public void Configure(ExpandedSkillController owner,JobSkillKind kind,Vector3 start,Vector3 direction,float duration)
         {
             _owner=owner; _kind=kind; _start=start; _direction=direction; _duration=duration;
+            _elapsed=_returnElapsed=_returnDuration=0;
+            _attached=_returning=_observedHookActive=false; _hitTarget=null;
             _createdAt=Time.time;
             if(kind==JobSkillKind.Hook)
             {
-                var renderer=GetComponentInChildren<MeshRenderer>(); _chain=new SkillHookChain(renderer!=null ? renderer.sharedMaterial : null);
+                var renderer=GetComponentInChildren<MeshRenderer>(); _chain ??=new SkillHookChain(renderer!=null ? renderer.sharedMaterial : null,gameObject.scene);
             }
         }
         public void BeginRetrieval(Vector3 point,float seconds)
@@ -356,13 +367,13 @@ namespace BattlePvp.Combat
         }
         private void Update()
         {
-            if(_owner==null) { Destroy(gameObject); return; }
+            if(_owner==null) { Release(); return; }
             if(_kind==JobSkillKind.Hook)
             {
                 _observedHookActive|=_owner.IsHookActive;
                 // The reliable projectile RPC can arrive before its owner's next SyncVar update.
                 if((!_owner.IsHookActive && (_observedHookActive || Time.time-_createdAt>.5f)) || Time.time-_createdAt>3.5f)
-                { Destroy(gameObject); return; }
+                { Release(); return; }
             }
             if(_returning)
             {
@@ -377,19 +388,20 @@ namespace BattlePvp.Combat
             {
                 transform.position=hit.point;
                 if(_kind==JobSkillKind.Hook) { _attached=true; _hitTarget=hit.collider.transform; _hitOffset=_hitTarget.InverseTransformPoint(hit.point); }
-                else Destroy(gameObject);
+                else Release();
                 return;
             }
             _elapsed+=Time.deltaTime;
             transform.position+=_direction*step;
             if(_elapsed>=_duration)
             {
-                if(_kind!=JobSkillKind.Hook) { Destroy(gameObject); return; }
+                if(_kind!=JobSkillKind.Hook) { Release(); return; }
                 // Wait for the server's retrieval cue instead of retracting before the hand pulls.
                 transform.position=_start+_direction*ExpandedSkillController.Value(_kind,"Range",6);
             }
         }
-        private void LateUpdate() { if(_owner!=null) _chain?.Update(_owner.ThrowHandPosition,transform.position); }
+        private void LateUpdate()
+        { if(_owner!=null && UnityEngine.Rendering.OnDemandRendering.willCurrentFrameRender) _chain?.Update(_owner.ThrowHandPosition,transform.position); }
         private void OnDestroy() => _chain?.Dispose();
     }
 }

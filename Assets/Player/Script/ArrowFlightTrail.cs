@@ -16,11 +16,21 @@ namespace BattlePvp.Combat
         private float _finishedAt = -1f;
         public bool IsFinished => _finishedAt >= 0f;
 
+        public static ArrowFlightTrail Acquire(Material material, Color color, Vector3 origin, UnityEngine.SceneManagement.Scene scene = default)
+        {
+            var go = CombatVisualPool.Rent(null, Vector3.zero, Quaternion.identity, scene);
+            var trail = go.GetComponent<ArrowFlightTrail>() ?? go.AddComponent<ArrowFlightTrail>();
+            trail.Initialize(material, color, origin);
+            go.SetActive(true);
+            return trail;
+        }
+
         public void Initialize(Material material, Color color, Vector3 origin)
         {
             _color = color; _color.a = .65f;
-            _properties = new MaterialPropertyBlock();
-            _line = gameObject.AddComponent<LineRenderer>();
+            _finishedAt = -1f;
+            _properties ??= new MaterialPropertyBlock();
+            if (_line == null) _line = gameObject.AddComponent<LineRenderer>();
             _line.sharedMaterial = material;
             _line.useWorldSpace = true;
             _line.startWidth = _line.endWidth = .035f;
@@ -73,7 +83,7 @@ namespace BattlePvp.Combat
             if (!IsFinished) return;
             float opacity = OpacityAfter(Time.time - _finishedAt);
             ApplyOpacity(opacity);
-            if (opacity <= 0f) Destroy(gameObject);
+            if (opacity <= 0f) CombatVisualPool.Return(gameObject);
         }
 
         private void ApplyOpacity(float opacity)
