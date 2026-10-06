@@ -173,6 +173,17 @@ namespace BattlePvp.Networking
             _disconnectedPlayers.Clear();
         }
 
+        public override void ServerChangeScene(string newSceneName)
+        {
+            string current = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+            if (newSceneName == "Battle" && (current == "Battle_waiting" || current == "Battle_wait") && !RoomStatReadiness.AllPlayersReady)
+            {
+                Debug.LogWarning("[BattleNetworkManager] All players must finish stat allocation before starting.");
+                return;
+            }
+            base.ServerChangeScene(newSceneName);
+        }
+
         public override void OnServerChangeScene(string newSceneName)
         {
             _changingServerScene = true;

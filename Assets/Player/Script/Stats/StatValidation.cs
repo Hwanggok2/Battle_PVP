@@ -34,12 +34,15 @@ namespace BattlePvp.Stats
             return true;
         }
 
+        public static bool IsCompletePreset(StatContainer stats) => IsValidPreset(stats) &&
+            Math.Abs(stats.STR.Invested + stats.CON.Invested + stats.AGI.Invested + stats.DEF.Invested - InvestmentBudget) <= Epsilon;
+
         public static bool CanChangeClientPreset(bool initialized, bool battleScene, bool dead,
             IdentityType nextIdentity)
         {
             if (!initialized) return true; // One validated initial load after spawning.
             if (!battleScene && !dead) return true;
-            return dead && nextIdentity != IdentityType.Monostat;
+            return dead;
         }
 
         private static bool SameItem(StatSlot candidate, StatSlot current) =>

@@ -178,8 +178,7 @@ namespace BattlePvp.Managers
 
         public static bool IsCompleteStatPreset(StatContainer stats)
         {
-            float total = stats.STR.Invested + stats.AGI.Invested + stats.CON.Invested + stats.DEF.Invested;
-            return Mathf.RoundToInt(total) == 30;
+            return StatValidation.IsCompletePreset(stats);
         }
 
         public static bool IsStrategistPreset(StatContainer stats)

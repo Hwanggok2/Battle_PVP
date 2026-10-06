@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using Mirror;
 using TMPro;
 using BattlePvp.Logic;
+using BattlePvp.Networking;
 using UnityEngine.InputSystem;
 
 namespace BattlePvp.UI
@@ -30,9 +31,12 @@ namespace BattlePvp.UI
         private string _originalText = "Start";
         private bool IsWaitingScene => SceneManager.GetActiveScene().name == "Battle_waiting" ||
             SceneManager.GetActiveScene().name == "Battle_wait";
-        private bool CanStart => IsWaitingScene && !_isCountingDown && !_isSceneTransitioning &&
+        private bool HasStartAuthority => IsWaitingScene &&
             (BattlePvp.Networking.PlayFabBattleManager.Instance == null || !BattlePvp.Networking.PlayFabBattleManager.Instance.RoomSettingsBusy) &&
             (!NetworkClient.active || NetworkServer.active);
+        private bool ReadyToStart => HasStartAuthority && RoomStatReadiness.AllPlayersReady;
+        private bool CanRequestStart => HasStartAuthority && !_isCountingDown && !_isSceneTransitioning;
+        private bool CanStart => CanRequestStart && RoomStatReadiness.AllPlayersReady;
 
         private void Awake()
         {
@@ -65,6 +69,8 @@ namespace BattlePvp.UI
 
         private void OnDisable()
         {
+            if (RoomStartNotice.Instance != null && RoomStartNotice.Instance.transform.IsChildOf(transform))
+                RoomStartNotice.Instance.Close();
             StopAllCoroutines();
             _isCountingDown = false;
             _isSceneTransitioning = false;
@@ -75,10 +81,14 @@ namespace BattlePvp.UI
         private void Update()
         {
             if (_button != null)
-                _button.interactable = CanStart;
+                _button.interactable = CanRequestStart;
             if (!_isCountingDown && !_isSceneTransitioning && _countdownText != null && IsWaitingScene)
-                _countdownText.text = NetworkClient.active && !NetworkServer.active ? "방장이 시작을 준비 중" : _originalText;
-            if (_allowKeyboardShortcut && CanStart && Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame &&
+            {
+                RoomStatReadiness.GetProgress(out int ready, out int total);
+                _countdownText.text = NetworkClient.active && !NetworkServer.active ? "방장이 시작을 준비 중" :
+                    ready < total || total == 0 ? $"스텟 분배 대기 · {ready}/{total}" : _originalText;
+            }
+            if (_allowKeyboardShortcut && CanRequestStart && Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame &&
                 !GameInputController.IsPaused && !GameInputController.IsTextInputActive &&
                 GameInputController.CurrentMode == GameInputMode.Gameplay)
                 BeginCountdown();
@@ -93,7 +103,13 @@ namespace BattlePvp.UI
 
         private void BeginCountdown()
         {
-            if (CanStart) StartCoroutine(CoStartCountdown());
+            if (!CanRequestStart) return;
+            if (!CanStart)
+            {
+                RoomStartNotice.Show(RoomStatReadiness.GetPendingPlayerNames(), transform);
+                return;
+            }
+            StartCoroutine(CoStartCountdown());
         }
 
         private IEnumerator CoStartCountdown()
@@ -106,14 +122,17 @@ namespace BattlePvp.UI
 
             while (remainingTime > 0)
             {
+                if (!ReadyToStart) { CancelCountdown(); yield break; }
                 if (_countdownText != null)
                 {
                     _countdownText.text = Mathf.CeilToInt(remainingTime).ToString();
                 }
 
-                yield return new WaitForSeconds(1f);
-                remainingTime -= 1f;
+                yield return null;
+                remainingTime -= Time.unscaledDeltaTime;
             }
+
+            if (!ReadyToStart) { CancelCountdown(); yield break; }
 
             if (_countdownText != null)
             {
@@ -141,6 +160,13 @@ namespace BattlePvp.UI
             }
 
             _isCountingDown = false;
+        }
+
+        private void CancelCountdown()
+        {
+            _isCountingDown = false;
+            IsStarting = false;
+            if (_countdownText != null) _countdownText.text = "스텟 분배를 마치면 시작할 수 있습니다";
         }
 
     }

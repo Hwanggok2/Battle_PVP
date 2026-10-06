@@ -531,6 +531,48 @@ namespace BattlePvp.Remodel.Editor
             EditorSceneManager.OpenScene(previous,OpenSceneMode.Single);AssetDatabase.SaveAssets();
         }
 
+        [MenuItem("Battle PvP/Remodel/Center Health And Enlarge Chat")]
+        public static void ApplyHudPlacement()
+        {
+            if(EditorApplication.isPlaying) throw new InvalidOperationException("Stop play mode first.");
+            for(int i=0;i<SceneManager.sceneCount;i++) if(SceneManager.GetSceneAt(i).isDirty) throw new InvalidOperationException("Save existing scene changes first.");
+            var setup=EditorSceneManager.GetSceneManagerSetup();
+            void Adjust(GameObject root)
+            {
+                foreach(var rect in root.GetComponentsInChildren<RectTransform>(true))
+                {
+                    if(rect.name=="Health_Root") { Place(rect,new Vector2(340,108),new Vector2(0,85),new Vector2(.5f,0));PrefabUtility.RecordPrefabInstancePropertyModifications(rect); }
+                    if(rect.name=="Identity_Widget") { Place(rect,new Vector2(340,50),new Vector2(0,169),new Vector2(.5f,0));PrefabUtility.RecordPrefabInstancePropertyModifications(rect); }
+                }
+                foreach(var chat in root.GetComponentsInChildren<BattleChatUI>(true))
+                {
+                    var rect=(RectTransform)chat.transform;
+                    Place(rect,new Vector2(560,300),new Vector2(308,175),Vector2.zero);
+                    AnchorChat(chat);
+                    rect.anchoredPosition=new Vector2(308,25);
+                    var so=new SerializedObject(chat);so.FindProperty("_maxHeight").floatValue=600;so.ApplyModifiedPropertiesWithoutUndo();
+                    RecordPrefabChanges(chat.gameObject);
+                }
+            }
+            try
+            {
+                foreach(string path in new[]{"Assets/Prefabs/UI_Root.prefab","Assets/Prefabs/Lobby_UI.prefab"})
+                {
+                    var root=PrefabUtility.LoadPrefabContents(path);
+                    try { Adjust(root);PrefabUtility.SaveAsPrefabAsset(root,path); }
+                    finally { PrefabUtility.UnloadPrefabContents(root); }
+                }
+                foreach(string name in new[]{"Login","Lobby","Battle_waiting","Battle"})
+                {
+                    var scene=EditorSceneManager.OpenScene("Assets/Scenes/"+name+".unity",OpenSceneMode.Single);
+                    foreach(var root in scene.GetRootGameObjects()) Adjust(root);
+                    EditorSceneManager.MarkSceneDirty(scene);EditorSceneManager.SaveScene(scene);
+                }
+                AssetDatabase.SaveAssets();
+            }
+            finally { EditorSceneManager.RestoreSceneManagerSetup(setup); }
+        }
+
         private static void LobbyLayout(Transform root)
         {
             var container=root.Find("Battle_Panel");
@@ -558,8 +600,8 @@ namespace BattlePvp.Remodel.Editor
                 if(create.Find("Cancel")==null)
                 {var close=Button("Cancel",create,"취소",new Vector2(130,42),new Vector2(28,-54));UnityEditor.Events.UnityEventTools.AddBoolPersistentListener(close.onClick,create.gameObject.SetActive,false);}
             }
-            var chat=root.Find("BattleChatUI"); Place(chat,new Vector2(460,210),new Vector2(258,130),Vector2.zero);
-            if(chat!=null&&chat.GetComponent<BattleChatUI>()!=null)AnchorChat(chat.GetComponent<BattleChatUI>());
+            var chat=root.Find("BattleChatUI"); Place(chat,new Vector2(560,300),new Vector2(308,175),Vector2.zero);
+            if(chat!=null&&chat.GetComponent<BattleChatUI>()!=null) { AnchorChat(chat.GetComponent<BattleChatUI>());((RectTransform)chat).anchoredPosition=new Vector2(308,25); }
             if(root.Find("GameTitle")==null)
             {var title=Text("GameTitle",root,"BATTLE <color=#55E5E9>PVP</color>",new Vector2(370,48),Vector2.zero,30);Place(title.transform,new Vector2(370,48),new Vector2(221,-42),new Vector2(0,1));title.fontStyle=FontStyles.Bold|FontStyles.Italic;}
         }
@@ -567,7 +609,7 @@ namespace BattlePvp.Remodel.Editor
         private static void HudLayout(Transform root)
         {
             var health=root.Find("Canvas_HUD/Health_Root");
-            Place(health,new Vector2(340,108),new Vector2(200,85),Vector2.zero);
+            Place(health,new Vector2(340,108),new Vector2(0,85),new Vector2(.5f,0));
             if(health!=null)
             {
                 var visibility=health.GetComponent<HudVisibilitySettings>() ?? health.gameObject.AddComponent<HudVisibilitySettings>();
@@ -580,7 +622,7 @@ namespace BattlePvp.Remodel.Editor
                 Place(health.Find("HitDamage"),new Vector2(200,40),new Vector2(0,86));
             }
             var identity=root.Find("Canvas_HUD/Identity_Widget");
-            Place(identity,new Vector2(340,50),new Vector2(200,169),Vector2.zero);
+            Place(identity,new Vector2(340,50),new Vector2(0,169),new Vector2(.5f,0));
             if(identity!=null)
             {
                 if(identity.GetComponent<HudVisibilitySettings>()==null)identity.gameObject.AddComponent<HudVisibilitySettings>();

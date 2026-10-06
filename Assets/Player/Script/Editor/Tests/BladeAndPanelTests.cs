@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using BattlePvp.Combat;
 using BattlePvp.UI;
+using BattlePvp.Stats;
 using Mirror;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
@@ -71,6 +72,9 @@ namespace BattlePvp.EditorTests
         public void StartRequiresWaitingRoomAndRejectsRepeatedCountdown(string scene,bool busy,bool allowed)
         {
             _scene.name=scene;
+            var stats=EditorTestLifecycle.AddNetwork<StatManager>(new GameObject("Allocated local player"));
+            var allocation=new StatContainer(); allocation.STR.Invested=30;
+            Set(stats,"_stats",allocation); stats.BindAsLocalScenePlayer();
             var root=new GameObject("Start",typeof(RectTransform),typeof(Button));
             var controller=root.AddComponent<BattleStartController>();Set(controller,"_isCountingDown",busy);
             Assert.That(typeof(BattleStartController).GetProperty("CanStart",Private).GetValue(controller),Is.EqualTo(allowed));
@@ -88,7 +92,7 @@ namespace BattlePvp.EditorTests
             Assert.That(text.text,Is.EqualTo("00:00"));
         }
         [Test]
-        public void OnlyServerCanStartWhileAClientConnectionIsActive()
+        public void ClientAndEmptyServerCannotStartAMatch()
         {
             _scene.name="Battle_waiting";
             var controller=new GameObject("Start",typeof(RectTransform),typeof(Button)).AddComponent<BattleStartController>();
@@ -100,7 +104,7 @@ namespace BattlePvp.EditorTests
                 state.SetValue(null,ConnectState.Connected);server.SetValue(null,false);
                 Assert.That(typeof(BattleStartController).GetProperty("CanStart",Private).GetValue(controller),Is.False);
                 server.SetValue(null,true);
-                Assert.That(typeof(BattleStartController).GetProperty("CanStart",Private).GetValue(controller),Is.True);
+                Assert.That(typeof(BattleStartController).GetProperty("CanStart",Private).GetValue(controller),Is.False);
             }
             finally{state.SetValue(null,previousClient);server.SetValue(null,previousServer);}
         }

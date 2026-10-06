@@ -56,7 +56,8 @@ namespace BattlePvp.EditorTests
         public void ClientCannotFreelySwapPresetDuringBattle()
         {
             Assert.That(StatValidation.CanChangeClientPreset(true, true, false, IdentityType.Strategist), Is.False);
-            Assert.That(StatValidation.CanChangeClientPreset(true, true, true, IdentityType.Monostat), Is.False);
+            Assert.That(StatValidation.CanChangeClientPreset(true, true, true, IdentityType.Monostat), Is.True);
+            Assert.That(StatValidation.CanChangeClientPreset(true, true, false, IdentityType.Monostat), Is.False);
             Assert.That(StatValidation.CanChangeClientPreset(true, true, true, IdentityType.Strategist), Is.True);
             Assert.That(StatValidation.CanChangeClientPreset(true, false, false, IdentityType.Monostat), Is.True);
             Assert.That(StatValidation.CanChangeClientPreset(false, true, false, IdentityType.Monostat), Is.True);

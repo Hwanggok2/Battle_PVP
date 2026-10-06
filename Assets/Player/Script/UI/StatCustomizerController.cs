@@ -446,23 +446,6 @@ namespace BattlePvp.UI
 
         private void OnInvestedChanged(StatSlider changed, float _)
         {
-            if (changed != null)
-            {
-                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-                bool isBattleScene = sceneName == "Battle";
-                
-                if (isBattleScene)
-                {
-                    int maxAllowed = TotalInvestedBudget - 1;
-                    if (Mathf.RoundToInt(changed.Invested) > maxAllowed)
-                    {
-                        changed.SetInvestedWithoutNotify(maxAllowed);
-                        ShowFloatingMessage($"배틀 중 몰빵형 변환 불가 (최대 {maxAllowed} 제한)");
-                    }
-                }
-            }
-
-
             int total = GetTotalInvested();
             if (total > TotalInvestedBudget && changed != null)
             {
@@ -702,16 +685,10 @@ namespace BattlePvp.UI
             bool isBattleScene = sceneName == "Battle";
             bool isDead = _playerHealth != null && _playerHealth.IsDead;
 
-            // [강화] 실제 전투 씬에서만 몰빵형 전환을 금지합니다.
-            if (isBattleScene || isDead)
+            if (isBattleScene && !isDead)
             {
-                if (StatManager.IsMonostat(_virtualStats))
-                {
-                    ShowFloatingMessage("몰빵형 변환은 불가능합니다.");
-                    LoadFromSavedStatsOrTarget();
-                    RebuildBudgetAndPreview();
-                    return;
-                }
+                ShowFloatingMessage("전투 중에는 사망한 동안 스텟을 변경할 수 있습니다.");
+                return;
             }
 
             StatContainer currentStats = _baseStats;

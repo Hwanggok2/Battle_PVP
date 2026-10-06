@@ -57,6 +57,34 @@ namespace BattlePvp.EditorTests
             _previousStatics.Clear();
         }
 
+        [TestCase(true)] [TestCase(false)]
+        public void DeadPlayersCanAllocateThirtyPointsAndSwitchIntoMonostat(bool startedMonostat)
+        {
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene(); string oldName = scene.name; scene.name = "Battle";
+            try
+            {
+                LoadProfile(startedMonostat ? Preset(30, 0, 0, 0) : Preset(8, 8, 7, 7), true);
+                var stats = CreatePlayer("Dead build change");
+                stats.ApplyLocalSceneStats(_profile.SavedStats);
+                var health = stats.GetComponent<HealthSystem>(); Set(health, "_isDead", true); SetLocal(stats);
+                var customizer = CreateCustomizer(); EditorTestLifecycle.SetActive(customizer, true);
+                foreach (string field in new[] { "_str", "_con", "_agi", "_def" }) Get<StatSlider>(customizer, field).SetInvestedWithoutNotify(0);
+                var slider = Get<StatSlider>(customizer, "_agi"); slider.SetInvestedWithoutNotify(30);
+                Invoke(customizer, "OnInvestedChanged", slider, 30f);
+                Assert.That(Get<StatContainer>(customizer, "_virtualStats").AGI.Invested, Is.EqualTo(30));
+                Invoke(customizer, "Apply");
+                Assert.That(stats.GetStatsCopy().AGI.Invested, Is.EqualTo(30));
+                Assert.That(stats.CurrentIdentity.Type, Is.EqualTo(IdentityType.Monostat));
+                // Exercise the authoritative command path as well as the local UI.
+                Set(stats, "_serverStatsInitialized", true); Set(stats, "_nextStatRequestAt", 0d);
+                Assert.That(Invoke(stats, "TryAcceptClientStats", Preset(0, 0, 0, 30)), Is.True);
+                Assert.That(stats.GetStatsCopy().DEF.Invested, Is.EqualTo(30));
+                Set(health, "_isDead", false); Set(stats, "_nextStatRequestAt", 0d);
+                Assert.That(Invoke(stats, "TryAcceptClientStats", Preset(30, 0, 0, 0)), Is.False);
+            }
+            finally { scene.name = oldName; }
+        }
+
         [Test]
         public void ReopeningCustomizerRestoresTheSelectedSavedAllocationWithoutSwitchingSlots()
         {

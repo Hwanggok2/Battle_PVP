@@ -68,6 +68,21 @@ namespace BattlePvp.EditorTests
             Assert.That(GameInputController.CurrentMode, Is.EqualTo(GameInputMode.Gameplay));
         }
 
+        [Test] public void EscapeClosesStartNoticeWithoutClosingTheUnderlyingRoomPanel()
+        {
+            _scene.name = "Battle_waiting"; Input();
+            var manager = new GameObject("Lobby manager").AddComponent<LobbyUIManager>();
+            typeof(LobbyUIManager).GetProperty("Instance").SetValue(null, manager);
+            var room = new GameObject("Room", typeof(RectTransform)); Set(manager, "_room_UI", room);
+            RoomStartNotice.Show(new[] { "플레이어 1", "플레이어 2" }, room.transform);
+            Assert.That(GameInputController.CurrentMode, Is.EqualTo(GameInputMode.Menu));
+            Assert.That(Cursor.visible, Is.True);
+            GameInputController.HandleEscape();
+            Assert.That(RoomStartNotice.IsOpen, Is.False);
+            Assert.That(room.activeSelf, Is.True);
+            Assert.That(GameInputController.CurrentMode, Is.EqualTo(GameInputMode.Menu));
+        }
+
         [TestCase("Battle_waiting", true)]
         [TestCase("Lobby", false)]
         public void SharedBrowserExposesOnlyActionsAppropriateToTheScene(string scene, bool waiting)

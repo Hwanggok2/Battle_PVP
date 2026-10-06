@@ -34,6 +34,7 @@ namespace BattlePvp.Stats
         private double _nextStatRequestAt;
         private double _initialStatsDeadline;
         public bool HasServerStats => _serverStatsInitialized;
+        public bool IsAllocationComplete => _serverStatsInitialized && StatValidation.IsCompletePreset(_stats);
         private uint _nextApplyRequestId;
         private uint _pendingApplyRequestId;
         private Action<bool, string> _pendingApplyCallback;
@@ -260,25 +261,7 @@ namespace BattlePvp.Stats
         {
             // A reconnect restores the server's current build. Only explicit preset application may change it.
             if (NetworkClient.active && HasServerStats) return;
-            // 스탯 합계가 0이면(신규 유저 등) 기본값 10/10/10/10 부여
-            float total = saved.STR.Invested + saved.AGI.Invested + saved.CON.Invested + saved.DEF.Invested;
-            
-            string source = total <= 0.1f ? "Fallback (Default)" : "Saved Data";
-            
-            if (total <= 0.1f)
-            {
-                var globalData = BattlePvp.Managers.GlobalDataManager.Instance;
-                bool selectedSlotIsEmpty = globalData != null && !globalData.HasStatPresetSlot(globalData.SelectedStatPresetSlot);
-                if (!selectedSlotIsEmpty)
-                {
-                    saved.STR.Invested = 8;
-                    saved.AGI.Invested = 8;
-                    saved.CON.Invested = 7;
-                    saved.DEF.Invested = 7;
-                }
-            }
-
-            Debug.Log($"[StatManager:{gameObject.name}] Injecting {source}: STR={saved.STR.Invested}, AGI={saved.AGI.Invested}, CON={saved.CON.Invested}, DEF={saved.DEF.Invested}");
+            // An empty allocation is valid in the waiting room; only explicit allocation enables match start.
             ApplyStats(saved, recalculateIdentity: true);
         }
 

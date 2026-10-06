@@ -12,8 +12,8 @@ namespace BattlePvp.EditorTests
 {
     public sealed class WaitingCombatUpdateTests
     {
-        [Test]
-        public void RoomEntryAllowsAnUnconfiguredSwapPresetWhenTheMainAllocationIsComplete()
+        [TestCase(0)] [TestCase(15)] [TestCase(30)]
+        public void RoomEntryAllowsEmptyPartialAndCompleteAllocations(float investment)
         {
             var field = typeof(BattlePvp.Managers.GlobalDataManager).GetField("_instance", BindingFlags.Static | BindingFlags.NonPublic);
             var previous = field.GetValue(null);
@@ -25,7 +25,8 @@ namespace BattlePvp.EditorTests
                 var profile = profileRoot.AddComponent<BattlePvp.Managers.GlobalDataManager>(); field.SetValue(null, profile);
                 typeof(BattlePvp.Managers.GlobalDataManager).GetField("_hasLoadedPlayerStats", flags).SetValue(profile, true);
                 typeof(BattlePvp.Managers.GlobalDataManager).GetField("_hasLoadedCombatRecord", flags).SetValue(profile, true);
-                typeof(BattlePvp.Managers.GlobalDataManager).GetField("_savedStats", flags).SetValue(profile, CombatPresetPlan.DefaultTarget(default));
+                var allocation = new StatContainer(); allocation.STR.Invested = investment;
+                typeof(BattlePvp.Managers.GlobalDataManager).GetField("_savedStats", flags).SetValue(profile, allocation);
                 var ui = uiRoot.AddComponent<LobbyUIManager>();
                 Assert.That(profile.HasStrategistTargetPreset, Is.False);
                 Assert.That(typeof(LobbyUIManager).GetMethod("CanStartRoomFlow", flags).Invoke(ui, null), Is.True);

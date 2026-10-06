@@ -311,8 +311,6 @@ namespace BattlePvp.UI
             }
             // Battle 씬에서는 Lobby_UI를 비활성화하지 않음 — 버튼 단위로만 가시성 조절
 
-            bool isMonostat = IsCurrentlyMonostat();
-
             if (isLobby)
             {
                 if (_battleButton != null) { _battleButton.gameObject.SetActive(true); _battleButton.interactable = true; }
@@ -335,7 +333,7 @@ namespace BattlePvp.UI
                     if (_lobby_UI != null) _lobby_UI.SetActive(true);
                     // 사망 시 Stat 버튼만 활성화 — 플레이어가 직접 눌러서 창을 열도록 합니다.
                     if (_battleButton != null) _battleButton.gameObject.SetActive(false);
-                    if (_statSettingButton != null) _statSettingButton.gameObject.SetActive(!isMonostat);
+                    if (_statSettingButton != null) { _statSettingButton.gameObject.SetActive(true); _statSettingButton.interactable = true; }
                 }
                 else
                 {
@@ -646,30 +644,7 @@ namespace BattlePvp.UI
                 return false;
             }
 
-            if (!globalData.HasCompleteSavedStats())
-            {
-                ShowRoomValidationMessage("모든 스텟을 투자하십시오");
-                return false;
-            }
-
-            if (!globalData.HasStrategistTargetPreset)
-            {
-                // An unconfigured swap uses the server's 30-point default allocation.
-                return true;
-            }
-
-            if (!GlobalDataManager.IsCompleteStatPreset(globalData.StrategistTargetPreset))
-            {
-                ShowRoomValidationMessage("전략가 전환 프리셋의 모든 스텟을 투자하십시오");
-                return false;
-            }
-
-            if (!GlobalDataManager.IsStrategistPreset(globalData.StrategistTargetPreset))
-            {
-                ShowRoomValidationMessage("전략가 전환 프리셋은 전략가형만 설정할 수 있습니다.");
-                return false;
-            }
-
+            // Allocation readiness is checked against server-applied stats when starting the match.
             return true;
         }
 

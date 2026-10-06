@@ -32,7 +32,7 @@ namespace BattlePvp.UI
 
         [Header("Behavior")]
         [SerializeField] private float _minHeight = 150f;
-        [SerializeField] private float _maxHeight = 420f;
+        [SerializeField] private float _maxHeight = 600f;
         [SerializeField] private int _maxLines = 80;
 
         private float _dragStartHeight;
