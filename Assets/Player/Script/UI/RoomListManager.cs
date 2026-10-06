@@ -101,8 +101,9 @@ namespace BattlePvp.UI
                 if (this == null || !isActiveAndEnabled || _contentParent == null || _itemPrefab == null ||
                     !_state.Apply(request, rooms, _removedIds, _changedIds)) return;
                 ApplyChangedRows();
-                if (_statusText != null) _statusText.text = rooms == null || rooms.Count == 0
-                    ? "표시할 대기실이 없습니다." : string.Empty;
+                if (_statusText != null) _statusText.text = !string.IsNullOrEmpty(_subscribedManager.LastRoomListError)
+                    ? _subscribedManager.LastRoomListError
+                    : rooms == null || rooms.Count == 0 ? "표시할 대기실이 없습니다." : string.Empty;
             });
         }
 

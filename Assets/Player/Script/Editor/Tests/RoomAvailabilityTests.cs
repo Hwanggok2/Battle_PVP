@@ -30,6 +30,31 @@ namespace BattlePvp.EditorTests
         }
 
         [Test]
+        public void FailedListingIsDistinguishedFromASuccessfulEmptyRoomList()
+        {
+            BeginRequest(1, _ => { }); Complete(1, null);
+            Assert.That(_manager.LastRoomListError, Is.Not.Null.And.Not.Empty);
+            BeginRequest(2, _ => { }); Complete(2, new Dictionary<string, RoomInfo>());
+            Assert.That(_manager.LastRoomListError, Is.Null);
+        }
+
+        [TestCase("")]
+        [TestCase("203.0.113.1:7777")]
+        public void LiveRelayRoomsAreVisibleWithOrWithoutANativeUdpEndpoint(string directEndpoint)
+        {
+            string id = "battle_aabb_" + new string('1', 32);
+            var row = new Dictionary<string, object> {
+                { "roomName", "웹 검증" }, { "masterName", "Host" }, { "playerCount", 1 },
+                { "relayJoinCode", "ABCDEF" }, { "directEndpoint", directEndpoint },
+                { "serverNow", 1000000d }, { "leaseExpiresAt", 1060000d }
+            };
+            var response = new Dictionary<string, object> { { "roomInfos", new Dictionary<string, object> { { id, row } } } };
+            var rooms = (Dictionary<string, RoomInfo>)Invoke("ParseRoomInfoListFromCloudScript", response, Time.realtimeSinceStartupAsDouble);
+            Assert.That(rooms.ContainsKey(id), Is.True);
+            Assert.That(rooms[id].RoomName, Is.EqualTo("웹 검증"));
+        }
+
+        [Test]
         public void AuthoritativeReplacementRemovesMissingRoomsAndEmptyClearsEveryCache()
         {
             Invoke("ReplaceKnownRoomInfos", Rooms("old"));

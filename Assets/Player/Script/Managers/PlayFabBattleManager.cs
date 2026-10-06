@@ -84,6 +84,7 @@ namespace BattlePvp.Networking
         private const string RoomMutationUnconfirmedMessage = "방 요청의 응답을 확인하지 못했습니다. 확인이 끝날 때까지 이 방의 재참가는 제한됩니다. 다른 방을 이용해 주세요.";
         private const string RoomClosedMessage = "호스트 연결이 종료되었거나 방이 만료되어 로비로 돌아왔습니다.";
         public string LastRoomNotice { get; private set; }
+        public string LastRoomListError { get; private set; }
         private static RoomServiceLifetime _sharedRoomLifetime = new RoomServiceLifetime();
         private readonly RoomServiceLifetime _roomLifetime = _sharedRoomLifetime;
         private RoomFlowGeneration _roomFlows => _roomLifetime.Flows;
@@ -218,6 +219,13 @@ namespace BattlePvp.Networking
 
         private void OnEnable()
         {
+            // Awake is not repeated after an Editor domain reload, but static instances are reset.
+            if (Instance == null && !_roomServiceDisposed)
+            {
+                Instance = this;
+                NotifyRoomObservers(InstanceChanged, subscriber => ((Action<PlayFabBattleManager>)subscriber)(this),
+                    () => Instance == this);
+            }
             if (Instance == this && !_roomServiceDisposed) _roomServiceStopped = false;
         }
 
@@ -680,6 +688,9 @@ namespace BattlePvp.Networking
             // A callback can run before Update in the frame that crosses the deadline.
             double now = Time.realtimeSinceStartupAsDouble;
             bool discardUnverified = roomInfos == null || now - _roomInfoRequestStarted >= RoomInfoRequestTimeoutSeconds;
+            LastRoomListError = !discardUnverified ? null : !PlayFabClientAPI.IsClientLoggedIn()
+                ? "로그인 연결이 끊어졌습니다. 게임을 다시 시작해 로그인해 주세요."
+                : "방 목록을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.";
             if (discardUnverified)
                 roomInfos = new Dictionary<string, RoomInfo>();
             _isRoomInfoRequestInFlight = false;

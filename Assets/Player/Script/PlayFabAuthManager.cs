@@ -185,7 +185,11 @@ namespace BattlePvp.Networking
 
         private void Update() => ExpireAttempt();
 
-        private void OnEnable() => Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(IsBusy), _attempts.Current);
+        private void OnEnable()
+        {
+            if (Instance == null) { Instance = this; NotifyInstanceChanged(this); }
+            Notify(OnAuthenticationStateChanged, subscriber => ((Action<bool>)subscriber)(IsBusy), _attempts.Current);
+        }
 
         private void ExpireAttempt()
         {
