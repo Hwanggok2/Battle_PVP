@@ -25,7 +25,7 @@ namespace BattlePvp.Characters
         public static float GetViewScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
             ? visual.ViewScale : 1f;
 
-        public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh)
+        public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh, Vector3 swordGripOffset = default)
         {
             var animator = GetComponentInChildren<Animator>();
             animator.runtimeAnimatorController = null;
@@ -48,7 +48,7 @@ namespace BattlePvp.Characters
             if (sourceHeight > .1f) ViewScale = Mathf.Clamp(targetHeight / sourceHeight, .5f, 2f);
             Active[driver.transform] = this;
             SyncPose();
-            _equipment = new CharacterEquipmentVisual(driver, animator, ViewScale);
+            _equipment = new CharacterEquipmentVisual(driver, animator, ViewScale, swordGripOffset);
             _equipment.Sync();
         }
 

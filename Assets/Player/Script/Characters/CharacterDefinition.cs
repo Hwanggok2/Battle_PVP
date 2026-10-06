@@ -19,6 +19,8 @@ namespace BattlePvp.Characters
         public bool UseDefaultBody;
         [Tooltip("Multipliers relative to the original character, after the same stat allocation and identity bonuses.")]
         public CharacterStatModifiers CombatModifiers = CharacterStatModifiers.Baseline;
+        [Tooltip("Visual sword position adjustment in the native right hand's local coordinates. Does not move attack colliders.")]
+        public Vector3 SwordGripOffset;
         [Tooltip("Visual-only Humanoid prefab with its original proportions and skeleton.")]
         [FormerlySerializedAs("VisualPrefab"), SerializeField] private GameObject _visualPrefab;
         [SerializeField] private string _visualResource;

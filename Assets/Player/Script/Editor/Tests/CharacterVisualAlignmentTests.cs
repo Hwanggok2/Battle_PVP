@@ -7,6 +7,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using Object = UnityEngine.Object;
 
 namespace BattlePvp.EditorTests
@@ -69,7 +71,8 @@ namespace BattlePvp.EditorTests
                 var visual = sword.GetComponentsInChildren<MeshFilter>(true).Single(x => x.sharedMesh == originalMesh);
                 Assert.That(Vector3.Distance(visual.transform.position, targetHand.position), Is.LessThan(.22f), "The grip must stay inside the visible palm's reach.");
                 var nativeAnimator = follower.GetComponentInChildren<Animator>();
-                Assert.That(Vector3.Distance(visual.transform.TransformPoint(authoredGrip), Palm(nativeAnimator)), Is.LessThan(.001f),
+                Assert.That(Vector3.Distance(visual.transform.TransformPoint(authoredGrip),
+                    Palm(nativeAnimator) + targetHand.TransformVector(Catalog.Find(id).SwordGripOffset)), Is.LessThan(.001f),
                     "The original point along the handle must remain in the native palm, including larger and unmapped hands.");
                 Assert.That(sword.parent, Is.SameAs(parent)); Assert.That(sword.GetComponent<Collider>(), Is.SameAs(collider));
                 Assert.That(Vector3.Distance(position, sword.position), Is.LessThan(.0001f));
@@ -90,6 +93,43 @@ namespace BattlePvp.EditorTests
             var middle = animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal) ?? hand.GetComponentsInChildren<Transform>()
                 .FirstOrDefault(t => t.name == "Fingers1R");
             return middle != null ? Vector3.Lerp(hand.position, middle.position, .65f) : hand.position;
+        }
+
+        [TestCase("Attack", 1f)]
+        [TestCase("Attack2", 1f)]
+        [TestCase("Attack3", 1f)]
+        [TestCase("Attack", 1.2f)]
+        [TestCase("Attack2", 1.2f)]
+        [TestCase("Attack3", 1.2f)]
+        public void BarbarianSwordHandleSitsInsideTheCurledFingers(string motion, float scale)
+        {
+            var player = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+            var graph = PlayableGraph.Create("Barbarian sword grip");
+            try
+            {
+                player.transform.SetPositionAndRotation(new Vector3(7, 3, -5), Quaternion.Euler(0, 70, 0));
+                player.transform.localScale = Vector3.one * scale;
+                var driver = player.GetComponent<Animator>(); driver.Rebind(); driver.Update(0);
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>("Assets/Player/Anim/Attack/" + motion + ".anim");
+                Assert.That(clip, Is.Not.Null);
+                var playable = AnimationClipPlayable.Create(graph, clip);
+                AnimationPlayableOutput.Create(graph, "Pose", driver).SetSourcePlayable(playable);
+                playable.SetTime(.2); graph.Play(); graph.Evaluate(0);
+                using var skin = new CharacterSkin(player.GetComponentInChildren<SkinnedMeshRenderer>());
+                Assert.That(skin.Apply(Catalog.Find("brute"), out var error), Is.True, error);
+                var sword = player.GetComponentsInChildren<Transform>(true).Single(t => t.name == "Sword");
+                sword.gameObject.SetActive(true); skin.SyncPose();
+                var fitted = sword.GetComponentsInChildren<MeshFilter>().Single(f => f.sharedMesh != null);
+                var native = skin.VisibleBody.GetComponentInParent<Animator>();
+                var knuckle = native.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
+                var finger = native.GetBoneTransform(HumanBodyBones.RightMiddleDistal);
+                // This sword's handle runs down local Z with its grip centered 6.15 cm behind the guard.
+                var handle = fitted.transform.TransformPoint(new Vector3(0, 0, -.06154f));
+                Assert.That(Vector3.Distance(handle, (knuckle.position + finger.position) * .5f),
+                    Is.LessThan(.025f * scale), "The handle must sit in the fist, not above the knuckles.");
+            }
+            finally { graph.Destroy(); Object.DestroyImmediate(player); }
         }
 
         [TestCase(360, 365)]

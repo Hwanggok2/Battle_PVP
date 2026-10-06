@@ -14,7 +14,7 @@ namespace BattlePvp.Characters
             public MeshFilter Source;
             public Mesh Mesh;
             public MeshRenderer Owner, Visual;
-            public bool Arrow, Held, Back;
+            public bool Arrow, Held, Back, Sword;
             public Transform SourceHand, TargetHand;
         }
         private sealed class Hand
@@ -58,13 +58,15 @@ namespace BattlePvp.Characters
         private readonly Hand _sourceLeft, _sourceRight, _targetLeft, _targetRight;
         private readonly Torso _sourceTorso, _targetTorso;
         private readonly float _bodyScale;
+        private readonly Vector3 _swordGripOffset;
         private readonly List<Part> _parts = new();
         private readonly Dictionary<LODGroup, LOD[]> _originalLods = new();
 
-        public CharacterEquipmentVisual(Animator driver, Animator visual, float bodyScale)
+        public CharacterEquipmentVisual(Animator driver, Animator visual, float bodyScale, Vector3 swordGripOffset)
         {
             _driver = driver;
             _bodyScale = bodyScale;
+            _swordGripOffset = swordGripOffset;
             _sourceLeft = new Hand(driver, HumanBodyBones.LeftHand); _sourceRight = new Hand(driver, HumanBodyBones.RightHand);
             _targetLeft = new Hand(visual, HumanBodyBones.LeftHand); _targetRight = new Hand(visual, HumanBodyBones.RightHand);
             _sourceTorso = new Torso(driver); _targetTorso = new Torso(visual);
@@ -89,7 +91,7 @@ namespace BattlePvp.Characters
                     var targetHand = visual.GetBoneTransform(hand);
                     if (back && targetHand == null) targetHand = visual.GetBoneTransform(HumanBodyBones.Chest) ?? visual.GetBoneTransform(HumanBodyBones.Spine);
                     _parts.Add(new Part { Weapon = weapon, Hand = hand, SourceHand = driver.GetBoneTransform(hand), TargetHand = targetHand,
-                        Source = filter, Mesh = filter.sharedMesh, Owner = owner, Visual = renderer, Arrow = arrow, Held = sword || bow, Back = back });
+                        Source = filter, Mesh = filter.sharedMesh, Owner = owner, Visual = renderer, Arrow = arrow, Held = sword || bow, Back = back, Sword = sword });
                     filter.sharedMesh = null;
                 }
             }
@@ -144,6 +146,7 @@ namespace BattlePvp.Characters
                     // not to the authored point along the handle that the palm is gripping.
                     Vector3 sourceGrip = part.Source.transform.InverseTransformPoint(source.Palm);
                     position = target.Palm - orientation * Vector3.Scale(sourceGrip, part.Source.transform.lossyScale);
+                    if (part.Sword) position += targetHand.TransformVector(_swordGripOffset);
                 }
                 if (part.Arrow)
                 {
