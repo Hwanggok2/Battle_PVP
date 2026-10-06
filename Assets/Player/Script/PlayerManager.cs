@@ -442,7 +442,7 @@ public class PlayerManager : NetworkBehaviour
         EmoteData emote = ResolveEmote(emoteIndex);
         if (emoteIndex < 0 || _emotes == null || emoteIndex >= _emotes.Length || emote == null ||
             _activeEmote != null || (_healthSystem != null && _healthSystem.IsDead) ||
-            (_statManager != null && !_statManager.HasServerStats) || IsBattleLoadingOrNotStarted() ||
+            (_statManager != null && !_statManager.HasServerCombatStats) || IsBattleLoadingOrNotStarted() ||
             (_combat != null && _combat.IsBusyForEmote))
         {
             if (connectionToClient != null) TargetRejectEmote(connectionToClient);
@@ -1005,7 +1005,7 @@ public class PlayerManager : NetworkBehaviour
     {
         MovementControlState controls = RecordServerMovementControls();
         if ((_healthSystem != null && _healthSystem.IsDead) ||
-            (_statManager != null && !_statManager.HasServerStats) || IsBattleLoadingOrNotStarted() || controls.CrouchLocked)
+            (_statManager != null && !_statManager.HasServerCombatStats) || IsBattleLoadingOrNotStarted() || controls.CrouchLocked)
         {
             if (connectionToClient != null) TargetCorrectCrouchState(connectionToClient, isCrouching);
             return;
@@ -1210,7 +1210,7 @@ public class PlayerManager : NetworkBehaviour
         float step = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
         Vector3 movement = Vector3.zero;
         if ((_healthSystem == null || !_healthSystem.IsDead) && !IsBattleLoadingOrNotStarted() &&
-            (_statManager == null || _statManager.HasServerStats))
+            (_statManager == null || _statManager.HasServerCombatStats))
         {
             if (_forcedTauntActive && !IsSkillInputLocked(SkillInputLockFlags.Move))
             {
@@ -1624,7 +1624,7 @@ public class PlayerManager : NetworkBehaviour
             float maximumSpeed = controls.Speed;
             bool dead = _healthSystem != null && _healthSystem.IsDead;
             bool blocked = dead || IsBattleLoadingOrNotStarted() ||
-                (_statManager != null && !_statManager.HasServerStats);
+                (_statManager != null && !_statManager.HasServerCombatStats);
             if ((blocked && (position - _serverMovement.Position).sqrMagnitude > 0.0025f) ||
                 !IsServerMovementPathClear(_serverMovement.Position, position) ||
                 !_serverMovement.TryAccept(position, rotation, sampleTime, serverTime,

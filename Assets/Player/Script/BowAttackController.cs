@@ -63,6 +63,9 @@ public sealed class BowAttackController : NetworkBehaviour
     private bool _chargeRingVisible;
     private Coroutine _releaseLockFallbackRoutine;
     private readonly BowShotAuthority _serverShotAuthority = new BowShotAuthority();
+    // A draw keeps one cadence through release, even if a lobby selection changes meanwhile.
+    private float _chargeSpeedMultiplier = 1f;
+    private float _serverChargeSpeedMultiplier = 1f;
     private float _serverReleaseLockSeconds;
     private bool _serverOwnsTauntVisual;
     private float _drawDuration = 3f;
@@ -83,7 +86,7 @@ public sealed class BowAttackController : NetworkBehaviour
         JobSkillData data = _playerCombat.ServerBowData;
         if (data == null) return;
         if (!IsBusy) HandleAttackInput(true, data, direction);
-        else if (IsCharging && SkillTime - _chargeStartedAt >= data.MinimumBowChargeSeconds)
+        else if (IsCharging && (SkillTime - _chargeStartedAt) * _chargeSpeedMultiplier >= data.MinimumBowChargeSeconds)
             HandleAttackInput(false, data, direction);
     }
 
@@ -108,14 +111,11 @@ public sealed class BowAttackController : NetworkBehaviour
     private void Awake()
     {
         ResolveReferences();
-        if (_animator != null)
-            foreach (var parameter in _animator.parameters)
-                if (parameter.name == "BowPlaybackSpeed" && parameter.type == AnimatorControllerParameterType.Float)
-                { _animator.SetFloat(parameter.nameHash, AnimationPlaybackSpeed); break; }
+        ApplyBowPlaybackSpeed();
         _serverReleaseLockSeconds = ResolveServerReleaseLockSeconds();
         if (_animator != null && _animator.runtimeAnimatorController != null)
             foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
-                if (clip.name == DrawAnimationStateName) { _drawDuration = Mathf.Clamp(clip.length / AnimationPlaybackSpeed, .1f, 5f); break; }
+                if (clip.name == DrawAnimationStateName) { _drawDuration = Mathf.Clamp(clip.length / BaseAnimationPlaybackSpeed, .1f, 5f); break; }
         SetHandArrowVisible(false);
         SetBowAimRigActive(false);
         if (!NetworkClient.active && !NetworkServer.active)
@@ -292,7 +292,7 @@ public sealed class BowAttackController : NetworkBehaviour
         _pendingDirection = direction.sqrMagnitude > 0.001f ? direction.normalized : transform.forward;
         _hasPendingAimPoint = false;
         _captureAimPointPending = false;
-        float progress = Mathf.Clamp01((chargeSeconds - bowData.MinimumBowChargeSeconds) /
+        float progress = Mathf.Clamp01((chargeSeconds * _chargeSpeedMultiplier - bowData.MinimumBowChargeSeconds) /
             Mathf.Max(.001f, bowData.MaximumBowDamageChargeSeconds - bowData.MinimumBowChargeSeconds));
         _offlineShotMultiplier = Mathf.Lerp(bowData.MinimumBowDamageMultiplier, bowData.MaximumBowDamageMultiplier, progress);
         _hasPendingShot = true;
@@ -317,6 +317,8 @@ public sealed class BowAttackController : NetworkBehaviour
             CombatValidation.IsFinite(aimDirection) && aimDirection.sqrMagnitude > 0.001f &&
             _serverShotAuthority.TryBegin(NetworkTime.time);
         if (accepted)
+            _serverChargeSpeedMultiplier = ResolveCharacterAttackSpeed();
+        if (accepted)
             GetComponent<ExpandedSkillController>()?.NotifyAttackStarted();
         if (accepted)
             _playerManager?.SetMovementEffect(CombatEffectSources.BowCharge,
@@ -340,12 +342,15 @@ public sealed class BowAttackController : NetworkBehaviour
             return false;
         }
         JobSkillData data = _playerCombat.ServerBowData;
-        bool accepted = _serverShotAuthority.TryRelease(NetworkTime.time, data.MinimumBowChargeSeconds,
-            data.MaximumBowDamageChargeSeconds, data.MinimumBowDamageMultiplier,
-            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds);
+        bool accepted = ReleaseServerShot(data, NetworkTime.time);
         if (accepted) _playerManager?.RemoveMovementEffect(CombatEffectSources.BowCharge);
         return accepted;
     }
+
+    private bool ReleaseServerShot(JobSkillData data, double now) =>
+        _serverShotAuthority.TryRelease(now, data.MinimumBowChargeSeconds / _serverChargeSpeedMultiplier,
+            data.MaximumBowDamageChargeSeconds / _serverChargeSpeedMultiplier, data.MinimumBowDamageMultiplier,
+            data.MaximumBowDamageMultiplier, _serverReleaseLockSeconds / _serverChargeSpeedMultiplier);
 
     private float ResolveServerReleaseLockSeconds()
     {
@@ -354,7 +359,7 @@ public sealed class BowAttackController : NetworkBehaviour
             foreach (AnimationClip clip in _animator.runtimeAnimatorController.animationClips)
                 foreach (AnimationEvent animationEvent in clip.events)
                     if (animationEvent.functionName == nameof(OnBowReleaseFinished))
-                        return Mathf.Max(0.1f, Mathf.Min(animationEvent.time / AnimationPlaybackSpeed, ReleaseInputLockFallbackSeconds));
+                        return Mathf.Max(0.1f, Mathf.Min(animationEvent.time / BaseAnimationPlaybackSpeed, ReleaseInputLockFallbackSeconds));
         return Mathf.Max(0.1f, ReleaseInputLockFallbackSeconds);
     }
 
@@ -439,29 +444,33 @@ public sealed class BowAttackController : NetworkBehaviour
         OnBowReleaseArrow();
         RestartReleaseLockFallback();
         if (_animator == null) return;
+        ApplyBowPlaybackSpeed();
         _animator.speed = 1f;
         if (!string.IsNullOrWhiteSpace(ReleaseTriggerName)) _animator.ResetTrigger(ReleaseTriggerName);
         int layer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
         string state = _settings != null ? _settings.ReleaseAnimationStateName : "Bow_Release";
         if (_animator.HasState(layer, Animator.StringToHash(state)))
-            _animator.CrossFadeInFixedTime(state, .08f, layer, 0f);
+            _animator.CrossFadeInFixedTime(state, .08f / _chargeSpeedMultiplier, layer, 0f);
         else if (!string.IsNullOrWhiteSpace(ReleaseTriggerName)) _animator.SetTrigger(ReleaseTriggerName);
     }
 
     private void PlayBowAnimationLocal(string stateName, Vector3 aimDirection)
     {
-        if (_animator == null || string.IsNullOrWhiteSpace(stateName))
+        if (string.IsNullOrWhiteSpace(stateName))
             return;
 
         if (stateName == DrawAnimationStateName)
         {
+            _chargeSpeedMultiplier = ResolveCharacterAttackSpeed();
             _isVisuallyCharging = true;
             _isAimHoldReady = false;
-            _drawReadyAt = Time.time + _drawDuration + .05f;
+            _drawReadyAt = Time.time + (_drawDuration + .05f) / _chargeSpeedMultiplier;
             SetHandArrowVisible(false);
             ApplyBowAimDirection(aimDirection);
             SetBowAimRigActive(true);
         }
+        if (_animator == null) return;
+        ApplyBowPlaybackSpeed();
         int safeLayer = Mathf.Clamp(AnimationLayer, 0, _animator.layerCount - 1);
         int stateHash = Animator.StringToHash(stateName);
         if (!_animator.HasState(safeLayer, stateHash))
@@ -749,7 +758,7 @@ public sealed class BowAttackController : NetworkBehaviour
         if (_reticleView == null)
             return;
 
-        float elapsed = Mathf.Max(0f, (float)(SkillTime - _chargeStartedAt));
+        float elapsed = Mathf.Max(0f, (float)(SkillTime - _chargeStartedAt)) * _chargeSpeedMultiplier;
         float denominator = Mathf.Max(0.001f,
             _activeChargeData.MaximumBowDamageChargeSeconds - _activeChargeData.MinimumBowChargeSeconds);
         float damageProgress = elapsed < _activeChargeData.MinimumBowChargeSeconds
@@ -779,7 +788,7 @@ public sealed class BowAttackController : NetworkBehaviour
     private void RestartReleaseLockFallback()
     {
         StopReleaseLockFallback();
-        float seconds = ReleaseInputLockFallbackSeconds;
+        float seconds = ReleaseInputLockFallbackSeconds / _chargeSpeedMultiplier;
         if (seconds > 0f)
             _releaseLockFallbackRoutine = StartCoroutine(CoReleaseLockFallback(seconds));
     }
@@ -866,7 +875,19 @@ public sealed class BowAttackController : NetworkBehaviour
         ? _animationLayerOverride
         : _settings != null ? _settings.AnimationLayer : 1;
 
-    private float AnimationPlaybackSpeed => _settings != null ? _settings.AnimationPlaybackSpeed : 3f;
+    private float ResolveCharacterAttackSpeed() =>
+        GetComponent<BattlePvp.Stats.StatManager>()?.CharacterModifiers.AttackSpeed ?? 1f;
+
+    private void ApplyBowPlaybackSpeed()
+    {
+        if (_animator == null) return;
+        foreach (var parameter in _animator.parameters)
+            if (parameter.name == "BowPlaybackSpeed" && parameter.type == AnimatorControllerParameterType.Float)
+            { _animator.SetFloat(parameter.nameHash, AnimationPlaybackSpeed); break; }
+    }
+
+    private float BaseAnimationPlaybackSpeed => _settings != null ? _settings.AnimationPlaybackSpeed : 3f;
+    private float AnimationPlaybackSpeed => BaseAnimationPlaybackSpeed * _chargeSpeedMultiplier;
 
     private float ProjectileSpeed => _projectileSpeedOverride > 0f
         ? _projectileSpeedOverride

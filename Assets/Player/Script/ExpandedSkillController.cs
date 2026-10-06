@@ -183,7 +183,7 @@ namespace BattlePvp.Combat
             _movement?.RemoveMovementEffect(MoveSource); _lastMoveMultiplier = -1;
             _visuals?.ResetOwnerEffects();
         }
-        private bool AliveReady => _health != null && !_health.IsDead && _stats != null && (!NetworkServer.active || _stats.HasServerStats);
+        private bool AliveReady => _health != null && !_health.IsDead && _stats != null && (!NetworkServer.active || _stats.HasServerCombatStats);
         public Vector3 ProjectileOrigin => transform.position + Vector3.up * (1.35f * Mathf.Abs(transform.lossyScale.y) - (_movement != null ? _movement.CrouchCameraDrop : 0));
         private Vector3 Aim(JobSkillKind kind)
         {

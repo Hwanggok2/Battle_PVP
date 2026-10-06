@@ -16,10 +16,15 @@ namespace BattlePvp.Combat
         private readonly Dictionary<Renderer, Material[]> _original = new();
         private readonly Dictionary<Renderer, Material[]> _faded = new();
         private int _mode;
+        private BattlePvp.Characters.PlayerAppearance _appearance;
+        private int _visualRevision = -1;
         public SkillStealthPresentation(Transform root) => _root = root;
 
         public void Apply(bool stealth, bool local, float alpha = .5f)
         {
+            if (_appearance == null && _root != null) _appearance = _root.GetComponent<BattlePvp.Characters.PlayerAppearance>();
+            if (_appearance != null && _visualRevision != _appearance.VisualRevision)
+            { Restore(); _mode = -1; _visualRevision = _appearance.VisualRevision; }
             int mode = stealth ? (local ? 1 : 2) : 0;
             if (_mode != mode) { Restore(); _mode = mode; }
             if (mode == 0 || _root == null) return;

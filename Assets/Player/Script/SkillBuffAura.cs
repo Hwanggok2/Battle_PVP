@@ -12,6 +12,8 @@ namespace BattlePvp.Combat
         private Material _material;
         private PlayerCombat _combat;
         private HealthSystem _health;
+        private BattlePvp.Characters.PlayerAppearance _appearance;
+        private int _visualRevision = -1;
         private Transform _hips, _head;
         private static readonly int ColorId = Shader.PropertyToID("_BaseColor"), PhaseId = Shader.PropertyToID("_Phase"), CenterId = Shader.PropertyToID("_Center"), WaveId = Shader.PropertyToID("_Moving");
         private readonly MaterialPropertyBlock _properties = new();
@@ -21,11 +23,20 @@ namespace BattlePvp.Combat
         {
             if (_combat == null) _combat = owner.GetComponent<PlayerCombat>();
             if (_health == null) _health = owner.GetComponent<HealthSystem>();
+            if (_appearance == null) _appearance = owner.GetComponent<BattlePvp.Characters.PlayerAppearance>();
             bool visible = !concealed && (_health == null || !_health.IsDead);
             _symbols.Tick(owner, _combat, visible);
             bool active = TryColor(owner, out Color color) && visible;
             if (active && _material == null) Create(owner.transform);
             if (_material == null) return;
+            if (_appearance != null && _visualRevision != _appearance.VisualRevision)
+            {
+                _visualRevision = _appearance.VisualRevision;
+                bool replaced = _bodies.Count == 0;
+                foreach (var pair in _bodies)
+                    replaced |= pair.body == null || pair.body.sharedMesh == null || !pair.body.gameObject.activeInHierarchy;
+                if (replaced) { ClearBodies(); Create(owner.transform); }
+            }
             // The owner remains translucent during stealth; observers never see this aura.
             color.a = owner.IsStealthed ? .5f : 1f;
             _properties.SetColor(ColorId, color);
@@ -34,6 +45,16 @@ namespace BattlePvp.Combat
             foreach (var pair in _bodies)
             {
                 if (pair.glow == null) continue;
+                if (pair.body != null && pair.glow.sharedMesh != pair.body.sharedMesh)
+                {
+                    pair.glow.sharedMesh = null;
+                    pair.glow.sharedMesh = pair.body.sharedMesh;
+                    pair.glow.bones = pair.body.bones; pair.glow.rootBone = pair.body.rootBone;
+                    var bounds = pair.body.localBounds; bounds.Expand(.4f); pair.glow.localBounds = bounds;
+                    var materials = new Material[pair.body.sharedMesh != null ? pair.body.sharedMesh.subMeshCount : 0];
+                    for (int i = 0; i < materials.Length; i++) materials[i] = _material;
+                    pair.glow.sharedMaterials = materials;
+                }
                 pair.glow.enabled = active && pair.body != null && pair.body.enabled && !pair.body.forceRenderingOff;
                 if (pair.glow.enabled)
                 { _properties.SetFloat(WaveId, pair.wave ? 1 : 0); pair.glow.SetPropertyBlock(_properties); }
@@ -63,14 +84,14 @@ namespace BattlePvp.Combat
 
         private void Create(Transform owner)
         {
-            _material = new Material(Resources.Load<Shader>("CombatVfx/BuffAura")) { name = "Skill body radiance" };
+            if (_material == null) _material = new Material(Resources.Load<Shader>("CombatVfx/BuffAura")) { name = "Skill body radiance" };
             var animator = owner.GetComponentInChildren<Animator>();
             if (animator != null && animator.isHuman)
             { _hips = animator.GetBoneTransform(HumanBodyBones.Hips); _head = animator.GetBoneTransform(HumanBodyBones.Head); }
             // Share the original skin and bones, so crouching, Fortify and attacks keep the exact silhouette.
             foreach (var body in owner.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
-                if (body.sharedMesh == null || body.name == "Skill buff body glow" || body.name == "Skill buff radiance" || body.GetComponentInParent<Canvas>() != null) continue;
+                if (!body.gameObject.activeInHierarchy || body.sharedMesh == null || body.name == "Skill buff body glow" || body.name == "Skill buff radiance" || body.GetComponentInParent<Canvas>() != null) continue;
                 for (int shell = 0; shell < 2; shell++)
                 {
                     var go = new GameObject(shell == 0 ? "Skill buff body glow" : "Skill buff radiance") { layer = body.gameObject.layer };
@@ -93,9 +114,13 @@ namespace BattlePvp.Combat
         public void Dispose()
         {
             _symbols.Dispose();
+            ClearBodies(); Destroy(_material); _material = null;
+        }
+        private void ClearBodies()
+        {
             foreach (var pair in _bodies)
                 if (pair.glow != null) { pair.glow.enabled = false; Destroy(pair.glow.gameObject); }
-            _bodies.Clear(); Destroy(_material); _material = null;
+            _bodies.Clear();
         }
         private static void Destroy(UnityEngine.Object value)
         {

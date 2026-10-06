@@ -34,6 +34,16 @@ namespace BattlePvp.Stats
         private double _nextStatRequestAt;
         private double _initialStatsDeadline;
         public bool HasServerStats => _serverStatsInitialized;
+        private BattlePvp.Characters.PlayerAppearance _combatAppearance;
+        public bool HasServerCombatStats
+        {
+            get
+            {
+                if (!HasServerStats) return false;
+                if (_combatAppearance == null) _combatAppearance = GetComponent<BattlePvp.Characters.PlayerAppearance>();
+                return _combatAppearance == null || _combatAppearance.HasServerSelectionReady;
+            }
+        }
         public bool IsAllocationComplete => _serverStatsInitialized && StatValidation.IsCompletePreset(_stats);
         private uint _nextApplyRequestId;
         private uint _pendingApplyRequestId;
@@ -149,12 +159,38 @@ namespace BattlePvp.Stats
         /// </summary>
         public StatContainer GetStatsCopy() => _stats;
 
+        public BattlePvp.Characters.CharacterStatModifiers CharacterModifiers
+        {
+            get
+            {
+                var appearance = GetComponent<BattlePvp.Characters.PlayerAppearance>();
+                var definition = appearance != null ? BattlePvp.Characters.CharacterCatalog.Instance?.Find(appearance.SelectedId) : null;
+                return definition != null ? definition.CombatModifiers.Validated : BattlePvp.Characters.CharacterStatModifiers.Baseline;
+            }
+        }
+
+        internal void RefreshCharacterStats()
+        {
+            var health = GetComponent<BattlePvp.Combat.HealthSystem>();
+            bool initializedHealth = health != null && health.MaxHp > 0f && health.CurrentHp > 0f;
+            float hpRatio = health != null && health.MaxHp > 0 ? health.CurrentHp / health.MaxHp : 1f;
+            _derivedStatsDirty = true;
+            DerivedStatsChanged?.Invoke();
+            // Changing a lobby character preserves health percentage, including existing overflow.
+            // SetCurrentHp itself enforces server/offline ownership and rejects dead players.
+            if (initializedHealth)
+            {
+                health.RefreshFromStats(keepCurrentHpFlat: true);
+                health.SetCurrentHp(health.MaxHp * hpRatio);
+            }
+        }
+
         public DerivedCombatStats GetDerivedStats()
         {
             StatBalanceConfig config = StatBalanceCalculator.Config;
             if (_derivedStatsDirty || _cachedBalanceConfig != config || _cachedBalanceRevision != config.Revision)
             {
-                _cachedDerivedStats = StatBalanceCalculator.Calculate(GetFinalTotal(StatKind.STR), GetFinalTotal(StatKind.CON), GetFinalTotal(StatKind.AGI), GetFinalTotal(StatKind.DEF), CurrentIdentity);
+                _cachedDerivedStats = CharacterModifiers.Apply(StatBalanceCalculator.Calculate(GetFinalTotal(StatKind.STR), GetFinalTotal(StatKind.CON), GetFinalTotal(StatKind.AGI), GetFinalTotal(StatKind.DEF), CurrentIdentity));
                 _cachedBalanceConfig = config;
                 _cachedBalanceRevision = config.Revision;
                 _derivedStatsDirty = false;
@@ -169,7 +205,7 @@ namespace BattlePvp.Stats
         public void CalculatePreviewStats(StatContainer virtualStats, out float previewAtk, out float previewDef, out float previewMaxHp, out float previewPene, out float previewRegen, out float previewMoveSpd, out float previewAtkSpd)
         {
             Identity vId = Calculator.ResolveIdentity(virtualStats, out _);
-            DerivedCombatStats derived = StatBalanceCalculator.Calculate(virtualStats, vId);
+            DerivedCombatStats derived = CharacterModifiers.Apply(StatBalanceCalculator.Calculate(virtualStats, vId));
             previewAtk = derived.AttackPower;
             previewDef = derived.DefenseEfficiencyPercent;
             previewMaxHp = derived.MaxHp;
@@ -243,7 +279,7 @@ namespace BattlePvp.Stats
 
         public void BindAsLocalScenePlayer()
         {
-            if (!NetworkClient.active && !NetworkServer.active) SetLocal(this);
+            if ((!NetworkClient.active && !NetworkServer.active)) SetLocal(this);
         }
 
         private void OnGlobalStatsUpdated(StatContainer updatedStats)
@@ -381,7 +417,7 @@ namespace BattlePvp.Stats
                 CmdUpdateStats(stats, _pendingApplyRequestId);
                 return;
             }
-            if (!NetworkClient.active && !NetworkServer.active)
+            if ((!NetworkClient.active && !NetworkServer.active))
             {
                 bool valid = StatValidation.IsValidPreset(stats);
                 if (valid) InternalApplyStats(stats, true);

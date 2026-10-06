@@ -112,7 +112,7 @@ namespace BattlePvp.Combat
         private void OnEnable()
         {
             RefreshFromStats(keepCurrentHpFlat: true);
-            if (!NetworkServer.active && !NetworkClient.active && !IsDead)
+            if (((!NetworkServer.active && !NetworkClient.active)) && !IsDead)
                 SetCurrentHp(_maxHp);
 
             if (_statManager != null)
@@ -206,7 +206,7 @@ namespace BattlePvp.Combat
 
             if (_statManager != null)
             {
-                _defenseRate = _statManager.GetFinalTotal(StatKind.DEF);
+                _defenseRate = _statManager.GetDerivedStats().DefenseEfficiencyPercent;
             }
 
             if (!keepCurrentHpFlat && CanChangeHealth && !IsDead)
@@ -320,7 +320,7 @@ namespace BattlePvp.Combat
         public DamageResult ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
         {
             if (!CanChangeHealth || IsDead || isInvincible || SkillTime < _skillInvulnerableUntil ||
-                (NetworkServer.active && _statManager != null && !_statManager.HasServerStats) ||
+                (NetworkServer.active && _statManager != null && !_statManager.HasServerCombatStats) ||
                 (NetworkServer.active && connectionToClient != null && !connectionToClient.isReady) ||
                 !float.IsFinite(amount) || amount <= 0f || !float.IsFinite(attackerAttackPower) ||
                 attackerAttackPower < 0f || !CombatValidation.IsFinite(hitPosition))

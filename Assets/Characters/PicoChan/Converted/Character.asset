@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4489af059a54e2248b3fbcaf1cdba142, type: 3}
+  m_Name: Character
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
+  Id: picochan
+  DisplayName: PicoChan
+  Description: "소형 · 가장 빠른 기동, 낮은 체력과 방어력"
+  Attribution: "Picola Inc. \xB7 Unity Asset Store"
+  SourceUrl: https://assetstore.unity.com/packages/3d/characters/humanoids/picochan-220038
+  LicenseUrl: https://unity.com/legal/as-terms
+  Portrait: {fileID: 21300000, guid: 01ccd15ff8ce39c41b1b5b70c59de69c, type: 3}
+  UseDefaultBody: 0
+  CombatModifiers:
+    Health: 0.85
+    Defense: 0.85
+    Attack: 0.9
+    MoveSpeed: 1.12
+    AttackSpeed: 1.12
+  VisualPrefab: {fileID: 7404204667234702083, guid: d4d01a79c1bc8fb428f1226f4d3ff2fa, type: 3}
+  Body: {fileID: 0}
+  Materials: []

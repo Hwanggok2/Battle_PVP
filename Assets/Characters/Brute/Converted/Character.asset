@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4489af059a54e2248b3fbcaf1cdba142, type: 3}
+  m_Name: Character
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
+  Id: brute
+  DisplayName: "바바리안"
+  Description: "대형 · 높은 체력과 공격력\n낮은 방어력 · 빠른 공격, 느린 이동"
+  Attribution: Adobe Mixamo
+  SourceUrl: https://www.mixamo.com/
+  LicenseUrl: https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
+  Portrait: {fileID: 21300000, guid: cf11e1dd50737f94ab36d1cc0cd7ca65, type: 3}
+  UseDefaultBody: 0
+  CombatModifiers:
+    Health: 1.2
+    Defense: 0.9
+    Attack: 1.15
+    MoveSpeed: 0.9
+    AttackSpeed: 1.1
+  VisualPrefab: {fileID: 6522545714047363182, guid: 33de0ad5e00ce214899bffdd23c7a6fc, type: 3}
+  Body: {fileID: 0}
+  Materials: []

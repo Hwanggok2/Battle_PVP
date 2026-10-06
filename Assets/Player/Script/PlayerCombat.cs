@@ -240,7 +240,7 @@ public class PlayerCombat : NetworkBehaviour
     public bool IsAimingBow => _bowAttackController != null && _bowAttackController.IsBusy;
     internal Vector3 ReplicatedLookDirection => Quaternion.AngleAxis(_networkLookPitch, transform.right) * transform.forward;
     private bool HasAuthoritativeCombatStats => !NetworkServer.active ||
-        (_statManager != null && _statManager.HasServerStats);
+        (_statManager != null && _statManager.HasServerCombatStats);
     public bool CanServerUseBow => NetworkServer.active && isActiveAndEnabled &&
         HasAuthoritativeCombatStats &&
         _healthSystem != null && !_healthSystem.IsDead && IsPolymath() && _isBowEquipped &&

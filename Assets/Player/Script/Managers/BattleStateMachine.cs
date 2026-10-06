@@ -155,7 +155,7 @@ namespace BattlePvp.Networking
                         continue;
                     }
                     var stats = connection.identity != null ? connection.identity.GetComponent<BattlePvp.Stats.StatManager>() : null;
-                    if (connection.isReady && stats != null && stats.HasServerStats)
+                    if (connection.isReady && stats != null && stats.HasServerCombatStats)
                         startingPlayers.RemoveAt(i);
                     else if (Time.realtimeSinceStartupAsDouble >= readyDeadline)
                     {

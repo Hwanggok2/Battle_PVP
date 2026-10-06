@@ -230,11 +230,13 @@ namespace BattlePvp.CameraLogic
             if (_target == null)
                 return transform.position;
 
-            if (IsLobby) return _target.position + Vector3.up * (1.2f - _crouchDrop) + activeRotation * Vector3.back * _lobbyDistance;
+            float visualScale = BattlePvp.Characters.CharacterPoseFollower.GetViewScale(_target);
+            float scale = visualScale * Mathf.Abs(_target.lossyScale.y);
+            if (IsLobby) return _target.position + Vector3.up * (1.2f * scale - _crouchDrop * visualScale) + activeRotation * Vector3.back * (_lobbyDistance * scale);
 
-            Vector3 pivotPosition = _target.position + Vector3.up * (1.5f - _crouchDrop);
+            Vector3 pivotPosition = _target.position + Vector3.up * (1.5f * scale - _crouchDrop * visualScale);
             Vector3 activeOffset = _useTemporaryOffset ? _temporaryOffset : Offset;
-            return pivotPosition + (activeRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y);
+            return pivotPosition + ((activeRotation * new Vector3(activeOffset.x, 0f, activeOffset.z)) + (Vector3.up * activeOffset.y)) * scale;
         }
     }
 }

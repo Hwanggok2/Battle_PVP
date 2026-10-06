@@ -99,7 +99,7 @@ public sealed class AttackProcessor : MonoBehaviour
             return;
         if (_attackerStats == null || defenderStats == null)
             return;
-        if (NetworkServer.active && !_attackerStats.HasServerStats)
+        if (NetworkServer.active && !_attackerStats.HasServerCombatStats)
             return;
         if (defender == null || (defender is MonoBehaviour mb && mb == null))
             return;
@@ -120,17 +120,15 @@ public sealed class AttackProcessor : MonoBehaviour
         penetrationPercent = Clamp(penetrationPercent, 0f, 100f);
 
         // 2) DEF_Eff 구성 (CurrentDEF + BonusEff 승산 중첩 + 0.75 hardcap)
-        float defenderDefFinal = defenderStats.GetFinalTotal(StatKind.DEF);
-        float defenderCurrentDefNormalized = defenderDefFinal / 100f; // editor sim과 동일한 스케일링 가정
-
         DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
-        float bonusEffNormalized = defenderDerived.DefenseBonusNormalized;
+        // The derived value includes identity bonuses and the selected character's defense.
+        float defenderCurrentDefNormalized = defenderDerived.DefenseEfficiencyPercent / 100f;
 
         // 3) 최종 피해 계산 (reference-formulae.md의 Prediction은 DamageCalculator에 위임)
         float finalDamage = _damageCalculator.PredictFinalDamage(
             attackPower,
             defenderCurrentDefNormalized,
-            bonusEffNormalized,
+            0f,
             penetrationPercent);
 
         finalDamage *= defenderDerived.IncomingDamageMultiplier;
@@ -164,7 +162,7 @@ public sealed class AttackProcessor : MonoBehaviour
 
     public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0)
     {
-        if (_attackerStats == null || (NetworkServer.active && !_attackerStats.HasServerStats))
+        if (_attackerStats == null || (NetworkServer.active && !_attackerStats.HasServerCombatStats))
             return false;
         if (!float.IsFinite(damageMultiplier) || damageMultiplier <= 0f || defenderStats == null || defender == null ||
             (defender is MonoBehaviour defenderBehaviour && defenderBehaviour == null))
@@ -177,10 +175,9 @@ public sealed class AttackProcessor : MonoBehaviour
         float attackPower = _currentAtk * damageMultiplier;
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
-        float defenderDef = defenderStats.GetFinalTotal(StatKind.DEF) / 100f;
         DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
-        float bonusDefense = defenderDerived.DefenseBonusNormalized;
-        float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, bonusDefense, Mathf.Clamp(_currentPene, 0f, 100f));
+        float defenderDef = defenderDerived.DefenseEfficiencyPercent / 100f;
+        float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, 0f, Mathf.Clamp(_currentPene, 0f, 100f));
         finalDamage *= defenderDerived.IncomingDamageMultiplier;
         finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
         if (finalDamage <= 0f)

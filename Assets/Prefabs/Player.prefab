@@ -5177,6 +5177,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 9100000, guid: 548223377f908d545b343ac2efc141df, type: 2}
     - target: {fileID: 5866666021909216657, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      propertyPath: m_CullingMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       propertyPath: m_WarningMessage
       value: 
       objectReference: {fileID: 0}
@@ -5647,6 +5651,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5192704002929282936}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5664206880378288638}
   m_SourcePrefab: {fileID: 100100000, guid: 06971eb51a256cc40bfb279440136224, type: 3}
 --- !u!4 &1197372836843505602 stripped
 Transform:
@@ -6306,6 +6313,22 @@ MonoBehaviour:
   KnifeReady: 0
   TrapReady: 0
   CopiedKind: -1
+--- !u!114 &5664206880378288638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e3040e85e34cf834aa7f02d944ef337b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.PlayerAppearance
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _body: {fileID: 7573741147493321578}
 --- !u!4 &2868093296466155944 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3811800481406761752, guid: 06971eb51a256cc40bfb279440136224, type: 3}
@@ -6334,6 +6357,11 @@ Transform:
 --- !u!4 &7542234731812669008 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -324020059923274528, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+  m_PrefabInstance: {fileID: 1381408816253559472}
+  m_PrefabAsset: {fileID: 0}
+--- !u!137 &7573741147493321578 stripped
+SkinnedMeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 8804795166771358170, guid: 06971eb51a256cc40bfb279440136224, type: 3}
   m_PrefabInstance: {fileID: 1381408816253559472}
   m_PrefabAsset: {fileID: 0}
 --- !u!4 &8541180397250211595 stripped
