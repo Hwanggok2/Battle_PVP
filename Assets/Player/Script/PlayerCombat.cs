@@ -234,6 +234,7 @@ public class PlayerCombat : NetworkBehaviour
     private AttackData CurrentMeleeData => _meleeAnimationData != null ? _meleeAnimationData :
         comboList != null && currentComboIndex >= 0 && currentComboIndex < comboList.Length ? comboList[currentComboIndex] : null;
     public bool IsServerTaunted => _tauntedByNetId != 0 && SkillTime < _tauntedUntil;
+    public bool IsTauntReady => _advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && SkillTime < _advancedActiveUntil;
 
     public JobSkillData ServerBowData => _polymathWeaponSwapSkillData;
     public bool IsAimingBow => _bowAttackController != null && _bowAttackController.IsBusy;
@@ -1478,7 +1479,7 @@ public class PlayerCombat : NetworkBehaviour
         if (IsMonostatAgiPoisonCoatingActive && defender != null)
             ApplyMonostatAgiPoisonStack(defender, hitPosition);
 
-        if (_advancedActiveSkillKey == (int)JobSkillKind.MonostatDefTaunt && SkillTime < _advancedActiveUntil)
+        if (actualDamage > 0f && defender is Component && IsTauntReady)
         {
             JobSkillData taunt = MonostatDefSkillData;
             _advancedActiveSkillKey = -1;

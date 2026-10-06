@@ -41,14 +41,14 @@
       "cooldown": 30,
       "params": {
         "InputLockSeconds": 0,
-        "TauntReadyDurationSeconds": 30,
+        "TauntReadyDurationSeconds": 10,
         "TauntDurationSeconds": 2.5,
         "TauntStopDistance": 1.2,
         "TauntIncomingDamageMultiplier": 0.7,
         "TauntReflectMultiplier": 2,
         "TauntReflectHealthCapRatio": 0.14
       },
-      "args": "TauntDurationSeconds",
+      "args": "TauntReadyDurationSeconds,TauntDurationSeconds,CooldownSeconds",
       "source": "기존 에셋 유지; 프리셋 0은 기본 배분 사용",
       "enabled": true
     },
@@ -291,13 +291,13 @@
       "id": "DEF_Bash",
       "kind": 107,
       "cast": 0,
-      "duration": 30,
-      "cooldown": 10,
+      "duration": 10,
+      "cooldown": 15,
       "params": {
         "StunSeconds": 3,
-        "IncomingMultiplier": 2
+        "IncomingMultiplier": 1.6
       },
-      "args": "StunSeconds,IncomingMultiplier,DurationSeconds",
+      "args": "StunSeconds,IncomingMultiplier,DurationSeconds,CooldownSeconds",
       "source": "사용자 지정; 미지정 값은 초기 밸런스",
       "enabled": true
     },
@@ -409,9 +409,9 @@
     ],
     [
       "DEF_Taunt_Desc",
-      "다음 검 적중 시 {0:0.#}초간 적을 끌어들입니다. 받는 피해 감소와 반사 강화가 적용됩니다.",
-      "Your next sword hit forces the enemy toward you for {0:0.#}s and grants damage reduction and stronger reflection.",
-      1
+      "{0:0.#}초 안에 적중한 다음 공격이 적을 {1:0.#}초간 도발하며, 받는 피해 감소·반사 강화가 적용됩니다. 대기 중 무기는 주황색. 쿨타임 {2:0.#}초.",
+      "Your next hit within {0:0.#}s taunts for {1:0.#}s, reducing incoming damage and increasing reflection. The weapon glows orange while ready. Cooldown: {2:0.#}s.",
+      3
     ],
     [
       "POLY_Weapon_Name",
@@ -577,9 +577,9 @@
     ],
     [
       "DEF_Bash_Desc",
-      "다음 공격 적중 시 {0:0.#}초간 이동·공격을 막고, 해당 시간에 적이 받는 피해를 {1:0%}로 만듭니다. 준비 상태는 {2:0.#}초 유지됩니다.",
-      "Your next hit stuns for {0:0.#}s and makes the target take {1:0%} damage during the stun. The ready effect lasts {2:0.#}s.",
-      3
+      "{2:0.#}초 안에 적중한 다음 공격이 적을 {0:0.#}초간 기절시키고, 기절 중 받는 피해를 {1:0.#}배로 만듭니다. 대기 중 무기는 파란색. 쿨타임 {3:0.#}초.",
+      "Your next hit within {2:0.#}s stuns for {0:0.#}s and increases damage taken to {1:0.#}x during the stun. The weapon glows blue while ready. Cooldown: {3:0.#}s.",
+      4
     ],
     [
       "DEF_Thorns_Name",

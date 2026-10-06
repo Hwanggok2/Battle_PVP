@@ -193,7 +193,7 @@ namespace BattlePvp.Combat
                 return default;
 
             if (source != DamageSource.Fixed && Now < _vulnerableUntil)
-                amount *= ExpandedSkillController.Value(JobSkillKind.Bash,"IncomingMultiplier",2);
+                amount *= ExpandedSkillController.Value(JobSkillKind.Bash,"IncomingMultiplier",1.6f);
 
             // 실제 체력 차감
             float hpBeforeDamage = _currentHp;

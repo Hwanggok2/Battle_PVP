@@ -192,7 +192,8 @@ namespace BattlePvp.Combat
         {
             if (_skillSwordRenderers != null && _skillSwordRenderers.Length > 0) return;
             _skillSwordRenderers = _sword != null
-                ? _sword.GetComponentsInChildren<Renderer>(true) : Array.Empty<Renderer>();
+                ? Array.FindAll(_sword.GetComponentsInChildren<Renderer>(true), renderer => renderer.name != "Bash weapon glow")
+                : Array.Empty<Renderer>();
         }
     }
 }

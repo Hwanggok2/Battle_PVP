@@ -5,6 +5,60 @@ const root = path.resolve(import.meta.dirname, '../..');
 const report = path.join(root, 'Reports/SkillInteractions');
 await fs.mkdir(report, {recursive:true});
 const skill = await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'GameData/GameData_Skill.xlsx')));
+if(process.argv.includes('--defense-balance') || process.argv.includes('--defense-preview')) {
+ const preview=process.argv.includes('--defense-preview');
+ const folder=path.join(root,'Reports/WaitingAndDefense'); await fs.mkdir(folder,{recursive:true});
+ const strings=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'GameData/GameData_String.xlsx')));
+ const defs=skill.worksheets.getItem('SkillDefinition'), params=skill.worksheets.getItem('SkillParameter'), texts=strings.worksheets.getItem('SkillString');
+ const snapshot=wb=>wb.worksheets.items.map(s=>({name:s.name,values:s.getUsedRange().values,formulas:s.getUsedRange().formulas}));
+ const expected=[snapshot(skill),snapshot(strings)];
+ const find=(s,key,col=0)=>{const row=s.getUsedRange().values.findIndex(r=>r[col]===key)+1;if(!row)throw new Error(key);return row;};
+ const edits=[
+  ['DEF_Taunt','TauntReadyDurationSeconds,TauntDurationSeconds,CooldownSeconds',
+   '{0:0.#}초 안에 적중한 다음 공격이 적을 {1:0.#}초간 도발하며, 받는 피해 감소·반사 강화가 적용됩니다. 대기 중 무기는 주황색. 쿨타임 {2:0.#}초.',
+   'Your next hit within {0:0.#}s taunts for {1:0.#}s, reducing incoming damage and increasing reflection. The weapon glows orange while ready. Cooldown: {2:0.#}s.'],
+  ['DEF_Bash','StunSeconds,IncomingMultiplier,DurationSeconds,CooldownSeconds',
+   '{2:0.#}초 안에 적중한 다음 공격이 적을 {0:0.#}초간 기절시키고, 기절 중 받는 피해를 {1:0.#}배로 만듭니다. 대기 중 무기는 파란색. 쿨타임 {3:0.#}초.',
+   'Your next hit within {2:0.#}s stuns for {0:0.#}s and increases damage taken to {1:0.#}x during the stun. The weapon glows blue while ready. Cooldown: {3:0.#}s.']
+ ];
+ const put=(book,sheet,row,col,value)=>{sheet.getRangeByIndexes(row-1,col,1,1).values=[[value]];expected[book].find(s=>s.name===sheet.name).values[row-1][col]=value;};
+ if(!preview) {
+  for(const [id,args,ko,en] of edits) {
+   const d=find(defs,id,1), t=find(texts,id+'_Desc');
+   put(0,defs,d,5,args);
+   if(id==='DEF_Bash') {put(0,defs,d,7,10);put(0,defs,d,8,15);}
+   put(1,texts,t,1,ko);put(1,texts,t,2,en);put(1,texts,t,3,args.split(',').length);
+  }
+  for(const [id,key,value] of [['DEF_Taunt','TauntReadyDurationSeconds',10],['DEF_Bash','IncomingMultiplier',1.6]]) {
+   const r=params.getUsedRange().values.findIndex(row=>row[0]===id && row[1]===key)+1;if(!r)throw new Error(id+'/'+key);
+   put(0,params,r,2,value);
+  }
+  for(const [index,book,name] of [[0,skill,'Skill'],[1,strings,'String']]) {
+   book.recalculate();
+   const norm=x=>JSON.stringify(x,(k,v)=>v===undefined||v===''?null:v);
+   if(norm(snapshot(book))!==norm(expected[index]))throw new Error('Unexpected changes: '+name);
+   console.log((await book.inspect({kind:'match',searchTerm:'#REF!|#DIV/0!|#VALUE!|#NAME\\?|#N/A|#NUM!|#NULL!',options:{useRegex:true,maxResults:10}})).ndjson);
+   await (await SpreadsheetFile.exportXlsx(book)).save(path.join(root,`GameData/GameData_${name}.xlsx`));
+  }
+  const seedPath=path.join(root,'Tools/SkillExpansion/seed.json'), seed=JSON.parse(await fs.readFile(seedPath,'utf8'));
+  for(const [id,args,ko,en] of edits) {
+   const row=seed.skills.find(s=>s.id===id);row.args=args;
+   if(id==='DEF_Taunt') row.params.TauntReadyDurationSeconds=10;
+   else {row.duration=10;row.cooldown=15;row.params.IncomingMultiplier=1.6;}
+   const text=seed.strings.find(r=>r[0]===id+'_Desc');text.splice(1,3,ko,en,args.split(',').length);
+  }
+  await fs.writeFile(seedPath,JSON.stringify(seed,null,2)+'\n');
+ }
+ for(const [id] of edits) {
+  const d=find(defs,id,1), t=find(texts,id+'_Desc');
+  console.log(JSON.stringify({id,definition:defs.getRange(`A${d}:J${d}`).values,description:texts.getRange(`A${t}:D${t}`).values}));
+  for(const [book,sheet,range,label] of [[skill,'SkillDefinition',`F${d}:I${d}`,'numbers'],[strings,'SkillString',`A${t}:D${t}`,'description']]) {
+   const png=await book.render({sheetName:sheet,range,format:'png',scale:1});
+   await fs.writeFile(path.join(folder,`${id}-${label}-${preview?'before':'after'}.png`),new Uint8Array(await png.arrayBuffer()));
+  }
+ }
+ process.exit(0);
+}
 if(process.argv.includes('--charges') || process.argv.includes('--preview-charges')) {
  const folder=path.join(root,'Reports/SkillCharges'); await fs.mkdir(folder,{recursive:true});
  const strings=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'GameData/GameData_String.xlsx')));

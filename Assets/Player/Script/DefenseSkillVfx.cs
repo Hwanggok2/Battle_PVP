@@ -15,6 +15,7 @@ namespace BattlePvp.Combat
         private Mesh _presetShieldMesh;
         private Material _presetShieldMaterial;
         private HealthSystem _health;
+        private PlayerCombat _combat;
         private double _shieldHitAt = double.NegativeInfinity;
         private Vector3 _shieldHitPoint;
         private readonly MaterialPropertyBlock _impactProperties = new();
@@ -50,11 +51,17 @@ namespace BattlePvp.Combat
             }
             bool thorns=owner.Active(JobSkillKind.Thorns) && !concealed;
             bool bash=owner.Active(JobSkillKind.Bash) && !concealed;
+            if(_combat==null) _combat=owner.GetComponent<PlayerCombat>();
+            bool taunt=_combat!=null && _combat.IsTauntReady && !concealed;
+            bool weaponReady=(bash || taunt) && (_health==null || !_health.IsDead);
             if(thorns && _shield==null) CreateShield(owner.transform);
             if(_shield!=null) _shield.SetActive(thorns);
-            if(bash && _weaponMaterial==null) CreateWeaponGlow(owner.transform);
+            if(weaponReady && _weaponMaterial==null) CreateWeaponGlow(owner.transform);
+            if(_weaponMaterial!=null && weaponReady)
+                _weaponMaterial.SetColor("_BaseColor", bash && taunt ? new Color(1.3f,.2f,2.4f,.6f) :
+                    taunt ? new Color(2.4f,.65f,.06f,.6f) : new Color(.08f,.45f,2.4f,.6f));
             foreach(var pair in _weapons)
-                if(pair.glow!=null) pair.glow.enabled=bash && pair.source!=null && pair.source.enabled && !pair.source.forceRenderingOff;
+                if(pair.glow!=null) pair.glow.enabled=weaponReady && pair.source!=null && pair.source.enabled && !pair.source.forceRenderingOff;
         }
         private void OnShieldHit(Vector3 localPoint)
         {

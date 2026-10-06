@@ -52,7 +52,7 @@ MonoBehaviour:
   - Id: DEF_Taunt
     NameKey: DEF_Taunt_Name
     DescriptionKey: DEF_Taunt_Desc
-    DescriptionArgs: TauntDurationSeconds
+    DescriptionArgs: TauntReadyDurationSeconds,TauntDurationSeconds,CooldownSeconds
     Kind: 3
     Cast: 0.8
     Duration: 0
@@ -61,7 +61,7 @@ MonoBehaviour:
     - Key: InputLockSeconds
       Value: 0
     - Key: TauntReadyDurationSeconds
-      Value: 30
+      Value: 10
     - Key: TauntDurationSeconds
       Value: 2.5
     - Key: TauntStopDistance
@@ -327,16 +327,16 @@ MonoBehaviour:
   - Id: DEF_Bash
     NameKey: DEF_Bash_Name
     DescriptionKey: DEF_Bash_Desc
-    DescriptionArgs: StunSeconds,IncomingMultiplier,DurationSeconds
+    DescriptionArgs: StunSeconds,IncomingMultiplier,DurationSeconds,CooldownSeconds
     Kind: 107
     Cast: 0
-    Duration: 30
-    Cooldown: 10
+    Duration: 10
+    Cooldown: 15
     Parameters:
     - Key: StunSeconds
       Value: 3
     - Key: IncomingMultiplier
-      Value: 2
+      Value: 1.6
   - Id: DEF_Thorns
     NameKey: DEF_Thorns_Name
     DescriptionKey: DEF_Thorns_Desc
@@ -538,12 +538,15 @@ MonoBehaviour:
     Content_Eng: Taunt
     FormatArgCount: 0
   - SearchKey: DEF_Taunt_Desc
-    Content_Kor: "\uB2E4\uC74C \uAC80 \uC801\uC911 \uC2DC {0:0.#}\uCD08\uAC04 \uC801\uC744
-      \uB04C\uC5B4\uB4E4\uC785\uB2C8\uB2E4. \uBC1B\uB294 \uD53C\uD574 \uAC10\uC18C\uC640
-      \uBC18\uC0AC \uAC15\uD654\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4."
-    Content_Eng: Your next sword hit forces the enemy toward you for {0:0.#}s and
-      grants damage reduction and stronger reflection.
-    FormatArgCount: 1
+    Content_Kor: "{0:0.#}\uCD08 \uC548\uC5D0 \uC801\uC911\uD55C \uB2E4\uC74C \uACF5\uACA9\uC774
+      \uC801\uC744 {1:0.#}\uCD08\uAC04 \uB3C4\uBC1C\uD558\uBA70, \uBC1B\uB294 \uD53C\uD574
+      \uAC10\uC18C\xB7\uBC18\uC0AC \uAC15\uD654\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4.
+      \uB300\uAE30 \uC911 \uBB34\uAE30\uB294 \uC8FC\uD669\uC0C9. \uCFE8\uD0C0\uC784
+      {2:0.#}\uCD08."
+    Content_Eng: 'Your next hit within {0:0.#}s taunts for {1:0.#}s, reducing incoming
+      damage and increasing reflection. The weapon glows orange while ready. Cooldown:
+      {2:0.#}s.'
+    FormatArgCount: 3
   - SearchKey: POLY_Weapon_Name
     Content_Kor: "\uBB34\uAE30 \uC2A4\uC651"
     Content_Eng: Weapon Swap
@@ -706,13 +709,15 @@ MonoBehaviour:
     Content_Eng: Crushing Blow
     FormatArgCount: 0
   - SearchKey: DEF_Bash_Desc
-    Content_Kor: "\uB2E4\uC74C \uACF5\uACA9 \uC801\uC911 \uC2DC {0:0.#}\uCD08\uAC04
-      \uC774\uB3D9\xB7\uACF5\uACA9\uC744 \uB9C9\uACE0, \uD574\uB2F9 \uC2DC\uAC04\uC5D0
-      \uC801\uC774 \uBC1B\uB294 \uD53C\uD574\uB97C {1:0%}\uB85C \uB9CC\uB4ED\uB2C8\uB2E4.
-      \uC900\uBE44 \uC0C1\uD0DC\uB294 {2:0.#}\uCD08 \uC720\uC9C0\uB429\uB2C8\uB2E4."
-    Content_Eng: Your next hit stuns for {0:0.#}s and makes the target take {1:0%}
-      damage during the stun. The ready effect lasts {2:0.#}s.
-    FormatArgCount: 3
+    Content_Kor: "{2:0.#}\uCD08 \uC548\uC5D0 \uC801\uC911\uD55C \uB2E4\uC74C \uACF5\uACA9\uC774
+      \uC801\uC744 {0:0.#}\uCD08\uAC04 \uAE30\uC808\uC2DC\uD0A4\uACE0, \uAE30\uC808
+      \uC911 \uBC1B\uB294 \uD53C\uD574\uB97C {1:0.#}\uBC30\uB85C \uB9CC\uB4ED\uB2C8\uB2E4.
+      \uB300\uAE30 \uC911 \uBB34\uAE30\uB294 \uD30C\uB780\uC0C9. \uCFE8\uD0C0\uC784
+      {3:0.#}\uCD08."
+    Content_Eng: 'Your next hit within {2:0.#}s stuns for {0:0.#}s and increases
+      damage taken to {1:0.#}x during the stun. The weapon glows blue while ready.
+      Cooldown: {3:0.#}s.'
+    FormatArgCount: 4
   - SearchKey: DEF_Thorns_Name
     Content_Kor: "\uAC00\uC2DC"
     Content_Eng: Thorns

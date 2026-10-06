@@ -32,7 +32,7 @@ MonoBehaviour:
   _kickKnockbackDistance: 3
   _kickSlowMoveMultiplier: 0.2
   _kickSlowDurationSeconds: 0.65
-  _tauntReadyDurationSeconds: 30
+  _tauntReadyDurationSeconds: 10
   _tauntDurationSeconds: 2.5
   _tauntStopDistance: 1.2
   _tauntIncomingDamageMultiplier: 0.7

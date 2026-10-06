@@ -542,7 +542,7 @@ namespace BattlePvp.EditorTests
         }
         [Test] public void StunBlocksAttacksWhileTrapOnlyLocksMovementAndLook()
         {
-            _skills.ApplyControl(3,false,true); Assert.That(_skills.BlocksCombat,Is.True); Assert.That(_skills.IncomingMultiplier,Is.EqualTo(2));
+            _skills.ApplyControl(3,false,true); Assert.That(_skills.BlocksCombat,Is.True); Assert.That(_skills.IncomingMultiplier,Is.EqualTo(1.6f));
             Assert.That(_player.GetComponent<PlayerManager>().IsSkillInputLocked(SkillInputLockFlags.Attack),Is.True);
             _skills.CancelForLoadout(); _skills.ApplyControl(5,true,false);
             Assert.That(_skills.BlocksCombat,Is.False); Assert.That(_skills.LookLocked,Is.True);
@@ -578,6 +578,72 @@ namespace BattlePvp.EditorTests
             Assert.That((float)effects.GetType().GetMethod("Evaluate").Invoke(effects,new object[]{_skills.Now}),Is.EqualTo(1f));
             combat.NotifyPhysicalDamageDealt(20); Assert.That(_health.CurrentHp,Is.EqualTo(52).Within(.001f));
         }
+        [Test] public void BashReadinessExpiresAfterTenSecondsWhileTheFifteenSecondCooldownRemains()
+        {
+            Equip(3, JobSkillKind.Bash);
+            Assert.That(_skills.TryUse(0, Vector3.forward), Is.True);
+            var state = _skills.Read(JobSkillKind.Bash);
+            Assert.That(state.CooldownUntil - state.ActiveUntil, Is.EqualTo(5).Within(.01));
+            Assert.That(state.ActiveUntil - _skills.Now, Is.InRange(9.5, 10.01));
+            var go = new GameObject("Expired bash target");
+            try
+            {
+                var dummy = EditorTestLifecycle.AddNetwork<DummyHealth>(go);
+                state.ActiveUntil = _skills.Now - .01; _skills.States[(int)JobSkillKind.Bash] = state;
+                _skills.NotifyPhysicalHit(dummy);
+                Assert.That(dummy.IsStunned, Is.False);
+                Assert.That(_skills.Read(JobSkillKind.Bash).CooldownUntil, Is.EqualTo(state.CooldownUntil));
+                Set(_skills, "_nextUse", 0d); Assert.That(_skills.TryUse(0, Vector3.forward), Is.False);
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test] public void TauntReadinessRequiresAHitAndExpiresWithItsWeaponColor()
+        {
+            var combat = _player.GetComponent<PlayerCombat>();
+            Assert.That(SkillPresentationCatalog.Data((int)JobSkillKind.MonostatDefTaunt).TauntReadyDurationSeconds, Is.EqualTo(10));
+            Set(combat, "_advancedActiveSkillKey", (int)JobSkillKind.MonostatDefTaunt);
+            Set(combat, "_advancedActiveUntil", _skills.Now + 10);
+            using var defense = new DefenseSkillVfx();
+            defense.Tick(_skills, false);
+            var glows = _player.GetComponentsInChildren<MeshRenderer>(true).Where(r => r.name == "Bash weapon glow").ToArray();
+            Assert.That(glows, Is.Not.Empty);
+            var material = glows[0].sharedMaterial;
+            Assert.That(material.GetColor("_BaseColor").r, Is.GreaterThan(material.GetColor("_BaseColor").b));
+            combat.NotifyPhysicalDamageDealt(10, null); Assert.That(combat.IsTauntReady, Is.True);
+            var go = new GameObject("Taunt target");
+            try
+            {
+                var dummy = EditorTestLifecycle.AddNetwork<DummyHealth>(go);
+                combat.NotifyPhysicalDamageDealt(0, dummy); Assert.That(combat.IsTauntReady, Is.True);
+                combat.NotifyPhysicalDamageDealt(10, dummy); Assert.That(combat.IsTauntReady, Is.False);
+                Set(combat, "_advancedActiveSkillKey", (int)JobSkillKind.MonostatDefTaunt);
+                Set(combat, "_advancedActiveUntil", _skills.Now - 1);
+                defense.Tick(_skills, false);
+                Assert.That(combat.IsTauntReady, Is.False); Assert.That(glows.All(r => !r.enabled), Is.True);
+            }
+            finally { Object.DestroyImmediate(go); }
+        }
+
+        [Test] public void CombinedReadyColorsKeepTheirOverlayMaterialWhenTauntChangesTheSword()
+        {
+            using var defense = new DefenseSkillVfx();
+            Active(JobSkillKind.Bash); defense.Tick(_skills, false);
+            var glow = _player.GetComponentsInChildren<MeshRenderer>(true).First(r => r.name == "Bash weapon glow");
+            var material = glow.sharedMaterial;
+            var combat = _player.GetComponent<PlayerCombat>();
+            Set(combat, "_advancedActiveSkillKey", (int)JobSkillKind.MonostatDefTaunt);
+            Set(combat, "_advancedActiveUntil", _skills.Now + 10);
+            Call(combat, "RefreshSkillSwordVisualFromState"); defense.Tick(_skills, false);
+            Assert.That(glow.sharedMaterial, Is.SameAs(material));
+            var color = material.GetColor("_BaseColor"); Assert.That(color.r, Is.GreaterThan(1)); Assert.That(color.b, Is.GreaterThan(2));
+            Set(combat, "_advancedActiveUntil", _skills.Now - 1);
+            Call(combat, "RefreshSkillSwordVisualFromState"); defense.Tick(_skills, false);
+            color = material.GetColor("_BaseColor"); Assert.That(color.r, Is.LessThan(.2f)); Assert.That(color.b, Is.GreaterThan(2));
+            defense.Tick(_skills, true); Assert.That(glow.enabled, Is.False);
+            _skills.States.Clear(); defense.Tick(_skills, false); Assert.That(glow.enabled, Is.False);
+        }
+
         [Test] public void BashStunsDummyConsumesOnceAndVulnerabilityExpires()
         {
             var go=new GameObject("Bash dummy");
@@ -591,7 +657,7 @@ namespace BattlePvp.EditorTests
                 _skills.NotifyPhysicalHit(dummy);
                 Assert.That((double)typeof(DummyHealth).GetField("_stunnedUntil",Private).GetValue(dummy),Is.EqualTo(end));
                 var hit=new DamageRequest(10,DamageSource.Physical,0,null,Vector3.up);
-                Assert.That(dummy.ApplyDamage(hit).HpDamage,Is.EqualTo(20));
+                Assert.That(dummy.ApplyDamage(hit).HpDamage,Is.EqualTo(16));
                 Assert.That(dummy.ApplyDamage(new DamageRequest(10,DamageSource.Fixed,0,null,Vector3.up)).HpDamage,Is.EqualTo(10));
                 Set(dummy,"_stunnedUntil",_skills.Now-1); Set(dummy,"_vulnerableUntil",_skills.Now-1);
                 Assert.That(dummy.IsStunned,Is.False); Assert.That(dummy.ApplyDamage(hit).HpDamage,Is.EqualTo(10));

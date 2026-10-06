@@ -93,7 +93,7 @@ namespace BattlePvp.Combat
             (Now < _ambushUntil ? Value(JobSkillKind.Stealth,"AttackMultiplier",1.2f) : 1);
         public float AttackSpeedMultiplier => Berserking ? Value(JobSkillKind.Berserk,"AttackSpeedMultiplier",1.3f) : 1;
         public float IncomingMultiplier => (Active(JobSkillKind.WarCry) ? Value(JobSkillKind.WarCry,"IncomingMultiplier",.8f) : 1) *
-            (Now < _vulnerableUntil ? Value(JobSkillKind.Bash,"IncomingMultiplier",2) : 1);
+            (Now < _vulnerableUntil ? Value(JobSkillKind.Bash,"IncomingMultiplier",1.6f) : 1);
         public float ReflectMultiplier => Active(JobSkillKind.Thorns) ? Value(JobSkillKind.Thorns,"ReflectMultiplier",2) : 1;
         public float RegenMultiplier => Berserking ? 0 :
             (Now < Read(JobSkillKind.Berserk).CooldownUntil ? Value(JobSkillKind.Berserk,"RecoveryRegenMultiplier",.5f) : 1) *
@@ -248,9 +248,9 @@ namespace BattlePvp.Combat
             BreakStealth(); _cancelled = false; TrapReady = false; _trapFromCopy = false;
             if(kind != JobSkillKind.Knife) KnifeReady = false;
             if (kind != JobSkillKind.Knife && kind != JobSkillKind.Charge && kind != JobSkillKind.Berserk)
-                state.CooldownUntil = Now + Value(kind,"CooldownSeconds");
+                state.CooldownUntil = Now + Value(kind,"CooldownSeconds",kind == JobSkillKind.Bash ? 15 : 0);
             if (kind == JobSkillKind.Knife) { KnifeReady = true; return true; }
-            state.ActiveUntil = Now + Value(kind,"DurationSeconds");
+            state.ActiveUntil = Now + Value(kind,"DurationSeconds",kind == JobSkillKind.Bash ? 10 : 0);
             if (kind == JobSkillKind.Berserk) { state.ActiveUntil = double.MaxValue; _nextDrain = Now + 1; }
             if (kind == JobSkillKind.Stealth) state.ActiveUntil = double.MaxValue;
             States[(int)kind] = state;
@@ -643,7 +643,7 @@ namespace BattlePvp.Combat
             if(phase==SkillHudPhase.Ready && deadline>Now && (!UsesCharges(kind) || state.Charges==0)) phase=SkillHudPhase.Cooldown;
             float remaining=(UsesCharges(kind) || phase==SkillHudPhase.Cooldown) && deadline>Now ? (float)(deadline-Now) : 0;
             float duration=UsesCharges(kind) ? RechargeSeconds(kind) : Value(kind,"CooldownSeconds");
-            if(kind==JobSkillKind.Dice && Active(kind)) { remaining=(float)(state.ActiveUntil-Now); duration=Value(kind,"DurationSeconds",15); }
+            if((kind==JobSkillKind.Dice || kind==JobSkillKind.Bash) && Active(kind)) { remaining=(float)(state.ActiveUntil-Now); duration=Value(kind,"DurationSeconds",kind==JobSkillKind.Bash ? 10 : 15); }
             if(kind==JobSkillKind.Trap && IsPlacingTrap) { phase=SkillHudPhase.Casting; remaining=(float)(_trapPlaceUntil-Now); duration=Value(kind,"CastSeconds",1.1f); }
             float fill=phase==SkillHudPhase.Active && kind!=JobSkillKind.Dice && !UsesCharges(kind) ? 1 : Mathf.Clamp01(remaining/Mathf.Max(.01f,duration));
             return new SkillHudState(true,name,slot,2,phase,fill,remaining,data!=null ? data.IconSprite : null);

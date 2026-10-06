@@ -48,7 +48,7 @@ namespace BattlePvp.Combat
         [Range(0f, 1f)] [SerializeField] private float _kickSlowMoveMultiplier = 0.2f;
         [Min(0f)] [SerializeField] private float _kickSlowDurationSeconds = 0.65f;
 
-        [Min(0f)] [SerializeField] private float _tauntReadyDurationSeconds = 30f;
+        [Min(0f)] [SerializeField] private float _tauntReadyDurationSeconds = 10f;
         [Min(0f)] [SerializeField] private float _tauntDurationSeconds = 1.2f;
         [Min(0f)] [SerializeField] private float _tauntStopDistance = 1.8f;
         [Range(0f, 1f)] [SerializeField] private float _tauntIncomingDamageMultiplier = 0.7f;
