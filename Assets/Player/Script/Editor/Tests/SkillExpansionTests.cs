@@ -5,11 +5,14 @@ using System.Linq;
 using System.Reflection;
 using System.Xml.Linq;
 using BattlePvp.Combat;
+using BattlePvp.Characters;
 using BattlePvp.EditorData;
 using BattlePvp.Stats;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
+using UnityEngine.Playables;
 using Object = UnityEngine.Object;
 
 namespace BattlePvp.EditorTests
@@ -815,6 +818,87 @@ namespace BattlePvp.EditorTests
             Equip(0,JobSkillKind.Charge); Assert.That(_skills.TryUse(0,Vector3.forward),Is.True);
             Assert.That(_skills.Read(JobSkillKind.Charge).ActiveUntil-_skills.Now,Is.EqualTo(4).Within(.1));
         }
+        [Test] public void ReadiedKnifeFollowsTheVisibleHandThroughThrowPoses(
+            [Values("default", "brute", "megumi", "security-officer", "casual-1", "picochan")] string character,
+            [Values(1f, 1.2f)] float scale)
+        {
+            _player.transform.SetPositionAndRotation(new Vector3(7, 3, -5), Quaternion.Euler(0, 70, 0));
+            _player.transform.localScale = Vector3.one * scale;
+            var driver = _player.GetComponent<Animator>(); driver.Rebind(); driver.Update(0);
+            using var skin = new CharacterSkin(_player.GetComponentInChildren<SkinnedMeshRenderer>());
+            Assert.That(skin.Apply(CharacterCatalog.Instance.Find(character), out var error), Is.True, error);
+            using var visuals = new SkillExpansionVisuals(_skills);
+            _skills.KnifeReady = true;
+            var graph = PlayableGraph.Create("Knife grip validation");
+            try
+            {
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var output = AnimationPlayableOutput.Create(graph, "Pose", driver);
+                foreach (string motion in new[] { "AGI_KnifeReady", "AGI_Knife" })
+                {
+                    var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>("Assets/Remodel/Skills/Animations/" + motion + ".anim");
+                    var playable = AnimationClipPlayable.Create(graph, clip);
+                    output.SetSourcePlayable(playable); graph.Play();
+                    foreach (float time in new[] { 0f, .08f, .2f, .4f })
+                    {
+                        playable.SetTime(time); graph.Evaluate(0); skin.SyncPose(); visuals.Tick();
+                        var knife = (GameObject)typeof(SkillExpansionVisuals).GetField("_readyKnife", Private).GetValue(visuals);
+                        var native = _player.GetComponentInChildren<CharacterPoseFollower>()?.GetComponentInChildren<Animator>() ?? driver;
+                        var hand = native.GetBoneTransform(HumanBodyBones.RightHand);
+                        var middle = native.GetBoneTransform(HumanBodyBones.RightMiddleProximal) ?? hand.GetComponentsInChildren<Transform>()
+                            .FirstOrDefault(t => t.name == "Fingers1R");
+                        var palm = middle != null ? Vector3.Lerp(hand.position, middle.position, .65f) : hand.position;
+                        Assert.That(knife.transform.parent, Is.SameAs(hand), character + " " + motion);
+                        Assert.That(Vector3.Distance(knife.transform.position, palm),
+                            Is.LessThan(.005f * scale), character + " " + motion + " " + time);
+                        Assert.That(Vector3.Distance(knife.transform.lossyScale, driver.GetBoneTransform(HumanBodyBones.RightHand).lossyScale),
+                            Is.LessThan(.001f), "Native FBX units must not resize the knife");
+                    }
+                }
+            }
+            finally { graph.Destroy(); }
+        }
+
+        [Test] public void ReadiedKnifeReattachesWhenTheCharacterChanges()
+        {
+            var driver = _player.GetComponent<Animator>(); driver.Rebind(); driver.Update(0);
+            using var skin = new CharacterSkin(_player.GetComponentInChildren<SkinnedMeshRenderer>());
+            using var visuals = new SkillExpansionVisuals(_skills);
+            _skills.KnifeReady = true;
+            foreach (string character in new[] { "default", "casual-1", "brute", "default" })
+            {
+                Assert.That(skin.Apply(CharacterCatalog.Instance.Find(character), out var error), Is.True, error);
+                visuals.Tick();
+                var knife = (GameObject)typeof(SkillExpansionVisuals).GetField("_readyKnife", Private).GetValue(visuals);
+                var native = _player.GetComponentInChildren<CharacterPoseFollower>()?.GetComponentInChildren<Animator>() ?? driver;
+                Assert.That(knife.transform.parent, Is.SameAs(native.GetBoneTransform(HumanBodyBones.RightHand)));
+                Assert.That(_player.GetComponentsInChildren<Transform>(true).Count(t => t.name == "Knife(Clone)"), Is.EqualTo(1));
+            }
+        }
+
+        [TestCase("brute")] [TestCase("casual-1")]
+        public void KnifeProjectileLeavesTheVisibleGripAndReuseClearsTheOffset(string character)
+        {
+            var driver = _player.GetComponent<Animator>(); driver.Rebind(); driver.Update(0);
+            using var skin = new CharacterSkin(_player.GetComponentInChildren<SkinnedMeshRenderer>());
+            Assert.That(skin.Apply(CharacterCatalog.Instance.Find(character), out var error), Is.True, error);
+            using var visuals = new SkillExpansionVisuals(_skills);
+            _skills.KnifeReady = true; visuals.Tick();
+            var knife = (GameObject)typeof(SkillExpansionVisuals).GetField("_readyKnife", Private).GetValue(visuals);
+            Vector3 serverOrigin = _skills.ThrowHandPosition;
+            visuals.Projectile(JobSkillKind.Knife, serverOrigin, Vector3.forward, 1f);
+            var flight = Object.FindObjectsByType<SkillProjectileVisual>(FindObjectsSortMode.None).Single(p => p.IsOwnedBy(_skills));
+            try
+            {
+                Assert.That(Vector3.Distance(flight.transform.position, knife.transform.position), Is.LessThan(.001f));
+                Assert.That(Vector3.Dot(flight.transform.forward, Vector3.forward), Is.GreaterThan(.999f));
+                Assert.That(_skills.ThrowHandPosition, Is.EqualTo(serverOrigin), "Visual fitting must not move the gameplay hand");
+                flight.Configure(_skills, JobSkillKind.Knife, serverOrigin, Vector3.forward, 1f);
+                Assert.That(flight.transform.position, Is.EqualTo(serverOrigin), "A reused flight must not retain the previous character's offset");
+            }
+            finally { Object.DestroyImmediate(flight.gameObject); }
+        }
+
         [Test] public void KnifeModelGripsItsHandleAndPointsAlongTheProjectileAxis()
         {
             var knife=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Remodel/Skills/Knife.prefab"));

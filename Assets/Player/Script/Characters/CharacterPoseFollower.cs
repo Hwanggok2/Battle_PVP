@@ -13,7 +13,7 @@ namespace BattlePvp.Characters
         private HumanPose _pose;
         private SkinnedMeshRenderer _original;
         private Renderer[] _renderers;
-        private Animator _driver;
+        private Animator _driver, _visualAnimator;
         private BowAimRigTarget _bowAim;
         private CharacterEquipmentVisual _equipment;
         private Transform _driverRoot;
@@ -24,10 +24,13 @@ namespace BattlePvp.Characters
         public float ViewScale { get; private set; } = 1f;
         public static float GetViewScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
             ? visual.ViewScale : 1f;
+        internal static Animator GetViewAnimator(Animator driver) => driver != null && Active.TryGetValue(driver.transform, out var visual) && visual != null
+            ? visual._visualAnimator : driver;
 
         public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh, Vector3 swordGripOffset = default)
         {
             var animator = GetComponentInChildren<Animator>();
+            _visualAnimator = animator;
             animator.runtimeAnimatorController = null;
             animator.enabled = false;
             _driver = driver;

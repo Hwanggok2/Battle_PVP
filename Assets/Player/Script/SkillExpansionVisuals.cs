@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BattlePvp.Characters;
 using BattlePvp.UI;
 using TMPro;
 using UnityEngine;
@@ -89,7 +90,8 @@ namespace BattlePvp.Combat
             if(prefab==null) return;
             var go=CombatVisualPool.Rent(prefab,start,Quaternion.LookRotation(direction),_owner.gameObject.scene);
             var flight=go.GetComponent<SkillProjectileVisual>() ?? go.AddComponent<SkillProjectileVisual>();
-            flight.Configure(_owner,kind,start,direction,duration);
+            Vector3 launchOffset=kind==JobSkillKind.Knife && _readyKnife!=null ? _readyKnife.transform.position-start : Vector3.zero;
+            flight.Configure(_owner,kind,start,direction,duration,launchOffset);
             go.SetActive(true);
             if(kind==JobSkillKind.Hook) { _hookProjectile=flight; _localHookHeldUntil=0; }
             else if(kind==JobSkillKind.Knife) _localKnifeHeldUntil=0;
@@ -190,11 +192,25 @@ namespace BattlePvp.Combat
                     else _animator.SetLayerWeight(upper,1);
                 }
                 bool knifeHeld=_owner.KnifeReady || _owner.Now<_localKnifeHeldUntil;
-                if(knifeHeld && _readyKnife==null && _animator.isHuman)
+                if(knifeHeld && _animator.isHuman)
                 {
-                    var prefab=SkillPresentationCatalog.Instance?.Find((int)JobSkillKind.Knife)?.Prefab;
-                    var hand=_animator.GetBoneTransform(HumanBodyBones.RightHand);
-                    if(prefab!=null && hand!=null) { _readyKnife=UnityEngine.Object.Instantiate(prefab,hand); FitKnifeGrip(_readyKnife.transform,hand,_animator); }
+                    var visibleAnimator=CharacterPoseFollower.GetViewAnimator(_animator);
+                    var hand=visibleAnimator.GetBoneTransform(HumanBodyBones.RightHand);
+                    bool fitGrip=_readyKnife==null;
+                    if(_readyKnife==null)
+                    {
+                        var prefab=SkillPresentationCatalog.Instance?.Find((int)JobSkillKind.Knife)?.Prefab;
+                        var sourceHand=_animator.GetBoneTransform(HumanBodyBones.RightHand);
+                        if(prefab!=null && sourceHand!=null)
+                            _readyKnife=UnityEngine.Object.Instantiate(prefab,sourceHand);
+                    }
+                    if(_readyKnife!=null && hand!=null && _readyKnife.transform.parent!=hand)
+                    {
+                        // Preserve weapon size across native rigs with different FBX units.
+                        _readyKnife.transform.SetParent(hand,true);
+                        fitGrip=true;
+                    }
+                    if(fitGrip && _readyKnife!=null && hand!=null) FitKnifeGrip(_readyKnife.transform,visibleAnimator);
                 }
                 if(_readyKnife!=null) _readyKnife.SetActive(knifeHeld && (!_owner.IsStealthed || _owner.Owner));
                 bool hookHeld=_owner.IsHoldingHook || _owner.Now<_localHookHeldUntil;
@@ -284,18 +300,12 @@ namespace BattlePvp.Combat
             _diceText=label.GetComponent<TextMeshProUGUI>(); _diceText.font=SkillPresentationCatalog.Instance?.Font; _diceText.fontSize=26; _diceText.alignment=TextAlignmentOptions.Center; _diceText.raycastTarget=false;
             var rect=_diceText.rectTransform; rect.anchorMin=rect.anchorMax=new Vector2(.5f,1); rect.anchoredPosition=new Vector2(0,-118); rect.sizeDelta=new Vector2(620,50);
         }
-        internal static void FitKnifeGrip(Transform knife,Transform hand,Animator animator)
+        internal static void FitKnifeGrip(Transform knife,Animator animator)
         {
-            var middle=animator.GetBoneTransform(HumanBodyBones.RightMiddleProximal);
-            var index=animator.GetBoneTransform(HumanBodyBones.RightIndexProximal);
-            var little=animator.GetBoneTransform(HumanBodyBones.RightLittleProximal);
-            if(middle==null || index==null || little==null)
-            { knife.localPosition=new Vector3(.06f,0,0); knife.localRotation=Quaternion.Euler(0,90,0); return; }
             // Grip the handle in the palm, with the blade leaving on the thumb side.
-            Vector3 fingers=hand.InverseTransformPoint(middle.position);
-            Vector3 blade=hand.InverseTransformDirection(index.position-little.position).normalized;
-            knife.localPosition=fingers*.65f;
-            knife.localRotation=Quaternion.LookRotation(blade,fingers.normalized);
+            var frame=CharacterEquipmentVisual.HandFrame(animator,HumanBodyBones.RightHand,out _);
+            knife.SetPositionAndRotation(CharacterEquipmentVisual.PalmCenter(animator,HumanBodyBones.RightHand),
+                Quaternion.LookRotation(frame*Vector3.up,frame*Vector3.forward));
         }
         private void HideHeldWeapons(bool hide)
         {
@@ -337,7 +347,7 @@ namespace BattlePvp.Combat
     }
     public sealed class SkillProjectileVisual : MonoBehaviour
     {
-        private ExpandedSkillController _owner; private JobSkillKind _kind; private Vector3 _start,_direction;
+        private ExpandedSkillController _owner; private JobSkillKind _kind; private Vector3 _start,_direction,_pathPosition,_launchOffset;
         private float _elapsed,_duration; private SkillHookChain _chain;
         private bool _attached, _returning, _observedHookActive;
         private float _createdAt;
@@ -349,9 +359,12 @@ namespace BattlePvp.Combat
             _owner=null; _hitTarget=null; _chain?.Hide();
             CombatVisualPool.Return(gameObject);
         }
-        public void Configure(ExpandedSkillController owner,JobSkillKind kind,Vector3 start,Vector3 direction,float duration)
+        public void Configure(ExpandedSkillController owner,JobSkillKind kind,Vector3 start,Vector3 direction,float duration,Vector3 launchOffset=default)
         {
             _owner=owner; _kind=kind; _start=start; _direction=direction; _duration=duration;
+            _pathPosition=start;
+            _launchOffset=kind==JobSkillKind.Knife ? launchOffset : Vector3.zero;
+            transform.position=start+_launchOffset;
             _elapsed=_returnElapsed=_returnDuration=0;
             _attached=_returning=_observedHookActive=false; _hitTarget=null;
             _createdAt=Time.time;
@@ -384,7 +397,7 @@ namespace BattlePvp.Combat
             if(_attached)
             { if(_hitTarget!=null) transform.position=_hitTarget.TransformPoint(_hitOffset); return; }
             float step=ExpandedSkillController.Value(_kind,"ProjectileSpeed",16)*Mathf.Min(Time.deltaTime,Mathf.Max(0,_duration-_elapsed));
-            if(SkillTargeting.Cast(_owner,transform.position,_direction,step,ExpandedSkillController.Value(_kind,"Radius",.06f),out var hit))
+            if(SkillTargeting.Cast(_owner,_pathPosition,_direction,step,ExpandedSkillController.Value(_kind,"Radius",.06f),out var hit))
             {
                 transform.position=hit.point;
                 if(_kind==JobSkillKind.Hook) { _attached=true; _hitTarget=hit.collider.transform; _hitOffset=_hitTarget.InverseTransformPoint(hit.point); }
@@ -392,7 +405,10 @@ namespace BattlePvp.Combat
                 return;
             }
             _elapsed+=Time.deltaTime;
-            transform.position+=_direction*step;
+            _pathPosition+=_direction*step;
+            // Leave the visible hand, then converge on the unchanged server trajectory.
+            // Collision checks use that trajectory even during this brief cosmetic offset.
+            transform.position=_pathPosition+_launchOffset*(1-Mathf.Clamp01(_elapsed/.1f));
             if(_elapsed>=_duration)
             {
                 if(_kind!=JobSkillKind.Hook) { Release(); return; }
