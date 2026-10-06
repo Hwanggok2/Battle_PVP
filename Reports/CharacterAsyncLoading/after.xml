@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="42" result="Passed" total="42" passed="42" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="1.5617411">
+  <test-suite type="TestSuite" id="1000" name="Battle_PvP" fullname="Battle_PvP" runstate="Runnable" testcasecount="986" result="Passed" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="1.561741" total="42" passed="42" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="2208" name="Assembly-CSharp-Editor.dll" fullname="C:/Github/Battle_PVP/Library/ScriptAssemblies/Assembly-CSharp-Editor.dll" runstate="Runnable" testcasecount="986" result="Passed" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="1.039533" total="42" passed="42" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="29284" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="2209" name="BattlePvp" fullname="BattlePvp" runstate="Runnable" testcasecount="986" result="Passed" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="1.032596" total="42" passed="42" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="2210" name="EditorTests" fullname="BattlePvp.EditorTests" runstate="Runnable" testcasecount="986" result="Passed" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="1.023922" total="42" passed="42" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestFixture" id="1095" name="CharacterAppearanceTests" fullname="BattlePvp.EditorTests.CharacterAppearanceTests" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" testcasecount="19" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:06Z" duration="1.926168" total="19" passed="19" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1113" name="ActiveBuffAuraFollowsTheReplacementMeshWithoutDuplicatingShells" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.ActiveBuffAuraFollowsTheReplacementMeshWithoutDuplicatingShells" methodname="ActiveBuffAuraFollowsTheReplacementMeshWithoutDuplicatingShells" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="829119097" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:04Z" duration="0.200573" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1096" name="CatalogRejectsAmbiguousIdsAndFallsBackForRemovedResources" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.CatalogRejectsAmbiguousIdsAndFallsBackForRemovedResources" methodname="CatalogRejectsAmbiguousIdsAndFallsBackForRemovedResources" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="377545851" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:04Z" duration="0.071238" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1108" name="HostsPersonalLobbyDoesNotUnlockSelectionForPlayersStillInBattle" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.HostsPersonalLobbyDoesNotUnlockSelectionForPlayersStillInBattle" methodname="HostsPersonalLobbyDoesNotUnlockSelectionForPlayersStillInBattle" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="339244612" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:04Z" duration="0.076284" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1098" name="IncompatibleBindPoseIsRejectedWithoutPartiallyChangingTheBody" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.IncompatibleBindPoseIsRejectedWithoutPartiallyChangingTheBody" methodname="IncompatibleBindPoseIsRejectedWithoutPartiallyChangingTheBody" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1910243845" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:04Z" duration="0.067075" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1111" name="InitialNetworkSnapshotAndSubsequentDeltaApplyTheSameAppearance" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.InitialNetworkSnapshotAndSubsequentDeltaApplyTheSameAppearance" methodname="InitialNetworkSnapshotAndSubsequentDeltaApplyTheSameAppearance" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="2003475034" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:04Z" duration="0.082434" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1114" name="MenuPausesInputEscapeClosesAndPreviewHasNoGameplayComponents" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.MenuPausesInputEscapeClosesAndPreviewHasNoGameplayComponents" methodname="MenuPausesInputEscapeClosesAndPreviewHasNoGameplayComponents" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1026935710" result="Passed" start-time="2026-10-06 13:19:04Z" end-time="2026-10-06 13:19:05Z" duration="0.190998" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1099" name="MissingModelsAndMaterialsCannotBeApplied" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.MissingModelsAndMaterialsCannotBeApplied" methodname="MissingModelsAndMaterialsCannotBeApplied" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1439573428" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.069181" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1107" name="MissingSelectionTimesOutEvenWithoutAnotherRequest" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.MissingSelectionTimesOutEvenWithoutAnotherRequest" methodname="MissingSelectionTimesOutEvenWithoutAnotherRequest" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1906389075" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.067046" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1115" name="NativeSkinsReplaceAuraBodiesAndRecoverFromStealth" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.NativeSkinsReplaceAuraBodiesAndRecoverFromStealth" methodname="NativeSkinsReplaceAuraBodiesAndRecoverFromStealth" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1507032629" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.131050" asserts="0">
+              <properties />
+              <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1103" name="NonEditableScenesRejectLocalChanges" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.NonEditableScenesRejectLocalChanges" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.169515" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1101" name="NonEditableScenesRejectLocalChanges(&quot;Battle&quot;)" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.NonEditableScenesRejectLocalChanges(&quot;Battle&quot;)" methodname="NonEditableScenesRejectLocalChanges" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="439408503" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.086952" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1102" name="NonEditableScenesRejectLocalChanges(&quot;Login&quot;)" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.NonEditableScenesRejectLocalChanges(&quot;Login&quot;)" methodname="NonEditableScenesRejectLocalChanges" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="265839850" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.074114" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-case id="1100" name="OfflineSelectionSurvivesPlayerReplacementAndUnknownSavedIdsFallBack" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.OfflineSelectionSurvivesPlayerReplacementAndUnknownSavedIdsFallBack" methodname="OfflineSelectionSurvivesPlayerReplacementAndUnknownSavedIdsFallBack" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="464474805" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.090212" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1109" name="PendingCharacterBlocksIncomingDamageCombatAndMovementReadiness" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.PendingCharacterBlocksIncomingDamageCombatAndMovementReadiness" methodname="PendingCharacterBlocksIncomingDamageCombatAndMovementReadiness" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1518243657" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.124920" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1106" name="SelectionDeadlineSealsTheDefaultBeforeAnyDelayedBattleSubmission" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.SelectionDeadlineSealsTheDefaultBeforeAnyDelayedBattleSubmission" methodname="SelectionDeadlineSealsTheDefaultBeforeAnyDelayedBattleSubmission" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1076342240" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.108592" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1104" name="ServerAllowsOnlyOneInitialSubmissionDuringBattle" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.ServerAllowsOnlyOneInitialSubmissionDuringBattle" methodname="ServerAllowsOnlyOneInitialSubmissionDuringBattle" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="915487957" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:05Z" duration="0.070093" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1110" name="ServerRejectsUnknownIdsAndDeadPlayers" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.ServerRejectsUnknownIdsAndDeadPlayers" methodname="ServerRejectsUnknownIdsAndDeadPlayers" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1848398252" result="Passed" start-time="2026-10-06 13:19:05Z" end-time="2026-10-06 13:19:06Z" duration="0.066703" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1105" name="ServerSelectionCompletesCombatReadinessWithoutChangingStatReceipt" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.ServerSelectionCompletesCombatReadinessWithoutChangingStatReceipt" methodname="ServerSelectionCompletesCombatReadinessWithoutChangingStatReceipt" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="404904526" result="Passed" start-time="2026-10-06 13:19:06Z" end-time="2026-10-06 13:19:06Z" duration="0.069631" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1097" name="SwappingAndRestoringPreservesRigWeaponsHitboxesAndHiddenFlags" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.SwappingAndRestoringPreservesRigWeaponsHitboxesAndHiddenFlags" methodname="SwappingAndRestoringPreservesRigWeaponsHitboxesAndHiddenFlags" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="652956549" result="Passed" start-time="2026-10-06 13:19:06Z" end-time="2026-10-06 13:19:06Z" duration="0.071088" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1112" name="SwitchingDuringLocalStealthRestoresTheNewMaterials" fullname="BattlePvp.EditorTests.CharacterAppearanceTests.SwitchingDuringLocalStealthRestoresTheNewMaterials" methodname="SwitchingDuringLocalStealthRestoresTheNewMaterials" classname="BattlePvp.EditorTests.CharacterAppearanceTests" runstate="Runnable" seed="1671301547" result="Passed" start-time="2026-10-06 13:19:06Z" end-time="2026-10-06 13:19:06Z" duration="0.091521" asserts="0">
+              <properties />
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1167" name="CharacterVisualLoadingTests" fullname="BattlePvp.EditorTests.CharacterVisualLoadingTests" classname="BattlePvp.EditorTests.CharacterVisualLoadingTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-06 13:19:25Z" end-time="2026-10-06 13:19:25Z" duration="0.752106" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1169" name="CancellingOneWaiterDoesNotBlockAnotherOrItsReplacement" fullname="BattlePvp.EditorTests.CharacterVisualLoadingTests.CancellingOneWaiterDoesNotBlockAnotherOrItsReplacement" methodname="CancellingOneWaiterDoesNotBlockAnotherOrItsReplacement" classname="BattlePvp.EditorTests.CharacterVisualLoadingTests" runstate="Runnable" seed="623620723" result="Passed" start-time="2026-10-06 13:19:06Z" end-time="2026-10-06 13:19:16Z" duration="10.672772" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+            <test-case id="1168" name="ConcurrentCallersShareOneRequestAndBothComplete" fullname="BattlePvp.EditorTests.CharacterVisualLoadingTests.ConcurrentCallersShareOneRequestAndBothComplete" methodname="ConcurrentCallersShareOneRequestAndBothComplete" classname="BattlePvp.EditorTests.CharacterVisualLoadingTests" runstate="Runnable" seed="189139823" result="Passed" start-time="2026-10-06 13:19:16Z" end-time="2026-10-06 13:19:25Z" duration="8.980353" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1463" name="ImportedCharacterTests" fullname="BattlePvp.EditorTests.ImportedCharacterTests" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" testcasecount="16" result="Passed" start-time="2026-10-06 13:19:25Z" end-time="2026-10-06 13:19:28Z" duration="2.270391" total="16" passed="16" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1482" name="CatalogOmitsExcludedModelsAndRetainsMegumiAttribution" fullname="BattlePvp.EditorTests.ImportedCharacterTests.CatalogOmitsExcludedModelsAndRetainsMegumiAttribution" methodname="CatalogOmitsExcludedModelsAndRetainsMegumiAttribution" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="540907877" result="Passed" start-time="2026-10-06 13:19:25Z" end-time="2026-10-06 13:19:26Z" duration="0.024654" asserts="0">
+              <properties />
+            </test-case>
+            <test-suite type="ParameterizedMethod" id="1475" name="ConvertedGeometryRetainsEveryOriginalVertex" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.196736" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1470" name="ConvertedGeometryRetainsEveryOriginalVertex(&quot;brute&quot;,&quot;Assets/Characters/Brute/Source/BruteBody.prefab&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex(&quot;brute&quot;,&quot;Assets/Characters/Brute/Source/BruteBody.prefab&quot;)" methodname="ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1226613134" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.020128" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1471" name="ConvertedGeometryRetainsEveryOriginalVertex(&quot;megumi&quot;,&quot;Assets/Characters/Megumi/Source/_FBX/Megumi_HightSchoolStudent.fbx&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex(&quot;megumi&quot;,&quot;Assets/Characters/Megumi/Source/_FBX/Megumi_HightSchoolStudent.fbx&quot;)" methodname="ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1402633638" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.023733" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1472" name="ConvertedGeometryRetainsEveryOriginalVertex(&quot;security-officer&quot;,&quot;Assets/Characters/SecurityOfficer/Source/Prefab/Security Officer.prefab&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex(&quot;security-officer&quot;,&quot;Assets/Characters/SecurityOfficer/Source/Prefab/Security Officer.prefab&quot;)" methodname="ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1035309535" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.023902" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1473" name="ConvertedGeometryRetainsEveryOriginalVertex(&quot;casual-1&quot;,&quot;Assets/Characters/Casual1/Source/Casual1/Casual1.prefab&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex(&quot;casual-1&quot;,&quot;Assets/Characters/Casual1/Source/Casual1/Casual1.prefab&quot;)" methodname="ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1780750984" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.016330" asserts="0">
+                <properties />
+              </test-case>
+              <test-case id="1474" name="ConvertedGeometryRetainsEveryOriginalVertex(&quot;picochan&quot;,&quot;Assets/Characters/PicoChan/Source/Prefabs/PicoChan.prefab&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ConvertedGeometryRetainsEveryOriginalVertex(&quot;picochan&quot;,&quot;Assets/Characters/PicoChan/Source/Prefabs/PicoChan.prefab&quot;)" methodname="ConvertedGeometryRetainsEveryOriginalVertex" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="2140416165" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.037276" asserts="0">
+                <properties />
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1469" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:28Z" duration="1.971565" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1464" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;brute&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;brute&quot;)" methodname="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="346087312" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:26Z" duration="0.652618" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1465" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;megumi&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;megumi&quot;)" methodname="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="2054039737" result="Passed" start-time="2026-10-06 13:19:26Z" end-time="2026-10-06 13:19:27Z" duration="0.281360" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1466" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;security-officer&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;security-officer&quot;)" methodname="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="904088355" result="Passed" start-time="2026-10-06 13:19:27Z" end-time="2026-10-06 13:19:27Z" duration="0.195931" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1467" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;casual-1&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;casual-1&quot;)" methodname="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1240738564" result="Passed" start-time="2026-10-06 13:19:27Z" end-time="2026-10-06 13:19:27Z" duration="0.097779" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1468" name="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;picochan&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton(&quot;picochan&quot;)" methodname="ImportedSkinPreservesGameplayObjectsAndAnimatesItsNativeSkeleton" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="446621121" result="Passed" start-time="2026-10-06 13:19:27Z" end-time="2026-10-06 13:19:28Z" duration="0.741599" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+            </test-suite>
+            <test-suite type="ParameterizedMethod" id="1481" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.072397" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1476" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;brute&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;brute&quot;)" methodname="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1313590712" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.014249" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1477" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;megumi&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;megumi&quot;)" methodname="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1745245963" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.012579" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1478" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;security-officer&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;security-officer&quot;)" methodname="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1586498014" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.012096" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1479" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;casual-1&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;casual-1&quot;)" methodname="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="159566858" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.011975" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+              <test-case id="1480" name="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;picochan&quot;)" fullname="BattlePvp.EditorTests.ImportedCharacterTests.NativePoseFollowsPlayerTranslationRotationScaleAndVisibility(&quot;picochan&quot;)" methodname="NativePoseFollowsPlayerTranslationRotationScaleAndVisibility" classname="BattlePvp.EditorTests.ImportedCharacterTests" runstate="Runnable" seed="1779452931" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.014827" asserts="0">
+                <properties />
+                <output><![CDATA[Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+Setting and getting Body Position/Rotation, IK Goals, Lookat and BoneLocalRotation should only be done in OnAnimatorIK or OnStateIK
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+          <test-suite type="TestFixture" id="1900" name="RuntimeOptimizationTests" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" testcasecount="5" result="Passed" start-time="2026-10-06 13:19:36Z" end-time="2026-10-06 13:19:37Z" duration="0.937043" total="5" passed="5" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1904" name="DifferentEffectiveRenderingCannotBeComparedAsTheSameConditions" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests.DifferentEffectiveRenderingCannotBeComparedAsTheSameConditions" methodname="DifferentEffectiveRenderingCannotBeComparedAsTheSameConditions" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" seed="1517710157" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.000515" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1902" name="HookBoundsAndCachedNormalsMatchRecalculatedMeshWhileLengthChanges" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests.HookBoundsAndCachedNormalsMatchRecalculatedMeshWhileLengthChanges" methodname="HookBoundsAndCachedNormalsMatchRecalculatedMeshWhileLengthChanges" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" seed="1216267457" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.017263" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1901" name="MetadataHasNoDependencyOnImportedSkinnedModels" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests.MetadataHasNoDependencyOnImportedSkinnedModels" methodname="MetadataHasNoDependencyOnImportedSkinnedModels" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" seed="368612805" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.099488" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1903" name="ReusingATrailResetsItsFlightAndReusesTheRenderer" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests.ReusingATrailResetsItsFlightAndReusesTheRenderer" methodname="ReusingATrailResetsItsFlightAndReusesTheRenderer" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" seed="282561762" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:28Z" duration="0.003536" asserts="0">
+              <properties />
+            </test-case>
+            <test-case id="1905" name="VisualPoolsAndLazyLoadsSurviveReuseAndSceneUnload" fullname="BattlePvp.EditorTests.RuntimeOptimizationTests.VisualPoolsAndLazyLoadsSurviveReuseAndSceneUnload" methodname="VisualPoolsAndLazyLoadsSurviveReuseAndSceneUnload" classname="BattlePvp.EditorTests.RuntimeOptimizationTests" runstate="Runnable" seed="41919000" result="Passed" start-time="2026-10-06 13:19:28Z" end-time="2026-10-06 13:19:37Z" duration="9.148036" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[<b><color=#2EA3FF>MCP-FOR-UNITY</color></b>: [TestRunnerNoThrottle] Restored Interaction Mode after test run.
+Saving results to: C:/Users/JW/AppData/LocalLow/Junu/Battle_PvP\TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

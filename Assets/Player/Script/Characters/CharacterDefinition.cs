@@ -38,7 +38,8 @@ namespace BattlePvp.Characters
         {
             if (IsVisualLoaded) yield break;
             var request = _visualRequest ??= Resources.LoadAsync<GameObject>(_visualResource);
-            yield return request;
+            // Players and previews share this request; Unity only allows one coroutine to yield it.
+            while (!request.isDone) yield return null;
             _loadedVisual = request.asset as GameObject;
             if (_visualRequest == request) _visualRequest = null;
         }

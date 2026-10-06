@@ -95,7 +95,7 @@ namespace BattlePvp.EditorTests
         }
 
         [UnityTest]
-        public IEnumerator VisualPoolsAndConcurrentLoadsSurviveReuseAndSceneUnload()
+        public IEnumerator VisualPoolsAndLazyLoadsSurviveReuseAndSceneUnload()
         {
             yield return new EnterPlayMode();
             var a = SceneManager.CreateScene("Pool test A"); var b = SceneManager.CreateScene("Pool test B");
@@ -124,12 +124,9 @@ namespace BattlePvp.EditorTests
                 Assert.That(other.scene, Is.EqualTo(b));
                 Assert.That(other, Is.Not.SameAs(first));
                 definition.SetVisualResource("CharacterVisuals/megumi");
-                var left = definition.LoadVisualAsync(); var right = definition.LoadVisualAsync();
-                Assert.That(left.MoveNext() && right.MoveNext(), Is.True);
-                Assert.That(left.Current, Is.SameAs(right.Current));
-                yield return left.Current;
-                Assert.That(left.MoveNext(), Is.False); Assert.That(right.MoveNext(), Is.False);
+                yield return definition.LoadVisualAsync();
                 Assert.That(definition.IsVisualLoaded, Is.True);
+                Assert.That(definition.LoadVisualAsync().MoveNext(), Is.False);
                 yield return SceneManager.UnloadSceneAsync(a);
                 Assert.That(first == null, Is.True); Assert.That(other != null, Is.True);
                 CombatVisualPool.Return(other);

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-06",
+  "unityVersion": "6000.3.15f1",
+  "cause": "Several player or preview coroutines yielded the same cached ResourceRequest, which Unity rejects.",
+  "fix": "Keep a single shared resource request and let each coroutine wait for isDone by yielding frames.",
+  "baseline": {
+    "result": "failed as expected",
+    "evidence": "before.xml",
+    "error": "This asynchronous operation is already being yielded from another coroutine. An asynchronous operation can only be yielded once."
+  },
+  "validation": {
+    "passed": 42,
+    "failed": 0,
+    "evidence": "after.xml",
+    "suites": [
+      "CharacterVisualLoadingTests",
+      "RuntimeOptimizationTests",
+      "CharacterAppearanceTests",
+      "ImportedCharacterTests"
+    ],
+    "regressionCases": [
+      "Two actual Unity coroutines share an in-flight request and both receive the same visual.",
+      "Stopping one waiter does not stop another waiter or a replacement waiter.",
+      "Loaded visuals are reused without issuing a new resource request."
+    ],
+    "resultSource": "Unity TestResults.xml; MCP job tracking was lost during the test PlayMode domain reloads."
+  },
+  "webBuild": "Not rebuilt or deployed for this correction."
+}
