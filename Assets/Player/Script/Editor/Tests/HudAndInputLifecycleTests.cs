@@ -79,6 +79,32 @@ namespace BattlePvp.EditorTests
             Assert.That(cache.TryClaim(1, 4, 3, 30f), Is.True);
         }
 
+        [Test]
+        public void RepeatedSkillHudTicksDoNotAllocateKeyLabelsAndStillReflectRebinding()
+        {
+            var root = new GameObject("Skill allocation test", typeof(RectTransform));
+            string previousKey = LocalGameSettings.Current.skill1;
+            try
+            {
+                var label = new GameObject("Index", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI));
+                label.transform.SetParent(root.transform, false);
+                var text = label.GetComponent<TMPro.TextMeshProUGUI>();
+                var skill = root.AddComponent<SkillUI>();
+                SetField(skill, "_indexText", text); SetField(skill, "_useDirectKeyLabel", true);
+                var state = new SkillHudState(true, "Ready", 0, 1, SkillHudPhase.Ready, 0, 0);
+                LocalGameSettings.Current.skill1 = "q";
+                skill.SetState(state);
+                long before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < 1000; i++) skill.SetState(state);
+                long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+                Assert.That(allocated, Is.LessThan(4096), "Unchanged HUD ticks must reuse the uppercase key label.");
+                LocalGameSettings.Current.skill1 = "r";
+                skill.SetState(state);
+                Assert.That(text.text, Is.EqualTo("R"));
+            }
+            finally { LocalGameSettings.Current.skill1 = previousKey; UnityEngine.Object.DestroyImmediate(root); }
+        }
+
         private static void SetField(object target, string name, object value) =>
             target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
     }

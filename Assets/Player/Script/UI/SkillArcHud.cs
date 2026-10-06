@@ -14,11 +14,15 @@ namespace BattlePvp.UI
         [SerializeField] private Button[] _buttons;
         private PlayerCombat _combat;
         private float _nextRefresh;
+        private CanvasGroup _group;
+        private bool _visibleScene;
         private void OnEnable()
         {
             StatManager.LocalChanged += Bind;
             Bind(StatManager.Local);
             LocalGameSettings.Changed += ApplySettings;
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
+            _group = GetComponent<CanvasGroup>();
             for (int i = 0; i < _buttons.Length; i++)
             {
                 int slot = i;
@@ -29,17 +33,18 @@ namespace BattlePvp.UI
         private void OnDisable()
         {
             StatManager.LocalChanged -= Bind; LocalGameSettings.Changed -= ApplySettings;
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             foreach (var button in _buttons) if (button != null) button.onClick.RemoveAllListeners();
             _combat = null;
         }
         private void Bind(StatManager stats) { _combat = stats != null ? stats.GetComponent<PlayerCombat>() : null; _nextRefresh = 0; }
+        private void OnActiveSceneChanged(Scene previous, Scene current) => ApplySettings();
         private void ApplySettings()
         {
             var data = LocalGameSettings.Current;
             transform.localScale = Vector3.one * data.hudScale;
-            var group = GetComponent<CanvasGroup>();
-            bool inBattle = IsVisibleScene(SceneManager.GetActiveScene().name);
-            if (group != null) { group.alpha = inBattle ? data.hudOpacity : 0; group.blocksRaycasts = inBattle; group.interactable = inBattle; }
+            _visibleScene = IsVisibleScene(SceneManager.GetActiveScene().name);
+            if (_group != null) { _group.alpha = _visibleScene ? data.hudOpacity : 0; _group.blocksRaycasts = _visibleScene; _group.interactable = _visibleScene; }
             if (_keys.Length > 0) _keys[0].text = data.skill1.ToUpperInvariant();
             if (_keys.Length > 1) _keys[1].text = data.skill2.ToUpperInvariant();
         }
@@ -47,8 +52,7 @@ namespace BattlePvp.UI
         {
             if (Time.unscaledTime < _nextRefresh) return;
             _nextRefresh = Time.unscaledTime + .05f;
-            ApplySettings();
-            if (!IsVisibleScene(SceneManager.GetActiveScene().name)) return;
+            if (!_visibleScene) return;
             int count = 0;
             for (int i = 0; i < _slots.Length; i++)
             {

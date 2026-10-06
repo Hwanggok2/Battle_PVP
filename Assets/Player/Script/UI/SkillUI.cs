@@ -35,6 +35,7 @@ namespace BattlePvp.UI
         private int _displayedSeconds = -1;
         private int _displayedIndex = -1;
         private int _displayedCount = -1;
+        private string _displayedKey;
         private SkillTooltip _tooltip;
 
         public void SetDescription(string description)
@@ -103,7 +104,11 @@ namespace BattlePvp.UI
                 _nameText.text = state.Name;
 
             if (_indexText != null && _useDirectKeyLabel)
-                _indexText.text = (state.SelectedIndex == 0 ? LocalGameSettings.Current.skill1 : LocalGameSettings.Current.skill2).ToUpperInvariant();
+            {
+                string key = state.SelectedIndex == 0 ? LocalGameSettings.Current.skill1 : LocalGameSettings.Current.skill2;
+                if (!_hasState || _displayedKey != key) _indexText.text = key.ToUpperInvariant();
+                _displayedKey = key;
+            }
             else if (_indexText != null && (!_hasState || _displayedIndex != state.SelectedIndex || _displayedCount != state.SkillCount))
                 _indexText.text = state.SkillCount > 1 ? $"{state.SelectedIndex + 1}/{state.SkillCount}" : string.Empty;
             _displayedIndex = state.SelectedIndex;
