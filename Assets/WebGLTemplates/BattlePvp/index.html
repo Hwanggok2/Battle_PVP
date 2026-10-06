@@ -16,12 +16,12 @@
     <footer>
       <span id="display-hint">Esc 커서 전환</span>
       <div class="controls"><button id="performance-button" type="button" aria-expanded="false">성능 정보</button><button id="fullscreen-button" type="button">전체화면</button></div>
-      <section id="performance-info" hidden aria-label="성능 정보"><span id="renderer-info">렌더러 확인 중</span><span id="frame-info">FPS 확인 중</span><small>GPU 선택: Windows 설정 → 시스템 → 디스플레이 → 그래픽에서 브라우저를 고성능으로 지정하고 브라우저를 다시 시작하세요.</small></section>
+      <section id="performance-info" hidden aria-label="성능 정보"><span id="renderer-info">렌더러 확인 중</span><span id="frame-info">FPS 확인 중</span><small>화질은 기기 성능에 맞춰 자동 조절됩니다. 게임 설정에서 최대 화질을 선택할 수 있습니다.</small></section>
     </footer>
   </main>
   <script src="shell.js"></script>
   <script>
-    const shell = BattlePvpWebShell.create(document, window, navigator);
+    const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
     const loader = document.createElement('script');
     loader.src = 'Build/{{{ LOADER_FILENAME }}}';
     loader.onload = () => createUnityInstance(document.getElementById('unity-canvas'), {

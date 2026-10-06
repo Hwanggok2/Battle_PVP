@@ -1,4 +1,8 @@
 mergeInto(LibraryManager.library, {
+  BattlePvpWeb_ToggleFullscreen: function () {
+    // Use the same Escape-preserving path for both the HTML and in-game buttons.
+    if (window.__battlePvpWebShell) window.__battlePvpWebShell.toggleFullscreen();
+  },
   BattlePvpPointerLock_SetEnabled: function (enabled) {
     var state = Module['battlePvpPointerLock'];
     if (!state) {

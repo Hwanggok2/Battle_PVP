@@ -48,7 +48,7 @@ namespace BattlePvp.UI
             Bind("InvertY", () => _draft.invertY = !_draft.invertY);
             _buttons["Key1"].onClick.AddListener(() => Listen(1));
             _buttons["Key2"].onClick.AddListener(() => Listen(2));
-            _buttons["Fullscreen"].onClick.AddListener(() => Screen.fullScreen = !Screen.fullScreen);
+            _buttons["Fullscreen"].onClick.AddListener(ToggleFullscreen);
             _buttons["SoundTest"].onClick.AddListener(LocalGameSettings.Click);
             _buttons["Cancel"].onClick.AddListener(Cancel);
             _buttons["Close"].onClick.AddListener(Cancel);
@@ -61,6 +61,18 @@ namespace BattlePvp.UI
             }
         }
         private void OnDestroy() { if (Instance == this) { if (IsOpen && _saved != null) LocalGameSettings.Apply(_saved, false); Instance = null; } }
+        private static void ToggleFullscreen()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            BattlePvpWeb_ToggleFullscreen();
+#else
+            Screen.fullScreen = !Screen.fullScreen;
+#endif
+        }
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void BattlePvpWeb_ToggleFullscreen();
+#endif
         private void BindSlider(string name, Action<float> write) => _sliders[name].onValueChanged.AddListener(v => { if (_refreshing || _draft == null) return; write(v); Preview(); });
         private void Bind(string name, Action write) => _buttons[name].onClick.AddListener(() => { write(); Preview(); });
         public void Toggle() { if (IsOpen) Cancel(); else Open(); }
@@ -96,7 +108,7 @@ namespace BattlePvp.UI
             _refreshing = true;
             SetValue("Brightness", _draft.brightness); SetValue("HudScale", _draft.hudScale); SetValue("HudOpacity", _draft.hudOpacity);
             SetValue("Master", _draft.master); SetValue("Music", _draft.music); SetValue("Effects", _draft.effects); SetValue("Ui", _draft.ui); SetValue("Sensitivity", _draft.sensitivity);
-            Label("Quality", new[] { "낮음", "보통", "높음" }[_draft.quality]); Label("Fps", _draft.fps + " FPS");
+            Label("Quality", (LocalGameSettings.IsWebPlayer ? "자동 · 최대 " : "") + new[] { "낮음", "보통", "높음" }[_draft.quality]); Label("Fps", _draft.fps + " FPS");
             Label("Mute", _draft.muted ? "켜짐" : "꺼짐"); Label("BackgroundMute", _draft.muteInBackground ? "켜짐" : "꺼짐"); Label("InvertY", _draft.invertY ? "켜짐" : "꺼짐");
             Label("Key1", _draft.skill1.ToUpperInvariant()); Label("Key2", _draft.skill2.ToUpperInvariant());
             _refreshing = false;

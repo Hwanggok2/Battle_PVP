@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-06",
+  "goal": "Reduce the game's own browser workload and adapt automatically; user OS/GPU configuration is not the primary remedy.",
+  "changes": {
+    "automaticQuality": "Web players start at a conservative tier, including sessions with a saved High preference. Two slow 2-second windows reduce one tier. Recovery requires 20 seconds of stable target-rate frames. Scene loads and focus changes reset observations without discarding the learned tier. The selected quality is the ceiling, not a requirement to render beyond the device budget.",
+    "pixelCeiling": { "previousDefault": [1600, 900], "newDefault": [1280, 720], "lowestTier": [960, 540], "maximumHighTier": [1920, 1080], "defaultCeilingReductionPercent": 36 },
+    "rendering": "Web default uses 1x MSAA, a 20-unit shadow distance, 512 shadow atlas, at most 2 additional lights, quarter-resolution bloom with 3 iterations. Lowest visual quality removes point lights/bloom/HDR/shadows. UI resolution stays separate from the 3D render scale.",
+    "hud": "Apply skill HUD settings on preference/scene changes instead of 20 times per second. Reuse uppercase key labels until the binding changes. Cooldown sampling and skill descriptions that reflect copied skills remain current.",
+    "fullscreen": "The in-game settings button now uses the same Escape-preserving browser controller as the HTML button.",
+    "simulation": "No combat, physics, input or network rates were lowered. Windows visual preferences retain their previous behavior."
+  },
+  "inspection": {
+    "editorSceneInventory": [
+      { "scene": "Login", "activeMeshRenderers": 28, "triangles": 4154, "materials": 28, "lights": 5 },
+      { "scene": "Battle_waiting", "activeMeshRenderers": 72, "triangles": 4804, "materials": 39, "lights": 5 },
+      { "scene": "Battle", "activeMeshRenderers": 28, "triangles": 4154, "materials": 28, "lights": 5 }
+    ],
+    "editorTimingLimit": "A native Editor Login sample on RTX 5060 measured about 1.04 ms main-thread and 1.17 ms GPU time. This is not a browser gameplay benchmark and is not evidence of a Web FPS improvement.",
+    "characterInspection": "Imported meshes range from 16,636 to 75,169 triangles. PicoChan's large native uncompressed texture footprint is not used to infer a Web leak: existing WebGL overrides already request compressed textures. No meshes or rig proportions were modified."
+  },
+  "validation": {
+    "unityJobId": "4a6637bca8da4c55ba19f03f21c640aa",
+    "unityTestsPassed": 26,
+    "unityTestsFailed": 0,
+    "unityGroups": ["WebRenderBudgetTests", "HudAndInputLifecycleTests", "RemodelIntegrationTests", "RoomNetworkTimingTests"],
+    "nodeTestsPassed": 21,
+    "nodeTestsFailed": 0,
+    "coverage": [
+      "Sustained 30 FPS under a 60 FPS target automatically lowers rendering tiers.",
+      "Very slow active devices still lower quality rather than treating every frame as loading.",
+      "Background tabs, startup and isolated hitches do not cause an immediate reduction.",
+      "Stable recovery respects the user's quality ceiling and does not oscillate after a short recovery.",
+      "30 FPS preferences are not mistaken for slow performance.",
+      "Runtime pipeline changes do not mutate the source asset.",
+      "1,000 unchanged SkillUI updates allocate less than 4 KB and a new binding still updates immediately.",
+      "Existing settings, HUD lifecycle and native network/frame-rate tests pass."
+    ]
+  },
+  "limitations": [
+    "The 36% figure describes a 3D pixel ceiling reduction, not measured FPS or total GPU work reduction.",
+    "No claim that every device will run without lag. Default-setting browser gameplay and multiplayer profiling remain necessary.",
+    "No new WebGL build or deployment was started; final player testing remains pending the user's build approval."
+  ],
+  "reference": "https://docs.unity3d.com/kr/current/Manual/urp/optimize-for-better-performance.html"
+}

@@ -21,7 +21,7 @@ function fixture(request) {
     document.pointerLockElement = null;
     document.exitPointerLock = () => { exits++; document.pointerLockElement = null; document.emit('pointerlockchange'); };
     canvas.requestPointerLock = () => { requests++; return request?.(); };
-    const context = { Module: { canvas }, document, navigator: { userActivation: { isActive: true } },
+    const context = { Module: { canvas }, document, window: {}, navigator: { userActivation: { isActive: true } },
         LibraryManager: { library }, mergeInto: Object.assign };
     vm.runInNewContext(source, context);
     return { ...context, canvas, library, get requests() { return requests; }, get exits() { return exits; },
@@ -29,6 +29,15 @@ function fixture(request) {
         enable(value = true) { library.BattlePvpPointerLock_SetEnabled(+value); },
         lock() { document.pointerLockElement = canvas; document.emit('pointerlockchange'); } };
 }
+
+test('the in-game fullscreen button uses the Escape-preserving page controller', () => {
+    const f = fixture();
+    assert.doesNotThrow(() => f.library.BattlePvpWeb_ToggleFullscreen());
+    let toggles = 0;
+    f.window.__battlePvpWebShell = { toggleFullscreen() { toggles++; } };
+    f.library.BattlePvpWeb_ToggleFullscreen();
+    assert.equal(toggles, 1);
+});
 
 test('frames, menus, synthetic input, touch and inactive tabs never request a lock', () => {
     const f = fixture();
