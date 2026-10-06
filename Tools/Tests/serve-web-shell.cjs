@@ -12,7 +12,9 @@ http.createServer((req, res) => {
     try {
         const route = decodeURIComponent(new URL(req.url, 'http://127.0.0.1').pathname);
         if (route === '/') {
-            const html = fs.readFileSync(path.join(template, 'index.html'), 'utf8').replace(/\{\{\{\s*(\w+)\s*\}\}\}/g, (_, key) => values[key] || '');
+            const html = fs.readFileSync(path.join(template, 'index.html'), 'utf8')
+                .replace(/^#if DEVELOPMENT_PLAYER\r?\n[\s\S]*?^#endif\r?\n/gm, '')
+                .replace(/\{\{\{\s*(\w+)\s*\}\}\}/g, (_, key) => values[key] || '');
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(html); return;
         }
         const root = route.startsWith('/Build/') || route.startsWith('/StreamingAssets/') ? build : template;

@@ -47,11 +47,14 @@ namespace BattlePvp.UI
         private readonly WebFrameBudget _webBudget = new WebFrameBudget();
         public static bool IsWebPlayer => Application.platform == RuntimePlatform.WebGLPlayer;
         public static int EffectiveQuality => IsWebPlayer && _instance != null ? _instance._webBudget.Quality : _current.quality;
+        public static int EffectiveTier => IsWebPlayer && _instance != null ? _instance._webBudget.Tier : -1;
+        public static float EffectiveRenderScale => _instance != null && _instance._pipeline != null ? _instance._pipeline.renderScale : 1f;
+        public static bool AdaptiveQualityPaused { get; set; }
 #if UNITY_WEBGL && !UNITY_EDITOR
         private int _renderWidth, _renderHeight;
         private void Update()
         {
-            if (_webBudget.Observe(Time.unscaledDeltaTime, _focused))
+            if (!AdaptiveQualityPaused && _webBudget.Observe(Time.unscaledDeltaTime, _focused))
             {
                 ApplyGraphics();
                 Changed?.Invoke();
@@ -73,7 +76,7 @@ namespace BattlePvp.UI
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { _instance = null; _current = new LocalGameSettingsData(); Changed = null; }
+        private static void ResetStatics() { _instance = null; _current = new LocalGameSettingsData(); Changed = null; AdaptiveQualityPaused = false; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Bootstrap()
         {

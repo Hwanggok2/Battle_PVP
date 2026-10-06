@@ -1,0 +1,569 @@
+{
+  "date": "2026-10-06",
+  "baselineRevision": "9d9896a777da65d0c27eb6ad988e81c57b242fbd",
+  "unity": "6000.3.15f1",
+  "scope": "Source and imported-asset optimization. No new Windows/WebGL player, deployment or whole-game FPS certification in this change.",
+  "implemented": [
+    {
+      "area": "Character pose",
+      "changes": [
+        "Cache hand, finger and torso bone references; sample equipment frames once per visible pose.",
+        "Skip inactive equipment fitting and presentation-only pose copies on non-rendered 120 Hz simulation updates.",
+        "Keep local player and selector preview at original mesh detail."
+      ]
+    },
+    {
+      "area": "Character meshes",
+      "changes": [
+        "Merge only equivalent material batches.",
+        "Generate two lower-detail mesh index levels while preserving original vertex streams, skin weights, bind poses and LOD0.",
+        "Preserve original facial/eye and small material index ranges at every LOD after visual QA exposed missing eyes in unrestricted simplification."
+      ]
+    },
+    {
+      "area": "Character loading",
+      "changes": [
+        "Remove direct imported-prefab dependencies from selection metadata.",
+        "Load requested visual prefabs with shared asynchronous ResourceRequests in gameplay and selector UI.",
+        "Cancel obsolete selection callbacks and resume deferred visual selection on reactivation."
+      ],
+      "limits": [
+        "Resources assets still ship in initial Web data; this is on-demand instantiation/loading, not a reduced network payload.",
+        "Loaded character resources remain cached. Server-side validation and compatibility accessors may still load synchronously."
+      ]
+    },
+    {
+      "area": "Combat presentation",
+      "changes": [
+        "Scene-owned bounded reuse pool for arrow trails and hook/knife presentation objects.",
+        "Reset reused flight state and prevent stale owners from controlling a recycled object.",
+        "Compute two oriented hook rings once, reuse topology/normals and conservative bounds; skip identical endpoints."
+      ],
+      "limits": [
+        "Network-authoritative arrow objects retain existing Mirror spawn/despawn semantics.",
+        "Other low-frequency effects were not indiscriminately converted to pooling."
+      ]
+    },
+    {
+      "area": "Networking",
+      "changes": [
+        "Avoid duplicate ScheduleFlushSend jobs when no driver update or send has occurred since the last flush.",
+        "Preserve polling, reliable packet handling, ACK/keepalive updates and combat timing."
+      ]
+    },
+    {
+      "area": "Performance measurement",
+      "changes": [
+        "Record supported CPU/GPU, GC, memory, draw-call, SetPass, triangle and custom pose/hook counters.",
+        "Count displayed frames separately from native 120 Hz simulation updates.",
+        "Include render scale, adaptive tier and render interval in comparison conditions; optionally freeze automatic quality.",
+        "Add Unity development Web profiler control to the custom shell."
+      ]
+    }
+  ],
+  "characterAssets": [
+    {
+      "id": "megumi",
+      "materials": 16,
+      "triangles": [
+        24661,
+        14806,
+        9642
+      ]
+    },
+    {
+      "id": "brute",
+      "materials": 7,
+      "triangles": [
+        24637,
+        12908,
+        6836
+      ]
+    },
+    {
+      "id": "security-officer",
+      "materials": 4,
+      "triangles": [
+        24480,
+        17400,
+        13030
+      ]
+    },
+    {
+      "id": "picochan",
+      "materials": 7,
+      "triangles": [
+        75169,
+        45331,
+        29654
+      ]
+    },
+    {
+      "id": "casual-1",
+      "materials": 12,
+      "triangles": [
+        16636,
+        10802,
+        7413
+      ]
+    }
+  ],
+  "measurements": {
+    "method": "Paired Editor EditMode microbenchmarks in the same process, alternating legacy/new order over three rounds. Legacy classes copied from baseline revision then removed. Static evaluated player pose: 100 warmup and 500 calls/round. Hook: 100 warmup and 1000 calls/round, alternating endpoint x=0/0.01 for moving cases. Median per-call durations. No rendering, network traffic or Web player timings.",
+    "limitations": [
+      "Editor scheduling and CPU load cause noise; raw results retained, including a legacy pose outlier.",
+      "Function cost reductions do not equal whole-game FPS gains.",
+      "Mesh LOD reduces triangles but does not reduce skinning bone/vertex cost; Unity skins LOD0 vertices."
+    ],
+    "summary": [
+      {
+        "kind": "CharacterPose",
+        "id": "megumi",
+        "beforeMs": 0.36711119999999997,
+        "afterMs": 0.273457,
+        "reductionPercent": 25.511125784231037
+      },
+      {
+        "kind": "CharacterPose",
+        "id": "casual-1",
+        "beforeMs": 0.33551620000000004,
+        "afterMs": 0.2713974,
+        "reductionPercent": 19.11049302537404
+      },
+      {
+        "kind": "CharacterPose",
+        "id": "picochan",
+        "beforeMs": 0.3234094,
+        "afterMs": 0.2774066,
+        "reductionPercent": 14.224323720955546
+      },
+      {
+        "kind": "MovingHook",
+        "length": 2,
+        "beforeMs": 0.0773653,
+        "afterMs": 0.0171653,
+        "reductionPercent": 77.81266278292722
+      },
+      {
+        "kind": "MovingHook",
+        "length": 6,
+        "beforeMs": 0.20150490000000001,
+        "afterMs": 0.0507321,
+        "reductionPercent": 74.82339139147484
+      }
+    ],
+    "poseRaw": [
+      {
+        "id": "megumi",
+        "round": 0,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 158.1009,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "megumi",
+        "round": 0,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 149.375,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "megumi",
+        "round": 1,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 136.7285,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "megumi",
+        "round": 1,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 183.5556,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "megumi",
+        "round": 2,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 307.53770000000003,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "megumi",
+        "round": 2,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 129.8227,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 0,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 184.2987,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 0,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 136.3724,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 1,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 133.9711,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 1,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 167.7581,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 2,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 161.3231,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "casual-1",
+        "round": 2,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 135.6987,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 0,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 168.02540000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 0,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 138.7033,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 1,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 135.0327,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 1,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 159.11110000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 2,
+        "optimized": false,
+        "iterations": 500,
+        "totalMs": 161.7047,
+        "allocatedBytes": 0
+      },
+      {
+        "id": "picochan",
+        "round": 2,
+        "optimized": true,
+        "iterations": 500,
+        "totalMs": 143.3752,
+        "allocatedBytes": 0
+      }
+    ],
+    "hookRaw": [
+      {
+        "length": 2,
+        "round": 0,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 77.7343,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 0,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.11910000000000001,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 0,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 77.84700000000001,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 0,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 17.165300000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 1,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.1107,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 1,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 74.0164,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 1,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 15.3557,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 1,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 74.909,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 2,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 72.22890000000001,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 2,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.11170000000000001,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 2,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 77.3653,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 2,
+        "round": 2,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 20.953,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 0,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 249.7286,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 0,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.1627,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 0,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 259.6401,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 0,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 50.7321,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 1,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.1512,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 1,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 235.72240000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 1,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 59.7941,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 1,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 198.03580000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 2,
+        "moving": false,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 191.2725,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 2,
+        "moving": false,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 0.1283,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 2,
+        "moving": true,
+        "optimized": false,
+        "iterations": 1000,
+        "totalMs": 201.50490000000002,
+        "allocatedBytes": 0
+      },
+      {
+        "length": 6,
+        "round": 2,
+        "moving": true,
+        "optimized": true,
+        "iterations": 1000,
+        "totalMs": 33.151900000000005,
+        "allocatedBytes": 0
+      }
+    ],
+    "reproduction": {
+      "poseBody": "var catalog = UnityEditor.AssetDatabase.LoadAssetAtPath<BattlePvp.Characters.CharacterCatalog>(\"Assets/Resources/CharacterCatalog.asset\"); var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(\"Assets/Prefabs/Player.prefab\"); var rows = new System.Collections.Generic.List<object>(); foreach (var id in new [] {\"megumi\", \"casual-1\", \"picochan\"}) { var oldPlayer = UnityEngine.Object.Instantiate(prefab); var player = UnityEngine.Object.Instantiate(prefab); try { var animator = oldPlayer.GetComponent<Animator>(); animator.Rebind(); animator.Update(0); var original = oldPlayer.GetComponentInChildren<SkinnedMeshRenderer>(true); var originalMesh=original.sharedMesh; var visual=UnityEngine.Object.Instantiate(catalog.Find(id).VisualPrefab, oldPlayer.transform, false); var legacy=visual.AddComponent<BattlePvp.Characters.LegacyPoseBenchmark>(); original.sharedMesh=null; legacy.Initialize(animator, original, originalMesh); animator=player.GetComponent<Animator>(); animator.Rebind(); animator.Update(0); using (var skin = new BattlePvp.Characters.CharacterSkin(player.GetComponentInChildren<SkinnedMeshRenderer>(true))) { string error; if (!skin.Apply(catalog.Find(id), out error)) throw new System.Exception(error); var follower = player.GetComponentInChildren<BattlePvp.Characters.CharacterPoseFollower>(); for(int i=0;i<100;i++) {legacy.SyncPose();follower.SyncPose();} for(int round=0;round<3;round++) { for(int step=0;step<2;step++) { bool optimized=((round+step)%2)==1; System.Action action=optimized ? (System.Action)follower.SyncPose : legacy.SyncPose; var watch = new System.Diagnostics.Stopwatch(); long before = System.GC.GetAllocatedBytesForCurrentThread(); watch.Start(); for(int i=0;i<500;i++) action(); watch.Stop(); rows.Add(new {id=id,round=round,optimized=optimized,iterations=500,totalMs=watch.Elapsed.TotalMilliseconds,allocatedBytes=System.GC.GetAllocatedBytesForCurrentThread()-before}); } } } } finally {UnityEngine.Object.DestroyImmediate(oldPlayer);UnityEngine.Object.DestroyImmediate(player);} } return rows;",
+      "hookBody": "var rows = new System.Collections.Generic.List<object>(); foreach(float length in new [] {2f,6f}) using(var oldChain=new BattlePvp.Combat.LegacyHookBenchmark(null)) using(var chain=new BattlePvp.Combat.SkillHookChain(null)) {for(int round=0;round<3;round++) foreach(bool moving in new [] {false,true}) for(int step=0;step<2;step++){ bool optimized=((round+step)%2)==1; System.Action<Vector3,Vector3> action=optimized ? (System.Action<Vector3,Vector3>)chain.Update : oldChain.Update; for(int i=0;i<100;i++) action(Vector3.zero,new Vector3((i%2)*.01f,0,length)); var watch=new System.Diagnostics.Stopwatch(); long before=System.GC.GetAllocatedBytesForCurrentThread(); watch.Start(); for(int i=0;i<1000;i++) action(Vector3.zero,new Vector3(moving ? (i%2)*.01f : 0,0,length)); watch.Stop(); rows.Add(new {length=length,round=round,moving=moving,optimized=optimized,iterations=1000,totalMs=watch.Elapsed.TotalMilliseconds,allocatedBytes=System.GC.GetAllocatedBytesForCurrentThread()-before});}} return rows;"
+    }
+  },
+  "verification": {
+    "unityRuns": [
+      {
+        "job": "6f8a2e5f2fb84568b89681a6715fd821",
+        "passed": 160,
+        "failed": 0,
+        "scope": "Character appearance/alignment/bow presentation and expanded skills"
+      },
+      {
+        "job": "bdc1c41879424d6ea17641aa13f42421",
+        "passed": 53,
+        "failed": 0,
+        "scope": "Optimization, capture rules, Web render budget, Relay polling/reliability/direct transport/timing"
+      },
+      {
+        "job": "dfafa9ca2da744b294dce4476003e06b",
+        "passed": 108,
+        "failed": 0,
+        "scope": "After lifecycle fix and final moving-hook arithmetic; appearance, bow alignment, expanded skills and optimization integration"
+      }
+    ],
+    "notes": [
+      "An initial default preview test failed immediately after compilation; the 13-test focused rerun and subsequent 160-test regression run passed. Do not suppress this observation.",
+      "EnterPlayMode tests reload the domain and orphan MCP job tracking; completed TestResults.xml was used to confirm 53 and 108 passed.",
+      "Final facial LOD validation: job fed6d674c10146b9ac3c5717fd3da304 passed all 34 tests, confirmed from TestResults.xml (2026-10-06 08:59:54Z to 08:59:56Z). Imported native geometry/alignment, preserved facial LOD ranges and optimization integration passed."
+    ],
+    "web": {
+      "command": "node --test Tools/Tests/WebGlPointerLock.test.js Tools/Tests/WebShell.test.js Tools/Tests/WebGlIme.test.js",
+      "passed": 21,
+      "failed": 0
+    },
+    "visuals": "visuals/: baked posed LOD0 and LOD2 images for all five imported characters. Directly inspected original and reduced-detail facial layers; unrestricted simplification corrected before final assets.",
+    "compileErrors": 0,
+    "diffCheck": "passed"
+  },
+  "approvalGate": {
+    "newWebBuild": "Await explicit approval, as requested by user before this optimization turn.",
+    "deployment": "Not performed"
+  },
+  "remainingValidation": [
+    "Actual optimized Web player profile on integrated and discrete GPUs, then standalone Windows comparison.",
+    "Repeatable 8-player representative combat with fixed quality: 30s warmup + 60s capture, three runs per platform; inspect p95/p99 frames, CPU/GPU, GC and draw calls.",
+    "Verify automatic LOD transitions and visual pooling during real combat, fullscreen/Escape, Korean room naming and Web/Editor room discovery.",
+    "Separate development profiling overhead from release performance; do not guarantee lag-free play or a particular FPS before measurement."
+  ]
+}

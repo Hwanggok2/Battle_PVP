@@ -57,6 +57,10 @@ namespace BattlePvp.Diagnostics
         public string Quality;
         public int VSyncCount;
         public int TargetFrameRate;
+        public int RenderFrameInterval = 1;
+        public int EffectiveQuality, AdaptiveTier = -1;
+        public float RenderScale = 1f;
+        public bool AdaptiveQualityPaused;
         public string NetworkRole;
         public string NetworkConditions;
         public string Scenario;
@@ -79,8 +83,19 @@ namespace BattlePvp.Diagnostics
             MemoryMb == other.MemoryMb && OperatingSystem == other.OperatingSystem && Browser == other.Browser &&
             Width == other.Width && Height == other.Height && Quality == other.Quality &&
             VSyncCount == other.VSyncCount && TargetFrameRate == other.TargetFrameRate &&
+            RenderFrameInterval == other.RenderFrameInterval && EffectiveQuality == other.EffectiveQuality &&
+            AdaptiveTier == other.AdaptiveTier && RenderScale == other.RenderScale && AdaptiveQualityPaused == other.AdaptiveQualityPaused &&
             NetworkRole == other.NetworkRole && NetworkConditions == other.NetworkConditions &&
             Scenario == other.Scenario && MultipleClientsOnThisDevice == other.MultipleClientsOnThisDevice;
+    }
+
+    [Serializable]
+    public sealed class PerformanceMetricRecord
+    {
+        public string Name, Unit;
+        public bool Supported;
+        public long Samples;
+        public double Mean, Maximum;
     }
 
     [Serializable]
@@ -105,9 +120,10 @@ namespace BattlePvp.Diagnostics
         public bool OperatorConfirmedRepresentativeCombat;
         public FrameStatistics Frames;
         public string Verdict;
+        public PerformanceMetricRecord[] Counters;
         public string Scope = "One local frame-interval run. Three compatible eligible runs are required per platform; this file alone is not a performance pass.";
         public string ActivityRule = "Conservative tool eligibility filter, separate from the project's p95 FPS criterion: each complete 10-second window requires movement from at least 4 distinct players and accepted HP damage. Operator workload confirmation is also required.";
-        public string Unmeasured = "CPU/GPU frame breakdown, GC allocation/collections, transport bytes/messages and before/after improvement are not measured by this tool.";
+        public string Unmeasured = "Unsupported counters have Supported=false or Samples=0, never evidence of zero cost. Counter timing samples describe engine update frames and can include waits; displayed-frame intervals are recorded separately. GPU timing is platform dependent. This run alone does not establish before/after improvement.";
         public string HardwareCaptureNote = "SystemInfo may be unavailable or approximate, particularly in WebGL. MemoryMb=0 means unavailable. HardwareDescription must identify physical CPU/GPU/RAM.";
     }
 

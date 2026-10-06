@@ -20,6 +20,9 @@
     </footer>
   </main>
   <script src="shell.js"></script>
+#if DEVELOPMENT_PLAYER
+  <script src="<<<TemplateData/profiler.js>>>"></script>
+#endif
   <script>
     const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
     const loader = document.createElement('script');
@@ -36,7 +39,13 @@
       webglContextAttributes: { preserveDrawingBuffer: false, powerPreference: 2 },
       showBanner: (message, type) => { if (type === 'error') shell.showMessage(message); }
     }, progress => { document.getElementById('load-progress').value = progress; })
-      .then(instance => shell.attach(instance)).catch(error => shell.showMessage(String(error)));
+      .then(instance => {
+        shell.attach(instance);
+#if DEVELOPMENT_PLAYER
+        document.querySelector('.controls').appendChild(unityProfiler.createButton(instance));
+        window.addEventListener('pagehide', () => unityProfiler.shutDown());
+#endif
+      }).catch(error => shell.showMessage(String(error)));
     loader.onerror = () => shell.showMessage('게임 파일을 불러오지 못했습니다. 새로고침해 주세요.');
     document.body.appendChild(loader);
   </script>

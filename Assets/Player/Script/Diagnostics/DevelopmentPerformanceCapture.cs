@@ -12,6 +12,8 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using UnityEngine.Rendering;
+using BattlePvp.UI;
 
 namespace BattlePvp.Diagnostics
 {
@@ -33,6 +35,8 @@ namespace BattlePvp.Diagnostics
         private string _scenario = string.Empty;
         private string _runNumber = "1";
         private bool _multipleClients;
+        private bool _freezeQuality = true, _previousQualityPause;
+        private RuntimePerformanceCounters _counters;
         private bool _running;
         private bool _capturing;
         private double _startedAt;
@@ -105,14 +109,21 @@ namespace BattlePvp.Diagnostics
             if (!_capturing)
             {
                 _record.WarmupSeconds = now - _startedAt;
-                if (_record.WarmupSeconds < PerformanceCaptureRules.WarmupSeconds) return;
+                if (_record.WarmupSeconds < PerformanceCaptureRules.WarmupSeconds || !OnDemandRendering.willCurrentFrameRender) return;
                 _capturing = true;
                 _captureStartedAt = _lastFrameAt = now;
                 _nextProbeAt = now + 1d;
                 _nextCombatWindow = PerformanceCaptureRules.CombatWindowSeconds;
                 ProbeConditions(now);
+                _counters = new RuntimePerformanceCounters();
+                _record.Counters = _counters.Records;
                 return;
             }
+
+            CheckContinuousConditions();
+            _counters?.Sample();
+            // Network/input updates can run at 120 Hz while only 30/60 frames are displayed.
+            if (!OnDemandRendering.willCurrentFrameRender) return;
 
             if (_frames.Count == MaximumFrames) { Finish(false, "Frame buffer capacity reached; no samples were silently dropped"); return; }
             _frames.Add((now - _lastFrameAt) * 1000d);
@@ -145,6 +156,9 @@ namespace BattlePvp.Diagnostics
             _windowDamage = 0d;
             _qualityLevel = QualitySettings.GetQualityLevel();
             _sceneHandle = SceneManager.GetActiveScene().handle;
+            _previousQualityPause = LocalGameSettings.AdaptiveQualityPaused;
+            if (_freezeQuality) LocalGameSettings.AdaptiveQualityPaused = true;
+            context = BuildContext();
             _record = new PerformanceRunRecord
             {
                 Context = context, RunNumber = number, StartedUtc = DateTime.UtcNow.ToString("O"),
@@ -167,6 +181,9 @@ namespace BattlePvp.Diagnostics
             MemoryMb = SystemInfo.systemMemorySize, OperatingSystem = SystemInfo.operatingSystem, Browser = _browser,
             Width = Screen.width, Height = Screen.height, Quality = QualitySettings.names[QualitySettings.GetQualityLevel()],
             VSyncCount = QualitySettings.vSyncCount, TargetFrameRate = Application.targetFrameRate,
+            RenderFrameInterval = OnDemandRendering.renderFrameInterval, EffectiveQuality = LocalGameSettings.EffectiveQuality,
+            AdaptiveTier = LocalGameSettings.EffectiveTier, RenderScale = LocalGameSettings.EffectiveRenderScale,
+            AdaptiveQualityPaused = LocalGameSettings.AdaptiveQualityPaused,
             NetworkRole = NetworkServer.active && NetworkClient.active ? "Host" : NetworkClient.active ? "Client" : "Offline",
             NetworkConditions = _network, Scenario = _scenario, MultipleClientsOnThisDevice = _multipleClients
         };
@@ -185,6 +202,10 @@ namespace BattlePvp.Diagnostics
             _record.SettingsMaintained &= Screen.width == _record.Context.Width && Screen.height == _record.Context.Height &&
                 QualitySettings.GetQualityLevel() == _qualityLevel && QualitySettings.vSyncCount == _record.Context.VSyncCount &&
                 Application.targetFrameRate == _record.Context.TargetFrameRate && SceneManager.GetActiveScene().handle == _sceneHandle;
+            _record.SettingsMaintained &= OnDemandRendering.renderFrameInterval == _record.Context.RenderFrameInterval &&
+                LocalGameSettings.EffectiveQuality == _record.Context.EffectiveQuality && LocalGameSettings.EffectiveTier == _record.Context.AdaptiveTier &&
+                Mathf.Approximately(LocalGameSettings.EffectiveRenderScale, _record.Context.RenderScale) &&
+                LocalGameSettings.AdaptiveQualityPaused == _record.Context.AdaptiveQualityPaused;
         }
 
         private void ProbeConditions(double now)
@@ -239,6 +260,8 @@ namespace BattlePvp.Diagnostics
         {
             if (!_running) return;
             _running = false;
+            _counters?.Dispose(); _counters = null;
+            LocalGameSettings.AdaptiveQualityPaused = _previousQualityPause;
             _record.Completed = completed;
             _record.StopReason = reason;
             if (_record.ConditionProbes == 0) _record.MinimumObservedPlayers = 0;
@@ -275,6 +298,7 @@ namespace BattlePvp.Diagnostics
             _scenario = Field("Repeatable representative combat scenario", _scenario);
             _runNumber = Field("Run number (1–3)", _runNumber);
             _multipleClients = GUILayout.Toggle(_multipleClients, "Multiple clients share this physical device (resource contention)");
+            _freezeQuality = GUILayout.Toggle(_freezeQuality, "Freeze automatic quality for a comparable fixed-quality capture");
             GUILayout.Label("A valid run needs 8 observed players, an active battle, unchanged settings/focus, and combat activity in every 10s window. Editor runs remain diagnostics only.");
             if (GUILayout.Button("Start one 30s warmup + 60s capture")) StartCapture();
             if (_record?.Frames != null)
@@ -297,7 +321,7 @@ namespace BattlePvp.Diagnostics
                     "; focused " + _record.FocusMaintained + "; settings unchanged " + _record.SettingsMaintained);
                 if (GUILayout.Button("Export JSON conditions and summary")) ExportJson();
                 if (GUILayout.Button("Export CSV raw frames and condition probes")) ExportCsv();
-                GUILayout.Label("Save both files before starting another run. CPU/GPU breakdown, GC and transport counters are not measured.");
+                GUILayout.Label("Save both files before another run. JSON includes available engine counters; unsupported counters are explicitly marked. CPU timing can include waits.");
             }
             if (GUILayout.Button("Close diagnostic controls")) Destroy(gameObject);
             GUILayout.EndScrollView();

@@ -1,0 +1,363 @@
+{
+  "date": "2026-10-06",
+  "revision": "9d9896a777da65d0c27eb6ad988e81c57b242fbd",
+  "unity": "6000.3.15f1",
+  "scope": "Read-only optimization audit: source, imported assets, existing build files and isolated Editor microbenchmarks. No game changes, new build, deployment or multiplayer benchmark.",
+  "conclusions": [
+    "No evidence yet establishes the dominant browser gameplay bottleneck.",
+    "The prior IAB renderer was hardware accelerated AMD Radeon 610M; do not describe it as CPU software rendering.",
+    "Automatic visual quality is mitigation, not proof of reduced CPU work or a measured performance improvement."
+  ],
+  "evidence": {
+    "characters": [
+      {
+        "id": "default",
+        "triangles": 49593,
+        "materialSlots": 2,
+        "bones": 65
+      },
+      {
+        "id": "megumi",
+        "triangles": 24661,
+        "materialSlots": 16,
+        "bones": 83,
+        "lodGroups": 0
+      },
+      {
+        "id": "brute",
+        "triangles": 24637,
+        "materialSlots": 9,
+        "bones": 72,
+        "lodGroups": 0
+      },
+      {
+        "id": "security-officer",
+        "triangles": 24480,
+        "materialSlots": 5,
+        "bones": 89,
+        "lodGroups": 0
+      },
+      {
+        "id": "picochan",
+        "triangles": 75169,
+        "materialSlots": 10,
+        "bones": 116,
+        "lodGroups": 0
+      },
+      {
+        "id": "casual-1",
+        "triangles": 16636,
+        "materialSlots": 12,
+        "bones": 38,
+        "lodGroups": 0
+      }
+    ],
+    "characterCaveats": [
+      "Imported body renderers have updateWhenOffscreen=false, but the custom LateUpdate pose copy is not gated by visibility or distance.",
+      "Imported visual Animators are disabled by CharacterPoseFollower; their culling setting does not gate manual HumanPoseHandler calls. Gameplay Animator is AlwaysAnimate and must keep authoritative hitbox behavior.",
+      "PicoChan already requests compressed WebGL textures. Editor native texture memory does not establish Web memory."
+    ],
+    "poseFirstRun": {
+      "scope": "Editor EditMode microbenchmark only, static pose, no rendering or networking; not Web frame timings",
+      "rows": [
+        {
+          "id": "megumi",
+          "iterations": 1000,
+          "totalMs": 209.15740000000002,
+          "bytes": 0,
+          "equipmentParts": 10
+        },
+        {
+          "id": "brute",
+          "iterations": 1000,
+          "totalMs": 211.5507,
+          "bytes": 0,
+          "equipmentParts": 10
+        },
+        {
+          "id": "security-officer",
+          "iterations": 1000,
+          "totalMs": 210.7673,
+          "bytes": 0,
+          "equipmentParts": 10
+        },
+        {
+          "id": "picochan",
+          "iterations": 1000,
+          "totalMs": 210.26010000000002,
+          "bytes": 0,
+          "equipmentParts": 10
+        },
+        {
+          "id": "casual-1",
+          "iterations": 1000,
+          "totalMs": 323.79130000000004,
+          "bytes": 0,
+          "equipmentParts": 10
+        }
+      ]
+    },
+    "poseEquipmentIsolation": [
+      {
+        "id": "megumi",
+        "samples": [
+          {
+            "round": 0,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.2074804,
+            "bytes": 0
+          },
+          {
+            "round": 0,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.16411960000000003,
+            "bytes": 0
+          },
+          {
+            "round": 1,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.21397240000000003,
+            "bytes": 0
+          },
+          {
+            "round": 1,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.16107400000000002,
+            "bytes": 0
+          },
+          {
+            "round": 2,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.2172982,
+            "bytes": 0
+          },
+          {
+            "round": 2,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.16098400000000002,
+            "bytes": 0
+          }
+        ]
+      },
+      {
+        "id": "casual-1",
+        "samples": [
+          {
+            "round": 0,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.22117360000000003,
+            "bytes": 0
+          },
+          {
+            "round": 0,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.157647,
+            "bytes": 0
+          },
+          {
+            "round": 1,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.2200676,
+            "bytes": 0
+          },
+          {
+            "round": 1,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.17148520000000003,
+            "bytes": 0
+          },
+          {
+            "round": 2,
+            "withEquipment": true,
+            "iterations": 500,
+            "msPerCall": 0.2248,
+            "bytes": 0
+          },
+          {
+            "round": 2,
+            "withEquipment": false,
+            "iterations": 500,
+            "msPerCall": 0.1631302,
+            "bytes": 0
+          }
+        ]
+      }
+    ],
+    "hookMesh": {
+      "scope": "Editor microbenchmark; dynamic mesh update only, no actual rendering",
+      "samples": [
+        {
+          "length": 2,
+          "iterations": 1000,
+          "totalMs": 58.8539,
+          "allocatedBytes": 0
+        },
+        {
+          "length": 6,
+          "iterations": 1000,
+          "totalMs": 171.6233,
+          "allocatedBytes": 0
+        }
+      ]
+    },
+    "microbenchmarkLimits": "EditMode, in-memory prefab contents, static pose, warmup, sequential calls; no rendering, physics, networking or WebAssembly. Not end-to-end frame timing. Measured GC bytes cover only these calls after warmup. Objects were disposed and prefab contents unloaded without saving.",
+    "sceneUi": [
+      {
+        "scene": "Assets/Scenes/Login.unity",
+        "canvases": 1,
+        "activeGraphics": 3,
+        "glitchImages": []
+      },
+      {
+        "scene": "Assets/Scenes/Battle_waiting.unity",
+        "canvases": 14,
+        "activeGraphics": 85,
+        "glitchImages": []
+      },
+      {
+        "scene": "Assets/Scenes/Battle.unity",
+        "canvases": 13,
+        "activeGraphics": 78,
+        "glitchImages": []
+      }
+    ],
+    "catalogDependencies": {
+      "total": 227,
+      "materials": 93,
+      "png": 65,
+      "jpg": 3,
+      "animations": 35
+    },
+    "existingBuild": {
+      "path": "Builds/WebGL-2026-10-06-InputRoomFix",
+      "totalBytes": 97100161,
+      "dataCompressedBytes": 83861588,
+      "dataExpandedBytes": 113573808,
+      "wasmCompressedBytes": 13010394,
+      "wasmExpandedBytes": 78086261,
+      "detailedPackedAssetsAvailable": false,
+      "caveat": "Superseded build predates automatic quality changes. File sizes are not total runtime memory or sustained frame costs."
+    }
+  },
+  "findings": [
+    {
+      "priority": "P0",
+      "title": "Baseline cannot distinguish bottlenecks or equal-quality comparisons",
+      "confidence": "Confirmed instrumentation gap",
+      "evidence": [
+        "Assets/Player/Script/Diagnostics/DevelopmentPerformanceCapture.cs:161",
+        "Assets/Player/Script/Diagnostics/DevelopmentPerformanceCapture.cs:185",
+        "Assets/Player/Script/Diagnostics/DevelopmentPerformanceCapture.cs:300",
+        "Assets/WebGLTemplates/BattlePvp/shell.js:78"
+      ],
+      "detail": "Capture records frame intervals but not CPU/GPU split, GC, draw calls or effective render scale/adaptive tier. SettingsMaintained can stay true despite automatic quality changes. Repository reports examined did not contain a current validated browser combat baseline; latest BuildReport has no detailed packed asset list.",
+      "recommendation": "Record effective quality, internal render resolution, adaptive transitions, per-system markers and CPU/GC/render/transport counters where supported. Fixed-quality profiling and automatic-quality UX tests must be separate. Enable a development-only profiler connection in the custom Web template. Collect detailed build report on next approved build."
+    },
+    {
+      "priority": "P1",
+      "title": "Imported-character pose and equipment update runs every frame",
+      "confidence": "Confirmed code path; isolated Editor CPU cost measured; Web contribution unmeasured",
+      "evidence": [
+        "Assets/Player/Script/Characters/CharacterPoseFollower.cs:48",
+        "Assets/Player/Script/Characters/CharacterPoseFollower.cs:75",
+        "Assets/Player/Script/Characters/CharacterEquipmentVisual.cs:71"
+      ],
+      "detail": "Every custom body transfers gameplay HumanPose into a second skeleton and fits 10 equipment mesh parts, including LOD representations. Repeated hand/torso bone lookup and frames are recalculated per part. Three-round diagnostic for Megumi/Casual1 averaged about 0.21-0.22 ms per full call; pose without equipment about 0.16-0.17 ms. Warmed managed allocation was zero.",
+      "recommendation": "Cache bone references and per-hand/per-torso data once per frame; avoid updating inactive equipment. Profile safe visibility/distance cadence for remote visual rigs while keeping source gameplay animation, hitboxes and local aiming accurate. A single-rig redesign is later, higher risk due to prior deformation."
+    },
+    {
+      "priority": "P1",
+      "title": "Character geometry and material budgets have no distance tiers",
+      "confidence": "Confirmed imported asset inventory; actual GPU bottleneck unmeasured",
+      "evidence": [
+        "Assets/Resources/CharacterCatalog.asset",
+        "Assets/Characters/Megumi/Converted/Character.asset",
+        "Assets/Characters/PicoChan/Converted/Character.asset"
+      ],
+      "detail": "All five imported visual prefabs have zero LODGroup. Megumi has 16 material slots versus 2 on default. PicoChan is 75,169 triangles versus 49,593 default. Material slots are not measured draw calls; all imported characters are not uniformly heavier.",
+      "recommendation": "Keep close/local appearance; author medium/far LOD meshes, simplify distant face/hair detail and combine compatible materials through atlases where transparency permits. Validate silhouettes, bow/sword alignment and skin weights. Measure draw calls, SetPass and GPU cost at equal quality before setting asset budgets."
+    },
+    {
+      "priority": "P1",
+      "title": "Combat visuals contain repeated mesh rebuild and object churn",
+      "confidence": "Confirmed code paths; actual combat spikes unmeasured",
+      "evidence": [
+        "Assets/Player/Script/SkillHookChain.cs:49",
+        "Assets/Player/Script/SkillExpansionVisuals.cs:90",
+        "Assets/Player/Script/BowAttackController.cs:543",
+        "Assets/Player/Script/ArrowFlightTrail.cs:76"
+      ],
+      "detail": "Hook chain clears/rebuilds vertices and indices and recalculates normals/bounds every update, up to 80 links/3,200 vertices. Diagnostic static 6-unit chain was about 0.172 ms per update, zero warmed managed allocation. Arrow/trail and some skill visuals create/destroy objects per use.",
+      "recommendation": "Reuse topology and update only required vertex data; compute normals/bounds analytically or use a cheaper far-distance chain. Pool presentation objects with explicit reset. For network arrows, preserve Mirror spawn/unspawn and ownership semantics. Measure projectile burst p99/GC before and after."
+    },
+    {
+      "priority": "P1-investigate",
+      "title": "Rendering passes and full-screen UI may dominate integrated-GPU cost",
+      "confidence": "GPU hypothesis, not measured in current Web gameplay",
+      "evidence": [
+        "Assets/Player/Shader/UIIdentityGlitch.shader:129",
+        "Assets/Player/Script/UI/LocalGameSettings.cs:144",
+        "Assets/Player/Script/UI/NeonEnvironmentSettings.cs"
+      ],
+      "detail": "Rendering includes Lit characters, shadows, HDR/Bloom above lowest tier and a full-rect Status_VFX shader. Lower 3D renderScale does not reduce every UI or CPU cost. UI visibility/pass contribution must be captured at runtime.",
+      "recommendation": "A/B the same combat frame with post-processing, shadows and status overlay separately toggled in a diagnostic configuration. Use native Frame Debugger for structure and browser-supported GPU/render diagnostics for Web; Unity Frame Debugger is unsupported on Web. Keep only changes with measured benefit and acceptable appearance."
+    },
+    {
+      "priority": "P2",
+      "title": "Character metadata directly references every visual asset",
+      "confidence": "Confirmed reference graph and build sizes; residency impact needs snapshot",
+      "evidence": [
+        "Assets/Player/Script/Characters/CharacterCatalog.cs:10",
+        "Assets/Player/Script/Characters/CharacterCatalog.cs:14",
+        "Assets/Player/Script/Characters/CharacterDefinition.cs:21",
+        "Assets/Player/Script/UI/CharacterSelectionPanel.cs:147"
+      ],
+      "detail": "Menu construction loads a Resources catalog referencing all definitions and visual prefabs. Recursive dependency graph contains 227 assets. Existing initial build is about 97.1 MB; .data is 83.9 MB compressed/113.6 MB expanded. This is primarily loading/memory risk, not proof of persistent low FPS.",
+      "recommendation": "Separate lightweight character metadata from model references and load required models asynchronously; use explicit cache/release ownership. For actual initial-download reduction, split content into AssetBundles or an asset-delivery layer after memory/build analysis; Resources.LoadAsync alone does not remove assets from initial .data."
+    },
+    {
+      "priority": "P2-investigate",
+      "title": "Latency-oriented network update policy has a CPU tradeoff",
+      "confidence": "Confirmed policy; cost/regression unmeasured",
+      "evidence": [
+        "Assets/Player/Script/Managers/RoomNetworkTiming.cs:17",
+        "Assets/Player/Script/Managers/RoomNetworkTiming.cs:33",
+        "Assets/Player/Script/Managers/RoomNetworkTiming.cs:52",
+        "Assets/Player/Script/Managers/UnityRelayTransport.cs:506",
+        "Assets/Player/Script/Managers/UnityRelayTransport.cs:572"
+      ],
+      "detail": "Native Relay sessions target 120 update Hz while rendering every 2/4 frames; Web explicitly does not use that 120 Hz policy. Both have extra early/late polling and synchronous driver update/flush completion. Existing PollMilliseconds/FlushMilliseconds can be reused.",
+      "recommendation": "Measure transport timing and callbacks in separate host/client scenarios with 1/4/8 players. Gate duplicate work if justified, comparing frame time and command latency together. Do not reduce combat simulation or authoritative hit validation merely to raise FPS."
+    }
+  ],
+  "plan": [
+    "Propose normal supported-device target 60 FPS / 16.67 ms and an explicit low-end 30 FPS / 33.33 ms tier; agree minimum supported browser/device scope.",
+    "Prepare diagnostic instrumentation and fixed-quality scenario, then obtain user approval before any new WebGL build.",
+    "On browser defaults and integrated GPU, collect Login/waiting/battle, default versus mixed characters, host versus client, 1/4/8 players, idle versus skill bursts. Separate-device multiplayer is needed for representative load.",
+    "For comparable runs: record revision, browser/device, resolution, quality/renderScale, players and role; warm 30 s and record 60 s three times. Keep diagnostics for smaller scenarios separate from existing 8-player pass criteria.",
+    "Record frame median/p95/p99 and over-budget counts, main thread/animation/physics/transport, allocations/GC, draw/SetPass/triangles, GPU where supported, memory entering/leaving and 10-minute stability, cold/warm startup.",
+    "Use controlled feature A/B tests and optimize the largest measured cost; repeat same-quality benchmark and regression checks for attack/skills/appearance/room lifecycle/fullscreen. Check final release separately for profiler overhead."
+  ],
+  "notRecommended": [
+    "Do not require players to change Windows GPU selection as the primary remedy.",
+    "Do not present reduced pixel count or passing correctness tests as an FPS benchmark.",
+    "Do not globally lower physics/network rates, disable gameplay Animator culling, rewrite networking, install DOTS or switch graphics APIs without measured evidence.",
+    "Do not call native texture memory a Web leak or claim object creation is the proven cause of all low FPS."
+  ],
+  "sources": [
+    "https://docs.unity3d.com/6000.3/Documentation/Manual/profiling-target-device.html",
+    "https://docs.unity3d.com/6000.3/Documentation/Manual/web-profile.html",
+    "https://docs.unity3d.com/6000.3/Documentation/Manual/urp/understand-performance.html",
+    "https://docs.unity3d.com/6000.3/Documentation/Manual/webgl-memory.html"
+  ]
+}
