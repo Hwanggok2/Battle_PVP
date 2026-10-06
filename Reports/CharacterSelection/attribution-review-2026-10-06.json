@@ -1,0 +1,49 @@
+{
+  "checkedOn": "2026-10-06",
+  "question": "캐릭터 출처를 캐릭터 선택창에 항상 표기해야 하는가?",
+  "conclusionKo": "선택창에 출처 전문을 항상 표시할 필요는 없다. 메뉴에서 쉽게 열 수 있는 크레딧 / 라이선스 화면으로 옮기고 배포본에도 고지를 포함하는 구성을 권장한다. Megumi는 취득 기록의 CC BY 4.0 기준으로 필요한 저자·원본·라이선스 링크·변경 고지를 유지한다.",
+  "placement": {
+    "requiredLocation": "No reviewed license requires persistent text specifically in the character selector.",
+    "recommended": "A clearly named Credits / Licenses action reachable from the selector or main menu, containing the complete CharacterNotices.txt notices and usable links. Keep the notices in distributed builds too.",
+    "basis": "CC BY 4.0 section 3(a)(2) permits a reasonable manner of attribution for the medium and context, including a hyperlink to the required information.",
+    "isInference": true
+  },
+  "assets": [
+    {
+      "name": "Megumi",
+      "creator": "alex94i60",
+      "acquiredLicenseRecord": "Creative Commons Attribution 4.0 International (Fab download dialog, recorded in CharacterNotices.txt)",
+      "attributionUnderThatLicense": "Required when shared. Preserve supplied identification and notices, source link where practicable, license link, and indication of modifications. Do not imply endorsement.",
+      "selectorAlwaysVisible": false,
+      "source": "https://www.fab.com/listings/2f6583ec-b5f2-4303-baa7-1a0585db23f5",
+      "license": "https://creativecommons.org/licenses/by/4.0/legalcode.en",
+      "licenseSections": ["3(a)(1)", "3(a)(2)"],
+      "localEvidence": ["Assets/StreamingAssets/CharacterNotices.txt", "Assets/Characters/Megumi/Source/Readme/Readme.pdf", "Assets/Characters/Megumi/Source/Readme/Credit4.pdf"],
+      "readmeQualification": "The included Readme says the creator's credit is optional. The project's actual acquisition record is CC BY 4.0. Rather than treating this general Readme wording as a blanket waiver for every included component, preserve CC BY attribution in a separate credits screen. Credit4 separately identifies the uniform creator.",
+      "retainedUniformCredit": "デジハリ V 等部 公式 BOOTH — 【VRoid 用】デジハリ V 等部 公式制服"
+    },
+    {
+      "names": ["Security Officer", "Casual 1", "PicoChan"],
+      "license": "Standard Unity Asset Store EULA",
+      "licenseUrl": "https://unity.com/legal/as-terms",
+      "listingEvidence": [
+        "https://assetstore.unity.com/packages/3d/characters/humanoids/humans/anime-character-security-officer-383060",
+        "https://assetstore.unity.com/packages/3d/characters/humanoids/casual-1-anime-girl-characters-185076",
+        "https://assetstore.unity.com/packages/3d/characters/humanoids/picochan-220038"
+      ],
+      "finding": "All three listings currently identify the Standard Unity Asset Store EULA. That EULA does not impose a general on-screen attribution requirement. Section 3.5(iv) of the Terms prohibits removing/obscuring proprietary notices contained in assets; preserve original notices. Embedded use and monetization in an original licensed product are covered by EULA 2.2.1, subject to its restrictions.",
+      "selectorAlwaysVisible": false,
+      "localPicoReadme": "Assets/Characters/PicoChan/Source/README.md (creator identified, no additional mandatory on-screen credit clause found)",
+      "isInference": true
+    },
+    {
+      "name": "Brute",
+      "provider": "Adobe Mixamo",
+      "commercialUsePrimarySource": "https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html",
+      "attributionSource": "https://community.adobe.com/questions-696/mixamo-faq-licensing-royalties-ownership-eula-and-tos-589400",
+      "finding": "Adobe Help permits royalty-free character and animation use in commercial games. The Mixamo licensing FAQ hosted on Adobe Community expressly says Adobe/Mixamo/Fuse credit is not required. It also prohibits redistributing raw character/animation files as assets.",
+      "sourceQualification": "The current migrated Community page identifies author TylerG 3D but does not expose an Adobe Employee badge in accessible page text; no claim of independently verified staff identity is made.",
+      "selectorAlwaysVisible": false
+    }
+  ]
+}

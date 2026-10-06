@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-06",
+  "unity": "6000.3.15f1",
+  "addedCharacters": [
+    "brute",
+    "megumi",
+    "security-officer",
+    "casual-1",
+    "picochan"
+  ],
+  "excludedCharacters": [
+    "maya",
+    "emily"
+  ],
+  "registeredCountIncludingDefault": 6,
+  "tests": {
+    "jobId": "d961cfd42df04be5be21f0691bead91d",
+    "passed": 19,
+    "failed": 0,
+    "groups": [
+      "CharacterAppearanceTests",
+      "ImportedCharacterTests"
+    ]
+  },
+  "checks": [
+    "All five imported skins validate against the existing player skeleton and bind poses",
+    "Existing renderer, Animator controller, weapon transforms, colliders and visibility states preserved",
+    "Finite skin vertices and player-sized bounds at three samples in idle, walk, sword attack, bow aim and death clips",
+    "New character portraits assigned; catalog excludes Maya and Emily",
+    "Megumi attribution and license links retained",
+    "Play Mode rendering of all five characters, selector previews and scrolling visually checked",
+    "Unity console had no errors or warnings after runtime validation"
+  ],
+  "screenshots": [
+    "characters-runtime.png",
+    "selector-lighting.png",
+    "selector-picochan.png"
+  ],
+  "finalModelRenders": [
+    "brute-final.png",
+    "megumi-final.png",
+    "security-officer-final.png",
+    "casual-1-final.png",
+    "picochan-final.png"
+  ],
+  "notes": [
+    "Runtime screenshots precede final restoration of source material tint on Megumi; final model renders and portraits use final materials",
+    "Secondary hair and cloth bones follow nearest Humanoid parent; no original spring physics or facial blendshapes",
+    "Existing Mirror serialization and server-rule tests passed; no new two-process transport run or release build was performed",
+    "Temporary validation scene removed; original Login scene restored"
+  ],
+  "licenses": "Assets/StreamingAssets/CharacterNotices.txt"
+}

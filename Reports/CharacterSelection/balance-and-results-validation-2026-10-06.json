@@ -1,0 +1,41 @@
+{
+  "dateKst": "2026-10-06",
+  "unity": "6000.3.15f1",
+  "regressionRuns": [
+    { "jobId": "504155929ee541a187b0d0b81c3e828b", "passed": 268, "failed": 0, "scope": "Character preview, original proportions, camera/grip alignment, stats, appearance authority, bow cadence, combat, health initialization and lifecycle" },
+    { "jobId": "0417f3795552489a8393250d5092dbd0", "passed": 66, "failed": 0, "scope": "Final personal lobby lifecycle, J input, UI focus and profile binding" },
+    { "jobId": "4ab60e46103248ef9b54b35b7be3e4bd", "passed": 83, "failed": 0, "scope": "Final personal lobby saved skill loading, owning-scene server stat/skill guards, J input, cursor, local profile and movement security" }
+  ],
+  "runtime": {
+    "hostReturnProbe": "Reports/MatchReturn/host-return-probe.json",
+    "hostReturnChecksPassed": 16,
+    "finalProbeConsoleErrors": 0,
+    "finalProbeConsoleWarnings": 0,
+    "transport": "Editor-only memory transport; actual Mirror host to server-only transition and actual Lobby scene",
+    "verified": [
+      "Six character previews render after repeated selection without reused skin-mesh vertex-stride buffers",
+      "Selector layout shows character preview and all five stat comparisons",
+      "Sword display handle follows native palm while original gameplay collision remains intact",
+      "Host returns alone and keeps remaining participant identity, position and connection",
+      "Personal lobby avatar accepts movement and uses isolated physics",
+      "Last participant leaving closes retained server and restores ordinary lobby"
+    ],
+    "screenshots": ["selector-runtime.png", "brute-grip-close.png", "casual-grip-close.png"],
+    "authenticatedTwoBrowserRoomTest": "not performed",
+    "onlineFrameRateMeasurement": "not performed"
+  },
+  "resultPrototype": {
+    "path": "Prototypes/battle-results/index.html",
+    "previewUrl": "http://127.0.0.1:8773/",
+    "browserConsoleErrors": 0,
+    "verifiedStates": ["victory", "defeat", "respawn", "J individual lobby return", "J respawn"],
+    "unityScope": "Only J actions, readable white prompts with 0.8 black backing, individual return and winner movement are applied. Full result design remains an HTML prototype."
+  },
+  "limitations": [
+    "A host who returns before remaining participants keeps serving that finished match. Creating/joining another room and training resume automatically after the last participant leaves.",
+    "Character combat modifiers are initial tuning values relative to the original character, not validated competitive balance.",
+    "Native character geometry is preserved; original gameplay hitboxes remain shared."
+  ],
+  "creditsReview": "Reports/CharacterSelection/attribution-review-2026-10-06.json",
+  "balanceTable": "Assets/Characters/README.md"
+}

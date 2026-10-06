@@ -1,0 +1,24 @@
+{
+  "dateKst": "2026-10-06",
+  "jobId": "build-59fc5ad0c2",
+  "result": "succeeded",
+  "errors": 0,
+  "warnings": 0,
+  "durationSeconds": 240.0709034,
+  "development": false,
+  "output": "C:\\Github\\Battle_PVP\\Builds\\WebGL-2026-10-06-CharacterFix",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-06-CharacterFix.zip",
+  "archiveBytes": 96624554,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "sha256": "a820fa7b4643dbfc5dbfebaa2f4a3492c3b4d259917394a986f6a746431ca70e",
+  "previewUrl": "http://127.0.0.1:8772/",
+  "validation": "Reports/CharacterSelection/native-repair-validation.json",
+  "onlineMultiplayerFpsMeasured": false,
+  "browserSmokeTest": {
+    "titleScreen": "passed",
+    "browserConsoleErrors": 0,
+    "browserWarning": "Unity persistentDataPath manual synchronization deprecation",
+    "authenticatedRoomTest": "not performed"
+  }
+}

@@ -1,0 +1,22 @@
+{
+    "passed": true,
+    "checks": [
+        "Host is serving the completed match from its personal lobby.",
+        "Stopping the host's local client preserves the server.",
+        "The actual Lobby scene is active.",
+        "The remaining participant remains connected.",
+        "The same remote server identity survives the host's personal return.",
+        "The departing host's battle avatar is removed.",
+        "The lobby transition does not move the remote participant.",
+        "An independent local lobby avatar exists.",
+        "The lobby camera follows its independent avatar.",
+        "The personal lobby avatar accepts local movement input.",
+        "The independent lobby avatar physically moves.",
+        "Lobby physics is isolated from the retained battle world.",
+        "The server waits while one result viewer remains.",
+        "The final participant's departure closes the finished server.",
+        "The retained battle scene is unloaded.",
+        "The ordinary lobby restores automatic default physics."
+    ],
+    "failures": []
+}

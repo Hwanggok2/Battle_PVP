@@ -1,0 +1,22 @@
+{
+    "passed": true,
+    "checks": [
+        "Existing waiting room is loaded alongside the completed battle.",
+        "Remote return does not change the host's displayed battle scene.",
+        "Loading a waiting room does not replace the battle result state.",
+        "Only the requesting remote avatar moves into the waiting room with the same identity.",
+        "The host remains in the battle until pressing J.",
+        "Another round cannot start while a participant is still viewing results.",
+        "The host returns without stopping its local client or server.",
+        "The same host player and authority survive the return.",
+        "Room participants stay connected.",
+        "The host now sees the existing room's waiting scene.",
+        "Waiting room movement is unlocked for the returned player.",
+        "Waiting camera follows the returned player.",
+        "Returned participants share the same waiting room space.",
+        "All returns preserve the room and both connections.",
+        "The completed battlefield is released after everyone returns.",
+        "The normal waiting room is ready for the next match."
+    ],
+    "failures": []
+}

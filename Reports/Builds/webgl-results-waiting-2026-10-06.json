@@ -1,0 +1,26 @@
+{
+  "dateKst": "2026-10-06",
+  "jobId": "build-a12993bf88",
+  "result": "succeeded",
+  "errors": 0,
+  "warnings": 6,
+  "durationSeconds": 683.019205,
+  "development": false,
+  "output": "C:\\Github\\Battle_PVP\\Builds\\WebGL-2026-10-06-ResultsWaiting",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-06-ResultsWaiting.zip",
+  "archiveBytes": 97181331,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "sha256": "fe17ec3f237e0c485ddf0f606facd856f3a3716d0ea2b47a0d42e4dab72a2199",
+  "previewUrl": "http://127.0.0.1:8772/",
+  "validation": "Reports/BattleResults/results-waiting-validation-2026-10-06.json",
+  "authenticatedTwoBrowserRoomTest": "not performed",
+  "warningSummary": "One existing inherited method-name warning and five unused serialized-field warnings; no build errors.",
+  "browserSmokeTest": {
+    "titleScreen": "passed",
+    "previewServerPid": 42460,
+    "browserConsoleErrors": 0,
+    "browserWarning": "Unity persistentDataPath manual synchronization deprecation",
+    "newBuildAssetRequests": "all 200 responses"
+  }
+}

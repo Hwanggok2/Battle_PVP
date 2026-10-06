@@ -1,0 +1,25 @@
+{
+  "dateKst": "2026-10-06",
+  "jobId": "build-2389e07ec5",
+  "result": "succeeded",
+  "errors": 0,
+  "warnings": 6,
+  "durationSeconds": 657.7002997,
+  "development": false,
+  "output": "C:\\Github\\Battle_PVP\\Builds\\WebGL-2026-10-06-BowUiAlignment",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-06-BowUiAlignment.zip",
+  "archiveBytes": 97158879,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "sha256": "2930d689da08b066be622d297e7ddc962eed1a1fdb02b6de32ad4e0694373ccf",
+  "previewUrl": "http://127.0.0.1:8772/",
+  "validation": "Reports/BowAndUi/validation-2026-10-06.json",
+  "warningSummary": "One existing inherited method-name warning and five unused serialized-field warnings; no build errors.",
+  "browserSmokeTest": {
+    "previewServerPid": 41636,
+    "titleScreen": "passed",
+    "browserConsoleErrors": 0,
+    "newBuildAssetRequests": "all 200 responses",
+    "browserWarning": "Unity persistentDataPath manual synchronization deprecation"
+  }
+}

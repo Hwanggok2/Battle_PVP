@@ -1,0 +1,41 @@
+{
+  "dateKst": "2026-10-06",
+  "resultPrompt": {
+    "referenceResolution": [1920, 1080],
+    "center": [960, 670],
+    "movedDownPixels": 130,
+    "htmlNormalizedCenter": [0.5, 0.6204],
+    "htmlConsoleErrors": 0,
+    "runtimeScreenshot": "Reports/BowAndUi/result-lower-runtime.png"
+  },
+  "topMenu": {
+    "referenceResolution": [1600, 900],
+    "buttonSize": [116, 44],
+    "gap": 12,
+    "fontSize": 24,
+    "rightMargin": 24,
+    "order": ["캐릭터", "직업", "정보", "스탯", "설정"],
+    "runtimeMeasurementsVerified": true,
+    "runtimeScreenshot": "Reports/BowAndUi/top-menu-runtime.png"
+  },
+  "equipment": {
+    "rootCause": "CharacterPoseFollower overwrote evaluated body rotation with Animator.bodyRotation, losing the procedural bow yaw. Back bow and quiver had remained attached only to the original gameplay skeleton.",
+    "fix": "Retarget evaluated body rotation and align the visible upper-body hand direction while aiming. Fit back equipment to the native torso with stable bind-pose height scaling. Keep held bow grip in the native palm, original gameplay transforms, and weapon LOD selection.",
+    "charactersChecked": ["brute", "megumi", "security-officer", "casual-1", "picochan"],
+    "aimPitchTestsDegrees": [-30, 0, 30],
+    "maximumAllowedNativeAimDifferenceDegrees": 0.1,
+    "runtimeDirectionSample": {"driver": [0.01, -0.01, 1.0], "casual1": [0.01, -0.01, 1.0]},
+    "runtimeScreenshots": ["Reports/BowAndUi/casual-aim-runtime.png", "Reports/BowAndUi/casual-back-runtime.png", "Reports/BowAndUi/brute-aim-runtime.png", "Reports/BowAndUi/picochan-aim-runtime.png"],
+    "runtimeMethod": "Inspected frozen authored aim poses and idle equipment in an offline Unity Lobby. Temporary diagnostic pose/camera changes were discarded on leaving Play Mode."
+  },
+  "editModeTests": {
+    "jobId": "ea7ca1df6b5243daac656c746b8bab1b",
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 4.6035221,
+    "coverage": ["Native bow direction and quiver scale", "Equipment LODs and restoration", "Character preview and sword grip", "Bow presentation and attack cadence", "J return and respawn", "Local UI binding and cursor modes", "HUD initialization"]
+  },
+  "unityRuntimeConsoleErrors": 0,
+  "onlineTwoBrowserCombatTest": "not performed"
+}

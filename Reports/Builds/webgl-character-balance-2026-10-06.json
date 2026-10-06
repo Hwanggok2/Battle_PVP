@@ -1,0 +1,27 @@
+{
+  "dateKst": "2026-10-06",
+  "jobId": "build-131a2a803c",
+  "result": "succeeded",
+  "errors": 0,
+  "warnings": 6,
+  "warningSummary": "One inherited DestroyObject method-name warning and five unused serialized-field warnings. No build errors.",
+  "durationSeconds": 740.115517,
+  "development": false,
+  "output": "C:\\Github\\Battle_PVP\\Builds\\WebGL-2026-10-06-CharacterBalance",
+  "archive": "C:\\Github\\Battle_PVP\\Builds\\Battle_PvP-WebGL-2026-10-06-CharacterBalance.zip",
+  "archiveBytes": 97097267,
+  "archiveFileCount": 19,
+  "archiveContentsVerified": true,
+  "sha256": "bb60d14badbd1b39f6d4c9036b403c7ae2d7d79f004baa2d65df9a70e3346066",
+  "previewUrl": "http://127.0.0.1:8772/",
+  "validation": "Reports/CharacterSelection/balance-and-results-validation-2026-10-06.json",
+  "onlineMultiplayerFpsMeasured": false,
+  "authenticatedRoomTest": "not performed",
+  "browserSmokeTest": {
+    "titleScreen": "passed",
+    "browserConsoleErrors": 0,
+    "browserWarning": "Unity persistentDataPath manual synchronization deprecation",
+    "newBuildAssetRequests": "all 200 responses",
+    "previewServerPid": 29380
+  }
+}

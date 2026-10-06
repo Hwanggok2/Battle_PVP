@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-05",
+  "unity": "6000.3.15f1",
+  "characterTests": {
+    "jobId": "bf3fd4b68ed44631a8961333a616983f",
+    "passed": 13,
+    "failed": 0,
+    "checks": [
+      "Duplicate and removed character IDs",
+      "Mesh/material replacement preserves animation rig, collider identities and visibility flags",
+      "Incompatible bind poses and missing resources rejected without partial application",
+      "Local preference restored for replacement players",
+      "Lobby/waiting-only edits and server-side initial submission gate",
+      "Unknown ID and dead-player rejection on server",
+      "Mirror initial snapshot and incremental SyncVar roundtrip",
+      "New materials survive local stealth restoration",
+      "Active buff shells follow replacement mesh without duplication",
+      "Modal input and Escape; preview excludes gameplay/network components"
+    ]
+  },
+  "existingRegressionTests": {
+    "jobId": "58e39efc7408477e8a65259fa1073f78",
+    "passed": 102,
+    "failed": 0,
+    "groups": ["SkillExpansionTests", "CursorRoomMenuTests", "HudAndInputLifecycleTests", "PlayerLifePresentationTests"]
+  },
+  "nativeLobby": {
+    "previewDoesNotApply": true,
+    "applyButtonChangesAppearance": true,
+    "animatorCollidersAndHealthUnchanged": true,
+    "escapeRestoresInput": true,
+    "restoredDefaultAfterTemporaryVariant": true,
+    "portraitAssigned": true,
+    "finalCleanRunConsoleErrorsAndWarnings": 0,
+    "screenshot": "character-selection.png"
+  },
+  "scope": {
+    "registeredCharacters": 1,
+    "persistence": "Account-scoped local PlayerPrefs, matching skill loadout preferences",
+    "resources": "One SkinnedMeshRenderer with the existing skeleton/bind pose; multiple submeshes/materials supported",
+    "networkValidation": "Serialization and server-rule tests; no new two-process transport test or release build was run",
+    "futureModels": "Must be validated and visually tested after import"
+  }
+}

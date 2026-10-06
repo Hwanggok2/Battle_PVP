@@ -1,0 +1,40 @@
+{
+  "dateKst": "2026-10-06",
+  "supersedes": "import-validation.json",
+  "characters": ["brute", "megumi", "security-officer", "casual-1", "picochan"],
+  "excluded": ["maya", "emily"],
+  "implementation": {
+    "geometry": "Original vertex positions, bone weights, proportions and native skeleton retained; same-material submeshes combined.",
+    "animation": "Gameplay HumanPose copied in LateUpdate to the native Avatar with world-to-root translation/rotation correction. Player Animator uses AlwaysAnimate so hiding Ch10 does not stop pose updates.",
+    "renderer": "A separate visual renderer per character; no imported vertex layout is assigned to Ch10.",
+    "gameplay": "Original gameplay animator, weapon objects and colliders retained.",
+    "web": "3D pixel budgets: low 1280x720, medium 1600x900, high 1920x1080; native-resolution UI; seven PicoChan textures compressed for WebGL.",
+    "camera": "Initial target pose applied independently of pointer lock/menu state; camera also subscribes to local-player availability."
+  },
+  "tests": {
+    "jobId": "edb6aa0936a54ab89e4ba23948ae5451",
+    "mode": "EditMode",
+    "passed": 124,
+    "failed": 0,
+    "finalCharacterRerun": {"jobId": "a11b7d83c346425b8ca5eba1c37d0f05", "passed": 30, "failed": 0},
+    "originalGeometryToleranceMetres": 0.001,
+    "rootPoseToleranceMetres": 0.002,
+    "poses": ["idle", "walk", "melee", "bow aim", "death"],
+    "poseSamplesPerClip": 3,
+    "coverage": ["original vertex preservation", "finite animated geometry and culling bounds", "translated/rotated/scaled root", "visibility", "native skin aura replacement", "stealth recovery", "network ID synchronization", "pointer-lock/menu camera initialization", "camera initialized after player", "WebGL pixel budgets"]
+  },
+  "runtimeChecks": {
+    "editorGpuSkinningSwitches": 36,
+    "rendererErrors": 0,
+    "liveWalkCheck": {"editorFrames": 120, "nativeHandDisplacementMetres": 0.481082678, "driverCulling": "AlwaysAnimate"},
+    "nativeLineupScreenshot": "native-lineup-runtime.png",
+    "bruteLobbyScreenshot": "brute-lobby-runtime.png",
+    "catalogValidation": "6 entries passed after the persistent-prefab lookup fix"
+  },
+  "limitations": [
+    "An editor GPU rendering check is not a WebGL gameplay benchmark.",
+    "No user-provided deployed URL or two-peer online room reproduction was available.",
+    "Original third-party physics scripts and facial blend shapes are not included; gameplay hitboxes retain their existing dimensions."
+  ],
+  "apiReference": "https://docs.unity.com/en-us/engine/6000.0/script-reference/unityengine/humanposehandler/gethumanpose"
+}

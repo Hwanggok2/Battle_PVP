@@ -1,0 +1,35 @@
+{
+  "dateKst": "2026-10-06",
+  "changes": [
+    "Removed the stay-in-battle action from the HTML and Unity result layout.",
+    "Centered the only result action: J를 눌러 로비로 돌아가기.",
+    "Respawn action reads J를 눌러 부활하기; countdown switches directly to 부활할 준비가 되었습니다. at zero.",
+    "Applied the HTML composition, standings, personal record, colors and shared Pretendard font to Unity.",
+    "Each participant returns to the existing Battle_waiting room while retaining the room, transport and player authority. The next match waits for all remaining participants to return."
+  ],
+  "editModeTests": {
+    "jobId": "3c4f76c8e9cf48c5aadb92bd24c78ffe",
+    "passed": 110,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 4.7717562,
+    "coverage": "J input, respawn countdown, centered result action, result text safety, winner movement, next-round return reset, scene ownership, room readiness, character appearance, HUD initialization and combat authority"
+  },
+  "editorRuntimeProbes": {
+    "remoteFirst": { "report": "Reports/MatchReturn/same-room-return-probe.json", "checksPassed": 16, "failed": 0 },
+    "hostFirst": { "report": "Reports/MatchReturn/host-first-waiting-probe.json", "checksPassed": 13, "failed": 0 },
+    "consoleErrors": 0,
+    "consoleWarnings": 0,
+    "method": "Real host/local-client message flow and actual additive waiting scene with an editor-only memory transport. A simulated remote connection acknowledges its scene state.",
+    "limitation": "Two independent authenticated browser clients and remote-client rendering were not exercised."
+  },
+  "visualChecks": {
+    "unityResult": "Reports/BattleResults/result-victory-runtime.png",
+    "unityCountdown": "Reports/BattleResults/respawn-countdown-runtime.png",
+    "unityReady": "Reports/BattleResults/respawn-ready-runtime.png",
+    "html": "http://127.0.0.1:8773/",
+    "htmlVerified": ["Victory result", "No stay action", "Centered J action", "Countdown and ready state", "J return displays existing-room waiting confirmation"],
+    "viewportOverrideReset": true,
+    "note": "Unity screenshots use sample match results over the actual Lobby scene solely to inspect presentation. Runtime match results use authoritative completed-match data."
+  }
+}
