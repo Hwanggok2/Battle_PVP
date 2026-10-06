@@ -43,6 +43,7 @@ namespace BattlePvp.Networking
         private NativeArray<byte> _sendBuffer;
         private NativeArray<byte> _receiveBuffer;
         private readonly byte[] _receiveBytes = new byte[ReliablePacketCapacity];
+        private bool _clientFlushPending = true, _serverFlushPending = true, _directFlushPending = true;
         private bool _isPolling;
         private int _nextConnectionId = 1;
 
@@ -503,6 +504,7 @@ namespace BattlePvp.Networking
                 return;
             }
 
+            _clientFlushPending = true;
             _clientDriver.ScheduleUpdate().Complete();
             RelayConnectionStatus status = _clientDriver.GetRelayConnectionStatus();
             if (status != _lastClientRelayStatus)
@@ -569,6 +571,7 @@ namespace BattlePvp.Networking
             if (!driver.IsCreated)
                 return;
 
+            if (direct) _directFlushPending = true; else _serverFlushPending = true;
             driver.ScheduleUpdate().Complete();
             if (!direct && driver.GetRelayConnectionStatus() == RelayConnectionStatus.AllocationInvalid)
             {
@@ -635,10 +638,11 @@ namespace BattlePvp.Networking
 
         public override void ClientLateUpdate()
         {
-            if (_clientDriver.IsCreated)
+            if (_clientDriver.IsCreated && _clientFlushPending)
             {
                 double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
                 _clientDriver.ScheduleFlushSend().Complete();
+                _clientFlushPending = false;
                 if (CollectDiagnostics) FlushMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d;
             }
         }
@@ -646,8 +650,10 @@ namespace BattlePvp.Networking
         public override void ServerLateUpdate()
         {
             double started = CollectDiagnostics ? Time.realtimeSinceStartupAsDouble : 0d;
-            if (_directServerDriver.IsCreated) _directServerDriver.ScheduleFlushSend().Complete();
-            if (_serverDriver.IsCreated) _serverDriver.ScheduleFlushSend().Complete();
+            if (_directServerDriver.IsCreated && _directFlushPending)
+            { _directServerDriver.ScheduleFlushSend().Complete(); _directFlushPending = false; }
+            if (_serverDriver.IsCreated && _serverFlushPending)
+            { _serverDriver.ScheduleFlushSend().Complete(); _serverFlushPending = false; }
             if (CollectDiagnostics) FlushMilliseconds += (Time.realtimeSinceStartupAsDouble - started) * 1000d;
         }
 
@@ -723,6 +729,11 @@ namespace BattlePvp.Networking
             writer.WriteBytes(_sendBuffer.GetSubArray(0, segment.Count));
 
             result = driver.EndSend(writer);
+            // Every driver update (including ACKs/keepalives) and send invalidates the flush.
+            // Repeated timing hooks with no intervening work need no additional job completion.
+            if (client) _clientFlushPending = true;
+            else if (_directConnections.Contains(connectionId)) _directFlushPending = true;
+            else _serverFlushPending = true;
             if (result < 0)
             {
                 SendErrorCount++;
@@ -803,12 +814,14 @@ namespace BattlePvp.Networking
 
         private void DisposeClientDriver()
         {
+            _clientFlushPending = true;
             if (_clientDriver.IsCreated)
                 _clientDriver.Dispose();
         }
 
         private void DisposeServerDriver()
         {
+            _serverFlushPending = _directFlushPending = true;
             if (_serverDriver.IsCreated)
                 _serverDriver.Dispose();
         }
