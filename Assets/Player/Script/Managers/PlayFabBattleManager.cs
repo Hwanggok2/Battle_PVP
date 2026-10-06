@@ -292,7 +292,7 @@ namespace BattlePvp.Networking
                     NetworkClient.connection == null && NetworkManager.loadingSceneAsync == null) return;
                 if (Time.realtimeSinceStartupAsDouble >= deadline)
                     throw new InvalidOperationException("The previous room has not finished shutting down.");
-                await Task.Delay(25, flow.Cancellation);
+                await UnityRealtimeTimer.DelayAsync(25, flow.Cancellation);
             }
         }
 
@@ -321,7 +321,7 @@ namespace BattlePvp.Networking
             {
                 if (transport.ServerRelayFailed || Time.realtimeSinceStartupAsDouble >= deadline)
                     throw new InvalidOperationException("Relay host did not become ready.");
-                await Task.Delay(25, flow.Cancellation);
+                await UnityRealtimeTimer.DelayAsync(25, flow.Cancellation);
             }
             string publicEndpoint = await transport.GatherPublicEndpointAsync(flow.Cancellation);
             if (!IsCurrentRoomFlow(flow)) return;
@@ -354,7 +354,7 @@ namespace BattlePvp.Networking
                 await ServiceTaskDeadline.WaitAsync(completion.Task, flow.Cancellation);
                 if (!IsCurrentRoomFlow(flow)) return string.Empty;
                 if (!string.IsNullOrWhiteSpace(flow.Info.RelayJoinCode)) return flow.Info.RelayJoinCode;
-                await Task.Delay(500, flow.Cancellation);
+                await UnityRealtimeTimer.DelayAsync(500, flow.Cancellation);
             }
             return string.Empty;
         }
@@ -378,7 +378,7 @@ namespace BattlePvp.Networking
         private async Task<ExecuteCloudScriptResult> ExecuteConfirmedRoomMutation(RoomFlow flow, string function,
             Dictionary<string, object> parameters, bool cleanup)
         {
-            using (var deadline = new CancellationTokenSource(RoomMutationTimeoutMilliseconds))
+            using (var deadline = UnityRealtimeTimer.CreateTimeout(RoomMutationTimeoutMilliseconds))
             {
                 Task<ExecuteCloudScriptResult> SendRequest()
                 {
@@ -539,7 +539,11 @@ namespace BattlePvp.Networking
                 if (attempt < ROOM_REGISTRATION_MAX_ATTEMPTS)
                 {
                     SetRoomFlowState(flow, "방 등록을 다시 시도하는 중...", true);
-                    await Task.Delay((int)(ROOM_REGISTRATION_RETRY_DELAY_SECONDS * attempt * 1000f));
+                    try
+                    {
+                        await UnityRealtimeTimer.DelayAsync((int)(ROOM_REGISTRATION_RETRY_DELAY_SECONDS * attempt * 1000f), flow.Cancellation);
+                    }
+                    catch (OperationCanceledException) { return; }
                     if (IsCurrentRoomFlow(flow)) RegisterRoomToRegistry(flow, relayJoinCode, attempt + 1);
                 }
                 else
@@ -905,7 +909,7 @@ namespace BattlePvp.Networking
             // Give the normal cleanup request a bounded chance to remove the room/membership.
             // A lost connection still relies on the existing host lease expiry.
             for (int i = 0; i < 20 && flow != null && flow.State.MembershipPossible && flow.State.CleanupQueued; i++)
-                await Task.Delay(100);
+                await UnityRealtimeTimer.DelayAsync(100);
         }
 
         private void LeaveRoomWithNotice(string message, bool retainNotice = false)

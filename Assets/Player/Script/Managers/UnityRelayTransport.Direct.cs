@@ -135,7 +135,7 @@ namespace BattlePvp.Networking
             else
             {
                 _clientPreparingFallback = true;
-                _clientFallbackCancellation = new CancellationTokenSource(TimeSpan.FromSeconds(
+                _clientFallbackCancellation = UnityRealtimeTimer.CreateTimeout((int)(1000d *
                     Math.Max(.1, _clientConnectDeadline - Time.realtimeSinceStartupAsDouble)));
                 _ = PrepareFallbackAsync(_clientAttempt, _preparationVersion, _clientFallbackCancellation);
             }

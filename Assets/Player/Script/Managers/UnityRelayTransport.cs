@@ -166,7 +166,7 @@ namespace BattlePvp.Networking
             _lanRoomKey = null;
             LastJoinCode = LastRelayRegion = LastRelayRegionLabel = string.Empty;
             var preparation = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
-            preparation.CancelAfter(RelayPreparationTimeoutMilliseconds);
+            UnityRealtimeTimer.CancelAfter(preparation, RelayPreparationTimeoutMilliseconds);
             _preparationCancellation = preparation;
             return preparation;
         }
@@ -260,7 +260,7 @@ namespace BattlePvp.Networking
                     int delayMilliseconds = RelayApiBackoffMilliseconds * attempt;
                     Debug.LogWarning(
                         $"[UnityRelayTransport] {operationName} failed on attempt {attempt}/{RelayApiMaxAttempts}. Retrying in {delayMilliseconds}ms. {ex.GetType().Name}");
-                    await Task.Delay(delayMilliseconds, token);
+                    await UnityRealtimeTimer.DelayAsync(delayMilliseconds, token);
                 }
                 catch (Exception ex)
                 {
