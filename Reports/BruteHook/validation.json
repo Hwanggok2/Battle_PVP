@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-06",
+  "sourceRevision": "45c5fcc",
+  "changes": {
+    "barbarianSword": {
+      "commit": "c8279b9",
+      "rightHandLocalGripOffset": [0, 0.0504, 0.0275],
+      "scope": "Visible sword only; authored combat rig and colliders unchanged",
+      "visualEvidence": ["brute-attack-before-1.png", "brute-attack-after-1.png", "brute-attack-before-2.png", "brute-attack-after-2.png"]
+    },
+    "hookSpeed": {
+      "commit": "45c5fcc",
+      "projectileSpeed": { "before": 12, "after": 18 },
+      "pullSpeed": { "before": 8, "after": 12 },
+      "emptyRetrievalSeconds": { "before": 0.6, "after": 0.4 },
+      "unchanged": ["windup", "range", "damage", "cooldown"],
+      "workbookValidation": "hook-data-validation.json"
+    }
+  },
+  "tests": {
+    "passed": 128,
+    "failed": 0,
+    "completedUtc": "2026-10-06T12:01:29Z",
+    "suites": ["CharacterVisualAlignmentTests", "CharacterBowAlignmentTests", "CharacterAppearanceTests", "SkillExpansionTests", "RuntimeOptimizationTests"],
+    "gripCases": "Attack, Attack2 and Attack3 at 0.2 seconds, normal and 1.2x body scale, translated and rotated root",
+    "hookCases": "1.5x projectile and pull speed; retrieval duration divided by 1.5; playback rate 1.5"
+  },
+  "webBuild": {
+    "status": "succeeded",
+    "output": "Builds/WebGL-2026-10-06-OptimizedHook",
+    "development": false,
+    "completedUtc": "2026-10-06T12:20:31.760074Z",
+    "durationSeconds": 681.67,
+    "errors": 0,
+    "warnings": 6,
+    "warningSummary": "Five existing unused-field warnings and one CharacterPreview method-hiding warning.",
+    "archive": "Builds/Battle_PvP-WebGL-2026-10-06-OptimizedHook.zip",
+    "archiveBytes": 97518793,
+    "archiveSha256": "F6E9FAE613D5B516866BBA2E4C324252316B0527EA9A2ED72FDB44AFD8412D49",
+    "archiveCheck": "9 entries; index.html present; no empty files",
+    "browserSmokeCheck": {
+      "url": "http://127.0.0.1:8775/",
+      "startScreen": true,
+      "loginScreen": true,
+      "consoleErrors": 0,
+      "screenshot": "web-build-login.png",
+      "authenticatedCombatTested": false
+    },
+    "note": "Explicitly switch the active Unity target to WebGL before building; a build requested while Windows remained active omitted UnityEngine.WebGLModule and failed."
+  }
+}

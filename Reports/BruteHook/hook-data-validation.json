@@ -1,0 +1,24 @@
+{
+  "edits": [
+    {
+      "row": 53,
+      "key": "ProjectileSpeed",
+      "before": 12,
+      "after": 18
+    },
+    {
+      "row": 54,
+      "key": "PullSpeed",
+      "before": 8,
+      "after": 12
+    },
+    {
+      "row": 101,
+      "key": "RetrieveSeconds",
+      "before": 0.6,
+      "after": 0.4
+    }
+  ],
+  "preservedOtherValuesAndFormulas": true,
+  "errors": "{\"kind\":\"notice\",\"message\":\"Cell search matched 0 entries.\"}"
+}
