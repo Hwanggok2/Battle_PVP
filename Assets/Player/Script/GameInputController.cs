@@ -61,10 +61,34 @@ namespace BattlePvp.Logic
         [System.Runtime.InteropServices.DllImport("__Internal")]
         private static extern int BattlePvpPointerLock_IsLocked();
         [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern int BattlePvpPointerLock_ConsumeUnlock();
+        [System.Runtime.InteropServices.DllImport("__Internal")]
         private static extern void BattlePvpPointerLock_Dispose();
 #endif
 
         public static GameInputController Instance { get; private set; }
+
+        public static bool IsPointerCaptured
+        {
+            get
+            {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                return BattlePvpPointerLock_IsLocked() != 0;
+#else
+                return Cursor.lockState == CursorLockMode.Locked;
+#endif
+            }
+        }
+
+        private void SyncBrowserUnlock()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            if (BattlePvpPointerLock_ConsumeUnlock() == 0) return;
+            _isCursorUnlocked = true;
+            // Avoid toggling back if this browser also delivers Escape in this frame.
+            InputGate.TryConsumeEscape(Time.frameCount);
+#endif
+        }
 
         private void Awake()
         {
@@ -142,6 +166,7 @@ namespace BattlePvp.Logic
 
         public static void HandleEscape()
         {
+            Instance?.SyncBrowserUnlock();
             if (!InputGate.TryConsumeEscape(Time.frameCount)) return;
             if (BattlePvp.UI.RoomStartNotice.IsOpen) { BattlePvp.UI.RoomStartNotice.Instance.Close(); return; }
             if (BattlePvp.UI.CharacterSelectionPanel.IsOpen) { BattlePvp.UI.CharacterSelectionPanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
@@ -239,6 +264,7 @@ namespace BattlePvp.Logic
 
         private void ApplyCursorState()
         {
+            SyncBrowserUnlock();
             if (_localIdentity != NetworkClient.localPlayer)
             {
                 _localIdentity = NetworkClient.localPlayer;

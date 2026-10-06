@@ -70,12 +70,23 @@ test('synchronous denial and legacy pointerlockerror remain recoverable', () => 
     assert.equal(legacy.requests, 2);
 });
 
-test('Escape does not automatically request another lock', () => {
+test('browser Escape preserves the next UI click until Unity acknowledges cursor mode', () => {
     const f = fixture(); f.enable(); f.click(); f.lock();
     f.document.exitPointerLock();
     for (let i = 0; i < 100; i++) f.enable();
     assert.equal(f.requests, 1);
-    f.click(); assert.equal(f.requests, 2);
+    f.click(); assert.equal(f.requests, 1);
+    assert.equal(f.library.BattlePvpPointerLock_ConsumeUnlock(), 1);
+    assert.equal(f.library.BattlePvpPointerLock_ConsumeUnlock(), 0);
+    f.enable(); f.click(); assert.equal(f.requests, 1);
+    f.enable(false); f.click(); assert.equal(f.requests, 1);
+    f.enable(); f.click(); assert.equal(f.requests, 2);
+});
+
+test('a deliberate menu release does not become a second Escape event', () => {
+    const f = fixture(); f.enable(); f.click(); f.lock(); f.enable(false);
+    assert.equal(f.library.BattlePvpPointerLock_ConsumeUnlock(), 0);
+    f.enable(); f.click(); assert.equal(f.requests, 2);
 });
 
 test('opening a menu releases the pointer; a late successful request is released too', async () => {

@@ -98,7 +98,7 @@ namespace BattlePvp.Combat
             if (string.IsNullOrWhiteSpace(stateName))
                 return true;
 
-            if (_animator == null || _animator.layerCount <= 0)
+            if (_animator == null || !_animator.isActiveAndEnabled || _animator.layerCount <= 0)
                 return true;
 
             int layer = Mathf.Clamp(animationLayer, 0, _animator.layerCount - 1);
@@ -107,6 +107,16 @@ namespace BattlePvp.Combat
                 return true;
 
             return !_animator.IsInTransition(layer) && stateInfo.normalizedTime >= 1f;
+        }
+
+        public double RemainingAnimationSeconds(string stateName, int animationLayer)
+        {
+            if (_animator == null || _animator.layerCount <= 0 || string.IsNullOrWhiteSpace(stateName)) return 0d;
+            int layer = Mathf.Clamp(animationLayer, 0, _animator.layerCount - 1);
+            AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(layer);
+            if (!state.IsName(stateName) || !float.IsFinite(state.length)) return 0d;
+            // Unity's state length already includes Animator/state playback speed.
+            return state.length * Mathf.Clamp01(1f - state.normalizedTime);
         }
 
         public void SetSwordMaterial(GameObject sword, Material swordMaterial)

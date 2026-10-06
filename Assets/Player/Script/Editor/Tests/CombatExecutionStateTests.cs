@@ -63,12 +63,30 @@ namespace BattlePvp.EditorTests
             locks.LockUntil(CombatCastChannel.Advanced, 5d);
             Assert.That(locks.IsLocked(2d), Is.True);
             Assert.That(locks.IsLocked(5d), Is.False);
-            locks.SetAnimationLocked(true);
+            locks.LockAnimationUntil(51d);
             Assert.That(locks.IsLocked(50d), Is.True);
+            Assert.That(locks.IsLocked(51d), Is.False, "A stalled animation must not lock combat indefinitely.");
+            locks.LockAnimationUntil(55d);
             locks.Cancel();
             Assert.That(locks.IsLocked(0d), Is.False);
             locks.LockUntil(CombatCastChannel.Agility, double.NaN);
             Assert.That(locks.IsLocked(0d), Is.False);
+        }
+
+        [Test]
+        public void ReleasingOrReplacingAnimationLockPreservesIndependentCastDeadlines()
+        {
+            var locks = new CombatActionLocks();
+            locks.LockUntil(CombatCastChannel.Advanced, 10d);
+            locks.LockAnimationUntil(20d);
+            locks.LockAnimationUntil(12d);
+            Assert.That(locks.IsLocked(12d), Is.False);
+            locks.LockAnimationUntil(double.PositiveInfinity);
+            locks.LockAnimationUntil(double.NaN);
+            Assert.That(locks.IsLocked(13d), Is.False);
+            locks.ReleaseAnimation();
+            Assert.That(locks.IsLocked(9d), Is.True);
+            Assert.That(locks.IsLocked(10d), Is.False);
         }
 
         [Test]

@@ -767,7 +767,8 @@ public class PlayerCombat : NetworkBehaviour
         _lastAttackPressedAt = pressedAt;
         if (_expanded == null) _expanded = GetComponent<ExpandedSkillController>();
         if (!BattlePvp.Logic.GameInputController.IsPaused && !BattlePvp.Logic.GameInputController.IsTextInputActive &&
-            !_isPointerOverUI && _expanded != null && _expanded.HandleAttackInput()) return;
+            (fromHud || BattlePvp.Logic.GameInputController.IsPointerCaptured || !_isPointerOverUI) &&
+            _expanded != null && _expanded.HandleAttackInput()) return;
         if (_playerManager != null && _playerManager.IsSkillAttackLocked) return;
         if (IsPolymath() && _isBowEquipped)
         {
@@ -791,7 +792,7 @@ public class PlayerCombat : NetworkBehaviour
 
         if (IsSkillCastingOrAttackLocked()) return;
 
-        if (!fromHud && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
+        if (!fromHud && !BattlePvp.Logic.GameInputController.IsPointerCaptured && _isPointerOverUI)
             return;
 
         if (isAttacking)
@@ -1362,14 +1363,17 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoComboMonitor(int index)
     {
+        double deadline = Time.timeAsDouble + SkillPresentation.RemainingAnimationSeconds(comboList[index].animationName, 1) + 0.5d;
         yield return null;
         yield return null;
 
         while (true)
         {
-            if (animator == null)
+            if (animator == null || !animator.isActiveAndEnabled || Time.timeAsDouble >= deadline)
             {
-                StopCombo();
+                // An interrupted/frozen animator must not keep attacks or hitboxes alive.
+                _comboRoutine = null;
+                CancelCurrentAttack();
                 yield break;
             }
 
@@ -1675,7 +1679,8 @@ public class PlayerCombat : NetworkBehaviour
         if (!HasSkillCastAnimation(data))
             return;
 
-        _actionLocks.SetAnimationLocked(true);
+        _actionLocks.LockAnimationUntil(SkillTime +
+            SkillPresentation.RemainingAnimationSeconds(data.CastAnimationStateName, data.CastAnimationLayer) + 0.5d);
         if (_localSkillAnimationAttackLockRoutine != null)
             StopCoroutine(_localSkillAnimationAttackLockRoutine);
         _localSkillAnimationAttackLockRoutine = StartCoroutine(CoLocalSkillAnimationAttackLock(data));
@@ -1683,10 +1688,10 @@ public class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoLocalSkillAnimationAttackLock(JobSkillData data)
     {
-        while (!IsSkillCastAnimationFinished(data))
+        while (_actionLocks.IsAnimationLocked(SkillTime) && !IsSkillCastAnimationFinished(data))
             yield return null;
 
-        _actionLocks.SetAnimationLocked(false);
+        _actionLocks.ReleaseAnimation();
         _localSkillAnimationAttackLockRoutine = null;
     }
 
@@ -2445,7 +2450,7 @@ public class PlayerCombat : NetworkBehaviour
         if (IsBattleLoadingOrNotStarted()) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
         if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive) return false;
-        if (!_skillButtonRequest && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI) return false;
+        if (!_skillButtonRequest && !BattlePvp.Logic.GameInputController.IsPointerCaptured && _isPointerOverUI) return false;
         if (ResolveAvailableSkillCount() <= 0) return false;
 
         return true;
@@ -2609,7 +2614,7 @@ public class PlayerCombat : NetworkBehaviour
         {
             if (BattlePvp.Logic.GameInputController.IsPaused || BattlePvp.Logic.GameInputController.IsTextInputActive)
                 return;
-            if (!fromHud && Cursor.lockState != CursorLockMode.Locked && _isPointerOverUI)
+            if (!fromHud && !BattlePvp.Logic.GameInputController.IsPointerCaptured && _isPointerOverUI)
                 return;
             if (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked))
                 return;

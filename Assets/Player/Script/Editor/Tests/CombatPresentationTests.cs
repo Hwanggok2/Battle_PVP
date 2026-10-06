@@ -12,6 +12,30 @@ namespace BattlePvp.EditorTests
     public sealed class CombatPresentationTests
     {
         [Test]
+        public void AnimationLockDurationTracksRemainingClipAndDisabledAnimatorFinishesImmediately()
+        {
+            var owner = Object.Instantiate(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+            CombatSkillPresentation presentation = null;
+            try
+            {
+                EditorTestLifecycle.BindNetwork(owner);
+                var animator = owner.GetComponent<Animator>();
+                animator.fireEvents = false; animator.Rebind(); animator.Update(0);
+                animator.speed = 1f; animator.Play("Kick", 0, 0); animator.Update(0);
+                float normalDuration = animator.GetCurrentAnimatorStateInfo(0).length;
+                animator.speed = 2f; animator.Play("Kick", 0, 0); animator.Update(0); animator.Update(.25f);
+                presentation = new CombatSkillPresentation(owner, animator);
+                Assert.That(presentation.RemainingAnimationSeconds("Kick", 0),
+                    Is.EqualTo(normalDuration / 2f - .25f).Within(.001));
+                Assert.That(presentation.IsAnimationFinished("Kick", 0), Is.False);
+                animator.enabled = false;
+                Assert.That(presentation.IsAnimationFinished("Kick", 0), Is.True);
+                Assert.That(presentation.RemainingAnimationSeconds("Missing", 0), Is.Zero);
+            }
+            finally { presentation?.Dispose(); Object.DestroyImmediate(owner); }
+        }
+
+        [Test]
         public void HudPhaseOrderAndDeadlineBoundariesMatchCombatDisplay()
         {
             SkillHudState casting = SkillHudPresenter.Build(Snapshot(true, 12d, 15d, 20d), 10d);

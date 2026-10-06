@@ -83,14 +83,19 @@ namespace BattlePvp.Combat
     public sealed class CombatActionLocks
     {
         private readonly double[] _deadlines = new double[3];
-        public bool AnimationLocked { get; private set; }
+        private double _animationUntil;
 
         public void LockUntil(CombatCastChannel channel, double deadline)
         {
             if (!double.IsNaN(deadline) && !double.IsInfinity(deadline)) _deadlines[(int)channel] = deadline;
         }
-        public void SetAnimationLocked(bool locked) => AnimationLocked = locked;
-        public bool IsLocked(double now) => AnimationLocked || now < _deadlines[0] || now < _deadlines[1] || now < _deadlines[2];
-        public void Cancel() { Array.Clear(_deadlines, 0, _deadlines.Length); AnimationLocked = false; }
+        public void LockAnimationUntil(double deadline)
+        {
+            if (!double.IsNaN(deadline) && !double.IsInfinity(deadline)) _animationUntil = deadline;
+        }
+        public void ReleaseAnimation() => _animationUntil = 0d;
+        public bool IsAnimationLocked(double now) => now < _animationUntil;
+        public bool IsLocked(double now) => IsAnimationLocked(now) || now < _deadlines[0] || now < _deadlines[1] || now < _deadlines[2];
+        public void Cancel() { Array.Clear(_deadlines, 0, _deadlines.Length); ReleaseAnimation(); }
     }
 }

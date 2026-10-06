@@ -3,7 +3,8 @@ mergeInto(LibraryManager.library, {
     var state = Module['battlePvpPointerLock'];
     if (!state) {
       var canvas = Module['canvas'];
-      state = { enabled: false, pending: false, disposed: false, canvas: canvas };
+      state = { enabled: false, pending: false, disposed: false, canvas: canvas,
+        wasLocked: false, unlockEvent: false, awaitingUnlockAck: false };
       Module['battlePvpPointerLock'] = state;
 
       var finish = function () {
@@ -12,7 +13,18 @@ mergeInto(LibraryManager.library, {
         if ((!state.enabled || state.disposed) && document.pointerLockElement === canvas)
           document.exitPointerLock();
       };
-      state.onChange = finish;
+      state.onChange = function () {
+        var locked = document.pointerLockElement === canvas;
+        // Browsers can consume Escape without delivering a key event to Unity.
+        // Keep the next UI click free until Unity has entered cursor mode.
+        if (state.wasLocked && !locked && state.enabled && !state.disposed) {
+          state.unlockEvent = true;
+          state.awaitingUnlockAck = true;
+          state.enabled = false;
+        }
+        state.wasLocked = locked;
+        finish();
+      };
       state.onError = function () { state.pending = false; };
       state.onPointerDown = function (event) {
         if (!state.enabled || state.disposed || state.pending || !event.isTrusted ||
@@ -35,13 +47,21 @@ mergeInto(LibraryManager.library, {
       document.addEventListener('pointerlockchange', state.onChange);
       document.addEventListener('pointerlockerror', state.onError);
     }
-    state.enabled = !!enabled;
+    if (!enabled) state.awaitingUnlockAck = false;
+    state.enabled = !!enabled && !state.awaitingUnlockAck;
     if (!state.enabled && document.pointerLockElement === state.canvas)
       document.exitPointerLock();
   },
 
   BattlePvpPointerLock_IsLocked: function () {
     return document.pointerLockElement === Module['canvas'] ? 1 : 0;
+  },
+
+  BattlePvpPointerLock_ConsumeUnlock: function () {
+    var state = Module['battlePvpPointerLock'];
+    if (!state || !state.unlockEvent) return 0;
+    state.unlockEvent = false;
+    return 1;
   },
 
   BattlePvpPointerLock_Dispose: function () {

@@ -42,8 +42,8 @@ internal static class CombatExecutionRegression
         locks.LockUntil(CombatCastChannel.Strength, 2d);
         locks.LockUntil(CombatCastChannel.Advanced, 5d);
         require(locks.IsLocked(2d) && !locks.IsLocked(5d), "Independent cast locks release at their own deadlines.");
-        locks.SetAnimationLocked(true);
-        require(locks.IsLocked(50d), "An unfinished cast animation may outlast its configured cast delay.");
+        locks.LockAnimationUntil(51d);
+        require(locks.IsLocked(50d) && !locks.IsLocked(51d), "Animation locks expire even if presentation never completes.");
         locks.Cancel();
         require(!locks.IsLocked(0d), "Cancellation releases all predicted action locks.");
         locks.LockUntil(CombatCastChannel.Agility, double.NaN);
