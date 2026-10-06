@@ -36,7 +36,16 @@ mergeInto(LibraryManager.library, {
     }
 
     state.receiverName = receiverName;
+    state.isComposing = false;
+    state.fieldMode = false;
+    var generation = state.generation = (state.generation || 0) + 1;
     window.__battlePvpWebGlIme = state;
+    input.style.left = '24px';
+    input.style.top = 'auto';
+    input.style.bottom = '42px';
+    input.style.width = 'min(420px, calc(100vw - 48px))';
+    input.style.height = '34px';
+    input.setAttribute('aria-label', 'Game chat input');
     input.value = initialText || '';
     input.maxLength = maxLength > 0 ? maxLength : 524288;
     input.style.display = 'block';
@@ -65,7 +74,13 @@ mergeInto(LibraryManager.library, {
       }
     };
 
+    input.onblur = function () {
+      if (state.fieldMode && input.style.display !== 'none')
+        SendMessage(state.receiverName, 'OnWebGlInputBlurred', input.value);
+    };
+
     var focusInput = function () {
+      if (input.style.display === 'none' || state.generation !== generation) return;
       try {
         input.focus({ preventScroll: true });
       } catch (_) {
@@ -81,6 +96,19 @@ mergeInto(LibraryManager.library, {
     window.setTimeout(focusInput, 150);
   },
 
+  BattlePvpWebGlIme_SetRect: function (x, y, width, height) {
+    var state = window.__battlePvpWebGlIme;
+    if (!state || !state.input) return;
+    var rect = Module['canvas'].getBoundingClientRect();
+    state.fieldMode = true;
+    state.input.setAttribute('aria-label', 'Room name');
+    state.input.style.left = (rect.left + x * rect.width) + 'px';
+    state.input.style.top = (rect.top + y * rect.height) + 'px';
+    state.input.style.bottom = 'auto';
+    state.input.style.width = Math.max(1, width * rect.width) + 'px';
+    state.input.style.height = Math.max(1, height * rect.height) + 'px';
+  },
+
   BattlePvpWebGlIme_Close: function () {
     var state = window.__battlePvpWebGlIme;
     if (!state || !state.input)
@@ -90,7 +118,9 @@ mergeInto(LibraryManager.library, {
     state.input.onkeydown = null;
     state.input.oncompositionstart = null;
     state.input.oncompositionend = null;
+    state.input.onblur = null;
     state.isComposing = false;
+    state.generation++;
     state.input.blur();
     state.input.style.display = 'none';
   }

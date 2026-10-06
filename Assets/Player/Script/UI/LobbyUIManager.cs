@@ -78,6 +78,7 @@ namespace BattlePvp.UI
             }
             
             FindCanvasCustomizer();
+            WebGlTextInput.Attach(_roomNameInput);
             CloseStartupPanels();
             RefreshVisibility();
             UpgradeHangulLegacyText();
