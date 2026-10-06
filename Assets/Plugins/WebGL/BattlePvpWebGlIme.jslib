@@ -31,10 +31,22 @@ mergeInto(LibraryManager.library, {
       input.style.outline = 'none';
       input.style.caretColor = '#ffffff';
       input.style.font = '16px sans-serif';
-      document.body.appendChild(input);
       state.input = input;
+      state.moveInput = function () {
+        var parent = document.fullscreenElement || document.body;
+        if (input.parentNode === parent) return;
+        var focused = document.activeElement === input;
+        state.reparenting = true;
+        parent.appendChild(input);
+        state.reparenting = false;
+        if (focused) input.focus({ preventScroll: true });
+      };
+      document.addEventListener('fullscreenchange', function () {
+        if (input.style.display !== 'none') state.moveInput();
+      });
     }
 
+    state.moveInput();
     state.receiverName = receiverName;
     state.isComposing = false;
     state.fieldMode = false;
@@ -75,7 +87,7 @@ mergeInto(LibraryManager.library, {
     };
 
     input.onblur = function () {
-      if (state.fieldMode && input.style.display !== 'none')
+      if (state.fieldMode && !state.reparenting && input.style.display !== 'none')
         SendMessage(state.receiverName, 'OnWebGlInputBlurred', input.value);
     };
 

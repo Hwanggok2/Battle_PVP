@@ -6,18 +6,24 @@ const { test } = require('node:test');
 const source = fs.readFileSync(path.join(__dirname, '../../Assets/Plugins/WebGL/BattlePvpWebGlIme.jslib'), 'utf8');
 
 function fixture() {
-    const library = {}, messages = [], timers = [], document = { activeElement: null };
+    const library = {}, messages = [], timers = [], listeners = {}, document = {
+        activeElement: null, addEventListener(name, fn) { listeners[name] = fn; }
+    };
     const input = { style: {}, attributes: {}, value: '', focuses: 0,
         setAttribute(key, value) { this.attributes[key] = value; },
         focus() { document.activeElement = input; this.focuses++; },
         blur() { document.activeElement = null; this.onblur?.(); }, setSelectionRange() {} };
     document.createElement = () => input;
-    document.body = { appendChild() {} };
+    function parent() { return { appendChild(child) {
+        if (child.parentNode && document.activeElement === child) child.blur();
+        child.parentNode = this;
+    } }; }
+    document.body = parent();
     const window = { setTimeout(fn) { timers.push(fn); } };
     vm.runInNewContext(source, { LibraryManager: { library }, mergeInto: Object.assign, document, window,
         Module: { canvas: { getBoundingClientRect: () => ({ left: 100, top: 50, width: 960, height: 600 }) } },
         UTF8ToString: value => value, SendMessage: (...args) => messages.push(args) });
-    return { library, input, messages, timers, window };
+    return { library, input, messages, timers, window, document, listeners, parent };
 }
 
 test('room title supports Hangul composition without submitting the composing Enter', () => {
@@ -50,4 +56,19 @@ test('closing a field cancels delayed refocusing and removes all input callbacks
     f.timers.forEach(fn => fn());
     assert.equal(f.input.focuses, 0); assert.equal(f.input.onblur, null);
     assert.equal(f.input.oninput, null); assert.equal(f.input.style.display, 'none');
+});
+
+test('fullscreen keeps the Korean field inside the visible container without committing on reparent', () => {
+    const f = fixture();
+    f.document.fullscreenElement = f.parent();
+    f.library.BattlePvpWebGlIme_Open('Room', '한글 방', 30);
+    f.library.BattlePvpWebGlIme_SetRect(0, 0, 1, .1);
+    f.timers.forEach(fn => fn());
+    assert.equal(f.input.parentNode, f.document.fullscreenElement);
+    f.document.fullscreenElement = null;
+    f.listeners.fullscreenchange();
+    assert.equal(f.input.parentNode, f.document.body);
+    assert.equal(f.document.activeElement, f.input);
+    assert.equal(f.messages.length, 0);
+    assert.equal(f.input.value, '한글 방');
 });

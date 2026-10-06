@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <link rel="stylesheet" href="shell.css">
+</head>
+<body>
+  <main id="unity-container">
+    <div id="game-stage">
+      <canvas id="unity-canvas" width="960" height="600" tabindex="0" aria-label="Battle PvP 게임"></canvas>
+      <div id="loading"><strong>BATTLE <em>PVP</em></strong><span id="load-label">게임을 불러오는 중</span><progress id="load-progress" max="1" value="0"></progress></div>
+      <div id="game-message" role="status" hidden></div>
+    </div>
+    <footer>
+      <span id="display-hint">Esc 커서 전환</span>
+      <div class="controls"><button id="performance-button" type="button" aria-expanded="false">성능 정보</button><button id="fullscreen-button" type="button">전체화면</button></div>
+      <section id="performance-info" hidden aria-label="성능 정보"><span id="renderer-info">렌더러 확인 중</span><span id="frame-info">FPS 확인 중</span><small>GPU 선택: Windows 설정 → 시스템 → 디스플레이 → 그래픽에서 브라우저를 고성능으로 지정하고 브라우저를 다시 시작하세요.</small></section>
+    </footer>
+  </main>
+  <script src="shell.js"></script>
+  <script>
+    const shell = BattlePvpWebShell.create(document, window, navigator);
+    const loader = document.createElement('script');
+    loader.src = 'Build/{{{ LOADER_FILENAME }}}';
+    loader.onload = () => createUnityInstance(document.getElementById('unity-canvas'), {
+      dataUrl: 'Build/{{{ DATA_FILENAME }}}',
+      frameworkUrl: 'Build/{{{ FRAMEWORK_FILENAME }}}',
+      codeUrl: 'Build/{{{ CODE_FILENAME }}}',
+      streamingAssetsUrl: 'StreamingAssets',
+      companyName: '{{{ COMPANY_NAME }}}', productName: '{{{ PRODUCT_NAME }}}', productVersion: '{{{ PRODUCT_VERSION }}}',
+      // Render UI at CSS resolution instead of multiplying every pixel on high-DPI displays.
+      devicePixelRatio: 1,
+      matchWebGLToCanvasSize: true,
+      webglContextAttributes: { preserveDrawingBuffer: false, powerPreference: 2 },
+      showBanner: (message, type) => { if (type === 'error') shell.showMessage(message); }
+    }, progress => { document.getElementById('load-progress').value = progress; })
+      .then(instance => shell.attach(instance)).catch(error => shell.showMessage(String(error)));
+    loader.onerror = () => shell.showMessage('게임 파일을 불러오지 못했습니다. 새로고침해 주세요.');
+    document.body.appendChild(loader);
+  </script>
+</body>
+</html>
