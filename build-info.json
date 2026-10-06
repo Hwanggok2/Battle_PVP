@@ -1,0 +1,55 @@
+{
+  "release": "2026-10-06-knife-grip",
+  "sourceCommit": "b631bc7604b573f74ce00f57beecb3b5d23fbb9a",
+  "runtimeCommit": "3da526e",
+  "builtUtc": "2026-10-06T12:46:10.5450657Z",
+  "development": false,
+  "buildErrors": 0,
+  "files": [
+    {
+      "path": "index.html",
+      "bytes": 2665,
+      "sha256": "db384a59df026e48ece13a6a6839094e8a3839f0a1b6bca46e292788e41a219b"
+    },
+    {
+      "path": "shell.css",
+      "bytes": 2369,
+      "sha256": "94e0a68a070b6b92cf71d6950e678b9f4b2f53271e30fc29d23625cbacfecbf7"
+    },
+    {
+      "path": "shell.js",
+      "bytes": 5166,
+      "sha256": "e86e27bb61c816874abc1c9128a722e2ac3c54816304b6ee980cce6158a546db"
+    },
+    {
+      "path": "Build/1c4817ab28b2cd58ac048b10f8680510.wasm.unityweb",
+      "bytes": 13010785,
+      "sha256": "c509c9b451d26ece11c9beb0a1817df6ebbdfafe3db686afbc6b1fe70e62a41c"
+    },
+    {
+      "path": "Build/68a89f50085fe473785b54a282323024.framework.js.unityweb",
+      "bytes": 86074,
+      "sha256": "d54d5a5d3d75bfb8802d0096b4372a09367ecd36483676adeed1834b4c58a564"
+    },
+    {
+      "path": "Build/8987c661851c66d195260c57aff62897.data.unityweb",
+      "bytes": 84256665,
+      "sha256": "114a983b03a008831d279940d58f9fa811a205af7edce630ecabd70de368a8cd"
+    },
+    {
+      "path": "Build/d7ad23ed7b6399df459a6d0613424b42.loader.js",
+      "bytes": 117893,
+      "sha256": "5f36c1d4966fde188277fbafcba83ce9fedd1d4f64b653e9f116ea8d6bd632fe"
+    },
+    {
+      "path": "StreamingAssets/CharacterNotices.txt",
+      "bytes": 2340,
+      "sha256": "f0a90b51d9ee7666e09ff1ccd683c412179b3a7f10814c739a1f1b0b2b41475c"
+    },
+    {
+      "path": "StreamingAssets/UnityServicesProjectConfiguration.json",
+      "bytes": 2425,
+      "sha256": "c0bc73a30a3d7cd560134d5b4e8c33e1c8ef998b021054d452a0d4d51bae4d5e"
+    }
+  ]
+}

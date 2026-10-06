@@ -1,133 +1,46 @@
-<!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Battle_PvP</title>
-    <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=960 height=600 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Battle_PvP</div>
-      </div>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Battle_PvP</title>
+  <link rel="stylesheet" href="shell.css">
+</head>
+<body>
+  <main id="unity-container">
+    <div id="game-stage">
+      <canvas id="unity-canvas" width="960" height="600" tabindex="0" aria-label="Battle PvP 게임"></canvas>
+      <div id="loading"><strong>BATTLE <em>PVP</em></strong><span id="load-label">게임을 불러오는 중</span><progress id="load-progress" max="1" value="0"></progress></div>
+      <div id="game-message" role="status" hidden></div>
     </div>
-    <script>
-      var canvas = document.querySelector("#unity-canvas");
-
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        var warningBanner = document.querySelector("#unity-warning");
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
-
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/023e61260a52a3501499ac95ebc6c6da.loader.js";
-      var config = {
-        arguments: [],
-        dataUrl: buildUrl + "/e33a1a32829ff44b3b84fbdb9d609b34.data.unityweb",
-        frameworkUrl: buildUrl + "/d740460ebcaa03185238cbf9eace0371.framework.js.unityweb",
-        codeUrl: buildUrl + "/44f6a6fb0aaa1ec097f0f6c3ad23eb68.wasm.unityweb",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "Junu",
-        productName: "Battle_PvP",
-        productVersion: "0.1.0",
-        showBanner: unityShowBanner,
-        // errorHandler: function(err, url, line) {
-        //    alert("error " + err + " occurred at line " + line);
-        //    // Return 'true' if you handled this error and don't want Unity
-        //    // to process it further, 'false' otherwise.
-        //    return true;
-        // },
-      };
-
-      // By default, Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-
-      // If you would like all file writes inside Unity Application.persistentDataPath
-      // directory to automatically persist so that the contents are remembered when
-      // the user revisits the site the next time, uncomment the following line:
-      // config.autoSyncPersistentDataPath = true;
-      // This autosyncing is currently not the default behavior to avoid regressing
-      // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
-      // expected to change.
-
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
-
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "960px";
-        canvas.style.height = "600px";
-      }
-
-      document.querySelector("#unity-loading-bar").style.display = "block";
-
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
-
-              }).catch((message) => {
-                alert(message);
-              });
-            };
-
-      document.body.appendChild(script);
-
-    </script>
-  </body>
+    <footer>
+      <span id="display-hint">Esc 커서 전환</span>
+      <div class="controls"><button id="performance-button" type="button" aria-expanded="false">성능 정보</button><button id="fullscreen-button" type="button">전체화면</button></div>
+      <section id="performance-info" hidden aria-label="성능 정보"><span id="renderer-info">렌더러 확인 중</span><span id="frame-info">FPS 확인 중</span><small>화질은 기기 성능에 맞춰 자동 조절됩니다. 게임 설정에서 최대 화질을 선택할 수 있습니다.</small></section>
+    </footer>
+  </main>
+  <script src="shell.js"></script>
+  <script>
+    const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
+    const loader = document.createElement('script');
+    loader.src = 'Build/d7ad23ed7b6399df459a6d0613424b42.loader.js';
+    loader.onload = () => createUnityInstance(document.getElementById('unity-canvas'), {
+      dataUrl: 'Build/8987c661851c66d195260c57aff62897.data.unityweb',
+      frameworkUrl: 'Build/68a89f50085fe473785b54a282323024.framework.js.unityweb',
+      codeUrl: 'Build/1c4817ab28b2cd58ac048b10f8680510.wasm.unityweb',
+      streamingAssetsUrl: 'StreamingAssets',
+      companyName: 'Junu', productName: 'Battle_PvP', productVersion: '0.1.0',
+      // Render UI at CSS resolution instead of multiplying every pixel on high-DPI displays.
+      devicePixelRatio: 1,
+      matchWebGLToCanvasSize: true,
+      webglContextAttributes: { preserveDrawingBuffer: false, powerPreference: 2 },
+      showBanner: (message, type) => { if (type === 'error') shell.showMessage(message); }
+    }, progress => { document.getElementById('load-progress').value = progress; })
+      .then(instance => {
+        shell.attach(instance);
+      }).catch(error => shell.showMessage(String(error)));
+    loader.onerror = () => shell.showMessage('게임 파일을 불러오지 못했습니다. 새로고침해 주세요.');
+    document.body.appendChild(loader);
+  </script>
+</body>
 </html>
