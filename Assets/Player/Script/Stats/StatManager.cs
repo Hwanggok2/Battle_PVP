@@ -217,7 +217,8 @@ namespace BattlePvp.Stats
 
         private BattlePvp.CameraLogic.FollowCamera _followCamera;
         private static readonly Vector3 DefaultCameraOffset = new Vector3(0.3f, 0.2f, -1.0f);
-        private static readonly Vector3 MonostatCameraOffset = new Vector3(0.35f, 0.4f, -1.0f);
+        // FollowCamera already scales eye height with the larger body; do not add another height bonus.
+        private static readonly Vector3 MonostatCameraOffset = new Vector3(0.35f, DefaultCameraOffset.y, -1.0f);
         private bool _cameraInitialized = false;
         private bool OwnsFollowCamera => (netIdentity != null && isLocalPlayer) ||
             (!NetworkServer.active && !NetworkClient.active && _followCamera != null &&

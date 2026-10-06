@@ -136,7 +136,7 @@ namespace BattlePvp.EditorTests
             camera.SetTarget(_object.transform);
             SetField(manager, "_followCamera", camera);
             manager.ApplyLocalSceneStats(Preset(30f, 0f, 0f, 0f));
-            Assert.That(camera.Offset, Is.EqualTo(new Vector3(0.35f, 0.4f, -1f)));
+            Assert.That(camera.Offset, Is.EqualTo(new Vector3(0.35f, 0.2f, -1f)));
             manager.ApplyLocalSceneStats(Preset(8f, 8f, 7f, 7f));
             Assert.That(camera.Offset, Is.EqualTo(new Vector3(0.3f, 0.2f, -1f)));
         }
