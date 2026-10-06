@@ -225,7 +225,8 @@ function param(id,key,value) {
  params.getRange(`A${row}:D${row}`).values=[[id,key,value,'2026-10-04 스킬 조작·연출 개선']];
 }
 param('STR_Hook','Range',6); param('STR_Hook','ThrowReleaseSeconds',.24); param('AGI_Knife','ThrowReleaseSeconds',.10);
-param('STR_Hook','RetrieveSeconds',.6);
+param('STR_Hook','ProjectileSpeed',18); param('STR_Hook','PullSpeed',12);
+param('STR_Hook','RetrieveSeconds',.4);
 param('STR_Hook','FixedDamage',10);
 param('SHARED_Charge','AccelerationSeconds',2.5);
 param('AGI_Stealth','LocalAlpha',.5);

@@ -765,6 +765,22 @@ namespace BattlePvp.EditorTests
             Assert.That(animator.cullingMode,Is.EqualTo(AnimatorCullingMode.CullUpdateTransforms));
             Assert.That(animator.GetLayerWeight(animator.GetLayerIndex("ExpandedUpperBody")),Is.Zero);
         }
+        [Test] public void HookFlightPullAndEmptyRetrievalAreOnePointFiveTimesFaster()
+        {
+            float speed=ExpandedSkillController.Value(JobSkillKind.Hook,"ProjectileSpeed");
+            float pull=ExpandedSkillController.Value(JobSkillKind.Hook,"PullSpeed");
+            float recovery=ExpandedSkillController.Value(JobSkillKind.Hook,"RetrieveSeconds");
+            Assert.That(speed,Is.EqualTo(12f*1.5f));
+            Assert.That(pull,Is.EqualTo(8f*1.5f));
+            Assert.That(recovery,Is.EqualTo(.6f/1.5f).Within(.0001f));
+            foreach(float distance in new[]{1f,4f,6f})
+                Assert.That(Mathf.Max(recovery,distance/pull),Is.EqualTo(Mathf.Max(.6f,distance/8f)/1.5f).Within(.0001f));
+            var animator=_player.GetComponent<Animator>(); animator.Rebind(); animator.Update(0);
+            using var visuals=new SkillExpansionVisuals(_skills);
+            visuals.RetrieveHook(Vector3.forward*3,recovery);
+            Assert.That(animator.GetFloat("HookRetrieveRate"),Is.EqualTo(1.5f).Within(.001f));
+        }
+
         [Test] public void HookRetrievalKeepsItsLockAndStunCancelsTheOldCast()
         {
             Set(_skills,"_hookUntil",_skills.Now+3d); Set(_skills,"_hookReleaseAt",_skills.Now-1d);

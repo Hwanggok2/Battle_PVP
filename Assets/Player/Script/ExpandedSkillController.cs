@@ -368,7 +368,7 @@ namespace BattlePvp.Combat
             if(cast!=_hookCast) yield break;
             if(!AliveReady || Now<_stunnedUntil || !IsHookActive) { _busyUntil=_hookUntil=0; yield break; }
             Vector3 origin = SafeThrowOrigin();
-            float range = Value(JobSkillKind.Hook,"Range",6), speed = Value(JobSkillKind.Hook,"ProjectileSpeed",12), travelled = 0;
+            float range = Value(JobSkillKind.Hook,"Range",6), speed = Value(JobSkillKind.Hook,"ProjectileSpeed",18), travelled = 0;
             aim=ThrowDirection(origin,aim,range);
             Vector3 position = origin;
             ProjectileCue(JobSkillKind.Hook, origin, aim, range / speed);
@@ -377,7 +377,7 @@ namespace BattlePvp.Combat
                 float step = Mathf.Min(speed * Time.deltaTime, range - travelled);
                 if(SkillTargeting.Cast(this,position,aim,step,Value(JobSkillKind.Hook,"Radius",.08f),out var hit))
                 {
-                    float recovery=Value(JobSkillKind.Hook,"RetrieveSeconds",.6f);
+                    float recovery=Value(JobSkillKind.Hook,"RetrieveSeconds",.4f);
                     var receiver=hit.collider.GetComponentInParent<IDamageReceiverWithResult>();
                     var target=hit.collider.GetComponentInParent<PlayerManager>();
                     var dummy=hit.collider.GetComponentInParent<DummyHealth>();
@@ -392,7 +392,7 @@ namespace BattlePvp.Combat
                             Transform victim=target!=null ? target.transform : dummy.transform;
                             Vector3 destination=transform.position+Flat(aim)*Value(JobSkillKind.Hook,"StopDistance",1);
                             Vector3 delta=destination-victim.position; delta.y=0;
-                            recovery=Mathf.Max(recovery,delta.magnitude/Value(JobSkillKind.Hook,"PullSpeed",8));
+                            recovery=Mathf.Max(recovery,delta.magnitude/Value(JobSkillKind.Hook,"PullSpeed",12));
                             if(target!=null)
                             {
                                 target.GetComponent<ExpandedSkillController>()?.ApplyHookPull(this,recovery);
@@ -409,7 +409,7 @@ namespace BattlePvp.Combat
                 position += aim * step; travelled += step; yield return null;
             }
             if(cast!=_hookCast || !AliveReady || !IsHookActive) yield break;
-            float returnSeconds=Value(JobSkillKind.Hook,"RetrieveSeconds",.6f);
+            float returnSeconds=Value(JobSkillKind.Hook,"RetrieveSeconds",.4f);
             BeginHookRetrieval(position,returnSeconds);
             yield return new WaitForSeconds(returnSeconds);
             if(cast==_hookCast) _busyUntil = _hookUntil = _hookRetrieveUntil = 0;

@@ -201,9 +201,9 @@ MonoBehaviour:
     - Key: Range
       Value: 6
     - Key: ProjectileSpeed
-      Value: 12
+      Value: 18
     - Key: PullSpeed
-      Value: 8
+      Value: 12
     - Key: Radius
       Value: 0.08
     - Key: StopDistance
@@ -211,7 +211,7 @@ MonoBehaviour:
     - Key: ThrowReleaseSeconds
       Value: 0.24
     - Key: RetrieveSeconds
-      Value: 0.6
+      Value: 0.4
     - Key: FixedDamage
       Value: 10
   - Id: STR_WarCry
