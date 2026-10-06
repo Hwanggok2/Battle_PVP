@@ -64,7 +64,8 @@ namespace BattlePvp.Characters
             // for another layout can leave a stale graphics-buffer stride on WebGL.
             if (_posedMesh != null) DestroyObject(_posedMesh);
             _posedMesh = new Mesh { name = "Character preview pose" };
-            body.BakeMesh(_posedMesh);
+            // The snapshot inherits this transform; compensate here so character size is not applied twice.
+            body.BakeMesh(_posedMesh, true);
             _posedMesh.RecalculateBounds();
             Bounds local = _posedMesh.bounds;
             var bounds = new Bounds(body.transform.TransformPoint(local.center), Vector3.zero);

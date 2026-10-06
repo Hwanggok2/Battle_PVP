@@ -22,9 +22,12 @@ namespace BattlePvp.Characters
         private Mirror.NetworkIdentity _identity;
         private static readonly ProfilerMarker PoseMarker = new("BattlePvp.CharacterPose");
         private static readonly Dictionary<Transform, CharacterPoseFollower> Active = new();
+        private float _bodyScale = 1f;
         public float ViewScale { get; private set; } = 1f;
         public static float GetViewScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
             ? visual.ViewScale : 1f;
+        public static float GetBodyScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
+            ? visual._bodyScale : 1f;
         internal static Animator GetViewAnimator(Animator driver) => driver != null && Active.TryGetValue(driver.transform, out var visual) && visual != null
             ? visual._visualAnimator : driver;
 
@@ -50,6 +53,10 @@ namespace BattlePvp.Characters
             var nativeBody = GetComponentInChildren<SkinnedMeshRenderer>();
             float targetHeight = HeadHeight(animator, nativeBody, nativeBody.sharedMesh, driver.transform);
             if (sourceHeight > .1f) ViewScale = Mathf.Clamp(targetHeight / sourceHeight, .5f, 2f);
+            // Whole-body effects include the top of the head, not just the head bone.
+            float sourceBodyHeight = MeshHeight(original, originalMesh, driver.transform);
+            if (sourceBodyHeight > .1f)
+                _bodyScale = MeshHeight(nativeBody, nativeBody.sharedMesh, driver.transform) / sourceBodyHeight;
             Active[driver.transform] = this;
             SyncPose();
             _equipment = new CharacterEquipmentVisual(driver, animator, ViewScale, swordGripOffset);
@@ -91,6 +98,14 @@ namespace BattlePvp.Characters
         {
             // Combat colliders must follow this skeleton even on a skipped rendering frame.
             if ((_hitboxes != null && _hitboxes.HasBindings) || OnDemandRendering.willCurrentFrameRender) SyncPose();
+        }
+        internal static float MeshHeight(SkinnedMeshRenderer body, Mesh mesh, Transform root)
+        {
+            var matrix = root.worldToLocalMatrix * body.transform.localToWorldMatrix;
+            var size = mesh.bounds.size;
+            return Mathf.Abs(matrix.MultiplyVector(Vector3.right * size.x).y)
+                + Mathf.Abs(matrix.MultiplyVector(Vector3.up * size.y).y)
+                + Mathf.Abs(matrix.MultiplyVector(Vector3.forward * size.z).y);
         }
         private static float HeadHeight(Animator animator, SkinnedMeshRenderer body, Mesh mesh, Transform root)
         {

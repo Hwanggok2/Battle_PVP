@@ -90,6 +90,14 @@ namespace BattlePvp.Characters
                 var animator = _renderer.GetComponentInParent<Animator>(true);
                 _visual = UnityEngine.Object.Instantiate(definition.VisualPrefab, animator.transform, false);
                 _visual.name = "Character visual - " + definition.Id;
+                if (definition.RelativeHeight > 0f)
+                {
+                    var body = _visual.GetComponentInChildren<SkinnedMeshRenderer>();
+                    float originalHeight = CharacterPoseFollower.MeshHeight(_renderer, _mesh, animator.transform);
+                    float nativeHeight = CharacterPoseFollower.MeshHeight(body, body.sharedMesh, animator.transform);
+                    if (nativeHeight > .1f)
+                        _visual.transform.localScale *= definition.RelativeHeight * originalHeight / nativeHeight;
+                }
                 foreach (var t in _visual.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = _renderer.gameObject.layer;
                 // Keep the original renderer as the visibility owner. Its mesh is never replaced by a different layout.
                 _renderer.sharedMesh = null;

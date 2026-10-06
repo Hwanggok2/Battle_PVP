@@ -87,6 +87,43 @@ namespace BattlePvp.EditorTests
             finally { Object.DestroyImmediate(camera.gameObject); Object.DestroyImmediate(player); }
         }
 
+        [TestCase("security-officer")] [TestCase("megumi")] [TestCase("casual-1")]
+        public void RequestedCharactersStandFifteenPercentShorterThanDefault(string id)
+        {
+            var player = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
+            var graph = PlayableGraph.Create("Standing character height");
+            var mesh = new Mesh();
+            try
+            {
+                var animator = player.GetComponent<Animator>(); animator.Rebind(); animator.Update(0);
+                graph.SetTimeUpdateMode(DirectorUpdateMode.Manual);
+                var clip = AssetDatabase.LoadAssetAtPath<AnimationClip>("Assets/Player/Anim/Move/Idle.anim");
+                var playable = AnimationClipPlayable.Create(graph, clip);
+                AnimationPlayableOutput.Create(graph, "Pose", animator).SetSourcePlayable(playable);
+                playable.SetTime(.2); graph.Play(); graph.Evaluate(0);
+                using var skin = new CharacterSkin(player.GetComponentInChildren<SkinnedMeshRenderer>());
+                float StandingHeight()
+                {
+                    var body = skin.VisibleBody;
+                    body.BakeMesh(mesh, true);
+                    var vertices = mesh.vertices.Select(v => player.transform.InverseTransformPoint(body.transform.TransformPoint(v)).y);
+                    return vertices.Max() - vertices.Min();
+                }
+                float originalHeight = StandingHeight();
+                Assert.That(skin.Apply(Catalog.Find(id), out var error), Is.True, error);
+                skin.SyncPose();
+                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(.85f).Within(.015f),
+                    "Measure the rendered standing silhouette, including hair and shoes.");
+                player.transform.localScale = Vector3.one * 1.2f;
+                graph.Evaluate(0); skin.SyncPose();
+                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(.85f).Within(.015f),
+                    "The same relative height must survive a larger preset.");
+                skin.Restore();
+                Assert.That(StandingHeight(), Is.EqualTo(originalHeight).Within(.002f));
+            }
+            finally { graph.Destroy(); Object.DestroyImmediate(mesh); Object.DestroyImmediate(player); }
+        }
+
         private static Vector3 Palm(Animator animator)
         {
             var hand = animator.GetBoneTransform(HumanBodyBones.RightHand);

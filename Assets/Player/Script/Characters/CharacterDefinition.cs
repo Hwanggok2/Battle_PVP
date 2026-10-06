@@ -17,6 +17,8 @@ namespace BattlePvp.Characters
         public string LicenseUrl;
         public Sprite Portrait;
         public bool UseDefaultBody;
+        [Tooltip("Standing model height relative to the original character. Zero preserves the imported size.")]
+        [Range(0f, 2f)] public float RelativeHeight;
         [Tooltip("Multipliers relative to the original character, after the same stat allocation and identity bonuses.")]
         public CharacterStatModifiers CombatModifiers = CharacterStatModifiers.Baseline;
         [Tooltip("Visual sword position adjustment in the native right hand's local coordinates. Does not move attack colliders.")]

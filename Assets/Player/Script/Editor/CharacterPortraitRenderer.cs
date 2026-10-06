@@ -40,7 +40,7 @@ namespace BattlePvp.EditorData
                 }
                 skin.SyncPose(); body = skin.VisibleBody;
                 // A static snapshot also renders reliably when editor skinning has not ticked yet.
-                snapshot = new Mesh(); body.BakeMesh(snapshot);
+                snapshot = new Mesh(); body.BakeMesh(snapshot, true);
                 var staticBody = new GameObject("Portrait pose");
                 staticBody.transform.SetParent(body.transform, false);
                 staticBody.AddComponent<MeshFilter>().sharedMesh = snapshot;
