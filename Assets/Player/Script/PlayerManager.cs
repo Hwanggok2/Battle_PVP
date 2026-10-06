@@ -157,8 +157,9 @@ public class PlayerManager : NetworkBehaviour
     private double MovementTime => NetworkServer.active || NetworkClient.isConnected ? NetworkTime.time : Time.timeAsDouble;
     private double LocalInputTime => Time.timeAsDouble;
     private bool ShouldHandleLocalInput =>
-        (NetworkClient.active && isLocalPlayer) ||
-        (!NetworkClient.active && !NetworkServer.active && !isClient && !isServer);
+        
+        (netIdentity != null && ((NetworkClient.active && isLocalPlayer) ||
+        (!NetworkClient.active && !NetworkServer.active && !isClient && !isServer)));
 
     public Vector3 GetSkillMoveDirection()
     {

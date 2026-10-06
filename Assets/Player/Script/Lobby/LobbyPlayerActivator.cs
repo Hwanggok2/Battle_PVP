@@ -11,6 +11,7 @@ namespace BattlePvp.Lobby
     /// 로비 씬에서 플레이어 오브젝트가 비활성화되는 현상을 확실하게 방지하는 매니저입니다.
     /// 이 스크립트는 플레이어 본인이 아닌, '항상 활성화되어 있는 매니저 개체'에 부착해야 합니다.
     /// </summary>
+    [DefaultExecutionOrder(-1000)]
     public sealed class LobbyPlayerActivator : MonoBehaviour
     {
         [Header("Target settings")]
@@ -21,12 +22,6 @@ namespace BattlePvp.Lobby
         [SerializeField] private Vector3 _fallbackSpawnPosition = new Vector3(0f, .2f, -2f);
 
         private Coroutine _ensureRoutine;
-
-        private void Awake()
-        {
-            if (IsLobbyScene())
-                TryActivate();
-        }
 
         private void OnEnable()
         {

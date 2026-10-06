@@ -44,6 +44,32 @@ namespace BattlePvp.UI
         private int _soundFrame = -1;
         private UniversalRenderPipelineAsset _pipeline;
         private RenderPipelineAsset _originalQualityPipeline;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        private int _renderWidth, _renderHeight;
+        private void Update()
+        {
+            if (_renderWidth == Screen.width && _renderHeight == Screen.height) return;
+            ApplyRenderScale();
+        }
+#endif
+
+        // Limit 3D pixel cost on high-DPI/fullscreen browsers. The UI keeps native resolution.
+        internal static float WebRenderScale(int quality, int width, int height)
+        {
+            float scale = quality == 0 ? .75f : quality == 1 ? .9f : 1f;
+            float pixels = quality == 0 ? 1280f * 720 : quality == 1 ? 1600f * 900 : 1920f * 1080;
+            return Mathf.Clamp(Mathf.Min(scale, Mathf.Sqrt(pixels / (Mathf.Max(1, width) * (float)Mathf.Max(1, height)))), .1f, 1f);
+        }
+        private void ApplyRenderScale()
+        {
+            if (_pipeline == null) return;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            _renderWidth = Screen.width; _renderHeight = Screen.height;
+            _pipeline.renderScale = WebRenderScale(_current.quality, _renderWidth, _renderHeight);
+#else
+            _pipeline.renderScale = _current.quality == 0 ? .75f : _current.quality == 1 ? .9f : 1f;
+#endif
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() { _instance = null; _current = new LocalGameSettingsData(); Changed = null; }
@@ -94,7 +120,7 @@ namespace BattlePvp.UI
             QualitySettings.antiAliasing = _current.quality == 2 ? 4 : _current.quality == 1 ? 2 : 0;
             if (_instance != null && _instance._pipeline != null)
             {
-                _instance._pipeline.renderScale = _current.quality == 0 ? .75f : _current.quality == 1 ? .9f : 1f;
+                _instance.ApplyRenderScale();
                 _instance._pipeline.msaaSampleCount = _current.quality == 2 ? 4 : _current.quality == 1 ? 2 : 1;
                 _instance._pipeline.shadowDistance = _current.quality == 0 ? 0 : _current.quality == 1 ? 35 : 55;
             }

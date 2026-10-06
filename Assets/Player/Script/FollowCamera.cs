@@ -50,9 +50,23 @@ namespace BattlePvp.CameraLogic
         /// </summary>
         public bool IsLocked { get; set; } = false;
 
+        private void OnEnable()
+        {
+            BattlePvp.Stats.StatManager.LocalChanged += BindLocalPlayer;
+            BindLocalPlayer(BattlePvp.Stats.StatManager.Local);
+        }
+
+        private void OnDisable() => BattlePvp.Stats.StatManager.LocalChanged -= BindLocalPlayer;
+
+        private void BindLocalPlayer(BattlePvp.Stats.StatManager player)
+        {
+            if (player != null && player.gameObject.scene == gameObject.scene) SetTarget(player.transform);
+        }
+
         private void Start()
         {
             if (!_viewInitialized) InitializeView();
+            ApplyTargetPose();
         }
 
         private void Update()
@@ -97,6 +111,12 @@ namespace BattlePvp.CameraLogic
             // 2. 회전 쿼터니언 계산
             UpdateCrouchHeight(Time.deltaTime);
             UpdateForcedLookYaw();
+            ApplyTargetPose();
+        }
+
+        private void ApplyTargetPose()
+        {
+            if (_target == null) return;
             Quaternion targetRotation = GetActiveRotation();
 
             // 3. 카메라 위치 계산 (대상 위치 + 회전된 오프셋)
@@ -130,6 +150,9 @@ namespace BattlePvp.CameraLogic
             if (_target == target && _viewInitialized) return;
             _target = target;
             InitializeView();
+            // Browser pointer lock needs a new gesture after loading. It gates look input,
+            // but must never leave the camera at the scene's serialized terminal position.
+            ApplyTargetPose();
         }
 
         private void InitializeView()

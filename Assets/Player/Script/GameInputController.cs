@@ -299,7 +299,8 @@ namespace BattlePvp.Logic
         {
             if (UnityEngine.EventSystems.EventSystem.current == null)
             {
-                GameObject es = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.EventSystems.StandaloneInputModule));
+                GameObject es = new GameObject("EventSystem", typeof(UnityEngine.EventSystems.EventSystem), typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
+                es.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>().AssignDefaultActions();
                 Debug.LogWarning("[GameInput] EventSystem을 동적으로 생성했습니다.");
             }
 

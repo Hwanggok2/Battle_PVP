@@ -536,7 +536,8 @@ namespace BattlePvp.UI
             if (EventSystem.current != null)
                 return;
 
-            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            var events = new GameObject("EventSystem", typeof(EventSystem), typeof(UnityEngine.InputSystem.UI.InputSystemUIInputModule));
+            events.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>().AssignDefaultActions();
         }
 
         private static void ClearUiSelection()
