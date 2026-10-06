@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: megumi
   DisplayName: Megumi
-  Description: "소형 · 가벼운 체격과 빠른 발걸음"
+  Description: "\uC18C\uD615 \xB7 \uAC00\uBCBC\uC6B4 \uCCB4\uACA9\uACFC \uBE60\uB978
+    \uBC1C\uAC78\uC74C"
   Attribution: "alex94i60 \xB7 CC BY 4.0 \xB7 \uBA54\uC2DC \uBCD1\uD569\xB7\uC7AC\uC9C8
     \uC218\uC815"
   SourceUrl: https://www.fab.com/listings/2f6583ec-b5f2-4303-baa7-1a0585db23f5
@@ -27,6 +28,7 @@ MonoBehaviour:
     Attack: 0.95
     MoveSpeed: 1.08
     AttackSpeed: 1.08
-  VisualPrefab: {fileID: 3783076147483063359, guid: eaa036271e1b9f7468c40d546767381c, type: 3}
+  _visualPrefab: {fileID: 0}
+  _visualResource: CharacterVisuals/megumi
   Body: {fileID: 0}
   Materials: []

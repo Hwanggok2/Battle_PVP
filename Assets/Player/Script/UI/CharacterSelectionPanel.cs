@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections;
 using BattlePvp.Characters;
 using BattlePvp.Logic;
 using BattlePvp.Stats;
@@ -23,6 +24,7 @@ namespace BattlePvp.UI
         private Button _apply, _source, _license;
         private CharacterDefinition _selected;
         private PlayerAppearance _player;
+        private Coroutine _previewLoad;
         private readonly Dictionary<CharacterDefinition, Button> _cards = new();
 
         private void Awake() { Instance = this; Build(); }
@@ -58,6 +60,7 @@ namespace BattlePvp.UI
         public void Close()
         {
             if (_panel == null) return;
+            if (_previewLoad != null) { StopCoroutine(_previewLoad); _previewLoad = null; }
             _panel.SetActive(false);
             UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
             GameInputController.RefreshCursorState();
@@ -65,6 +68,7 @@ namespace BattlePvp.UI
         public static void CloseIfOpen() { if (IsOpen) Instance.Close(); }
         private void Select(CharacterDefinition definition)
         {
+            if (_previewLoad != null) { StopCoroutine(_previewLoad); _previewLoad = null; }
             _selected = definition;
             _name.text = definition != null ? definition.DisplayName : "캐릭터";
             _description.text = definition != null ? definition.Description : "등록된 캐릭터가 없습니다.";
@@ -82,8 +86,26 @@ namespace BattlePvp.UI
             }
             _source.gameObject.SetActive(definition != null && IsWebUrl(definition.SourceUrl));
             _license.gameObject.SetActive(definition != null && IsWebUrl(definition.LicenseUrl));
-            _status.text = _preview.Show(definition, out string error) ? "" : error;
+            if (Application.isPlaying && definition != null && !definition.IsVisualLoaded)
+            {
+                _previewImage.enabled = false;
+                _status.text = "캐릭터를 불러오는 중…";
+                _previewLoad = StartCoroutine(LoadPreview(definition));
+            }
+            else ShowPreview(definition);
             Refresh();
+        }
+        private IEnumerator LoadPreview(CharacterDefinition definition)
+        {
+            yield return definition.LoadVisualAsync();
+            _previewLoad = null;
+            if (!IsOpen || _selected != definition) yield break;
+            ShowPreview(definition); Refresh();
+        }
+        private void ShowPreview(CharacterDefinition definition)
+        {
+            _previewImage.enabled = true;
+            _status.text = _preview.Show(definition, out string error) ? "" : error;
         }
         private void Refresh()
         {
@@ -95,7 +117,7 @@ namespace BattlePvp.UI
                 pair.Value.GetComponent<Image>().color = pair.Key == _selected ? new Color(.09f, .32f, .38f) : new Color(.055f, .16f, .21f);
                 pair.Value.GetComponentInChildren<TMP_Text>().text = pair.Key.DisplayName + (pair.Key.Id == current ? "  · 사용 중" : "");
             }
-            bool valid = _selected != null && CharacterCatalog.Instance?.Find(_selected.Id) == _selected;
+            bool valid = _selected != null && _selected.IsVisualLoaded && CharacterCatalog.Instance?.Find(_selected.Id) == _selected;
             if (valid && _player != null) valid = _player.Validate(_selected, out _);
             _apply.interactable = valid && _player != null && !_player.IsPending && PlayerAppearance.CanEdit && current != _selected.Id;
             if (!PlayerAppearance.CanEdit) _status.text = "캐릭터는 로비와 대기실에서 변경할 수 있습니다.";

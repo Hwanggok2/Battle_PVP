@@ -73,12 +73,14 @@ namespace BattlePvp.EditorData
                 body.localBounds = bounds;
                 animator.runtimeAnimatorController = null; animator.applyRootMotion = false; animator.enabled = false;
                 source.name = displayName + " native visual";
-                var prefab = PrefabUtility.SaveAsPrefabAsset(source, folder + "/NativeVisual.prefab");
+                const string visualFolder = "Assets/Resources/CharacterVisuals";
+                if (!AssetDatabase.IsValidFolder(visualFolder)) AssetDatabase.CreateFolder("Assets/Resources", "CharacterVisuals");
+                PrefabUtility.SaveAsPrefabAsset(source, visualFolder + "/" + id + ".prefab");
                 bool created = definition == null;
                 if (created) definition = ScriptableObject.CreateInstance<CharacterDefinition>();
                 definition.Id = id; definition.DisplayName = displayName;
                 if (created) definition.Description = "능력치는 캐릭터 설정에서 조정할 수 있습니다.";
-                definition.UseDefaultBody = false; definition.VisualPrefab = prefab;
+                definition.UseDefaultBody = false; definition.SetVisualResource("CharacterVisuals/" + id);
                 definition.Body = null; definition.Materials = Array.Empty<Material>();
                 if (created) AssetDatabase.CreateAsset(definition, definitionPath);
                 EditorUtility.SetDirty(definition);

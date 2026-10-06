@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: casual-1
   DisplayName: Casual 1
-  Description: "소형 · 가벼운 체격과 빠른 발걸음"
+  Description: "\uC18C\uD615 \xB7 \uAC00\uBCBC\uC6B4 \uCCB4\uACA9\uACFC \uBE60\uB978
+    \uBC1C\uAC78\uC74C"
   Attribution: "Lukebox \xB7 Unity Asset Store"
   SourceUrl: https://assetstore.unity.com/packages/3d/characters/humanoids/casual-1-anime-girl-characters-185076
   LicenseUrl: https://unity.com/legal/as-terms
@@ -26,6 +27,7 @@ MonoBehaviour:
     Attack: 0.95
     MoveSpeed: 1.08
     AttackSpeed: 1.08
-  VisualPrefab: {fileID: 230581536081244978, guid: 72082c257315f2b409485672bc92c291, type: 3}
+  _visualPrefab: {fileID: 0}
+  _visualResource: CharacterVisuals/casual-1
   Body: {fileID: 0}
   Materials: []

@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Character
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: brute
-  DisplayName: "바바리안"
-  Description: "대형 · 높은 체력과 공격력\n낮은 방어력 · 빠른 공격, 느린 이동"
+  DisplayName: "\uBC14\uBC14\uB9AC\uC548"
+  Description: "\uB300\uD615 \xB7 \uB192\uC740 \uCCB4\uB825\uACFC \uACF5\uACA9\uB825\n\uB0AE\uC740
+    \uBC29\uC5B4\uB825 \xB7 \uBE60\uB978 \uACF5\uACA9, \uB290\uB9B0 \uC774\uB3D9"
   Attribution: Adobe Mixamo
   SourceUrl: https://www.mixamo.com/
   LicenseUrl: https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
@@ -26,6 +27,7 @@ MonoBehaviour:
     Attack: 1.15
     MoveSpeed: 0.9
     AttackSpeed: 1.1
-  VisualPrefab: {fileID: 6522545714047363182, guid: 33de0ad5e00ce214899bffdd23c7a6fc, type: 3}
+  _visualPrefab: {fileID: 0}
+  _visualResource: CharacterVisuals/brute
   Body: {fileID: 0}
   Materials: []

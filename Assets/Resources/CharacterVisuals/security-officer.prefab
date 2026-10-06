@@ -1638,7 +1638,7 @@ GameObject:
   - component: {fileID: 326543886258257827}
   - component: {fileID: 3182593517647529549}
   m_Layer: 0
-  m_Name: NativeVisual
+  m_Name: security-officer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2550,7 +2550,6 @@ SkinnedMeshRenderer:
   - {fileID: 2100000, guid: bce2133c6f7b7514da13bf16a5d64130, type: 2}
   - {fileID: 2100000, guid: ff4b0d1cc64ae104a933ca83c1888444, type: 2}
   - {fileID: 2100000, guid: 403646b97d6e13a4ea133fb6b29bc502, type: 2}
-  - {fileID: 2100000, guid: 9f3779d68d9dfb74dab8057977f0ac7b, type: 2}
   - {fileID: 2100000, guid: 9d46bb8f2b45c674690615e43d261575, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0

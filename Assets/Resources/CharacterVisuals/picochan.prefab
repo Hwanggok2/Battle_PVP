@@ -1800,14 +1800,11 @@ SkinnedMeshRenderer:
   m_Materials:
   - {fileID: 2100000, guid: d980096a4bf92da4e92fc1589229811a, type: 2}
   - {fileID: 2100000, guid: d691faa2b04c76e4e8a93cdf54718b92, type: 2}
-  - {fileID: 2100000, guid: 597ae039e0f03174194db69188dfbe74, type: 2}
   - {fileID: 2100000, guid: 325bbd277adb0f2428f342ad89521d2c, type: 2}
   - {fileID: 2100000, guid: ef9d301793efc7c40acee49570c33d35, type: 2}
   - {fileID: 2100000, guid: c4a4d3c1346909648858da8413b0307f, type: 2}
-  - {fileID: 2100000, guid: 16d6781725609f347b1b92aa5c220a58, type: 2}
   - {fileID: 2100000, guid: 66f6826d012d8bf4381624e598b2eff7, type: 2}
   - {fileID: 2100000, guid: 96ce5a2fb767f274cbde8e4ecd5ba876, type: 2}
-  - {fileID: 2100000, guid: 661a681a06e63d244808f994708f8e58, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -4601,7 +4598,7 @@ GameObject:
   m_Component:
   - component: {fileID: 920991582455451787}
   m_Layer: 0
-  m_Name: NativeVisual
+  m_Name: picochan
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

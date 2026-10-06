@@ -11,7 +11,7 @@ namespace BattlePvp.EditorData
     public static class CharacterPortraitRenderer
     {
         public static void Render(CharacterDefinition definition, string path, string clipPath, float time,
-            bool portrait = false)
+            bool portrait = false, int meshLod = 0)
         {
             var preview = new PreviewRenderUtility();
             PlayableGraph graph = default;
@@ -44,7 +44,9 @@ namespace BattlePvp.EditorData
                 var staticBody = new GameObject("Portrait pose");
                 staticBody.transform.SetParent(body.transform, false);
                 staticBody.AddComponent<MeshFilter>().sharedMesh = snapshot;
-                staticBody.AddComponent<MeshRenderer>().sharedMaterials = body.sharedMaterials;
+                var snapshotRenderer = staticBody.AddComponent<MeshRenderer>();
+                snapshotRenderer.sharedMaterials = body.sharedMaterials;
+                snapshotRenderer.forceMeshLod = (short)Mathf.Clamp(meshLod, 0, snapshot.lodCount - 1);
                 body.enabled = false;
                 preview.cameraFieldOfView = 32;
                 preview.camera.clearFlags = CameraClearFlags.SolidColor;

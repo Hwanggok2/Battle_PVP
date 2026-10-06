@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using BattlePvp.Combat;
 using Mirror;
 using UnityEngine;
@@ -16,6 +17,9 @@ namespace BattlePvp.Characters
         private bool _initialReceived;
         private double _initialDeadline, _nextRequest;
         private float _requestDeadline;
+        private Coroutine _visualLoad;
+        private int _visualRequestVersion;
+        private bool _visualNeedsApply;
         public event Action Changed;
         public event Action<bool, string> RequestCompleted;
         public string SelectedId => _selectedId;
@@ -27,7 +31,11 @@ namespace BattlePvp.Characters
         private CharacterSkin Skin => _skin ??= new CharacterSkin(_body);
 
         private void Awake() { _skin = new CharacterSkin(_body); }
-        private void OnDestroy() => _skin?.Dispose();
+        private void OnEnable()
+        {
+            if (_visualNeedsApply) { _visualNeedsApply = false; ApplyVisual(); }
+        }
+        private void OnDestroy() { _visualRequestVersion++; _skin?.Dispose(); }
         private void Start()
         {
             if ((!NetworkClient.active && !NetworkServer.active))
@@ -53,6 +61,12 @@ namespace BattlePvp.Characters
         }
         private void OnDisable()
         {
+            if (_visualLoad != null)
+            {
+                _visualRequestVersion++;
+                StopCoroutine(_visualLoad); _visualLoad = null;
+                _visualNeedsApply = true;
+            }
             if (!IsPending) return;
             IsPending = false; RequestCompleted?.Invoke(false, "캐릭터 연결이 종료되었습니다.");
         }
@@ -118,8 +132,24 @@ namespace BattlePvp.Characters
         private void OnSelectedChanged(string oldId, string newId) => ApplyVisual();
         private void ApplyVisual()
         {
-            if (!Skin.Apply(CharacterCatalog.Instance?.Find(_selectedId), out _)) Skin.Restore();
+            int version = ++_visualRequestVersion;
+            if (_visualLoad != null) { StopCoroutine(_visualLoad); _visualLoad = null; }
+            var definition = CharacterCatalog.Instance?.Find(_selectedId);
             GetComponent<BattlePvp.Stats.StatManager>()?.RefreshCharacterStats();
+            if (Application.isPlaying && !isActiveAndEnabled) { _visualNeedsApply = true; return; }
+            if (Application.isPlaying && isActiveAndEnabled && definition != null && !definition.IsVisualLoaded)
+            { _visualLoad = StartCoroutine(LoadVisual(definition, version)); return; }
+            FinishVisual(definition);
+        }
+        private IEnumerator LoadVisual(CharacterDefinition definition, int version)
+        {
+            yield return definition.LoadVisualAsync();
+            if (version != _visualRequestVersion) yield break;
+            _visualLoad = null; FinishVisual(definition);
+        }
+        private void FinishVisual(CharacterDefinition definition)
+        {
+            if (!Skin.Apply(definition, out _)) Skin.Restore();
             VisualRevision++; Changed?.Invoke();
         }
     }

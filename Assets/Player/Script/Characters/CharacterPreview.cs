@@ -93,6 +93,7 @@ namespace BattlePvp.Characters
             _snapshot.layer = 31; _snapshot.transform.SetParent(visible.transform, false);
             _snapshot.GetComponent<MeshFilter>().sharedMesh = _posedMesh;
             _snapshot.GetComponent<MeshRenderer>().sharedMaterials = visible.sharedMaterials;
+            _snapshot.GetComponent<MeshRenderer>().forceMeshLod = 0;
             foreach (var body in _rig.GetComponentsInChildren<SkinnedMeshRenderer>(true)) body.forceRenderingOff = true;
             foreach (var follower in _rig.GetComponentsInChildren<CharacterPoseFollower>()) follower.enabled = false;
             if (animator != null) animator.enabled = false;

@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: security-officer
   DisplayName: Security Officer
-  Description: "소형 · 민첩한 기동과 빠른 공격"
+  Description: "\uC18C\uD615 \xB7 \uBBFC\uCCA9\uD55C \uAE30\uB3D9\uACFC \uBE60\uB978
+    \uACF5\uACA9"
   Attribution: "J_Blue \xB7 Unity Asset Store"
   SourceUrl: https://assetstore.unity.com/packages/3d/characters/humanoids/humans/anime-character-security-officer-383060
   LicenseUrl: https://unity.com/legal/as-terms
@@ -26,6 +27,7 @@ MonoBehaviour:
     Attack: 0.95
     MoveSpeed: 1.1
     AttackSpeed: 1.1
-  VisualPrefab: {fileID: 5263098885124054559, guid: c90a6041f345bc3499e4f2b62fa3a73c, type: 3}
+  _visualPrefab: {fileID: 0}
+  _visualResource: CharacterVisuals/security-officer
   Body: {fileID: 0}
   Materials: []

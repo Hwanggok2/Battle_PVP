@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: picochan
   DisplayName: PicoChan
-  Description: "소형 · 가장 빠른 기동, 낮은 체력과 방어력"
+  Description: "\uC18C\uD615 \xB7 \uAC00\uC7A5 \uBE60\uB978 \uAE30\uB3D9, \uB0AE\uC740
+    \uCCB4\uB825\uACFC \uBC29\uC5B4\uB825"
   Attribution: "Picola Inc. \xB7 Unity Asset Store"
   SourceUrl: https://assetstore.unity.com/packages/3d/characters/humanoids/picochan-220038
   LicenseUrl: https://unity.com/legal/as-terms
@@ -26,6 +27,7 @@ MonoBehaviour:
     Attack: 0.9
     MoveSpeed: 1.12
     AttackSpeed: 1.12
-  VisualPrefab: {fileID: 7404204667234702083, guid: d4d01a79c1bc8fb428f1226f4d3ff2fa, type: 3}
+  _visualPrefab: {fileID: 0}
+  _visualResource: CharacterVisuals/picochan
   Body: {fileID: 0}
   Materials: []

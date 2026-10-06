@@ -15,16 +15,59 @@ namespace BattlePvp.Characters
             public Mesh Mesh;
             public MeshRenderer Owner, Visual;
             public bool Arrow, Held, Back;
+            public Transform SourceHand, TargetHand;
         }
-        private readonly Animator _driver, _visual;
+        private sealed class Hand
+        {
+            public Transform Bone, Middle, Index, Little;
+            public Vector3 Palm;
+            public Quaternion Frame;
+            public float Size;
+            public Hand(Animator animator, HumanBodyBones bone)
+            {
+                bool left = bone == HumanBodyBones.LeftHand;
+                Bone = animator.GetBoneTransform(bone);
+                Middle = CharacterEquipmentVisual.Middle(animator, bone);
+                Index = animator.GetBoneTransform(left ? HumanBodyBones.LeftIndexProximal : HumanBodyBones.RightIndexProximal) ?? FingerChild(Bone, "index");
+                Little = animator.GetBoneTransform(left ? HumanBodyBones.LeftLittleProximal : HumanBodyBones.RightLittleProximal) ?? FingerChild(Bone, "pinky") ?? Middle;
+            }
+            public void Sample()
+            {
+                Size = Middle != null ? Vector3.Distance(Middle.position, Bone.position) : 0f;
+                Frame = Middle == null || Index == null || Little == null || Size < .001f ? Bone.rotation :
+                    Quaternion.LookRotation(Middle.position - Bone.position, Index.position - Little.position);
+                Palm = Middle != null ? Vector3.Lerp(Bone.position, Middle.position, .65f) : Bone.position;
+            }
+        }
+        private sealed class Torso
+        {
+            private readonly Transform _spine, _head, _left, _right;
+            public Quaternion Frame;
+            public Torso(Animator animator)
+            {
+                _spine = animator.GetBoneTransform(HumanBodyBones.Spine); _head = animator.GetBoneTransform(HumanBodyBones.Head);
+                _left = animator.GetBoneTransform(HumanBodyBones.LeftUpperArm); _right = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+            }
+            public void Sample()
+            {
+                Vector3 up = _head.position - _spine.position;
+                Frame = Quaternion.LookRotation(Vector3.Cross(_right.position - _left.position, up), up);
+            }
+        }
+        private readonly Animator _driver;
+        private readonly Hand _sourceLeft, _sourceRight, _targetLeft, _targetRight;
+        private readonly Torso _sourceTorso, _targetTorso;
         private readonly float _bodyScale;
         private readonly List<Part> _parts = new();
         private readonly Dictionary<LODGroup, LOD[]> _originalLods = new();
 
         public CharacterEquipmentVisual(Animator driver, Animator visual, float bodyScale)
         {
-            _driver = driver; _visual = visual;
+            _driver = driver;
             _bodyScale = bodyScale;
+            _sourceLeft = new Hand(driver, HumanBodyBones.LeftHand); _sourceRight = new Hand(driver, HumanBodyBones.RightHand);
+            _targetLeft = new Hand(visual, HumanBodyBones.LeftHand); _targetRight = new Hand(visual, HumanBodyBones.RightHand);
+            _sourceTorso = new Torso(driver); _targetTorso = new Torso(visual);
             foreach (var weapon in driver.GetComponentsInChildren<Transform>(true))
             {
                 if (weapon.IsChildOf(visual.transform)) continue;
@@ -42,7 +85,10 @@ namespace BattlePvp.Characters
                     renderer.sharedMaterials = owner.sharedMaterials;
                     renderer.shadowCastingMode = owner.shadowCastingMode; renderer.receiveShadows = owner.receiveShadows;
                     renderer.lightProbeUsage = owner.lightProbeUsage; renderer.reflectionProbeUsage = owner.reflectionProbeUsage;
-                    _parts.Add(new Part { Weapon = weapon, Hand = back ? TorsoBone(driver, weapon.parent) : bow ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand,
+                    var hand = back ? TorsoBone(driver, weapon.parent) : bow ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand;
+                    var targetHand = visual.GetBoneTransform(hand);
+                    if (back && targetHand == null) targetHand = visual.GetBoneTransform(HumanBodyBones.Chest) ?? visual.GetBoneTransform(HumanBodyBones.Spine);
+                    _parts.Add(new Part { Weapon = weapon, Hand = hand, SourceHand = driver.GetBoneTransform(hand), TargetHand = targetHand,
                         Source = filter, Mesh = filter.sharedMesh, Owner = owner, Visual = renderer, Arrow = arrow, Held = sword || bow, Back = back });
                     filter.sharedMesh = null;
                 }
@@ -68,17 +114,26 @@ namespace BattlePvp.Characters
 
         public void Sync()
         {
+            bool handsSampled = false, torsoSampled = false;
             foreach (var part in _parts)
             {
                 if (part.Source == null || part.Visual == null) continue;
-                var sourceHand = _driver.GetBoneTransform(part.Hand);
-                var targetHand = _visual.GetBoneTransform(part.Hand);
-                if (part.Back && targetHand == null)
-                    targetHand = _visual.GetBoneTransform(HumanBodyBones.Chest) ?? _visual.GetBoneTransform(HumanBodyBones.Spine);
+                part.Visual.enabled = part.Owner.enabled;
+                part.Visual.forceRenderingOff = part.Owner.forceRenderingOff;
+                if (part.Visual.sharedMaterial != part.Owner.sharedMaterial) part.Visual.sharedMaterials = part.Owner.sharedMaterials;
+                // Inactive weapons have no visible pose. LOD renderers still get fitted before culling.
+                if (!part.Source.gameObject.activeInHierarchy || !part.Owner.enabled || part.Owner.forceRenderingOff) continue;
+                var sourceHand = part.SourceHand;
+                var targetHand = part.TargetHand;
                 if (sourceHand == null || targetHand == null) continue;
-                float sourceSize = 1f, targetSize = 1f;
-                Quaternion sourceFrame = part.Back ? TorsoFrame(_driver) : HandFrame(_driver, part.Hand, out sourceSize);
-                Quaternion targetFrame = part.Back ? TorsoFrame(_visual) : HandFrame(_visual, part.Hand, out targetSize);
+                if (part.Back && !torsoSampled) { _sourceTorso.Sample(); _targetTorso.Sample(); torsoSampled = true; }
+                if (!part.Back && !handsSampled)
+                { _sourceLeft.Sample(); _sourceRight.Sample(); _targetLeft.Sample(); _targetRight.Sample(); handsSampled = true; }
+                var source = part.Hand == HumanBodyBones.LeftHand ? _sourceLeft : _sourceRight;
+                var target = part.Hand == HumanBodyBones.LeftHand ? _targetLeft : _targetRight;
+                float sourceSize = source.Size, targetSize = target.Size;
+                Quaternion sourceFrame = part.Back ? _sourceTorso.Frame : source.Frame;
+                Quaternion targetFrame = part.Back ? _targetTorso.Frame : target.Frame;
                 var rotation = targetFrame * Quaternion.Inverse(sourceFrame);
                 float gripScale = part.Back ? _bodyScale : sourceSize > .001f && targetSize > .001f ? targetSize / sourceSize : 1f;
                 Vector3 position = targetHand.position + rotation * (part.Source.transform.position - sourceHand.position) * gripScale;
@@ -87,13 +142,13 @@ namespace BattlePvp.Characters
                 {
                     // Held weapons keep their original size. Scale changes belong to the palm,
                     // not to the authored point along the handle that the palm is gripping.
-                    Vector3 sourceGrip = part.Source.transform.InverseTransformPoint(PalmCenter(_driver, part.Hand));
-                    position = PalmCenter(_visual, part.Hand) - orientation * Vector3.Scale(sourceGrip, part.Source.transform.lossyScale);
+                    Vector3 sourceGrip = part.Source.transform.InverseTransformPoint(source.Palm);
+                    position = target.Palm - orientation * Vector3.Scale(sourceGrip, part.Source.transform.lossyScale);
                 }
                 if (part.Arrow)
                 {
-                    var sourceBow = _driver.GetBoneTransform(HumanBodyBones.LeftHand);
-                    var targetBow = _visual.GetBoneTransform(HumanBodyBones.LeftHand);
+                    var sourceBow = _sourceLeft.Bone;
+                    var targetBow = _targetLeft.Bone;
                     var sourceDirection = (sourceBow.position - sourceHand.position).normalized;
                     var direction = (targetBow.position - targetHand.position).normalized;
                     if (sourceDirection.sqrMagnitude > .5f && direction.sqrMagnitude > .5f)
@@ -109,9 +164,6 @@ namespace BattlePvp.Characters
                 }
                 part.Visual.transform.SetPositionAndRotation(position, orientation);
                 part.Visual.transform.localScale = Vector3.one * (part.Back ? gripScale : 1f);
-                part.Visual.enabled = part.Owner.enabled;
-                part.Visual.forceRenderingOff = part.Owner.forceRenderingOff;
-                if (part.Visual.sharedMaterial != part.Owner.sharedMaterial) part.Visual.sharedMaterials = part.Owner.sharedMaterials;
             }
         }
 
@@ -120,18 +172,6 @@ namespace BattlePvp.Characters
             foreach (var bone in new[] { HumanBodyBones.UpperChest, HumanBodyBones.Chest, HumanBodyBones.Spine })
                 if (animator.GetBoneTransform(bone) == parent) return bone;
             return HumanBodyBones.Chest;
-        }
-
-        private static Quaternion TorsoFrame(Animator animator)
-        {
-            var spine = animator.GetBoneTransform(HumanBodyBones.Spine);
-            var head = animator.GetBoneTransform(HumanBodyBones.Head);
-            // Some imported avatars place their mapped hips at ground level.
-            // The upper spine gives a stable anatomical frame on those rigs too.
-            Vector3 up = head.position - spine.position;
-            Vector3 right = animator.GetBoneTransform(HumanBodyBones.RightUpperArm).position -
-                animator.GetBoneTransform(HumanBodyBones.LeftUpperArm).position;
-            return Quaternion.LookRotation(Vector3.Cross(right, up), up);
         }
 
         internal static Quaternion HandFrame(Animator animator, HumanBodyBones handBone, out float size)

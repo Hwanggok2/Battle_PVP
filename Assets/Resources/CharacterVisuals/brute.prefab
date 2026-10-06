@@ -867,11 +867,9 @@ SkinnedMeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 19b0377c8abc8224baf5a0ed22f17d91, type: 2}
-  - {fileID: 2100000, guid: 50b8b758ad075f04fbbb72dd1123ed56, type: 2}
   - {fileID: 2100000, guid: dfa6479c461bea544ae754d1faaa9e90, type: 2}
   - {fileID: 2100000, guid: 6e8a742518fa50a469006e89ab96a2a1, type: 2}
   - {fileID: 2100000, guid: fd5b353b5be6e6d468524c6619ee0d07, type: 2}
-  - {fileID: 2100000, guid: 8a929e6335faa9c42a07bfa125645c57, type: 2}
   - {fileID: 2100000, guid: 3bc4ce2bbdec75144bc6faef35ee79ac, type: 2}
   - {fileID: 2100000, guid: 7263a56cf8f304b46816ae7a209c26bb, type: 2}
   - {fileID: 2100000, guid: eac0e1bdc2fe89443a17f1d04f6d3b12, type: 2}
@@ -2267,7 +2265,7 @@ GameObject:
   - component: {fileID: 5851702854179799084}
   - component: {fileID: 9050896204520366241}
   m_Layer: 0
-  m_Name: NativeVisual
+  m_Name: brute
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

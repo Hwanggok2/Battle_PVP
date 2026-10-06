@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Profiling;
+using UnityEngine.Rendering;
 
 namespace BattlePvp.Characters
 {
@@ -12,10 +14,12 @@ namespace BattlePvp.Characters
         private SkinnedMeshRenderer _original;
         private Renderer[] _renderers;
         private Animator _driver;
-        private Animator _visual;
         private BowAimRigTarget _bowAim;
         private CharacterEquipmentVisual _equipment;
         private Transform _driverRoot;
+        private Transform _sourceLeft, _sourceRight, _targetLeft, _targetRight, _targetSpine;
+        private Mirror.NetworkIdentity _identity;
+        private static readonly ProfilerMarker PoseMarker = new("BattlePvp.CharacterPose");
         private static readonly Dictionary<Transform, CharacterPoseFollower> Active = new();
         public float ViewScale { get; private set; } = 1f;
         public static float GetViewScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
@@ -27,9 +31,12 @@ namespace BattlePvp.Characters
             animator.runtimeAnimatorController = null;
             animator.enabled = false;
             _driver = driver;
-            _visual = animator;
             _bowAim = driver.GetComponent<BowAimRigTarget>();
             _driverRoot = driver.transform;
+            _identity = driver.GetComponent<Mirror.NetworkIdentity>();
+            _sourceLeft = driver.GetBoneTransform(HumanBodyBones.LeftHand); _sourceRight = driver.GetBoneTransform(HumanBodyBones.RightHand);
+            _targetLeft = animator.GetBoneTransform(HumanBodyBones.LeftHand); _targetRight = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            _targetSpine = animator.GetBoneTransform(HumanBodyBones.Spine);
             _original = original;
             _renderers = GetComponentsInChildren<Renderer>(true);
             _source = new HumanPoseHandler(driver.avatar, driver.transform);
@@ -48,6 +55,7 @@ namespace BattlePvp.Characters
         public void SyncPose()
         {
             if (_source == null || _original == null) return;
+            using var sample = PoseMarker.Auto();
             _source.GetHumanPose(ref _pose);
             // Use evaluated bones for rotation: Animator.bodyRotation still contains the
             // animation pose before BowAimRigTarget turns the hips toward the crosshair.
@@ -59,22 +67,26 @@ namespace BattlePvp.Characters
             {
                 // Different arm proportions slightly change the hand-to-hand aim after
                 // Humanoid retargeting. Correct the visible upper body without stretching it.
-                Vector3 sourceAim = HandDirection(_driver), visibleAim = HandDirection(_visual);
-                var spine = _visual.GetBoneTransform(HumanBodyBones.Spine);
-                if (spine != null && sourceAim.sqrMagnitude > .001f && visibleAim.sqrMagnitude > .001f)
-                    spine.rotation = Quaternion.FromToRotation(visibleAim, sourceAim) * spine.rotation;
+                Vector3 sourceAim = _sourceLeft.position - _sourceRight.position, visibleAim = _targetLeft.position - _targetRight.position;
+                if (_targetSpine != null && sourceAim.sqrMagnitude > .001f && visibleAim.sqrMagnitude > .001f)
+                    _targetSpine.rotation = Quaternion.FromToRotation(visibleAim, sourceAim) * _targetSpine.rotation;
             }
             _equipment?.Sync();
+            short meshLod = (short)(_identity != null && _identity.isLocalPlayer ? 0 : -1);
             foreach (var renderer in _renderers)
             {
                 if (renderer == null) continue;
                 renderer.enabled = _original.enabled;
                 renderer.forceRenderingOff = _original.forceRenderingOff;
+                if (renderer.forceMeshLod != meshLod) renderer.forceMeshLod = meshLod;
             }
         }
-        private void LateUpdate() => SyncPose();
-        private static Vector3 HandDirection(Animator animator) =>
-            animator.GetBoneTransform(HumanBodyBones.LeftHand).position - animator.GetBoneTransform(HumanBodyBones.RightHand).position;
+        private void LateUpdate()
+        {
+            // Native low-latency sessions simulate at 120 Hz but render at 30/60 Hz.
+            // Only the visual copy is skipped; the authoritative rig keeps its normal cadence.
+            if (OnDemandRendering.willCurrentFrameRender) SyncPose();
+        }
         private static float HeadHeight(Animator animator, SkinnedMeshRenderer body, Mesh mesh, Transform root)
         {
             var head = animator.GetBoneTransform(HumanBodyBones.Head);

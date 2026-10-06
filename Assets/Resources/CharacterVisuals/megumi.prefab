@@ -1303,7 +1303,7 @@ GameObject:
   - component: {fileID: 4589398849949343574}
   - component: {fileID: 151287876673531189}
   m_Layer: 0
-  m_Name: NativeVisual
+  m_Name: megumi
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
