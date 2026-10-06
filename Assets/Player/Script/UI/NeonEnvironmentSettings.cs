@@ -20,10 +20,20 @@ namespace BattlePvp.UI
         }
         private void Apply()
         {
-            foreach (var light in _lights) if (light != null && light.type == LightType.Point) light.enabled = LocalGameSettings.Current.quality > 0;
+            int quality = LocalGameSettings.EffectiveQuality;
+            foreach (var light in _lights) if (light != null && light.type == LightType.Point) light.enabled = quality > 0;
             if (_volume == null) return;
             var profile = _runtimeProfile != null ? _runtimeProfile : (_runtimeProfile = _volume.profile);
-            if (profile.TryGet(out Bloom bloom)) bloom.active = LocalGameSettings.Current.quality > 0;
+            if (profile.TryGet(out Bloom bloom))
+            {
+                bloom.active = quality > 0;
+                if (LocalGameSettings.IsWebPlayer)
+                {
+                    bloom.downscale.Override(BloomDownscaleMode.Quarter);
+                    bloom.maxIterations.Override(3);
+                    bloom.highQualityFiltering.Override(false);
+                }
+            }
             if (!profile.TryGet(out ColorAdjustments color)) color = profile.Add<ColorAdjustments>();
             color.postExposure.Override(Mathf.Log(LocalGameSettings.Current.brightness, 2));
         }

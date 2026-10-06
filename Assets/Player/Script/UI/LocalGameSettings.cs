@@ -44,28 +44,29 @@ namespace BattlePvp.UI
         private int _soundFrame = -1;
         private UniversalRenderPipelineAsset _pipeline;
         private RenderPipelineAsset _originalQualityPipeline;
+        private readonly WebFrameBudget _webBudget = new WebFrameBudget();
+        public static bool IsWebPlayer => Application.platform == RuntimePlatform.WebGLPlayer;
+        public static int EffectiveQuality => IsWebPlayer && _instance != null ? _instance._webBudget.Quality : _current.quality;
 #if UNITY_WEBGL && !UNITY_EDITOR
         private int _renderWidth, _renderHeight;
         private void Update()
         {
-            if (_renderWidth == Screen.width && _renderHeight == Screen.height) return;
-            ApplyRenderScale();
+            if (_webBudget.Observe(Time.unscaledDeltaTime, _focused))
+            {
+                ApplyGraphics();
+                Changed?.Invoke();
+            }
+            else if (_renderWidth != Screen.width || _renderHeight != Screen.height) ApplyRenderScale();
         }
 #endif
 
         // Limit 3D pixel cost on high-DPI/fullscreen browsers. The UI keeps native resolution.
-        internal static float WebRenderScale(int quality, int width, int height)
-        {
-            float scale = quality == 0 ? .75f : quality == 1 ? .9f : 1f;
-            float pixels = quality == 0 ? 1280f * 720 : quality == 1 ? 1600f * 900 : 1920f * 1080;
-            return Mathf.Clamp(Mathf.Min(scale, Mathf.Sqrt(pixels / (Mathf.Max(1, width) * (float)Mathf.Max(1, height)))), .1f, 1f);
-        }
         private void ApplyRenderScale()
         {
             if (_pipeline == null) return;
 #if UNITY_WEBGL && !UNITY_EDITOR
             _renderWidth = Screen.width; _renderHeight = Screen.height;
-            _pipeline.renderScale = WebRenderScale(_current.quality, _renderWidth, _renderHeight);
+            _pipeline.renderScale = _webBudget.RenderScale(_renderWidth, _renderHeight);
 #else
             _pipeline.renderScale = _current.quality == 0 ? .75f : _current.quality == 1 ? .9f : 1f;
 #endif
@@ -109,24 +110,46 @@ namespace BattlePvp.UI
             }
             if (_instance == this) _instance = null;
         }
-        private void SceneLoaded(Scene scene, LoadSceneMode mode) => Apply(_current, false);
+        private void SceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            _webBudget.ResetObservation();
+            Apply(_current, false);
+        }
         public static void Apply(LocalGameSettingsData settings, bool save)
         {
             _current = settings.Copy(); _current.Sanitize();
             BattlePvp.Networking.RoomNetworkTiming.ApplyFrameRate(_current.fps, BattlePvp.Networking.RoomNetworkTiming.LowLatencyActive);
             QualitySettings.vSyncCount = 0;
-            QualitySettings.shadows = _current.quality == 0 ? UnityEngine.ShadowQuality.Disable : UnityEngine.ShadowQuality.All;
-            QualitySettings.shadowDistance = _current.quality == 2 ? 55 : 35;
-            QualitySettings.antiAliasing = _current.quality == 2 ? 4 : _current.quality == 1 ? 2 : 0;
-            if (_instance != null && _instance._pipeline != null)
-            {
-                _instance.ApplyRenderScale();
-                _instance._pipeline.msaaSampleCount = _current.quality == 2 ? 4 : _current.quality == 1 ? 2 : 1;
-                _instance._pipeline.shadowDistance = _current.quality == 0 ? 0 : _current.quality == 1 ? 35 : 55;
-            }
+            _instance?._webBudget.Configure(_current.quality, _current.fps);
+            ApplyGraphics();
             if (_instance != null) _instance.ApplyVolume();
             Changed?.Invoke();
             if (save) { PlayerPrefs.SetString(Key, JsonUtility.ToJson(_current)); PlayerPrefs.Save(); }
+        }
+        private static void ApplyGraphics()
+        {
+            int quality = EffectiveQuality;
+            QualitySettings.shadows = quality == 0 ? UnityEngine.ShadowQuality.Disable : UnityEngine.ShadowQuality.All;
+            QualitySettings.shadowDistance = quality == 2 ? 55 : 35;
+            QualitySettings.antiAliasing = quality == 2 ? 4 : quality == 1 ? 2 : 0;
+            if (_instance == null || _instance._pipeline == null) return;
+            var pipeline = _instance._pipeline;
+            _instance.ApplyRenderScale();
+            pipeline.msaaSampleCount = quality == 2 ? 4 : quality == 1 ? 2 : 1;
+            pipeline.shadowDistance = quality == 0 ? 0 : quality == 1 ? 35 : 55;
+            if (IsWebPlayer) ApplyWebPipeline(pipeline, quality);
+        }
+
+        internal static void ApplyWebPipeline(UniversalRenderPipelineAsset pipeline, int quality)
+        {
+            pipeline.msaaSampleCount = quality == 2 ? 2 : 1;
+            pipeline.shadowDistance = quality == 0 ? 0 : quality == 1 ? 20 : 35;
+            pipeline.shadowCascadeCount = 1;
+            pipeline.mainLightShadowmapResolution = quality == 2 ? 1024 : 512;
+            pipeline.maxAdditionalLightsCount = quality == 0 ? 0 : 2;
+            pipeline.supportsHDR = quality > 0;
+            pipeline.supportsCameraDepthTexture = false;
+            pipeline.supportsCameraOpaqueTexture = false;
         }
         private void OnApplicationFocus(bool focused) { _focused = focused; ApplyVolume(); }
         private void ApplyVolume() => AudioListener.volume = _current.muted || (!_focused && _current.muteInBackground) ? 0 : _current.master;
