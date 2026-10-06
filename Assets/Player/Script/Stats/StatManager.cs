@@ -383,7 +383,7 @@ namespace BattlePvp.Stats
             }
             var health = GetComponent<BattlePvp.Combat.HealthSystem>();
             Identity next = Calculator.ResolveIdentity(validated, out _);
-            bool battleScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle";
+            bool battleScene = gameObject.scene.name == "Battle";
             if (!StatValidation.CanChangeClientPreset(_serverStatsInitialized, battleScene,
                     health != null && health.IsDead, next.Type))
                 return false;

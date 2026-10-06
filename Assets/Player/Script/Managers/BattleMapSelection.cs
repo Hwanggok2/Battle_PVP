@@ -43,7 +43,7 @@ namespace BattlePvp.Networking
         {
             if (map >= MapCount || UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Battle_waiting") return;
             if (BattlePvp.UI.BattleStartController.IsStarting) return;
-            if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState != BattleState.Waiting) return;
+            if (gameObject.scene.name != BattleNetworkManager.WaitingScene) return;
             _selected = map;
             if (NetworkManager.singleton is BattleNetworkManager manager) manager.SelectedBattleMap = map;
             Apply();
@@ -55,7 +55,7 @@ namespace BattlePvp.Networking
             if (seconds != 180 && seconds != 300 && seconds != 600) return;
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "Battle_waiting" ||
                 BattlePvp.UI.BattleStartController.IsStarting) return;
-            if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState != BattleState.Waiting) return;
+            if (gameObject.scene.name != BattleNetworkManager.WaitingScene) return;
             _matchSeconds = seconds;
             if (NetworkManager.singleton is BattleNetworkManager manager) manager.SelectedMatchDuration = seconds;
         }

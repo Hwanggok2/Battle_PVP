@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Battle PvP · 전투 결과 초안</title>
+  <style>
+    :root{--bg:#070c16;--panel:#101926;--line:#293647;--muted:#92a4b9;--cyan:#52e5ed;--gold:#f1d590;--pink:#f27caf;--accent:var(--gold);font-family:"Pretendard","Segoe UI","Malgun Gothic",sans-serif;color:#eef5ff;background:var(--bg);font-synthesis:weight style}
+    *{box-sizing:border-box}body{margin:0}button{font:inherit;cursor:pointer}button:focus-visible{outline:2px solid var(--cyan);outline-offset:5px}button:disabled{cursor:default}button,button:visited{color:inherit}button:hover{filter:brightness(1.15)}[hidden]{display:none!important}.mono{font-family:Consolas,"Courier New",monospace}.muted{color:var(--muted)}
+    .demo-bar{min-height:65px;padding:12px 28px;background:#080d16;border-bottom:1px solid var(--line);display:flex;gap:18px;align-items:center;justify-content:space-between;position:relative;z-index:5}.demo-label{font-size:12px;font-weight:650;color:#c6d2df;letter-spacing:.06em}.demo-label span{margin-left:13px;color:#8093aa;font-weight:400}.states{display:flex;gap:5px;flex-wrap:wrap}.states button{font-size:12px;padding:8px 15px;background:transparent;border:1px solid transparent;color:#9cacc0;border-radius:3px}.states button[aria-pressed="true"]{color:#fff;background:#1b293c;border-color:#3a526b}.reset{border-left:1px solid var(--line)!important;margin-left:6px!important}
+    .arena{min-height:calc(100svh - 65px);position:relative;isolation:isolate;display:flex;flex-direction:column;background:linear-gradient(90deg,rgba(5,10,18,.88),rgba(5,10,18,.7)),url("arena.png") center/cover fixed;overflow:hidden}.arena:before{content:"";z-index:-1;position:absolute;inset:0;background:radial-gradient(ellipse at 24% 30%,#30aeb615,transparent 57%)}.game-header{padding:26px 4vw 0;display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{display:flex;gap:11px;align-items:center;font-size:17px;font-weight:800;letter-spacing:.15em}.brand-mark{height:26px;width:23px;border:2px solid var(--cyan);transform:skew(-12deg);position:relative}.brand-mark:after{content:"";height:12px;width:12px;background:var(--cyan);position:absolute;top:5px;left:4px}.match-meta{font-size:11px;letter-spacing:.07em;color:#9cafc6;display:flex;gap:20px}.match-meta span{display:flex;gap:8px;align-items:center}.status-dot{height:5px;width:5px;background:var(--cyan);border-radius:50%;box-shadow:0 0 10px #52e5ed88}
+    .results{width:min(1180px,92vw);margin:40px auto 28px;display:grid;grid-template-columns:.94fr 1.06fr;gap:45px;flex:1;align-content:center;animation:arrive .35s ease-out}.eyebrow{display:flex;gap:12px;align-items:center;color:var(--accent);font-size:11px;font-weight:650;letter-spacing:.22em;margin:0 0 15px}.eyebrow:before{content:"";width:30px;height:2px;background:currentColor}.hero h1{font-family:"Arial Narrow","Segoe UI",sans-serif;font-size:clamp(50px,6.6vw,94px);font-weight:900;letter-spacing:-.055em;font-style:italic;line-height:.9;margin:0;color:var(--accent);text-shadow:0 0 50px #ead19b15}.hero-subtitle{font-size:19px;font-weight:500;letter-spacing:.02em;margin:18px 0 27px}.rank-line{display:flex;align-items:center;gap:24px}.rank-number{font-size:115px;font-weight:750;letter-spacing:-.11em;line-height:1;font-family:"Arial Narrow","Segoe UI",sans-serif;color:#fff;display:flex;align-items:flex-start}.rank-number small{font-size:22px;letter-spacing:0;color:var(--accent);margin-top:21px;margin-right:6px;font-weight:400}.rank-copy{border-left:1px solid #4c514a;padding:5px 0 5px 23px}.player-name{font-size:24px;font-weight:700;margin:4px 0 7px}.player-label{color:#a7b4c5;font-size:11px;letter-spacing:.1em}.character-tag{color:#c1ccd9;font-size:12px}.winner-note{display:flex;align-items:center;gap:10px;font-size:12px;color:#a9b8cc;margin-top:27px}.winner-note svg{color:var(--accent);flex:none}.winner-note strong{color:#d7e3f1;font-weight:500}
+    .rankings{background:linear-gradient(130deg,#142233e6,#0b1422e6);border:1px solid #2b3b50;border-top:2px solid var(--cyan);padding:23px 24px 15px;align-self:start}.panel-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}.panel-title h2{font-size:16px;margin:0;font-weight:650}.panel-title .meta{font-size:10px;color:#90a5ba;letter-spacing:.09em}.score-table{width:100%;border-collapse:separate;border-spacing:0 5px;text-align:left;font-size:13px}.score-table th{color:#7f95ae;font-size:10px;font-weight:400;letter-spacing:.04em;padding:0 10px 7px;white-space:nowrap}.score-table th:first-child,.score-table td:first-child{text-align:center;width:38px;padding-left:8px;padding-right:8px}.score-table th:last-child,.score-table td:last-child{text-align:right}.score-table td{background:#0b1522a6;padding:10px;height:44px}.score-table td:first-child{border-left:2px solid transparent;color:#99a9be;font-family:Consolas,monospace}.score-table .leader td:first-child{color:var(--gold)}.score-table .self td{background:#223846;color:#f5ffff}.score-table .self td:first-child{border-left-color:var(--cyan);color:var(--cyan)}.score-table .self-name{font-weight:650}.you{color:var(--cyan);border:1px solid #4bdddf5c;font-size:8px;vertical-align:middle;padding:1px 3px;margin-left:6px;letter-spacing:.02em}.damage-cell{color:#a9bdce;font-variant-numeric:tabular-nums}.mini-character{display:block;color:#7f94ac;font-size:9px;line-height:1.6;font-weight:400}.rankings-foot{font-size:10px;color:#7d92ab;padding:10px 0 0;margin:0;border-top:1px solid #233248;display:flex;justify-content:space-between;gap:10px}
+    .personal{grid-column:1/-1;border-top:1px solid #344051;padding-top:21px;margin-top:-5px}.section-label{font-size:11px;color:#9bb1c9;margin:0 0 18px;letter-spacing:.14em;display:flex;align-items:center;gap:9px}.section-label:before{content:"";width:4px;height:10px;background:var(--cyan)}.stats-grid{display:grid;grid-template-columns:1fr 1fr 1.2fr 1.2fr;gap:0}.stat{padding:0 27px;border-left:1px solid #2a394c}.stat:first-child{padding-left:0;border-left:0}.stat-label{font-size:11px;color:#8eabc3;margin:0 0 11px}.stat-value{font-size:32px;font-variant-numeric:tabular-nums;letter-spacing:-.03em;font-weight:600;margin:0}.stat-value.accent{color:var(--cyan)}.stat-value.person{font-size:21px;line-height:1.8;font-weight:550}.stat-detail{font-size:11px;color:#8299b2;margin:6px 0 0}.stat-detail b{color:#c0d0e2;font-weight:500}.stat-pill{font-size:11px;color:#b2c7dd;display:inline-block;margin-left:8px;font-weight:400}
+    .footer{padding:20px 4vw 25px;display:flex;justify-content:space-between;align-items:center;gap:20px}.footer-left{display:flex;align-items:center;gap:16px}.subtle-button{background:#101a28c9;border:1px solid #40516a;padding:13px 18px;font-size:12px;border-radius:2px}.hint-explainer{font-size:11px;color:#9eafc4;margin:0;line-height:1.9}.key-prompt{display:flex;align-items:center;gap:14px;padding:12px 17px;background:rgba(0,0,0,.8);color:#fff;border:1px solid #465360;min-width:263px;justify-content:center;border-radius:3px;text-align:left;font-size:14px;font-weight:600;flex:none}.key-prompt kbd{display:inline-grid;place-items:center;min-width:31px;height:31px;font:700 17px Consolas,monospace;border:1px solid #bdc6d1;border-bottom-width:3px;border-radius:3px;background:#1c232d;color:#fff}.key-prompt small{display:block;font-size:10px;color:#b5c0cc;margin-top:3px;font-weight:400}.key-prompt .arrow{color:#c6d4df;margin-left:auto;font-size:20px}
+    .play-view{flex:1;min-height:420px;display:grid;place-content:center;text-align:center;gap:15px}.play-title{font-size:11px;letter-spacing:.2em;color:var(--cyan);margin:0}.play-view h2{font-size:42px;margin:0;font-weight:650;letter-spacing:-.04em}.play-view p{color:#b8c5d4;font-size:13px;line-height:1.8;margin:0}.play-view .symbol{font-size:64px;color:var(--cyan);line-height:1.2}.play-view button{justify-self:center;margin-top:12px}.crosshair{position:absolute;left:50%;top:48%;width:16px;height:16px;opacity:.6;pointer-events:none}.crosshair:before,.crosshair:after{content:"";position:absolute;background:white;left:7px;top:2px;width:2px;height:12px}.crosshair:after{transform:rotate(90deg)}.arena.in-world{background-image:linear-gradient(#03071218,#03071266),url("arena.png")}.world-caption{background:#000b;padding:15px 22px;position:absolute;top:90px;left:4vw;border-left:2px solid var(--cyan);font-size:12px;line-height:1.8;color:#d6e7f5}.world-caption strong{display:block;color:var(--cyan);font-size:13px}.arena[data-state="defeat"]{--accent:var(--pink)}.arena[data-state="spectator"]{--accent:var(--cyan)}.arena[data-state="respawn"]{--accent:var(--cyan)}.spectator-note{border:1px solid #2b435a;background:#12283b7a;padding:18px 22px;font-size:13px;color:#bad2e5;line-height:1.8;grid-column:1/-1}.small-crown{display:inline-block;width:13px;height:13px;color:var(--gold);vertical-align:middle;margin-left:6px}.live-region{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden;white-space:nowrap}
+    @keyframes arrive{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @media(min-width:1700px){.results{width:1300px;gap:65px}.hero h1{font-size:108px}.rankings{padding:30px}.score-table td{height:51px}.personal{padding-top:26px}.stat-value{font-size:38px}}
+    @media(max-width:900px){.results{gap:26px;grid-template-columns:.8fr 1.2fr;margin-top:35px}.rank-number{font-size:88px}.rank-line{gap:18px}.rank-copy{padding-left:18px}.player-name{font-size:20px}.hero-subtitle{font-size:16px}.rankings{padding:18px 14px 12px}.stat{padding:0 15px}.stat-value{font-size:27px}.stat-value.person{font-size:17px}.match-meta{gap:10px}.match-meta span:first-child{display:none}.footer-left{gap:10px}.hint-explainer{font-size:10px}.demo-label span{display:none}.footer{padding-top:10px}}
+    @media(max-width:650px){.demo-bar{padding:10px 15px;gap:8px;align-items:flex-start;flex-direction:column}.states{gap:2px}.states button{padding:7px 12px}.game-header{padding-top:20px}.match-meta{font-size:9px}.brand{font-size:14px}.results{display:flex;flex-direction:column;gap:26px;margin-top:28px}.hero h1{font-size:62px}.hero-subtitle{margin-bottom:18px}.rank-line{gap:25px}.rank-number{font-size:85px}.rank-number small{margin-top:14px}.winner-note{margin-top:16px}.rankings{width:100%}.personal{margin-top:0}.stats-grid{grid-template-columns:1fr 1fr;row-gap:27px}.stat:nth-child(3){padding-left:0;border-left:0}.stat-value.person{font-size:21px}.footer{flex-direction:column;align-items:stretch;gap:18px}.footer-left{justify-content:space-between}.key-prompt{min-width:0;justify-content:flex-start}.play-view h2{font-size:32px}.play-view p{padding:0 20px}.world-caption{right:4vw}.arena{min-height:calc(100svh - 100px)}.rankings-foot{font-size:9px}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+    .footer{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:0;z-index:3;display:flex;flex-direction:column;gap:12px;width:28%;align-items:center}
+    .key-prompt{width:100%;min-width:0;height:88px;font-size:clamp(14px,1.55vw,30px);text-align:center;order:-1}.hint-explainer{text-align:center}
+    .results{width:90vw;max-width:1720px;display:grid;grid-template-columns:1fr 34%;gap:35px;align-content:start;margin-top:58px}.hero{padding-top:35px;max-width:52%}.hero h1{font-size:clamp(48px,5.6vw,108px)}.hero-subtitle{white-space:nowrap}.rankings{grid-column:2;grid-row:1;padding:24px}.personal{margin-top:85px;padding-top:24px}.stat-value.person{font-size:26px}.rankings-foot{white-space:nowrap}.play-view{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-height:0;width:46%;padding:30px;background:rgba(0,0,0,.8);gap:22px}.play-view .symbol{display:none}.play-view h2{font-size:clamp(24px,2.2vw,42px)}.play-view p{font-size:26px;color:white}.play-view .play-title{color:var(--cyan);font-size:20px}
+    .arena[data-state="respawn"] .footer{display:none}
+    @media(max-width:1100px){.results{display:flex;flex-direction:column;margin-top:28px;gap:28px;padding-bottom:20px}.hero{max-width:none;padding-top:0}.rankings{width:100%}.personal{margin-top:0}.footer{position:static;transform:none;width:90%;margin:10px auto 24px;order:5}.key-prompt{max-width:540px;font-size:20px;height:70px}.play-view{width:90%}.play-view p{font-size:20px}}
+
+    @font-face{font-family:Pretendard;src:url("Pretendard-Regular.otf") format("opentype");font-weight:400;font-display:swap}
+    .viewport{height:calc(100svh - 65px);position:relative;overflow:hidden;background:#070c16}
+    #arena{position:absolute;left:50%;top:50%;width:1920px;height:1080px;min-height:1080px;display:block;transform-origin:center;font-family:Pretendard,sans-serif}
+    #arena .game-header{position:absolute;left:80px;top:55px;padding:0;width:1740px;height:45px}.brand{font-size:30px;letter-spacing:0;color:var(--cyan)}.brand-mark{width:25px;height:25px;background:var(--cyan);transform:rotate(-12deg)}.brand-mark:after{display:none}.match-meta{font-size:18px}.match-meta span:first-child{display:none}
+    #arena .results{position:static;display:block;width:1720px;margin:0;padding:0;animation:none}
+    #arena .hero{position:absolute;left:100px;top:192px;width:810px;height:510px;max-width:none;padding:0}
+    #arena .eyebrow{position:absolute;left:0;top:0;font-size:19px;letter-spacing:0;margin:0;height:30px}
+    #arena .hero h1{position:absolute;left:-8px;top:45px;font:italic 900 108px/1.1 Pretendard,sans-serif;letter-spacing:0}
+    #arena .hero-subtitle{position:absolute;left:0;top:183px;margin:0;font-size:29px;white-space:nowrap;letter-spacing:0}
+    #arena .rank-line{position:absolute;left:0;top:258px;gap:17px;height:130px}
+    #arena .rank-number{width:230px;font:700 102px/1 Pretendard,sans-serif;letter-spacing:0}#arena .rank-number small{font-size:102px;color:white;margin:0 18px 0 0;font-weight:700}
+    #arena .rank-copy{width:333px;height:114px;padding:0 0 0 32px}#arena .player-label{font-size:17px;letter-spacing:0}#arena .player-name{font-size:32px;line-height:47px;margin:10px 0 7px}#arena .character-tag{font-size:20px;white-space:nowrap}
+    #arena .winner-note{position:absolute;left:0;top:448px;margin:0;font-size:21px}#arena .winner-note svg{display:none}
+    #arena .rankings{position:absolute;left:1240px;top:170px;width:580px;height:600px;padding:24px 29px 15px;border:0;border-top:3px solid var(--cyan);background:#0e1726f0}
+    #arena .panel-title{margin:0 0 24px;height:40px}#arena .panel-title h2{font-size:28px}#arena .panel-title .meta{font-size:16px}
+    #arena .score-table{font-size:19px;border-spacing:0 6px}#arena .score-table th{font-size:15px;padding:8px 10px 14px}#arena .score-table td{height:49px;padding:4px 10px}#arena .score-table th:first-child,#arena .score-table td:first-child{width:50px;text-align:left;padding-left:10px}#arena .mini-character{font-size:12px;line-height:17px}#arena .self-name{font-size:20px}#arena .you{border:0;font-size:17px;margin-left:10px;color:white}#arena .rankings-foot{position:absolute;left:30px;bottom:19px;border:0;font-size:15px;padding:0}
+    #arena .personal{position:absolute;left:100px;top:816px;width:1720px;margin:0;padding-top:21px;border-top:1px solid #344251}#arena .section-label{height:27px;font-size:20px;letter-spacing:0;margin:0 0 36px}#arena .section-label:before{display:none}#arena .stats-grid{grid-template-columns:405px 405px 470px 440px;gap:0}#arena .stat{padding:0;border:0}#arena .stat-label{font-size:20px;margin:0 0 14px}#arena .stat-value{font-size:44px;line-height:56px;font-family:Pretendard,sans-serif}#arena .stat-value.person{font-size:30px;line-height:56px}#arena .stat-pill{font-size:30px;font-weight:600;color:white;margin-left:10px}#arena .stat-detail{font-size:17px;margin:8px 0 0}
+    #arena .footer{position:absolute;left:690px;top:626px;width:540px;height:auto;transform:none;margin:0;padding:0;gap:12px;display:flex;flex-direction:column}#arena .key-prompt{font-family:Pretendard,sans-serif;width:540px;height:88px;max-width:none;font-size:30px;font-weight:700;border:0;border-radius:0;padding:0;justify-content:center;flex:none}#arena .hint-explainer{font-size:18px;line-height:30px}
+    #arena .play-view{width:860px;height:250px;left:50%;top:50%;padding:25px;gap:20px;transform:translate(-50%,-50%)}#arena .play-view h2{font-size:42px}#arena .play-view .play-title{font-size:20px}#arena .play-view p{font-size:26px;padding:0;line-height:1.4}
+    #arena[data-state="respawn"] .footer{display:none}#arena .spectator-note{position:absolute;left:100px;top:840px;width:1720px;font-size:26px}
+    @media(max-width:650px){.demo-bar{height:95px}.viewport{height:calc(100svh - 95px)}}
+  </style>
+</head>
+<body>
+  <nav class="demo-bar" aria-label="초안 미리보기 조작">
+    <div class="demo-label">전투 결과 · 디자인 초안 <span>샘플 데이터</span></div>
+    <div class="states" aria-label="상태 선택">
+      <button type="button" data-mode="victory" aria-pressed="true">승리</button>
+      <button type="button" data-mode="defeat" aria-pressed="false">패배</button>
+      <button type="button" data-mode="spectator" aria-pressed="false">관전</button>
+      <button type="button" data-mode="respawn" aria-pressed="false">부활 안내</button>
+      <button type="button" class="reset" id="reset">처음으로 ↺</button>
+    </div>
+  </nav>
+  <div class="viewport"><main class="arena" data-state="victory" id="arena">
+    <header class="game-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span>BATTLE <span style="color:var(--cyan)">PVP</span></div>
+      <div class="match-meta mono"><span>SECTOR 07 / ROOFTOP</span><span>04:38</span><span><i class="status-dot" aria-hidden="true"></i><span id="match-status">MATCH COMPLETE</span></span></div>
+    </header>
+    <section class="results" id="results" aria-label="전투 결과">
+      <div class="hero">
+        <p class="eyebrow" id="eyebrow">BATTLE COMPLETE</p>
+        <h1 id="headline">VICTORY</h1>
+        <p class="hero-subtitle" id="subtitle">마지막까지 살아남았습니다.</p>
+        <div class="rank-line">
+          <div class="rank-number"><small>#</small><span id="rank">01</span></div>
+          <div class="rank-copy"><span class="player-label" id="player-label">YOUR RESULT</span><p class="player-name" id="player-name">Raon</p><span class="character-tag" id="character">바바리안 · 6명 중 1위</span></div>
+        </div>
+        <div class="winner-note"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m3 6 4 4 5-7 5 7 4-4-3 12H6L3 6Zm3 15h12"/></svg><span id="winner-note">이번 전투의 승자 <strong>Raon</strong></span></div>
+      </div>
+      <section class="rankings" aria-labelledby="rankings-title">
+        <div class="panel-title"><h2 id="rankings-title">최종 순위</h2><span class="meta mono">06 PLAYERS</span></div>
+        <table class="score-table"><thead><tr><th scope="col">순위</th><th scope="col">플레이어</th><th scope="col">처치</th><th scope="col">가한 피해</th></tr></thead><tbody id="standings"></tbody></table>
+        <p class="rankings-foot"><span>처치 점수 기준</span><span class="mono">BATTLE REPORT / 01</span></p>
+      </section>
+      <section class="personal" id="personal" aria-labelledby="personal-title">
+        <h2 class="section-label" id="personal-title">나의 전투 기록 <span class="mono muted">/ PERSONAL RECORD</span></h2>
+        <div class="stats-grid">
+          <div class="stat"><p class="stat-label">가한 피해</p><p class="stat-value accent mono" id="dealt">1,842</p><p class="stat-detail"></p></div>
+          <div class="stat"><p class="stat-label">받은 피해</p><p class="stat-value mono" id="taken">736</p><p class="stat-detail"></p></div>
+          <div class="stat"><p class="stat-label">가장 많이 처치한 상대</p><p class="stat-value person" id="rival">Nova<span class="stat-pill">3회</span></p><p class="stat-detail" id="rival-detail">전체 <b>8회</b> 처치</p></div>
+          <div class="stat"><p class="stat-label">나를 가장 많이 처치한 상대</p><p class="stat-value person" id="nemesis">Lune<span class="stat-pill">1회</span></p><p class="stat-detail" id="nemesis-detail"></p></div>
+        </div>
+      </section>
+      <div class="spectator-note" id="spectator-note" hidden>관전으로 참여한 전투입니다. 순위와 다른 플레이어의 기록을 확인할 수 있습니다.</div>
+    </section>
+    <section class="play-view" id="play-view" aria-labelledby="play-heading" hidden>
+      <p class="play-title" id="play-eyebrow">RESPAWN READY</p>
+      <div class="symbol" aria-hidden="true" id="play-symbol">↻</div>
+      <h2 id="play-heading">J를 눌러 부활하기</h2>
+      <p id="play-description">부활할 준비가 되었습니다.</p>
+      <button type="button" class="subtle-button" id="back-to-result" hidden>전투 결과 다시 보기</button>
+    </section>
+    <div id="world-caption" hidden></div>
+    <div class="crosshair" id="crosshair" aria-hidden="true" hidden></div>
+    <footer class="footer" id="footer">
+      <p class="hint-explainer" id="hint-explainer">같은 방 대기실로 나만 돌아갑니다</p>
+      <button type="button" class="key-prompt" id="action"><span id="action-title">J를 눌러 로비로 돌아가기</span></button>
+    </footer>
+    <div class="live-region" id="announcement" aria-live="polite" aria-atomic="true"></div>
+  </main></div>
+  <script>
+    const players = [
+      {name:'Raon',character:'바바리안',kills:8,damage:1842},
+      {name:'Lune',character:'Security Officer',kills:6,damage:1536},
+      {name:'Miso',character:'Megumi',kills:5,damage:1208},
+      {name:'Nova',character:'PicoChan',kills:4,damage:964},
+      {name:'Rook',character:'기본 캐릭터',kills:3,damage:817},
+      {name:'Sora',character:'Casual 1',kills:2,damage:623}
+    ];
+    const modes = {
+      victory:{title:'VICTORY',subtitle:'마지막까지 살아남았습니다.',eyebrow:'BATTLE COMPLETE',self:0,taken:736,rival:'Nova',rivalCount:3,nemesis:'Lune',nemesisCount:1},
+      defeat:{title:'DEFEATED',subtitle:'전투는 끝났지만, 다음 기회가 있습니다.',eyebrow:'BATTLE COMPLETE',self:3,taken:1260,rival:'Sora',rivalCount:2,nemesis:'Raon',nemesisCount:3},
+      spectator:{title:'COMPLETE',subtitle:'치열했던 전투가 마무리되었습니다.',eyebrow:'SPECTATOR REPORT',self:null},
+      respawn:{title:'RESPAWN',self:3}
+    };
+    const byId = id => document.getElementById(id);
+    let mode = 'victory';
+    let view = 'results';
+    let respawnDeadline = 0;
+    function updateRespawn() { if(mode !== 'respawn' || view !== 'respawn') return; const seconds = Math.max(0,Math.ceil((respawnDeadline-performance.now())/1000)); byId('play-description').textContent=seconds>0 ? '부활까지 '+seconds+'초 남았습니다.' : '부활할 준비가 되었습니다.'; byId('play-eyebrow').textContent='RESPAWN'; }
+    setInterval(updateRespawn,100);
+    const announce = message => { byId('announcement').textContent = message; };
+    const setVisible = (id, visible) => { byId(id).hidden = !visible; };
+    function renderStandings(self) {
+      const tbody = byId('standings');
+      tbody.replaceChildren();
+      players.forEach((player,index) => {
+        const row = document.createElement('tr');
+        row.className = (index === 0 ? 'leader ' : '') + (index === self ? 'self' : '');
+        const rank = document.createElement('td'); rank.textContent = String(index+1).padStart(2,'0');
+        const name = document.createElement('td');
+        const label = document.createElement('span');label.className = 'self-name';label.textContent = player.name;name.append(label);
+        if (index === self) { const badge = document.createElement('span');badge.className = 'you';badge.textContent = 'YOU';name.append(badge); }
+        const character = document.createElement('span');character.className = 'mini-character';character.textContent = player.character;name.append(character);
+        const kills = document.createElement('td');kills.className = 'mono';kills.textContent = player.kills;
+        const damage = document.createElement('td');damage.className = 'damage-cell mono';damage.textContent = player.damage.toLocaleString('en-US');
+        row.append(rank,name,kills,damage);tbody.append(row);
+      });
+    }
+    function setOpponent(id,name,count) {
+      byId(id).textContent = name;
+      const pill = document.createElement('span');pill.className = 'stat-pill';pill.textContent = count + '회';byId(id).append(pill);
+    }
+    function selectMode(next) {
+      mode = next;view = next === 'respawn' ? 'respawn' : 'results';
+      const data = modes[mode];
+      byId('arena').dataset.state = mode;byId('arena').classList.remove('in-world');
+      document.querySelectorAll('[data-mode]').forEach(button => button.setAttribute('aria-pressed',String(button.dataset.mode === mode)));
+      setVisible('results',view === 'results');setVisible('play-view',view === 'respawn');setVisible('world-caption',false);setVisible('crosshair',false);setVisible('back-to-result',false);setVisible('action',true);
+      byId('back-to-result').textContent = mode === 'respawn' ? '부활 안내 다시 보기' : '전투 결과 다시 보기';
+      byId('match-status').textContent = mode === 'respawn' ? 'BATTLE IN PROGRESS' : 'MATCH COMPLETE';
+      byId('action-title').textContent = 'J를 눌러 로비로 돌아가기'; setVisible('action', mode !== 'respawn');
+      byId('hint-explainer').textContent = mode === 'respawn' ? '' : '같은 방 대기실로 나만 돌아갑니다';
+      if (mode === 'respawn') {
+        byId('play-eyebrow').textContent = 'RESPAWN READY';byId('play-symbol').textContent = '↻';byId('play-heading').textContent = 'J를 눌러 부활하기';respawnDeadline = performance.now() + 5000; updateRespawn();
+      } else {
+        byId('headline').textContent = data.title;byId('subtitle').textContent = data.subtitle;byId('eyebrow').textContent = data.eyebrow;
+        const spectator = data.self === null;
+        byId('rank').textContent = spectator ? '01' : String(data.self+1).padStart(2,'0');
+        byId('player-label').textContent = spectator ? 'MATCH WINNER' : 'YOUR RESULT';
+        const player = players[spectator ? 0 : data.self];byId('player-name').textContent = player.name;byId('character').textContent = player.character + ' · 6명 중 ' + (spectator ? 1 : data.self+1) + '위';
+        setVisible('personal',!spectator);setVisible('spectator-note',spectator);renderStandings(data.self);
+        if (!spectator) {byId('dealt').textContent=player.damage.toLocaleString('en-US');byId('taken').textContent=data.taken.toLocaleString('en-US');setOpponent('rival',data.rival,data.rivalCount);setOpponent('nemesis',data.nemesis,data.nemesisCount);byId('rival-detail').innerHTML='전체 <b>'+player.kills+'회</b> 처치';}
+      }
+      announce(mode === 'respawn' ? '부활 안내 미리보기. J를 눌러 부활하세요.' : byId('subtitle').textContent + ' J를 눌러 나만 로비로 돌아갑니다.');
+    }
+    function act() {
+      if (view === 'lobby' || view === 'respawned' || (mode === 'respawn' && performance.now() < respawnDeadline)) return;
+      const respawn = mode === 'respawn';view = respawn ? 'respawned' : 'lobby';
+      setVisible('results',false);setVisible('play-view',true);setVisible('world-caption',false);setVisible('crosshair',respawn);setVisible('action',false);setVisible('back-to-result',true);
+      byId('arena').classList.toggle('in-world',respawn);byId('play-eyebrow').textContent=respawn?'BACK IN ACTION':'PERSONAL RETURN';byId('play-symbol').textContent=respawn?'↻':'✓';byId('play-heading').textContent=respawn?'부활했습니다.':'기존 방 대기실로 돌아왔습니다.';
+      byId('play-description').textContent=respawn?'부활 동작을 보여주는 초안입니다. 실제 게임에는 영향을 주지 않습니다.':'방과 연결은 유지됩니다. J를 누른 참가자들이 같은 대기실에 모입니다.';
+      byId('back-to-result').textContent=respawn?'부활 안내 다시 보기':'전투 결과 다시 보기';byId('hint-explainer').textContent='상단에서 다른 상태를 선택해 비교할 수 있습니다.';
+      announce(byId('play-heading').textContent);
+    }
+    document.querySelectorAll('[data-mode]').forEach(button => button.addEventListener('click',()=>selectMode(button.dataset.mode)));
+    byId('reset').addEventListener('click',()=>selectMode('victory'));
+    byId('action').addEventListener('click',act);
+    byId('back-to-result').addEventListener('click',()=>{byId('back-to-result').textContent='전투 결과 다시 보기';selectMode(mode);});
+    document.addEventListener('keydown',event=>{if (event.code==='KeyJ'&&!event.repeat&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.target.matches('input,textarea,[contenteditable="true"]')){event.preventDefault();act();}});
+    const fitStage=()=>{const viewport=document.querySelector('.viewport');const scale=Math.min(viewport.clientWidth/1920,viewport.clientHeight/1080);byId('arena').style.transform='translate(-50%,-50%) scale('+scale+')';};new ResizeObserver(fitStage).observe(document.querySelector('.viewport'));fitStage();
+    selectMode('victory');
+  </script>
+</body>
+</html>

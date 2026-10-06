@@ -352,7 +352,7 @@ namespace BattlePvp.Combat
             float hpDamage = amount - absorbedByShield;
             float next = _currentHp - hpDamage;
             
-            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "Battle_waiting")
+            if (gameObject.scene.name == "Battle_waiting")
             {
                 if (next < 1f) next = 1f;
             }
@@ -593,7 +593,7 @@ namespace BattlePvp.Combat
                     yield return null;
                     continue;
                 }
-                string sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                string sceneName = gameObject.scene.name;
                 bool isPreMatch = (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.PreMatch);
                 
                 float effectiveRegen = _currentRegen;

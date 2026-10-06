@@ -52,7 +52,7 @@ public class PlayerManager : NetworkBehaviour
     [SerializeField] private int _defaultEmoteIndex = 0;
 
     [Header("Death Overlay Text")]
-    [SerializeField] private string _respawnPromptText = "Press Space to Respawn";
+    [SerializeField] private string _respawnPromptText = BattleActionPrompt.Respawn;
     [SerializeField] private Color _deathOverlayTextColor = new Color(0.75f, 0.2f, 1f, 1f);
 
     private CharacterController controller;
@@ -141,6 +141,7 @@ public class PlayerManager : NetworkBehaviour
     }
 
     public bool IsMatchEndLocked => _matchEndLocked;
+    public bool CanMoveAfterMatch => _hasMatchEndPresentation && _isMatchWinner;
     private bool IsFollowingServerMotion => _serverMotionActive || _ownerServerMotionActive;
     public double RemotePoseRenderTime => isLocalPlayer ? NetworkTime.time : NetworkTime.time - _remoteRenderDelay;
     public bool IsCrouching => isCrouching;
@@ -894,7 +895,7 @@ public class PlayerManager : NetworkBehaviour
         Vector3 origin = transform.position + controller.center + Vector3.up * 0.02f;
         float maxDistance = halfHeight + Mathf.Max(0.01f, _groundSnapDistance);
 
-        if (!Physics.Raycast(origin, Vector3.down, out RaycastHit hit, maxDistance, ~0, QueryTriggerInteraction.Ignore))
+        if (!gameObject.scene.GetPhysicsScene().Raycast(origin, Vector3.down, out RaycastHit hit, maxDistance, ~0, QueryTriggerInteraction.Ignore))
             return false;
 
         if (hit.transform != null && hit.transform.IsChildOf(transform))
@@ -2053,15 +2054,26 @@ public class PlayerManager : NetworkBehaviour
         while (isDead)
         {
             if (!GameInputController.IsTextInputActive && _respawnCountdown.IsReady(Time.timeAsDouble) &&
-                Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
+                Keyboard.current != null && Keyboard.current.jKey.wasPressedThisFrame)
             {
-                // 위치와 생존 상태는 서버 승인 시에만 바뀐다. 거절 후에는 다시 Space로 요청할 수 있다.
+                // 위치와 생존 상태는 서버 승인 시에만 바뀐다. 거절 후에는 다시 J로 요청할 수 있다.
                 _healthSystem?.RequestRevive(1f);
                 yield return new WaitForSeconds(0.5f);
             }
             else
                 yield return null;
         }
+    }
+
+    public void LeaveMatchEndMode()
+    {
+        _matchEndLocked = _hasMatchEndPresentation = _isMatchWinner = false;
+        _matchEndWinnerTarget = null;
+        isDead = isAttacking = false;
+        inputVector = Vector2.zero;
+        _respawnCountdown = default;
+        if (_respawnRoutine != null) { StopCoroutine(_respawnRoutine); _respawnRoutine = null; }
+        if (isLocalPlayer) { _lifePresentation?.ShowLocalRevived(); ResetLocalInputForPlayMode(); }
     }
 
     public void EnterMatchEndMode(Transform winnerTarget, bool isWinner)
@@ -2100,6 +2112,7 @@ public class PlayerManager : NetworkBehaviour
         _lifePresentation.AttachCamera(followCamera);
         _lifePresentation.ShowMatchEnd(winnerTarget, isWinner);
 
+        if (isWinner) ResetLocalInputForPlayMode();
         GameInputController.RefreshCursorState();
     }
 }

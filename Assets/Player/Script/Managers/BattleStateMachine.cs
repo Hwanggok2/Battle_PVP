@@ -55,7 +55,7 @@ namespace BattlePvp.Networking
         [SerializeField] private string _winnerPrefix = "\uC2B9\uC790 : ";
         [SerializeField] private string _mostKilledByPrefix = "\uB098\uB97C \uCD5C\uB2E4 \uCC98\uCE58 : ";
         [SerializeField] private string _mostKilledPrefix = "\uB0B4\uAC00 \uCD5C\uB2E4 \uCC98\uCE58 : ";
-        [SerializeField] private string _restartPrompt = "Press Enter to Restart";
+        [SerializeField] private string _restartPrompt = BattleActionPrompt.ReturnToLobby;
 
         private Coroutine _activeMatchRoutine;
         private readonly MatchClock _clock = new MatchClock();
@@ -76,8 +76,13 @@ namespace BattlePvp.Networking
             GameInputController.RefreshCursorState();
         }
 
+        private bool IsReturnWaitingState => gameObject.scene.name == BattleNetworkManager.WaitingScene &&
+            NetworkManager.singleton is BattleNetworkManager manager &&
+            (manager.IsPreparingReturnWaiting || manager.HasSplitResultRoom);
+
         private void Awake()
         {
+            if (IsReturnWaitingState) return;
             if (Instance == null)
             {
                 Instance = this;
@@ -101,6 +106,7 @@ namespace BattlePvp.Networking
         public override void OnStartServer()
         {
             base.OnStartServer();
+            if (IsReturnWaitingState) return;
             CurrentState = BattleState.Waiting;
 
             // 정확히 "Battle" 씬일 때만 매치를 시작합니다. (Battle_waiting 등 오발 방지)
@@ -251,7 +257,7 @@ namespace BattlePvp.Networking
             if (GameInputController.IsTextInputActive || GameInputController.IsSubmitConsumedThisFrame) return;
             GameInputController.ConsumeSubmit();
             _restartRequested = true;
-            CmdRequestRestart();
+            if (NetworkManager.singleton is BattleNetworkManager manager) manager.ReturnToLobbyAfterMatch();
         }
 
         public override void OnStopServer()
@@ -290,10 +296,30 @@ namespace BattlePvp.Networking
             }
 
             string winnerName = winnerNames.Count > 0 ? string.Join(", ", winnerNames) : "Unknown";
+            var rows = new List<BattleResultRow>();
+            foreach (var participant in LastCompletedMatch.Participants)
+            {
+                string character = "기본 캐릭터";
+                if (NetworkServer.spawned.TryGetValue(participant.LastNetId, out var avatar))
+                {
+                    var appearance = avatar.GetComponent<BattlePvp.Characters.PlayerAppearance>();
+                    character = BattlePvp.Characters.CharacterCatalog.Instance?.Find(appearance != null ? appearance.SelectedId : "default")?.DisplayName ?? character;
+                }
+                rows.Add(new BattleResultRow { NetId = participant.LastNetId, Rank = participant.Rank,
+                    PlayerName = participant.PlayerName, CharacterName = character, Kills = participant.Totals.Points, Damage = participant.Totals.DamageDealt });
+            }
+            rows.Sort((a,b) => a.Rank.CompareTo(b.Rank));
+            RpcSetFinalStandings(rows.ToArray(), MatchDuration);
             RpcHandleMatchEnded(winnerNetIds.ToArray());
             SendPersonalResults(LastCompletedMatch, winnerName);
             (NetworkManager.singleton as BattleNetworkManager)?.ClearDisconnectedPlayers();
             Debug.Log($"[BattleStateMachine] Match ended. Recorded participants={LastCompletedMatch.Participants.Count}, Winners={winnerNames.Count}");
+        }
+
+        [ClientRpc]
+        private void RpcSetFinalStandings(BattleResultRow[] rows, float duration)
+        {
+            GetResultView().SetStandings(rows, NetworkClient.localPlayer != null ? NetworkClient.localPlayer.netId : 0, duration);
         }
 
         [ClientRpc]
@@ -429,6 +455,8 @@ namespace BattlePvp.Networking
             GameInputController.RefreshCursorState();
         }
 
+        public void DismissLocalResult() => HideResultPanel();
+
         private void ShowResultPanel(
             string playerName, int rank, string winnerName, float damageTaken, float damageDealt,
             string mostKilledBy, int mostKilledByCount, string mostKilled, int mostKilledCount)
@@ -453,7 +481,7 @@ namespace BattlePvp.Networking
                 NicknamePrefix = _nicknamePrefix, RankPrefix = _rankPrefix,
                 DamageTakenPrefix = _damageTakenPrefix, DamageDealtPrefix = _damageDealtPrefix,
                 WinnerPrefix = _winnerPrefix, MostKilledByPrefix = _mostKilledByPrefix,
-                MostKilledPrefix = _mostKilledPrefix, RestartPrompt = _restartPrompt
+                MostKilledPrefix = _mostKilledPrefix, RestartPrompt = BattleActionPrompt.ReturnToLobby
             });
             return _resultView;
         }
@@ -486,8 +514,13 @@ namespace BattlePvp.Networking
             if (sender == null || !sender.isAuthenticated || sender.identity == null ||
                 !(sender.authenticationData is AuthenticatedRoomPlayer account) || account.RoomId != _matchRoomId) return;
 
-            _restartRequested = true;
-            NetworkManager.singleton.ServerChangeScene("Battle_waiting");
+            TargetReturnToLobby(sender);
+        }
+
+        [TargetRpc]
+        private void TargetReturnToLobby(NetworkConnectionToClient target)
+        {
+            if (NetworkManager.singleton is BattleNetworkManager manager) manager.ReturnToLobbyAfterMatch();
         }
 
         private void OnIsLoadingChanged(bool oldVal, bool newVal)

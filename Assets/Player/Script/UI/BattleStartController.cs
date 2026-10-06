@@ -34,9 +34,10 @@ namespace BattlePvp.UI
         private bool HasStartAuthority => IsWaitingScene &&
             (BattlePvp.Networking.PlayFabBattleManager.Instance == null || !BattlePvp.Networking.PlayFabBattleManager.Instance.RoomSettingsBusy) &&
             (!NetworkClient.active || NetworkServer.active);
-        private bool ReadyToStart => HasStartAuthority && RoomStatReadiness.AllPlayersReady;
+        private bool RoomReturned => !(NetworkManager.singleton is BattleNetworkManager manager) || manager.CanStartNextRound;
+        private bool ReadyToStart => HasStartAuthority && RoomReturned && RoomStatReadiness.AllPlayersReady;
         private bool CanRequestStart => HasStartAuthority && !_isCountingDown && !_isSceneTransitioning;
-        private bool CanStart => CanRequestStart && RoomStatReadiness.AllPlayersReady;
+        private bool CanStart => CanRequestStart && RoomReturned && RoomStatReadiness.AllPlayersReady;
 
         private void Awake()
         {
@@ -86,6 +87,7 @@ namespace BattlePvp.UI
             {
                 RoomStatReadiness.GetProgress(out int ready, out int total);
                 _countdownText.text = NetworkClient.active && !NetworkServer.active ? "방장이 시작을 준비 중" :
+                    !RoomReturned ? "다른 참가자의 대기실 복귀를 기다리는 중" :
                     ready < total || total == 0 ? $"스텟 분배 대기 · {ready}/{total}" : _originalText;
             }
             if (_allowKeyboardShortcut && CanRequestStart && Keyboard.current != null && Keyboard.current.gKey.wasPressedThisFrame &&
@@ -104,6 +106,7 @@ namespace BattlePvp.UI
         private void BeginCountdown()
         {
             if (!CanRequestStart) return;
+            if (!RoomReturned) return;
             if (!CanStart)
             {
                 RoomStartNotice.Show(RoomStatReadiness.GetPendingPlayerNames(), transform);

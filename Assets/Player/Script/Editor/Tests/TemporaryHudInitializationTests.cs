@@ -80,8 +80,8 @@ namespace BattlePvp.EditorTests
             Assert.That(loading.activeSelf, Is.True);
             Assert.That(countdown.gameObject.activeSelf, Is.True);
             Assert.That(countdown.text, Is.EqualTo("Get Ready!"));
-            Assert.That(deathText.text, Is.EqualTo("Revive in 5"));
-            Assert.That(deathText.color, Is.EqualTo(Color.cyan));
+            Assert.That(deathText.text, Does.Contain(BattleActionPrompt.Respawn).And.Contain("Revive in 5"));
+            Assert.That(deathText.color, Is.EqualTo(Color.white));
             Assert.That(received.text, Is.EqualTo("-12"));
             Assert.That(received.color.a, Is.EqualTo(1f));
         }

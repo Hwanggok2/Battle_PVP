@@ -176,8 +176,7 @@ namespace BattlePvp.Logic
             if (IsTextInputActive && keyboard != null &&
                 (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
                 ConsumeSubmit();
-            if (!IsTextInputActive && keyboard != null &&
-                (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame))
+            if (!IsTextInputActive && keyboard != null && keyboard.jKey.wasPressedThisFrame)
             {
                 ClearSelectedUiIfNotTextInput();
                 BattleStateMachine.Instance?.RequestRestartFromInput();
@@ -249,7 +248,9 @@ namespace BattlePvp.Logic
             CurrentMode = InputModeRules.Resolve(IsTextInputActive, _isCursorUnlocked || HasModalInput,
                 _localHealth != null && _localHealth.IsDead,
                 _localMovement != null && _localMovement.IsMatchEndLocked,
-                BattleStateMachine.Instance != null && BattleStateMachine.Instance.IsResultPanelVisible);
+                SceneManager.GetActiveScene().name == "Battle" &&
+                BattleStateMachine.Instance != null && BattleStateMachine.Instance.IsResultPanelVisible &&
+                (_localMovement == null || !_localMovement.CanMoveAfterMatch));
             IsPaused = CurrentMode != GameInputMode.Gameplay && CurrentMode != GameInputMode.TextInput;
             _webPointerMissing = false;
 #if UNITY_WEBGL && !UNITY_EDITOR

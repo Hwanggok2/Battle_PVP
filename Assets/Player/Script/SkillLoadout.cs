@@ -31,7 +31,10 @@ namespace BattlePvp.Combat
             state.IsWritable = () => (!NetworkServer.active && !NetworkClient.active) || writable();
             state.IsRecording = () => (NetworkServer.active || NetworkClient.active) && recording();
         }
-        private void Start() { if (!NetworkClient.active && !NetworkServer.active) Apply(SkillLoadoutStore.Read()); }
+        private void Start()
+        {
+            if ((!NetworkClient.active && !NetworkServer.active)) Apply(SkillLoadoutStore.Read());
+        }
         public override void OnStartServer() { _initialDeadline=NetworkTime.time+5; Apply(Defaults()); }
         public override void OnStartLocalPlayer() { CmdSet(SkillLoadoutStore.Read()); }
         public static int[] Defaults()
@@ -80,7 +83,7 @@ namespace BattlePvp.Combat
         {
             if (NetworkTime.time < _nextRequest) return;
             _nextRequest = NetworkTime.time + .2;
-            if ((!CanEdit && (_initialized || NetworkTime.time>_initialDeadline)) || !Validate(choices)) return;
+            if ((gameObject.scene.name == "Battle" && (_initialized || NetworkTime.time>_initialDeadline)) || !Validate(choices)) return;
             _initialized = true; Apply(choices); TargetAccepted(connectionToClient, choices);
         }
         [TargetRpc] private void TargetAccepted(NetworkConnectionToClient target, int[] choices)

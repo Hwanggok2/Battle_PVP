@@ -19,7 +19,6 @@ namespace BattlePvp.UI
         private Animator _animator;
         private FollowCamera _camera;
         private PlayerModelVisibility _model;
-        private string _respawnPrompt;
         private Color _overlayColor;
         private PlayerRespawnCountdown _countdown;
         private Coroutine _countdownRoutine;
@@ -34,8 +33,7 @@ namespace BattlePvp.UI
             _player = player;
             _animator = animator;
             _model = new PlayerModelVisibility(player);
-            _respawnPrompt = respawnPrompt;
-            _overlayColor = overlayColor;
+            _overlayColor = Color.white;
         }
 
         public void AttachCamera(FollowCamera camera) => _camera = camera;
@@ -97,7 +95,7 @@ namespace BattlePvp.UI
                 if (seconds != displayedSeconds)
                 {
                     displayedSeconds = seconds;
-                    PlayerHUD.UpdateLocalDeathOverlay(true, seconds.ToString(), _overlayColor);
+                    PlayerHUD.UpdateLocalDeathOverlay(true, BattleActionPrompt.RespawnStatus(seconds), _overlayColor);
                 }
                 yield return null;
             }
@@ -108,7 +106,7 @@ namespace BattlePvp.UI
         private void ShowRespawnPrompt()
         {
             _model?.Hide();
-            PlayerHUD.UpdateLocalDeathOverlay(true, _respawnPrompt, _overlayColor);
+            PlayerHUD.UpdateLocalDeathOverlay(true, BattleActionPrompt.RespawnStatus(0), _overlayColor);
         }
 
         public void ShowLocalRevived()

@@ -257,8 +257,11 @@ namespace BattlePvp.UI
 
             if (_deathCountdownText != null && active)
             {
-                _deathCountdownText.text = text;
-                _deathCountdownText.color = textColor ?? _defaultDeathTextColor;
+                _deathCountdownText.richText = true;
+                _deathCountdownText.font = BattleResultTheme.SharedFont;
+                _deathCountdownText.text = "<size=20><color=#52E5ED>RESPAWN</color></size>\n\n" +
+                    "<size=42><b>" + BattleActionPrompt.Respawn + "</b></size>\n\n<size=26>" + text + "</size>";
+                BattleActionPrompt.Center(_deathCountdownText, new Vector2(860f, 250f));
             }
         }
 

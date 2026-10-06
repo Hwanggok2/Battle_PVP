@@ -10,7 +10,7 @@ namespace BattlePvp.Networking
     /// Mirror의 NetworkManager를 상속받아 배틀 특화 기능을 관리하는 클래스입니다.
     /// 플레이어 생성 로직 및 씬 전환 이벤트를 디버깅하고 제어합니다.
     /// </summary>
-    public class BattleNetworkManager : NetworkManager
+    public partial class BattleNetworkManager : NetworkManager
     {
         public const int PlayerCapacity = 8;
         public int RoomCapacity { get; private set; } = PlayerCapacity;
@@ -44,6 +44,7 @@ namespace BattlePvp.Networking
             roomAuthenticator.enabled = true;
             authenticator = roomAuthenticator;
             base.Awake();
+            if (singleton == this && GetComponent<SceneInterestManagement>() == null) gameObject.AddComponent<SceneInterestManagement>();
             if (singleton == this && GetComponent<RoomNetworkTiming>() == null)
                 gameObject.AddComponent<RoomNetworkTiming>();
             Debug.Log($"[BattleNetworkManager] Awake - Singleton check: {singleton == this}");
@@ -56,6 +57,8 @@ namespace BattlePvp.Networking
             _serverStopping = false;
             _changingServerScene = false;
             base.OnStartServer();
+            ResetMatchReturn();
+            RegisterReturnServerHandlers();
             BattlePvp.UI.BattleChatNetwork.RegisterServerHandler();
             Debug.Log("[BattleNetworkManager] Server Started.");
         }
@@ -63,6 +66,7 @@ namespace BattlePvp.Networking
         public override void OnStartClient()
         {
             base.OnStartClient();
+            RegisterReturnClientHandlers();
             BattlePvp.Combat.HealthSystem.ClearPopupPredictions();
             BattlePvp.UI.BattleChatNetwork.RegisterClientHandler();
             Debug.Log("[BattleNetworkManager] Client Started.");
@@ -164,6 +168,8 @@ namespace BattlePvp.Networking
                 _disconnectedPlayers[account.PlayFabId] = player;
             }
             base.OnServerDisconnect(conn);
+            _pendingReturns.Remove(conn.connectionId); _movedReturns.Remove(conn.connectionId); _presentedReturns.Remove(conn.connectionId);
+            TryFinishWaitingReturn();
         }
 
         public void ClearDisconnectedPlayers()
@@ -175,6 +181,7 @@ namespace BattlePvp.Networking
 
         public override void ServerChangeScene(string newSceneName)
         {
+            if (newSceneName == "Battle" && !CanStartNextRound) return;
             string current = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
             if (newSceneName == "Battle" && (current == "Battle_waiting" || current == "Battle_wait") && !RoomStatReadiness.AllPlayersReady)
             {
@@ -194,6 +201,7 @@ namespace BattlePvp.Networking
         public override void OnServerSceneChanged(string sceneName)
         {
             _changingServerScene = false;
+            ResetMatchReturn();
             base.OnServerSceneChanged(sceneName);
         }
 
@@ -203,6 +211,12 @@ namespace BattlePvp.Networking
             RoomConnectionDiagnostics.Record("mirror_connected");
             PlayFabBattleManager.Instance?.NotifyRoomNetworkConnected();
             Debug.Log("[BattleNetworkManager] Client connected to server.");
+        }
+
+        public override void OnClientSceneChanged()
+        {
+            ResetMatchReturn();
+            base.OnClientSceneChanged();
         }
 
         public override void OnClientDisconnect()
@@ -236,6 +250,7 @@ namespace BattlePvp.Networking
             ClearDisconnectedPlayers();
             LastCompletedMatch = null;
             BattlePvp.UI.BattleChatNetwork.UnregisterServerHandler();
+            ResetMatchReturn();
             base.OnStopServer();
         }
 
@@ -243,6 +258,7 @@ namespace BattlePvp.Networking
         {
             BattlePvp.Combat.HealthSystem.ClearPopupPredictions();
             BattlePvp.UI.BattleChatNetwork.UnregisterClientHandler();
+            _returningFromMatch = false;
             base.OnStopClient();
         }
 

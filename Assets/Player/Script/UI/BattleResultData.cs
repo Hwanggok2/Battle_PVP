@@ -3,6 +3,15 @@ using System.Globalization;
 
 namespace BattlePvp.UI
 {
+    [Serializable]
+    public struct BattleResultRow
+    {
+        public uint NetId;
+        public int Rank, Kills;
+        public string PlayerName, CharacterName;
+        public float Damage;
+    }
+
     public readonly struct PersonalBattleResult
     {
         public readonly string PlayerName, WinnerName, MostKilledBy, MostKilled;
