@@ -59,6 +59,7 @@ namespace BattlePvp.UI
             ApplyInitialPanelState();
             if (_playerIconButton != null)
             {
+                RoomUiElements.TopMenuButton(_playerIconButton, 2);
                 _playerIconButton.onClick.AddListener(ToggleInfoPanel);
             }
         }

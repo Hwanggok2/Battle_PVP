@@ -90,6 +90,7 @@ namespace BattlePvp.UI
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
 
             if (_battleButton != null) _battleButton.onClick.AddListener(OnBattleButtonClicked);
+            RoomUiElements.TopMenuButton(_statSettingButton, 3);
             if (_statSettingButton != null) _statSettingButton.onClick.AddListener(OnStatSettingButtonClicked);
             if (_createRoomButton != null) _createRoomButton.onClick.AddListener(OnCreateRoomButtonClicked);
             if (_joinRoomButton != null) _joinRoomButton.onClick.AddListener(OnJoinRoomButtonClicked);

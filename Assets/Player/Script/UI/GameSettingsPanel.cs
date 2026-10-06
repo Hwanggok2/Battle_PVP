@@ -27,6 +27,7 @@ namespace BattlePvp.UI
         private void Awake()
         {
             Instance = this; _panel.SetActive(false);
+            RoomUiElements.TopMenuButton(_openButton, 4);
             _openButton.onClick.AddListener(Toggle);
             foreach (var slider in _panel.GetComponentsInChildren<Slider>(true)) _sliders[slider.name] = slider;
             foreach (var button in _panel.GetComponentsInChildren<Button>(true)) _buttons[button.name] = button;

@@ -6,6 +6,29 @@ namespace BattlePvp.UI
 {
     public static class RoomUiElements
     {
+        // Left to right: character, job, information, stats, settings.
+        public static void TopMenuButton(Button button, int column)
+        {
+            if (button == null) return;
+            var rect = (RectTransform)button.transform;
+            rect.anchorMin = rect.anchorMax = Vector2.one;
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.localScale = Vector3.one;
+            rect.sizeDelta = new Vector2(116f, 44f);
+            rect.anchoredPosition = new Vector2(-82f - (4 - column) * 128f, -42f);
+            var label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label == null) return;
+            label.font = BattleResultTheme.SharedFont;
+            label.fontSize = 24f;
+            label.enableAutoSizing = false;
+            label.fontStyle = FontStyles.Bold;
+            label.alignment = TextAlignmentOptions.Center;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(8f, 2f);
+            label.rectTransform.offsetMax = new Vector2(-8f, -2f);
+        }
+
         public static RectTransform Rect(string name, Transform parent, Vector2 size, Vector2 position)
         {
             var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();

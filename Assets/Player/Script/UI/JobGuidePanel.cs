@@ -30,6 +30,7 @@ namespace BattlePvp.UI
         private void Awake()
         {
             Instance = this; _panel.SetActive(false);
+            RoomUiElements.TopMenuButton(_openButton, 1);
             _openButton.onClick.AddListener(Toggle);
             _panel.transform.Find("Close").GetComponent<Button>().onClick.AddListener(Close);
             _title = _panel.transform.Find("JobName").GetComponent<TMP_Text>();

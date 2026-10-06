@@ -120,6 +120,7 @@ namespace BattlePvp.UI
         private void Build()
         {
             var open = Button("Open", transform, "캐릭터", new Vector2(110, 44), new Vector2(-596, -42));
+            RoomUiElements.TopMenuButton(open, 0);
             var border = open.gameObject.AddComponent<Outline>(); border.effectColor = new Color(.24f, .9f, .92f, .7f);
             border.effectDistance = new Vector2(1, -1);
             open.onClick.AddListener(Toggle);
