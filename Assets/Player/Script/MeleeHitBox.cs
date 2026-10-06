@@ -8,6 +8,7 @@ using UnityEditor;
 
 namespace BattlePvp.Combat
 {
+    [DefaultExecutionOrder(1100)]
     public class MeleeHitBox : MonoBehaviour
     {
         [SerializeField] private AttackProcessor _attackProcessor;
@@ -48,6 +49,18 @@ namespace BattlePvp.Combat
         [SerializeField] private float _debugHitPathLineWidth = 0.025f;
 
         private bool _hitBoxActive;
+        private Transform _poseSource;
+        private Transform PoseSource => _poseSource != null ? _poseSource : transform;
+
+        public void SetPoseSource(Transform source)
+        {
+            if (_poseSource == source) return;
+            _poseSource = source;
+            _hasSweepPose = false;
+            _serverHitPoses.Clear();
+            _pendingInitialOverlap = _hitBoxActive;
+            CaptureCurrentPose();
+        }
         private bool _pendingInitialOverlap;
         private bool _pendingEnd;
         private Vector3 _previousPosition;
@@ -153,6 +166,7 @@ namespace BattlePvp.Combat
 
         private void LateUpdate()
         {
+            if (_hitBoxActive) CombatPhysicsQuery.SyncAnimatedTransforms();
             if (_sampleAnimator != null && _useSweptHitDetection && _boxCollider != null)
             {
                 var state = _sampleAnimator.GetCurrentAnimatorStateInfo(1);
@@ -265,7 +279,7 @@ namespace BattlePvp.Combat
 
             if (_boxCollider != null)
             {
-                ProcessBoxOverlap(transform.position, transform.rotation);
+                ProcessBoxOverlap(PoseSource.position, PoseSource.rotation);
                 return;
             }
 
@@ -284,7 +298,7 @@ namespace BattlePvp.Combat
                     _playerCombat.TrySampleMeleeMotion(phase, out Pose expectedTo))
                 {
                     var actualFrom = new Pose(_previousPosition, _previousRotation);
-                    var actualTo = new Pose(transform.position, transform.rotation);
+                    var actualTo = new Pose(PoseSource.position, PoseSource.rotation);
                     int steps = Mathf.Clamp(Mathf.CeilToInt((phase - _previousPhase) * (to - from) * 240), 1, 128);
                     for (int i = 0; i <= steps; i++)
                     {
@@ -296,13 +310,13 @@ namespace BattlePvp.Combat
                     return;
                 }
             }
-            Vector3 start = Vector3.Lerp(_previousPosition, transform.position, from);
-            Vector3 end = Vector3.Lerp(_previousPosition, transform.position, to);
-            Quaternion startRotation = Quaternion.Slerp(_previousRotation, transform.rotation, from);
-            Quaternion endRotation = Quaternion.Slerp(_previousRotation, transform.rotation, to);
+            Vector3 start = Vector3.Lerp(_previousPosition, PoseSource.position, from);
+            Vector3 end = Vector3.Lerp(_previousPosition, PoseSource.position, to);
+            Quaternion startRotation = Quaternion.Slerp(_previousRotation, PoseSource.rotation, from);
+            Quaternion endRotation = Quaternion.Slerp(_previousRotation, PoseSource.rotation, to);
             float distance = Vector3.Distance(start, end);
             float angle = Quaternion.Angle(startRotation, endRotation);
-            Vector3 scale = Abs(transform.lossyScale);
+            Vector3 scale = Abs(PoseSource.lossyScale);
             float radius = Vector3.Scale(Abs(_boxCollider.center) + _boxCollider.size * .5f, scale).magnitude;
             float thickness = Mathf.Min(_boxCollider.size.x * scale.x, _boxCollider.size.y * scale.y) + 2f * _sweepPadding;
             float spacing = Mathf.Max(.01f, Mathf.Min(_sweepSampleSpacing, thickness));
@@ -322,7 +336,7 @@ namespace BattlePvp.Combat
             if (_boxCollider == null)
                 return;
 
-            Vector3 scale = Abs(transform.lossyScale);
+            Vector3 scale = Abs(PoseSource.lossyScale);
             Quaternion hitRotation = sampleRotation;
             Vector3 center = GetHitCenter(samplePosition, hitRotation, scale);
             Vector3 halfExtents = Vector3.Scale(_boxCollider.size * 0.5f, scale) + Vector3.one * _sweepPadding;
@@ -347,8 +361,8 @@ namespace BattlePvp.Combat
 
         private void CaptureCurrentPose()
         {
-            _previousPosition = transform.position;
-            _previousRotation = transform.rotation;
+            _previousPosition = PoseSource.position;
+            _previousRotation = PoseSource.rotation;
         }
 
         private static Vector3 Abs(Vector3 value)

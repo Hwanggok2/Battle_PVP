@@ -5,6 +5,7 @@ using BattlePvp.Stats;
 using Mirror;
 using UnityEngine;
 
+[DefaultExecutionOrder(1050)]
 internal sealed class ServerPoseHistory : MonoBehaviour
 {
     private const int Capacity = 64;
@@ -109,11 +110,12 @@ internal sealed class ServerPoseHistory : MonoBehaviour
         return false;
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (!NetworkServer.active)
             return;
 
+        CombatPhysicsQuery.SyncAnimatedTransforms();
         RecordCurrentPose(NetworkTime.time);
     }
 

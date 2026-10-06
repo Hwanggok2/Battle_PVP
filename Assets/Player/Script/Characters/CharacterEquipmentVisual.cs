@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BattlePvp.Characters
 {
-    /// <summary>Fits visible equipment to the native skeleton without moving gameplay colliders or projectile origins.</summary>
+    /// <summary>Fits equipment to the native skeleton and supplies the visible sword pose to melee queries.</summary>
     internal sealed class CharacterEquipmentVisual : IDisposable
     {
         private sealed class Part
@@ -16,6 +16,7 @@ namespace BattlePvp.Characters
             public MeshRenderer Owner, Visual;
             public bool Arrow, Held, Back, Sword;
             public Transform SourceHand, TargetHand;
+            public BattlePvp.Combat.MeleeHitBox Hitbox;
         }
         private sealed class Hand
         {
@@ -91,7 +92,9 @@ namespace BattlePvp.Characters
                     var targetHand = visual.GetBoneTransform(hand);
                     if (back && targetHand == null) targetHand = visual.GetBoneTransform(HumanBodyBones.Chest) ?? visual.GetBoneTransform(HumanBodyBones.Spine);
                     _parts.Add(new Part { Weapon = weapon, Hand = hand, SourceHand = driver.GetBoneTransform(hand), TargetHand = targetHand,
-                        Source = filter, Mesh = filter.sharedMesh, Owner = owner, Visual = renderer, Arrow = arrow, Held = sword || bow, Back = back, Sword = sword });
+                        Source = filter, Mesh = filter.sharedMesh, Owner = owner, Visual = renderer, Arrow = arrow, Held = sword || bow, Back = back, Sword = sword,
+                        Hitbox = sword && filter.transform == weapon ? weapon.GetComponent<BattlePvp.Combat.MeleeHitBox>() : null });
+                    _parts[_parts.Count - 1].Hitbox?.SetPoseSource(go.transform);
                     filter.sharedMesh = null;
                 }
             }
@@ -124,7 +127,8 @@ namespace BattlePvp.Characters
                 part.Visual.forceRenderingOff = part.Owner.forceRenderingOff;
                 if (part.Visual.sharedMaterial != part.Owner.sharedMaterial) part.Visual.sharedMaterials = part.Owner.sharedMaterials;
                 // Inactive weapons have no visible pose. LOD renderers still get fitted before culling.
-                if (!part.Source.gameObject.activeInHierarchy || !part.Owner.enabled || part.Owner.forceRenderingOff) continue;
+                if (!part.Source.gameObject.activeInHierarchy ||
+                    (part.Hitbox == null && (!part.Owner.enabled || part.Owner.forceRenderingOff))) continue;
                 var sourceHand = part.SourceHand;
                 var targetHand = part.TargetHand;
                 if (sourceHand == null || targetHand == null) continue;
@@ -218,6 +222,7 @@ namespace BattlePvp.Characters
             _originalLods.Clear();
             foreach (var part in _parts)
             {
+                part.Hitbox?.SetPoseSource(null);
                 if (part.Source != null) part.Source.sharedMesh = part.Mesh;
                 if (part.Visual == null) continue;
                 part.Visual.gameObject.SetActive(false);

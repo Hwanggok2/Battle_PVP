@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-06",
+  "unityVersion": "6000.3.15f1",
+  "cause": "Native character meshes and weapons were retargeted, but damage capsules and melee queries stayed on the original gameplay skeleton.",
+  "fix": [
+    "Bind existing head, torso and leg damage capsules to native Humanoid bones using rest-pose offsets and character size, preserving collider identities, enabled flags and damage ownership.",
+    "Query and sweep the visible sword pose for both contact damage and authoritative attack history; clear old sword samples when switching pose sources.",
+    "Update combat skeletons on skipped rendering frames and synchronize physics once after all native poses before late server-history and melee queries.",
+    "Restore authored capsule shapes and transforms when switching back to the default body."
+  ],
+  "baseline": {
+    "jobId": "0fa832c1bd0e4ad2b365c70746db5696",
+    "reproduced": "Visible-head points lay outside the original damage capsules; brute missed by 0.187708423 m at normal scale and 0.226331398 m at 1.2x scale."
+  },
+  "tests": {
+    "jobId": "6f8d59f4fbe1438cbf29ca2b155fa0d7",
+    "total": 150,
+    "passed": 150,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 8.4320298,
+    "resultState": "Passed",
+    "suites": [
+      "CharacterCombatAlignmentTests",
+      "CharacterVisualAlignmentTests",
+      "CharacterAppearanceTests",
+      "ImportedCharacterTests",
+      "MeleeBladeCollisionTests",
+      "BladeSweepGeometryTests",
+      "MeleeAimPoseTests",
+      "ServerPoseConsistencyTests",
+      "CombatAuthorityTests"
+    ],
+    "coverage": [
+      "Five native characters at 1x and 1.2x scale: visible head contact and authoritative body history.",
+      "PicoChan, Megumi, Security Officer and Casual 1 attacking Brute, plus Brute attacking PicoChan: actual HP damage, 1.5x head multiplier, no duplicate damage and rejection of off-blade server hits.",
+      "Attack and crouch poses at three phases: head, torso and leg collider alignment.",
+      "Character switching and restoration retain collider objects, parents, shapes and enabled states."
+    ],
+    "evidence": "after.xml"
+  },
+  "limitations": {
+    "authenticatedMultiplayerSessionTested": false,
+    "webRebuilt": false,
+    "webDeployed": false
+  }
+}

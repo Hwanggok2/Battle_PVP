@@ -27,6 +27,15 @@ namespace BattlePvp.Combat
     /// <summary>Reusable queries retry a full buffer so crowd density cannot silently drop targets.</summary>
     public sealed class CombatPhysicsQuery
     {
+        private static int _lastAnimatedSyncFrame = -1;
+        internal static void SyncAnimatedTransforms()
+        {
+            // All character pose followers run before the late combat queries.
+            if (Application.isPlaying && _lastAnimatedSyncFrame == Time.frameCount) return;
+            Physics.SyncTransforms();
+            _lastAnimatedSyncFrame = Time.frameCount;
+        }
+
         private const int MaximumReusableCapacity = 4096;
         private Collider[] _colliders = new Collider[32];
         private RaycastHit[] _hits = new RaycastHit[32];

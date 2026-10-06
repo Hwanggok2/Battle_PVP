@@ -16,6 +16,7 @@ namespace BattlePvp.Characters
         private Animator _driver, _visualAnimator;
         private BowAimRigTarget _bowAim;
         private CharacterEquipmentVisual _equipment;
+        private CharacterHitboxBinding _hitboxes;
         private Transform _driverRoot;
         private Transform _sourceLeft, _sourceRight, _targetLeft, _targetRight, _targetSpine;
         private Mirror.NetworkIdentity _identity;
@@ -53,6 +54,7 @@ namespace BattlePvp.Characters
             SyncPose();
             _equipment = new CharacterEquipmentVisual(driver, animator, ViewScale, swordGripOffset);
             _equipment.Sync();
+            _hitboxes = new CharacterHitboxBinding(driver, original, originalMesh, animator, nativeBody, ViewScale);
         }
 
         public void SyncPose()
@@ -75,6 +77,7 @@ namespace BattlePvp.Characters
                     _targetSpine.rotation = Quaternion.FromToRotation(visibleAim, sourceAim) * _targetSpine.rotation;
             }
             _equipment?.Sync();
+            _hitboxes?.Sync();
             short meshLod = (short)(_identity != null && _identity.isLocalPlayer ? 0 : -1);
             foreach (var renderer in _renderers)
             {
@@ -86,9 +89,8 @@ namespace BattlePvp.Characters
         }
         private void LateUpdate()
         {
-            // Native low-latency sessions simulate at 120 Hz but render at 30/60 Hz.
-            // Only the visual copy is skipped; the authoritative rig keeps its normal cadence.
-            if (OnDemandRendering.willCurrentFrameRender) SyncPose();
+            // Combat colliders must follow this skeleton even on a skipped rendering frame.
+            if ((_hitboxes != null && _hitboxes.HasBindings) || OnDemandRendering.willCurrentFrameRender) SyncPose();
         }
         private static float HeadHeight(Animator animator, SkinnedMeshRenderer body, Mesh mesh, Transform root)
         {
@@ -104,6 +106,7 @@ namespace BattlePvp.Characters
             if (!ReferenceEquals(_driverRoot, null) && Active.TryGetValue(_driverRoot, out var current) && current == this)
                 Active.Remove(_driverRoot);
             _equipment?.Dispose(); _equipment = null;
+            _hitboxes?.Dispose(); _hitboxes = null;
             _source?.Dispose(); _source = null;
             _target?.Dispose(); _target = null;
         }

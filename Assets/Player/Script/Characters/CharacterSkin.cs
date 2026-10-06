@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace BattlePvp.Characters
 {
-    /// <summary>Adds a visual skeleton while retaining the gameplay rig, animation, weapons and hitboxes.</summary>
+    /// <summary>Retargets the selected skeleton, equipment and damage regions while retaining gameplay ownership.</summary>
     public sealed class CharacterSkin : IDisposable
     {
         private readonly SkinnedMeshRenderer _renderer;
