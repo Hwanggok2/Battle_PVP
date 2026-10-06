@@ -21,7 +21,7 @@ MonoBehaviour:
   LicenseUrl: https://unity.com/legal/as-terms
   Portrait: {fileID: 21300000, guid: 835a41acb4946334e80270b3052c69d9, type: 3}
   UseDefaultBody: 0
-  RelativeHeight: 0.85
+  RelativeHeight: 0.95
   CombatModifiers:
     Health: 0.9
     Defense: 0.9
