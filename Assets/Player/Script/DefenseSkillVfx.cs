@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BattlePvp.Characters;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -43,6 +44,8 @@ namespace BattlePvp.Combat
                 _presetShield.SetActive(shield);
                 if (shield)
                 {
+                    // The parent already supplies stat/preset scaling; apply only the selected body's ratio here.
+                    _presetShield.transform.localScale = Vector3.one * CharacterPoseFollower.GetBodyScale(owner.transform);
                     _presetShieldMaterial.SetColor("_BaseColor", new Color(1.8f, 1.45f, .08f, _health.CurrentShield<=0 ? 0 : owner.IsStealthed ? .095f : .19f));
                     _impactProperties.SetVector("_ImpactPoint",_shieldHitPoint);
                     _impactProperties.SetFloat("_ImpactAge",impactAge<.35f ? impactAge : -1);
@@ -65,6 +68,8 @@ namespace BattlePvp.Combat
         }
         private void OnShieldHit(Vector3 localPoint)
         {
+            // Damage arrives in player-local space, while the shader uses the scaled shield's mesh space.
+            localPoint /= CharacterPoseFollower.GetBodyScale(_health.transform);
             Vector3 center=Vector3.up*.94f;
             Vector3 direction=localPoint-center;
             if(direction.sqrMagnitude<.0001f) direction=Vector3.forward;

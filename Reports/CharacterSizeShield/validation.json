@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-06",
+  "unityVersion": "6000.3.15f1",
+  "relativeHeightTarget": 0.85,
+  "characters": ["security-officer", "megumi", "casual-1"],
+  "selectionBasis": "Used the requested 85% numeric target. The existing characters were already approximately 86%, 93% and 91% of the default standing height, so this target reduces their size slightly.",
+  "standingHeightMeters": {
+    "default": 1.749828,
+    "security-officer": 1.475855,
+    "megumi": 1.482974,
+    "casual-1": 1.495825,
+    "picochan": 1.484586,
+    "brute": 2.140227
+  },
+  "shield": {
+    "sizing": "Uniform whole-body bind-mesh height ratio, cached when applying the skin. Preset enlargement is inherited once from the player transform.",
+    "updatesWhileActive": true,
+    "impactCoordinateConversion": "Replicated player-local hit position converted into the resized shield's local coordinates.",
+    "meshReusedDuringResizing": true
+  },
+  "tests": {
+    "jobId": "bf719eb8b3464aa5a21d0c068ac3af13",
+    "total": 92,
+    "passed": 92,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 5.3360587,
+    "coverage": ["Standing silhouette height", "Camera and sword alignment", "Bow alignment", "Native animation and geometry", "Damage capsules and server hit history", "Character stat modifiers", "Shield changes during character and preset switching", "World-space shield impact positioning", "Shield consumption and concealment"]
+  },
+  "visualEvidence": "lineup.png",
+  "visualOrderLeftToRight": ["brute", "picochan", "casual-1", "megumi", "security-officer", "default"],
+  "webRebuilt": false,
+  "webDeployed": false
+}

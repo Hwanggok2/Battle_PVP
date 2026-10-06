@@ -137,6 +137,70 @@ namespace BattlePvp.EditorTests
             Assert.That(_player.GetComponentsInChildren<MeshRenderer>(true).Count(r => r.name == "Preset yellow shield"), Is.EqualTo(1));
             Set(_health, "_isDead", true); defense.Tick(_skills, false); Assert.That(shield.activeSelf, Is.False);
         }
+        [TestCase("default")] [TestCase("security-officer")] [TestCase("megumi")]
+        [TestCase("casual-1")] [TestCase("picochan")] [TestCase("brute")]
+        public void PresetShieldFitsSelectedBodyAndResizesWithAnExistingShield(string id)
+        {
+            var animator = _player.GetComponent<Animator>(); animator.Rebind(); animator.Update(0);
+            using var defense = new DefenseSkillVfx();
+            using var skin = new CharacterSkin(_player.GetComponentInChildren<SkinnedMeshRenderer>());
+            Set(_health, "_currentShield", 30f);
+            defense.Tick(_skills, false);
+            var shield = _player.transform.Find("Preset yellow shield");
+            var renderer = shield.GetComponent<MeshRenderer>();
+            var originalBounds = renderer.bounds;
+            var originalMesh = shield.GetComponent<MeshFilter>().sharedMesh;
+            float sourceHeight = skin.VisibleBody.sharedMesh.bounds.size.y;
+            Assert.That(skin.Apply(CharacterCatalog.Instance.Find(id), out var error), Is.True, error);
+            skin.SyncPose(); defense.Tick(_skills, false);
+            var body = skin.VisibleBody;
+            float bodyHeight = body.transform.TransformVector(Vector3.up * body.sharedMesh.bounds.size.y).magnitude;
+            float bodyRatio = bodyHeight / sourceHeight;
+            Assert.That(renderer.bounds.size.y / originalBounds.size.y, Is.EqualTo(bodyRatio).Within(.002f));
+            Assert.That(renderer.bounds.max.y, Is.GreaterThan(body.transform.TransformPoint(body.sharedMesh.bounds.max).y),
+                "The shield must also cover large heads, not end at the head bone.");
+
+            var preset = new StatContainer(); preset.CON.Invested = 30;
+            _stats.ApplyLocalSceneStats(preset); defense.Tick(_skills, false);
+            Assert.That(_player.transform.localScale.y, Is.EqualTo(1.2f));
+            Assert.That(renderer.bounds.size.y, Is.EqualTo(originalBounds.size.y * bodyRatio * 1.2f).Within(.002f),
+                "Preset scaling must apply exactly once on top of character size.");
+            Assert.That(shield.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(originalMesh), "Resizing must reuse the shield mesh.");
+            skin.Restore(); defense.Tick(_skills, false);
+            Assert.That(renderer.bounds.size.y, Is.EqualTo(originalBounds.size.y * 1.2f).Within(.002f));
+            preset = new StatContainer(); preset.STR.Invested = 8; preset.CON.Invested = 8;
+            preset.AGI.Invested = 7; preset.DEF.Invested = 7;
+            _stats.ApplyLocalSceneStats(preset); defense.Tick(_skills, false);
+            Assert.That(renderer.bounds.size.y, Is.EqualTo(originalBounds.size.y).Within(.002f));
+            Assert.That(_player.GetComponentsInChildren<MeshRenderer>(true).Count(r => r.name == "Preset yellow shield"), Is.EqualTo(1));
+        }
+
+        [TestCase("security-officer", 1f)] [TestCase("megumi", 1.2f)] [TestCase("casual-1", 1f)]
+        [TestCase("picochan", 1.2f)] [TestCase("brute", 1f)]
+        public void ResizedShieldImpactStaysAtTheWorldContactPoint(string id, float scale)
+        {
+            var animator = _player.GetComponent<Animator>(); animator.Rebind(); animator.Update(0);
+            using var skin = new CharacterSkin(_player.GetComponentInChildren<SkinnedMeshRenderer>());
+            Assert.That(skin.Apply(CharacterCatalog.Instance.Find(id), out var error), Is.True, error);
+            _player.transform.SetPositionAndRotation(new Vector3(8, 3, -12), Quaternion.Euler(0, 65, 0));
+            _player.transform.localScale = Vector3.one * scale;
+            using var defense = new DefenseSkillVfx();
+            Set(_health, "_currentShield", 30f); defense.Tick(_skills, false);
+            var shield = _player.transform.Find("Preset yellow shield");
+            var renderer = shield.GetComponent<MeshRenderer>();
+            // The front vertex at this oblique angle is on the rendered ellipsoid.
+            var normal = new Vector3(0, .6f, .8f);
+            var localContact = Vector3.up * .94f + Vector3.Scale(normal, new Vector3(.68f, 1.04f, .68f));
+            var contact = shield.TransformPoint(localContact);
+            _health.ApplyDamage(new DamageRequest(1, DamageSource.Fixed, 0, null, contact));
+            defense.Tick(_skills, false);
+            var properties = new MaterialPropertyBlock(); renderer.GetPropertyBlock(properties);
+            var shownContact = shield.TransformPoint(properties.GetVector("_ImpactPoint"));
+            Assert.That(Vector3.Distance(contact, shownContact), Is.LessThan(.002f));
+            Assert.That(_health.CurrentShield, Is.EqualTo(29f));
+            Assert.That(properties.GetFloat("_ImpactAge"), Is.InRange(0, .35f));
+        }
+
         [Test] public void LegacyBuffExpirySurvivesInitialNetworkSerializationForObservers()
         {
             var combat = _player.GetComponent<PlayerCombat>();
