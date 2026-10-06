@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-06",
+  "status": "Source fixes committed; final WebGL build and deployment await user approval.",
+  "commits": {
+    "combatAndPointerLock": "6b49355",
+    "koreanRoomInput": "a323a38",
+    "editorRoomServices": "de08bed",
+    "webNetworkTimers": "3508acf",
+    "fullscreenAndGpuDiagnostics": "7595979"
+  },
+  "findings": {
+    "webRoomRegistry": "Authenticated Editor query returned zero rooms; the user's Web authenticator room had no registry entry. Web host startup awaited Task.Delay before registration. Unity Web does not fire managed timers, so waits and cancellation deadlines were moved to Unity Awaitable frames.",
+    "gpu": "In-app browser preview used ANGLE AMD Radeon 610M through Direct3D11, not software rendering. Windows also reports NVIDIA GeForce RTX 5060 Laptop GPU. The user's external browser renderer has not been measured.",
+    "gpuPreference": "Unity high-performance WebGL preference and GPU skinning were already enabled. The new shell retains high-performance preference, caps devicePixelRatio at 1, and exposes actual renderer/FPS/framebuffer metrics. Windows/browser GPU selection can override the site's preference.",
+    "fullscreen": "Keyboard Lock requests only Escape so short Escape reaches the game. Long Escape or the shrink button can exit. Unsupported or denied Keyboard Lock falls back to viewport expansion. The canvas is retained across transitions. IME input follows the fullscreen container."
+  },
+  "validation": {
+    "browserJavaScript": { "passed": 20, "failed": 0, "command": "node --test Tools/Tests/WebShell.test.js Tools/Tests/WebGlPointerLock.test.js Tools/Tests/WebGlIme.test.js" },
+    "windowsRoomRegression": { "jobId": "69b9a923cb524acc98f406bcb8786ff8", "passed": 28, "failed": 0 },
+    "realtimeTimer": "UnityRealtimeTimerTests.NetworkWaitAndTimeoutCompleteOnPlayerFramesWithTimeScaleZero passed, confirmed in Unity TestResults.xml after MCP callback state was lost during Enter/ExitPlayMode domain reload. Validates runtime delay, deadline, cancellation and disposal at timeScale=0.",
+    "platformNote": "Three native UDP tests were initially run with WebGL compiler defines and failed because native UDP is excluded. All 28 selected room tests passed after switching the Editor target to Windows. No player build was run for this switch.",
+    "priorUnityGroups": [
+      { "jobId": "d5ca7122298d42518a73e1a97e29d838", "passed": 114, "failed": 0 },
+      { "jobId": "8c41652cd9b4468385fdc220caaa8bdc", "passed": 106, "failed": 0 }
+    ],
+    "priorUnityGroupsOverlap": true,
+    "compileErrors": 0,
+    "preview": "http://127.0.0.1:8774/",
+    "previewPlayer": "Existing Builds/WebGL-2026-10-06-BowUiAlignment player, served with the new source HTML/CSS/JS; no rebuild.",
+    "browserSmoke": "In-app browser fallback expansion, Escape retention and shrink all kept the animated game visible. GPU diagnostics displayed actual renderer and Unity metrics. Normal layout fits the viewport without scrolling.",
+    "screenshot": "Reports/Validation/web-fullscreen-gpu-preview-2026-10-06.jpg"
+  },
+  "remainingAfterApproval": [
+    "Build final WebGL player from all source fixes.",
+    "Verify native Chrome/Edge Keyboard Lock permission and short Escape during gameplay; the in-app browser only exercises fallback expansion.",
+    "Verify Korean room creation and cross-account Web/Editor room discovery with the new player.",
+    "Verify room-info cursor and combat/skill input in the new player.",
+    "Measure gameplay performance in the user's browser after checking GPU selection. No claim that all lag is resolved or that FPS has improved from a controlled before/after benchmark."
+  ],
+  "buildApproval": {
+    "newBuildStartedAfterRestriction": false,
+    "earlierBuild": "Builds/WebGL-2026-10-06-InputRoomFix was already running when approval was requested. It finished locally with older code and is superseded. It was not deployed.",
+    "pushed": false,
+    "deployed": false
+  },
+  "references": [
+    "https://docs.unity3d.com/6000.3/Documentation/Manual/webgl-technical-overview.html",
+    "https://developer.chrome.com/blog/better-full-screen-mode/",
+    "https://support.microsoft.com/en-us/windows/hardware/display-graphics/optimizations-for-windowed-games-in-windows-11"
+  ]
+}
