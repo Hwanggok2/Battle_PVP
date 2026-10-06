@@ -1,0 +1,35 @@
+CHARACTER ASSET CREDITS
+
+Megumi — Anime Character Megumi (Free / V2 / Unity 3D)
+Creator: alex94i60
+Source: https://www.fab.com/listings/2f6583ec-b5f2-4303-baa7-1a0585db23f5
+License offered in the Fab download dialog: Creative Commons Attribution 4.0 International (CC BY 4.0)
+License: https://creativecommons.org/licenses/by/4.0/
+Changes for Battle PvP: body parts combined while retaining original proportions, skin weights and skeleton; gameplay Humanoid poses retargeted to the original avatar; materials converted to URP; preview portraits rendered. Original secondary-motion scripts and facial blend shapes are not included.
+Uniform credit retained from the included Readme: デジハリ V 等部 公式 BOOTH — 【VRoid 用】デジハリ V 等部 公式制服.
+Original Readme PDFs are retained in Assets/Characters/Megumi/Source/Readme in the project.
+No endorsement by the original creators is implied.
+
+Brute
+Provider: Adobe Mixamo
+Source: https://www.mixamo.com/
+Usage information: https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
+Changes for Battle PvP: included axe omitted; body parts combined while retaining original proportions and skeleton; gameplay Humanoid poses retargeted to the original avatar; materials converted to URP; preview portraits rendered.
+
+Security Officer — Anime Character Security Officer
+Creator: J_Blue
+Source: https://assetstore.unity.com/packages/3d/characters/humanoids/humans/anime-character-security-officer-383060
+
+Casual 1 — Casual 1 - Anime Girl Characters
+Creator: Lukebox
+Source: https://assetstore.unity.com/packages/3d/characters/humanoids/casual-1-anime-girl-characters-185076
+
+PicoChan
+Creator: Picola Inc.
+Source: https://assetstore.unity.com/packages/3d/characters/humanoids/picochan-220038
+
+The three Unity Asset Store assets above were acquired under the Standard Unity Asset Store EULA:
+https://unity.com/legal/as-terms
+Changes: body parts combined while retaining original proportions, skin weights and skeleton; gameplay Humanoid poses retargeted to the original avatar; materials converted to URP; preview portraits rendered. Original secondary-motion scripts and facial blend shapes are not included. PicoChan textures use compression in WebGL builds.
+
+These notices concern the named third-party character assets, not the rest of the game's code or content.
