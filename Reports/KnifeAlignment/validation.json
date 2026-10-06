@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-06",
+  "sourceRevision": "3da526e",
+  "cause": "Readied knives were parented to the hidden gameplay rig instead of the selected character's native hand.",
+  "fix": [
+    "Parent the held knife to the selected character's hand and fit its handle to the palm.",
+    "Preserve world weapon size when reparenting between rigs with different FBX units.",
+    "Reattach or recreate the knife when the selected character changes.",
+    "Start the cosmetic knife flight at the visible grip and converge onto the unchanged authoritative trajectory over 0.1 seconds."
+  ],
+  "tests": {
+    "passed": 114,
+    "failed": 0,
+    "suites": ["SkillExpansionTests", "CharacterVisualAlignmentTests"],
+    "regressionCases": "Six characters at normal and 1.2x scale; ready and throwing clips at four phases; character switching; visible launch origin and reused projectile reset.",
+    "baseline": "The added held-knife tests failed on native character rigs before the correction.",
+    "note": "An earlier broad run hit the existing cold first-preview render failure; the complete rerun passed."
+  },
+  "readyPoseGripDistanceMeters": {
+    "megumi": { "before": 0.233464, "after": 0.000000153 },
+    "brute": { "before": 0.169292, "after": 0.000000281 },
+    "casual-1": { "before": 0.231214, "after": 0.000000240 }
+  },
+  "visualEvidence": ["megumi-before.png", "megumi-after.png", "brute-before.png", "brute-after.png", "casual-1-before.png", "casual-1-after.png"],
+  "webBuild": {
+    "status": "succeeded",
+    "development": false,
+    "output": "Builds/WebGL-2026-10-06-KnifeGrip",
+    "completedUtc": "2026-10-06T12:46:10.5450657Z",
+    "durationSeconds": 506.53,
+    "errors": 0,
+    "warnings": 7,
+    "warningSummary": "Six existing unused-field/method-hiding warnings plus pending editor compilation warning; generated IL2CPP output verified to contain GetViewAnimator and the new launch-offset implementation.",
+    "archive": "Builds/Battle_PvP-WebGL-2026-10-06-KnifeGrip.zip",
+    "archiveBytes": 97487746,
+    "archiveSha256": "E7DAD6C43A2C45C04730C197687B89125DC487A8B8D903E8E7AFE215DC2F6378",
+    "archiveCheck": "9 entries; index.html present; no empty files",
+    "browserSmokeCheck": {
+      "url": "http://127.0.0.1:8776/",
+      "startScreen": true,
+      "loginScreen": true,
+      "consoleErrors": 0,
+      "authenticatedCombatTested": false,
+      "screenshot": "web-build-login.png"
+    }
+  }
+}
