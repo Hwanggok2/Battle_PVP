@@ -14,7 +14,7 @@ using BattlePvp.UI;
 /// Presentation helpers receive explicit display inputs and never mutate that state.
 /// Death, revival, and disable all terminate owned actions through CancelAllCombatActions.
 /// </summary>
-public class PlayerCombat : NetworkBehaviour
+public partial class PlayerCombat : NetworkBehaviour
 {
     private enum AuraPrimitiveShape
     {
@@ -449,6 +449,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void Update()
     {
+        UpdateWeaponCombat();
         ApplyAcceptedOwnerInputLock();
         RefreshRestoredOwnerCastMovement();
         UpdateServerTauntControl();
@@ -801,7 +802,8 @@ public class PlayerCombat : NetworkBehaviour
             return;
         }
 
-        StartAttack(0, true, GetCurrentMeleeAimDirection());
+        int first = WeaponKind == BattlePvp.Combat.MeleeWeaponKind.Greatsword && SkillTime < _riposteUntil ? 4 : 0;
+        StartAttack(first, true, GetCurrentMeleeAimDirection(first));
     }
 
     private bool IsBattleLoadingOrNotStarted()
@@ -843,6 +845,9 @@ public class PlayerCombat : NetworkBehaviour
 
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
             return;
+
+        if (!WeaponAttackAllowed(index)) return;
+        if (index == 4) _riposteUntil = 0;
 
         bool sendOwnerRequest = notifyServer && isClient && isLocalPlayer && NetworkClient.active && NetworkClient.ready;
         if (sendOwnerRequest)
@@ -929,7 +934,7 @@ public class PlayerCombat : NetworkBehaviour
         }
         float comboProgress = animator != null && isAttacking
             ? animator.GetCurrentAnimatorStateInfo(1).normalizedTime : float.NaN;
-        if (!_serverCombo.CanStart(index, isAttacking, currentComboIndex, comboProgress, SkillTime))
+        if (!WeaponAttackAllowed(index) || !CanStartWeaponSequence(index, comboProgress))
         {
             TargetResolveAttackRequest(connectionToClient, sequence, false);
             return;
@@ -979,7 +984,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void StartRemoteAttackVisual(int index, Vector3 aimDirection)
     {
-        if (_healthSystem != null && _healthSystem.IsDead)
+        if (IsWeaponRecoiling || (_healthSystem != null && _healthSystem.IsDead))
             return;
 
         if (index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null)
@@ -1392,7 +1397,7 @@ public class PlayerCombat : NetworkBehaviour
             yield return null;
         }
 
-        if (hasComboReserved && currentComboIndex < comboList.Length - 1)
+        if ((hasComboReserved || (currentComboIndex == 4 && ShouldHandleLocalInput)) && CanContinueWeaponCombo(currentComboIndex))
             StartAttack(currentComboIndex + 1, true, GetCurrentMeleeAimDirection(currentComboIndex + 1));
         else
         {
@@ -1435,6 +1440,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private void CancelAllCombatActions()
     {
+        ResetWeaponCombat();
         CancelCurrentAttack();
         StopActionRoutine(ref _advancedSkillRoutine);
         StopActionRoutine(ref _monostatStrSkillRoutine);
@@ -2446,6 +2452,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool CanUseSkillInput()
     {
+        if (WeaponInputLocked) return false;
         if (isClient && !isLocalPlayer) return false;
         if (IsBattleLoadingOrNotStarted()) return false;
         if (_healthSystem != null && _healthSystem.IsDead) return false;
@@ -2523,7 +2530,7 @@ public class PlayerCombat : NetworkBehaviour
 
     private bool IsSkillCastingOrAttackLocked()
     {
-        return (GetComponent<ExpandedSkillController>()?.BlocksCombat ?? false) || _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
+        return WeaponInputLocked || (GetComponent<ExpandedSkillController>()?.BlocksCombat ?? false) || _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
                AcceptedOwnerAction.HasAnimation(SkillTime) || _actionLocks.IsLocked(SkillTime);
     }
 
@@ -2908,7 +2915,7 @@ public class PlayerCombat : NetworkBehaviour
     private void StopCombo(bool allowDelayedContinuation = false)
     {
         if (isServer && allowDelayedContinuation)
-            _serverCombo.Complete(currentComboIndex, comboList != null ? comboList.Length : 0, SkillTime);
+            _serverCombo.Complete(currentComboIndex, CanContinueWeaponCombo(currentComboIndex) ? currentComboIndex + 2 : 0, SkillTime);
         else _serverCombo.Reset();
         isAttacking = false;
         currentComboIndex = 0;

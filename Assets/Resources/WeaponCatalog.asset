@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 85c340163f83f254e93ebd217ee3a886, type: 3}
+  m_Name: WeaponCatalog
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.WeaponCatalog
+  Weapons:
+  - Kind: 0
+    Name: "\uD55C\uC190\uAC80"
+    Description: "\uC88C\uD074\uB9AD \xB7 \uAE30\uBCF8 3\uC5F0\uACA9\n\uC6B0\uD074\uB9AD
+      \xB7 \uC804\uBC29 \uCC0C\uB974\uAE30"
+    Mesh: {fileID: 4300004, guid: f17d599eb702cad4d80dd001c5ab44ef, type: 3}
+    Materials:
+    - {fileID: 2100000, guid: 8f5367100291c034c82279a3888282eb, type: 2}
+    HitCenter: {x: -0.003360195, y: 0.0062736683, z: 0.5852086}
+    HitSize: {x: 0.0655462, y: 0.013823887, z: 1.0917732}
+    BladeBase: {x: 0, y: 0, z: 0.13612}
+    BladeTip: {x: 0, y: 0, z: 1.0816832}
+    Attacks:
+    - {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
+    - {fileID: 11400000, guid: 421a8298234dafa41b99c3afc63d2d5f, type: 2}
+    - {fileID: 11400000, guid: 8b9f2d1a9b5fcf24aaee1cb745cef45e, type: 2}
+    - {fileID: 11400000, guid: 1e5f9d163a560124cabe681c6244c78d, type: 2}
+  - Kind: 1
+    Name: "\uD55C\uC190\uAC80 + \uBC29\uD328"
+    Description: "\uC88C\uD074\uB9AD \xB7 \uAE30\uBCF8 3\uC5F0\uACA9\n\uC6B0\uD074\uB9AD
+      \uC720\uC9C0 \xB7 \uC815\uBA74 \uB9C9\uAE30 / \uC131\uACF5 \uC2DC \uC0C1\uB300
+      0.65\uCD08 \uACBD\uC9C1"
+    Mesh: {fileID: 4300004, guid: f17d599eb702cad4d80dd001c5ab44ef, type: 3}
+    Materials:
+    - {fileID: 2100000, guid: 8f5367100291c034c82279a3888282eb, type: 2}
+    HitCenter: {x: -0.003360195, y: 0.0062736683, z: 0.5852086}
+    HitSize: {x: 0.0655462, y: 0.013823887, z: 1.0917732}
+    BladeBase: {x: 0, y: 0, z: 0.13612}
+    BladeTip: {x: 0, y: 0, z: 1.0816832}
+    Attacks:
+    - {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
+    - {fileID: 11400000, guid: 421a8298234dafa41b99c3afc63d2d5f, type: 2}
+    - {fileID: 11400000, guid: 8b9f2d1a9b5fcf24aaee1cb745cef45e, type: 2}
+  - Kind: 2
+    Name: "\uC591\uC190\uAC80"
+    Description: "\uC88C\uD074\uB9AD \xB7 3\uCF64\uBCF4 / \uD328\uB9C1 \uD6C4 \uBE60\uB978
+      2\uC5F0\uACA9\n\uC6B0\uD074\uB9AD \xB7 \uAC80 \uB9C9\uAE30 / \uC2DC\uC791 0.3\uCD08
+      \uB0B4 \uD53C\uACA9 \uC2DC \uD328\uB9C1"
+    Mesh: {fileID: 4300000, guid: cef3a553df511d2469ce5694c4eb6e02, type: 2}
+    Materials:
+    - {fileID: 2100000, guid: 66625a9bfecce3849b30a9d8d1cb567b, type: 2}
+    HitCenter: {x: 0, y: 0, z: 0.67360455}
+    HitSize: {x: 0.1950704, y: 0.041667037, z: 1.0872091}
+    BladeBase: {x: 0, y: 0, z: 0.13}
+    BladeTip: {x: 0, y: 0, z: 1.2172091}
+    Attacks:
+    - {fileID: 11400000, guid: e46c30f0aafa63144ba96af191529553, type: 2}
+    - {fileID: 11400000, guid: b213756783832b54aaba95a984207848, type: 2}
+    - {fileID: 11400000, guid: f1f2786d21464de4cb3b517a6661f4d2, type: 2}
+    - {fileID: 0}
+    - {fileID: 11400000, guid: c03c2146063ce3c4e9b29afef55efd9e, type: 2}
+    - {fileID: 11400000, guid: 00e8b2fab5bf2614da2ec1b658e64b63, type: 2}
+  - Kind: 3
+    Name: "\uB3C4\uB07C"
+    Description: "\uC88C\uD074\uB9AD \xB7 \uC704\uC5D0\uC11C \uC544\uB798\uB85C \uB0B4\uB824\uCC0D\uAE30\n\uC6B0\uD074\uB9AD
+      \xB7 \uC5C6\uC74C"
+    Mesh: {fileID: 4300000, guid: 348184ca2c264924abe540dc7685e471, type: 2}
+    Materials:
+    - {fileID: 2100000, guid: a7bbeb5c5e35a0246a697b8805c49c82, type: 2}
+    HitCenter: {x: 0, y: 0, z: 1.2011987}
+    HitSize: {x: 0.30869007, y: 0.048773512, z: 0.29999995}
+    BladeBase: {x: 0, y: 0, z: 1.0511987}
+    BladeTip: {x: 0, y: 0, z: 1.3511987}
+    Attacks:
+    - {fileID: 11400000, guid: 6ca6ad699d766c44fb5ce9467dcb982a, type: 2}
+  ShieldMesh: {fileID: -5559159367442832495, guid: 38209a63532f3ea45a331ef93d4477de, type: 3}
+  ShieldMaterials:
+  - {fileID: 2100000, guid: b4a7be5d4becfad438e378f21d4c01b8, type: 2}
+  ShieldRecoilSeconds: 0.65
+  ParryWindowSeconds: 0.3
+  RiposteReadySeconds: 2.5
+  GuardArcDegrees: 120

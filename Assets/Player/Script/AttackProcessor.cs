@@ -106,6 +106,10 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_attackerDamageReceiver is HealthSystem attackerHealth && attackerHealth.IsDead)
             return;
 
+        if (_playerCombat != null && _playerCombat.IsWeaponRecoiling) return;
+        if (defender is Component defenderComponent && defenderComponent.GetComponentInParent<PlayerCombat>() is { } defenderCombat &&
+            defenderCombat.TryBlockMelee(_playerCombat)) return;
+
         Identity attackerIdentity = _attackerStats.CurrentIdentity;
 
         // 1) ATK / Piercing 구성 (기획안: 1 STR당 ATK 3, 물관 0.3%)

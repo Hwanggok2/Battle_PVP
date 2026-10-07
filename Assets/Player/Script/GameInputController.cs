@@ -28,7 +28,7 @@ namespace BattlePvp.Logic
             get => _textInputActive || HasFocusedTextInput || _textInputConsumedFrame == Time.frameCount;
             private set => _textInputActive = value;
         }
-        private static bool HasModalInput => BattlePvp.UI.RoomStartNotice.IsOpen || BattlePvp.UI.CharacterSelectionPanel.IsOpen || BattlePvp.UI.JobGuidePanel.IsOpen || BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
+        private static bool HasModalInput => BattlePvp.UI.WeaponSelectionPanel.IsOpen || BattlePvp.UI.RoomStartNotice.IsOpen || BattlePvp.UI.CharacterSelectionPanel.IsOpen || BattlePvp.UI.JobGuidePanel.IsOpen || BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
             BattlePvp.UI.CharacterInfoController.HasOpenPanel ||
             (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.HasOpenInputPanel);
         private static bool HasFocusedTextInput
@@ -169,6 +169,7 @@ namespace BattlePvp.Logic
             Instance?.SyncBrowserUnlock();
             if (!InputGate.TryConsumeEscape(Time.frameCount)) return;
             if (BattlePvp.UI.RoomStartNotice.IsOpen) { BattlePvp.UI.RoomStartNotice.Instance.Close(); return; }
+            if (BattlePvp.UI.WeaponSelectionPanel.IsOpen) { BattlePvp.UI.WeaponSelectionPanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
             if (BattlePvp.UI.CharacterSelectionPanel.IsOpen) { BattlePvp.UI.CharacterSelectionPanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
             if (BattlePvp.UI.JobGuidePanel.IsOpen) { BattlePvp.UI.JobGuidePanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
             if (BattlePvp.UI.RoomPasswordPrompt.IsOpen) { BattlePvp.UI.RoomPasswordPrompt.Instance.Close(); Instance?.ResetToPlayMode(); return; }
@@ -252,7 +253,7 @@ namespace BattlePvp.Logic
                 !InputModeRules.CanToggleMenu(CurrentMode)) return;
             if (_isCursorUnlocked || HasModalInput)
             {
-                BattlePvp.UI.CharacterSelectionPanel.CloseIfOpen();
+                BattlePvp.UI.CharacterSelectionPanel.CloseIfOpen(); BattlePvp.UI.WeaponSelectionPanel.CloseIfOpen();
                 BattlePvp.UI.JobGuidePanel.CloseIfOpen();
                 if (BattlePvp.UI.WaitingRoomTerminal.IsOpen) BattlePvp.UI.WaitingRoomTerminal.Instance.Close();
                 BattlePvp.UI.CharacterInfoController.CloseOpenPanel();

@@ -5654,6 +5654,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5664206880378288638}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5220660109301379458}
   m_SourcePrefab: {fileID: 100100000, guid: 06971eb51a256cc40bfb279440136224, type: 3}
 --- !u!4 &1197372836843505602 stripped
 Transform:
@@ -6037,7 +6040,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
   sceneId: 0
-  _assetId: 2216446900
+  _assetId: 3658935515
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
@@ -6329,6 +6332,21 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _body: {fileID: 7573741147493321578}
+--- !u!114 &5220660109301379458
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3986effbc28debe4280b799887159070, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.WeaponLoadout
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
 --- !u!4 &2868093296466155944 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3811800481406761752, guid: 06971eb51a256cc40bfb279440136224, type: 3}

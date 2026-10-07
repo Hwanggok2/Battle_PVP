@@ -85,7 +85,7 @@ namespace BattlePvp.UI
         public void Toggle() { if (IsOpen) Close(); else Open(); }
         public void Open()
         {
-            CharacterSelectionPanel.CloseIfOpen();
+            CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen();
             if (GameSettingsPanel.IsOpen) GameSettingsPanel.Instance.Cancel();
             if (WaitingRoomTerminal.IsOpen) WaitingRoomTerminal.Instance.Close();
             CharacterInfoController.CloseOpenPanel();

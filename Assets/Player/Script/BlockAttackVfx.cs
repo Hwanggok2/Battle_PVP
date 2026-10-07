@@ -20,6 +20,7 @@ namespace BattlePvp.Combat
         private Transform BladePose => _bladeHitbox != null ? _bladeHitbox.PoseSource : _blade;
         [SerializeField] private Vector3 _bladeBase = new Vector3(0, 0, .14f);
         [SerializeField] private Vector3 _bladeTip = new Vector3(0, 0, 1.09f);
+        public void SetBladeEndpoints(Vector3 start, Vector3 end) { _bladeBase = start; _bladeTip = end; }
         [SerializeField] private Material _bladeMaterial;
         private readonly BladeTrailGeometry _bladeTrail = new BladeTrailGeometry();
         private readonly List<Vector3> _bladeVertices = new List<Vector3>(1024);

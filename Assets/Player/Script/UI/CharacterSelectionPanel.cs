@@ -27,7 +27,7 @@ namespace BattlePvp.UI
         private Coroutine _previewLoad;
         private readonly Dictionary<CharacterDefinition, Button> _cards = new();
 
-        private void Awake() { Instance = this; Build(); }
+        private void Awake() { Instance = this; Build(); if (GetComponent<WeaponSelectionPanel>() == null) gameObject.AddComponent<WeaponSelectionPanel>(); }
         private void OnEnable() { StatManager.LocalChanged += Bind; Bind(StatManager.Local); }
         private void OnDisable() { StatManager.LocalChanged -= Bind; Bind(null); Close(); }
         private void OnDestroy() { if (Instance == this) Instance = null; }
@@ -46,6 +46,7 @@ namespace BattlePvp.UI
         public void Toggle() { if (IsOpen) Close(); else Open(); }
         public void Open()
         {
+            WeaponSelectionPanel.CloseIfOpen();
             JobGuidePanel.CloseIfOpen();
             if (GameSettingsPanel.IsOpen) GameSettingsPanel.Instance.Cancel();
             if (WaitingRoomTerminal.IsOpen) WaitingRoomTerminal.Instance.Close();

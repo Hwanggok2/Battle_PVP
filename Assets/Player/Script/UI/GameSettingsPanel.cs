@@ -79,7 +79,7 @@ namespace BattlePvp.UI
         public void Open()
         {
             if (IsOpen || _quitting) return;
-            CharacterSelectionPanel.CloseIfOpen();
+            CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen();
             JobGuidePanel.CloseIfOpen();
             CharacterInfoController.CloseOpenPanel();
             if (LobbyUIManager.Instance != null) LobbyUIManager.Instance.CloseInputPanels();

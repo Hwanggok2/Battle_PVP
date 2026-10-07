@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-07",
+  "unityInstance": "Battle_PVP@88856f5f0dd5cd5f",
+  "status": "구현 및 에디터 검증 완료",
+  "officer": {
+    "relativeHeight": 0.9975,
+    "previousRelativeHeight": 0.95,
+    "heightIncreasePercent": 5,
+    "shoulderWarpPercent": 10,
+    "legProportionWarpPercent": 8,
+    "originalAssetsPreserved": true
+  },
+  "weapons": [
+    "한손검: 기본 3연격, 우클릭 찌르기",
+    "한손검+방패: 기본 3연격, 우클릭 유지로 정면 근접 공격 방어",
+    "양손검: 3콤보, 우클릭 패링, 성공 후 좌클릭 자동 2연격",
+    "도끼: 위에서 아래로 내려찍기, 우클릭 기술 없음"
+  ],
+  "tuning": {
+    "shieldRecoilSeconds": 0.65,
+    "parryWindowSeconds": 0.3,
+    "riposteReadySeconds": 2.5,
+    "guardArcDegrees": 120,
+    "selection": "로비 및 방 대기실에서만 변경"
+  },
+  "validation": {
+    "uniquePassedTests": 270,
+    "broadRegressionJob": "d8d17a1514aa424ab38f8d40b836db64",
+    "broadRegressionPassed": 267,
+    "additionalTests": [
+      "ConfirmedMeleeBlockPreventsHealthDamageAndRearAttackStillHurts",
+      "EveryNewAttackTrackMatchesTheRenderedWeaponWhenAimingUpAndDown",
+      "ServerRejectsInvalidWeaponsAndMidBattleChangesAfterInitialSelection"
+    ],
+    "finalAdmissionTestJob": "d7ea2762d7064d2db312e5ec14138a57",
+    "consoleErrors": 0,
+    "visualPreview": "poses.png",
+    "verified": [
+      "기본 및 추가 캐릭터의 무기 메시와 명중 범위",
+      "기존 캐릭터의 카메라·머리 판정·활 정렬",
+      "서버 허용 무기 및 전투 중 변경 제한",
+      "Mirror 신규 입장 시 무기·방어 상태 직렬화",
+      "방어 해제와 공격의 같은 프레임 경합",
+      "실제 HP 차단 및 후방 피해",
+      "무기 선택창 입력 잠금 및 Esc 종료"
+    ],
+    "notRun": [
+      "새 웹 빌드 및 배포",
+      "별도 두 클라이언트의 실제 온라인 대전"
+    ]
+  },
+  "assets": {
+    "models": "프로젝트에 포함된 Medieval Melee Weapon Pack 및 Crusader_Castle",
+    "animation": "프로젝트에 포함된 Quaternius UAL2 + 찌르기/도끼 전용 Humanoid 곡선",
+    "settings": "Assets/Resources/WeaponCatalog.asset",
+    "installers": [
+      "Battle PvP/Weapons/Install Weapons",
+      "Battle PvP/Characters/Adjust Officer Proportions"
+    ]
+  }
+}

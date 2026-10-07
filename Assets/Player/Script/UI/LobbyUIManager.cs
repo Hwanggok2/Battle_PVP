@@ -558,7 +558,7 @@ namespace BattlePvp.UI
                 return;
 
             bool nextActive = !_room_UI.activeSelf;
-            if (nextActive) CharacterSelectionPanel.CloseIfOpen();
+            if (nextActive) { CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen(); }
             _room_UI.SetActive(nextActive);
 
             if (nextActive)
@@ -575,7 +575,7 @@ namespace BattlePvp.UI
         public void OpenRoomInfo()
         {
             if (_room_UI == null) return;
-            CharacterSelectionPanel.CloseIfOpen();
+            CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen();
             CharacterInfoController.CloseOpenPanel();
             SetCustomizerActive(false);
             _room_UI.SetActive(true);
@@ -679,7 +679,7 @@ namespace BattlePvp.UI
 
             if (active)
             {
-                CharacterSelectionPanel.CloseIfOpen();
+                CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen();
                 JobGuidePanel.CloseIfOpen();
                 CharacterInfoController.CloseOpenPanel();
                 if (_room_UI != null) _room_UI.SetActive(false);
