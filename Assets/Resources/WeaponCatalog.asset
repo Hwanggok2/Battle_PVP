@@ -29,6 +29,9 @@ MonoBehaviour:
     - {fileID: 11400000, guid: 421a8298234dafa41b99c3afc63d2d5f, type: 2}
     - {fileID: 11400000, guid: 8b9f2d1a9b5fcf24aaee1cb745cef45e, type: 2}
     - {fileID: 11400000, guid: 1e5f9d163a560124cabe681c6244c78d, type: 2}
+    ReadyState: 
+    RightGrip: {x: 0, y: 0, z: 0}
+    LeftGrip: {x: 0, y: 0, z: 0}
   - Kind: 1
     Name: "\uD55C\uC190\uAC80 + \uBC29\uD328"
     Description: "\uC88C\uD074\uB9AD \xB7 \uAE30\uBCF8 3\uC5F0\uACA9\n\uC6B0\uD074\uB9AD
@@ -45,6 +48,9 @@ MonoBehaviour:
     - {fileID: 11400000, guid: d1efe4f0ec304b04892f0195b6ce5092, type: 2}
     - {fileID: 11400000, guid: 421a8298234dafa41b99c3afc63d2d5f, type: 2}
     - {fileID: 11400000, guid: 8b9f2d1a9b5fcf24aaee1cb745cef45e, type: 2}
+    ReadyState: 
+    RightGrip: {x: 0, y: 0, z: 0}
+    LeftGrip: {x: 0, y: 0, z: 0}
   - Kind: 2
     Name: "\uC591\uC190\uAC80"
     Description: "\uC88C\uD074\uB9AD \xB7 3\uCF64\uBCF4 / \uD328\uB9C1 \uD6C4 \uBE60\uB978
@@ -64,6 +70,9 @@ MonoBehaviour:
     - {fileID: 0}
     - {fileID: 11400000, guid: c03c2146063ce3c4e9b29afef55efd9e, type: 2}
     - {fileID: 11400000, guid: 00e8b2fab5bf2614da2ec1b658e64b63, type: 2}
+    ReadyState: Weapon_GreatswordReady
+    RightGrip: {x: 0, y: 0, z: 0.02}
+    LeftGrip: {x: 0, y: 0, z: -0.14}
   - Kind: 3
     Name: "\uB3C4\uB07C"
     Description: "\uC88C\uD074\uB9AD \xB7 \uC704\uC5D0\uC11C \uC544\uB798\uB85C \uB0B4\uB824\uCC0D\uAE30\n\uC6B0\uD074\uB9AD
@@ -77,6 +86,9 @@ MonoBehaviour:
     BladeTip: {x: 0, y: 0, z: 1.3511987}
     Attacks:
     - {fileID: 11400000, guid: 6ca6ad699d766c44fb5ce9467dcb982a, type: 2}
+    ReadyState: Weapon_AxeReady
+    RightGrip: {x: 0, y: 0, z: 0.3}
+    LeftGrip: {x: 0, y: 0, z: 0}
   ShieldMesh: {fileID: -5559159367442832495, guid: 38209a63532f3ea45a331ef93d4477de, type: 3}
   ShieldMaterials:
   - {fileID: 2100000, guid: b4a7be5d4becfad438e378f21d4c01b8, type: 2}

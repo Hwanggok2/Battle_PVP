@@ -17,13 +17,21 @@ public partial class PlayerCombat
     public bool IsRiposteReady => SkillTime < _riposteUntil;
     private bool WeaponInputLocked => IsWeaponGuarding || IsWeaponRecoiling;
     internal bool MeleeEquipped => !_isBowEquipped;
+    private string WeaponReadyState => WeaponCatalog.Instance?.Find(WeaponKind)?.ReadyState;
+    private bool CanHoldWeaponPose => !_isBowEquipped && !IsWeaponRecoiling && !IsSkillAnimationOrActionLocked() &&
+        (_healthSystem == null || !_healthSystem.IsDead) &&
+        (_playerManager == null || (!_playerManager.IsEmoteBlockingAttack && !_playerManager.IsSkillAttackLocked));
+    internal bool UsesTwoHandedGrip => CanHoldWeaponPose && animator != null &&
+        (isAttacking || IsWeaponGuarding || animator.GetCurrentAnimatorStateInfo(1).IsTag("WeaponTwoHanded") ||
+         (animator.IsInTransition(1) && animator.GetNextAnimatorStateInfo(1).IsTag("WeaponTwoHanded")));
 
     public void ApplyWeaponLoadout(WeaponCatalog.Entry entry, bool resetCombat = true)
     {
         if (entry == null) return;
         if (resetCombat) CancelAllCombatActions();
         comboList = entry.Attacks;
-        if (resetCombat && animator != null && animator.isActiveAndEnabled) animator.Play("New State", 1, 0);
+        if (resetCombat && animator != null && animator.isActiveAndEnabled)
+            animator.Play(CanHoldWeaponPose && !string.IsNullOrEmpty(entry.ReadyState) ? entry.ReadyState : "New State", 1, 0);
     }
 
     private bool WeaponAttackAllowed(int index)
@@ -78,6 +86,17 @@ public partial class PlayerCombat
             if (!IsWeaponRecoiling && !isAttacking) animator.CrossFadeInFixedTime(showGuard ?
                 (WeaponKind == MeleeWeaponKind.SwordShield ? "Weapon_ShieldGuard" : "Weapon_SwordGuard") : "New State", .08f, 1);
         }
+        UpdateWeaponReadyPose();
+    }
+
+    private void UpdateWeaponReadyPose()
+    {
+        string ready = WeaponReadyState;
+        if (string.IsNullOrEmpty(ready) || animator.IsInTransition(1)) return;
+        var state = animator.GetCurrentAnimatorStateInfo(1);
+        bool hold = CanHoldWeaponPose && !isAttacking && !IsWeaponGuarding;
+        if (hold && state.IsName("New State")) animator.CrossFadeInFixedTime(ready, .12f, 1);
+        else if (!hold && state.IsName(ready)) animator.CrossFadeInFixedTime("New State", .08f, 1);
     }
 
     [Command] private void CmdWeaponGuard(bool held) => SetWeaponGuard(held);

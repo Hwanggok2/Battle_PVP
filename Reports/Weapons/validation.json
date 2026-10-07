@@ -24,25 +24,26 @@
     "selection": "로비 및 방 대기실에서만 변경"
   },
   "validation": {
-    "uniquePassedTests": 270,
-    "broadRegressionJob": "d8d17a1514aa424ab38f8d40b836db64",
-    "broadRegressionPassed": 267,
-    "additionalTests": [
-      "ConfirmedMeleeBlockPreventsHealthDamageAndRearAttackStillHurts",
-      "EveryNewAttackTrackMatchesTheRenderedWeaponWhenAimingUpAndDown",
-      "ServerRejectsInvalidWeaponsAndMidBattleChangesAfterInitialSelection"
-    ],
-    "finalAdmissionTestJob": "d7ea2762d7064d2db312e5ec14138a57",
+    "uniquePassedTests": 287,
+    "broadRegressionJob": "d839370eb0584777bf5edb49102fdac6",
+    "broadRegressionPassed": 287,
+    "weaponTests": 40,
     "consoleErrors": 0,
-    "visualPreview": "poses.png",
+    "visualPreviews": [
+      "poses.png",
+      "motion-sequence.png",
+      "ready-poses.png"
+    ],
     "verified": [
-      "기본 및 추가 캐릭터의 무기 메시와 명중 범위",
-      "기존 캐릭터의 카메라·머리 판정·활 정렬",
-      "서버 허용 무기 및 전투 중 변경 제한",
-      "Mirror 신규 입장 시 무기·방어 상태 직렬화",
-      "방어 해제와 공격의 같은 프레임 경합",
-      "실제 HP 차단 및 후방 피해",
-      "무기 선택창 입력 잠금 및 Esc 종료"
+      "여섯 캐릭터의 양손검·도끼 준비/공격/막기 자세와 손잡이 접촉",
+      "한손검 찌르기의 상체 회전·팔꿈치 후퇴·전방 신장",
+      "도끼의 머리 위 준비 및 아래로 내려찍기",
+      "방어 중 상하 45도 조준에 따른 방패 방향",
+      "공격 종료 및 준비 자세 전환 중 양손 접촉 유지",
+      "모든 신규 공격의 이펙트·서버 판정 궤적과 렌더 무기 정렬",
+      "기존 캐릭터 카메라·머리 판정·활·스킬·전투 입력 회귀",
+      "서버 방어·경직·패링·반격 및 Mirror 상태 직렬화",
+      "런타임 Animator의 원본 KayKit FBX 의존성 없음"
     ],
     "notRun": [
       "새 웹 빌드 및 배포",
@@ -51,11 +52,13 @@
   },
   "assets": {
     "models": "프로젝트에 포함된 Medieval Melee Weapon Pack 및 Crusader_Castle",
-    "animation": "프로젝트에 포함된 Quaternius UAL2 + 찌르기/도끼 전용 Humanoid 곡선",
+    "animation": "KayKit Character Animations 1.1 (CC0) 근접 전투 동작 + 기존 Quaternius 방패/경직 모션",
     "settings": "Assets/Resources/WeaponCatalog.asset",
     "installers": [
       "Battle PvP/Weapons/Install Weapons",
       "Battle PvP/Characters/Adjust Officer Proportions"
-    ]
+    ],
+    "animationSource": "https://kaylousberg.itch.io/kaykit-character-animations",
+    "provenance": "Assets/Remodel/Weapons/Source/KayKit/Provenance.txt"
   }
 }

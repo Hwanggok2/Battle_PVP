@@ -16,6 +16,9 @@ namespace BattlePvp.Combat
             public Material[] Materials;
             public Vector3 HitCenter, HitSize, BladeBase, BladeTip;
             public AttackData[] Attacks;
+            public string ReadyState;
+            public Vector3 RightGrip, LeftGrip;
+            public bool TwoHanded => Kind == MeleeWeaponKind.Greatsword || Kind == MeleeWeaponKind.Axe;
         }
         public Entry[] Weapons;
         public Mesh ShieldMesh;

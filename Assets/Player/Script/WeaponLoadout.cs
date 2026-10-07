@@ -19,6 +19,7 @@ namespace BattlePvp.Combat
         private bool _visualInitialized;
         private MeleeWeaponKind _materialWeapon = (MeleeWeaponKind)(-1);
         private Transform _materialPose;
+        private Vector3 _originalBladePosition;
         public MeleeWeaponKind Selected => _selected;
         public event Action Changed;
         public static bool CanEdit => PlayerAppearance.CanEdit;
@@ -28,7 +29,7 @@ namespace BattlePvp.Combat
         {
             _combat = GetComponent<PlayerCombat>(); _animator = GetComponent<Animator>();
             _blade = GetComponentInChildren<MeleeHitBox>(true);
-            if (_blade != null) _swordRenderer = _blade.GetComponent<MeshRenderer>();
+            if (_blade != null) { _swordRenderer = _blade.GetComponent<MeshRenderer>(); _originalBladePosition = _blade.transform.localPosition; }
             _trail = GetComponent<BlockAttackVfx>();
         }
         private void Start() { if (!NetworkClient.active && !NetworkServer.active) Apply(Saved); }
@@ -61,6 +62,7 @@ namespace BattlePvp.Combat
         private void ApplySelection(MeleeWeaponKind kind, bool resetCombat)
         {
             var entry = WeaponCatalog.Instance?.Find(kind); if (entry == null) return;
+            if (_blade != null) _blade.transform.localPosition = _originalBladePosition;
             _selected = kind; _combat?.ApplyWeaponLoadout(entry, resetCombat); _visualInitialized = true; SyncVisual(); Changed?.Invoke();
         }
         private void LateUpdate() => SyncVisual();
@@ -69,8 +71,16 @@ namespace BattlePvp.Combat
             var catalog = WeaponCatalog.Instance; var entry = catalog?.Find(_selected);
             if (entry == null || _blade == null || _animator == null) return;
             var source = _blade.PoseSource;
-            if (_selected == MeleeWeaponKind.Greatsword && _combat != null && _combat.MeleeEquipped &&
-                (_combat.IsAttackActive || _combat.IsWeaponGuarding)) FitSecondHand(source);
+            if (entry.TwoHanded)
+            {
+                var rig = CharacterPoseFollower.GetViewAnimator(_animator);
+                if (_combat != null && _combat.UsesTwoHandedGrip)
+                {
+                    FitTwoHandedGrip(rig, source, entry);
+                    CharacterPoseFollower.SyncHitboxes(_animator);
+                }
+                else FitBladeToPalm(rig, source, entry.RightGrip);
+            }
             var mesh = source.GetComponent<MeshFilter>(); var renderer = source.GetComponent<MeshRenderer>();
             if (mesh != null && mesh.sharedMesh != entry.Mesh) mesh.sharedMesh = entry.Mesh;
             if (_materialWeapon != _selected || _materialPose != source)
@@ -97,18 +107,49 @@ namespace BattlePvp.Combat
             if (renderer != null) { _shield.enabled = renderer.enabled; _shield.forceRenderingOff = renderer.forceRenderingOff; }
         }
 
-        private void FitSecondHand(Transform weapon)
+        public static void FitBladeToPalm(Animator rig, Transform weapon, Vector3 grip)
         {
-            var rig = CharacterPoseFollower.GetViewAnimator(_animator);
-            var arm = rig.GetBoneTransform(HumanBodyBones.LeftUpperArm);
-            var elbow = rig.GetBoneTransform(HumanBodyBones.LeftLowerArm);
-            var hand = rig.GetBoneTransform(HumanBodyBones.LeftHand);
-            if (arm == null || elbow == null || hand == null) return;
-            Vector3 palm = CharacterEquipmentVisual.PalmCenter(rig, HumanBodyBones.LeftHand);
+            weapon.position = CharacterEquipmentVisual.PalmCenter(rig, HumanBodyBones.RightHand) -
+                weapon.rotation * Vector3.Scale(grip, weapon.lossyScale);
+        }
+
+        public static void FitTwoHandedGrip(Animator rig, Transform weapon, WeaponCatalog.Entry entry)
+        {
+            var right = rig.GetBoneTransform(HumanBodyBones.RightHand);
+            var left = rig.GetBoneTransform(HumanBodyBones.LeftHand);
+            if (right == null || left == null) return;
+            Quaternion weaponRotation = weapon.rotation, rightRotation = right.rotation, leftRotation = left.rotation;
             Vector3 rightPalm = CharacterEquipmentVisual.PalmCenter(rig, HumanBodyBones.RightHand);
-            Vector3 target = rightPalm - weapon.forward * .15f * transform.lossyScale.y - (palm - hand.position);
-            var rotation = hand.rotation;
-            SolveArm(arm, elbow, hand, target, rig.transform.TransformPoint(new Vector3(-.45f, .85f, .3f)));
+            Vector3 leftPalm = CharacterEquipmentVisual.PalmCenter(rig, HumanBodyBones.LeftHand);
+            Vector3 rightGrip = weaponRotation * Vector3.Scale(entry.RightGrip, weapon.lossyScale);
+            Vector3 leftGrip = weaponRotation * Vector3.Scale(entry.LeftGrip, weapon.lossyScale);
+            Vector3 position = (rightPalm + leftPalm - rightGrip - leftGrip) * .5f;
+            // A shared handle belongs to both arms. Keep the center reachable on every
+            // body type instead of stretching the support arm toward the dominant hand.
+            for (int i = 0; i < 4; i++)
+            {
+                position += ReachCorrection(rig, false, position + rightGrip - (rightPalm - right.position));
+                position += ReachCorrection(rig, true, position + leftGrip - (leftPalm - left.position));
+            }
+            FitArm(rig, false, position + rightGrip - (rightPalm - right.position), rightRotation);
+            FitArm(rig, true, position + leftGrip - (leftPalm - left.position), leftRotation);
+            weapon.SetPositionAndRotation(position, weaponRotation);
+        }
+        private static Vector3 ReachCorrection(Animator rig, bool left, Vector3 wrist)
+        {
+            var arm = rig.GetBoneTransform(left ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm);
+            var elbow = rig.GetBoneTransform(left ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm);
+            var hand = rig.GetBoneTransform(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+            float reach = Vector3.Distance(arm.position, elbow.position) + Vector3.Distance(elbow.position, hand.position) - .002f;
+            Vector3 delta = wrist - arm.position;
+            return delta.sqrMagnitude > reach * reach ? delta.normalized * reach - delta : Vector3.zero;
+        }
+        private static void FitArm(Animator rig, bool left, Vector3 wrist, Quaternion rotation)
+        {
+            var arm = rig.GetBoneTransform(left ? HumanBodyBones.LeftUpperArm : HumanBodyBones.RightUpperArm);
+            var elbow = rig.GetBoneTransform(left ? HumanBodyBones.LeftLowerArm : HumanBodyBones.RightLowerArm);
+            var hand = rig.GetBoneTransform(left ? HumanBodyBones.LeftHand : HumanBodyBones.RightHand);
+            SolveArm(arm, elbow, hand, wrist, elbow.position + rig.transform.right * (left ? -.12f : .12f));
             hand.rotation = rotation;
         }
         public static void SolveArm(Transform arm, Transform elbow, Transform hand, Vector3 wrist, Vector3 hint)

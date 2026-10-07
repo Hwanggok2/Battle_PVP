@@ -31,6 +31,12 @@ namespace BattlePvp.Characters
         internal static Animator GetViewAnimator(Animator driver) => driver != null && Active.TryGetValue(driver.transform, out var visual) && visual != null
             ? visual._visualAnimator : driver;
 
+        internal static void SyncHitboxes(Animator driver)
+        {
+            if (driver != null && Active.TryGetValue(driver.transform, out var visual) && visual != null)
+                visual._hitboxes?.Sync();
+        }
+
         public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh, Vector3 swordGripOffset = default)
         {
             var animator = GetComponentInChildren<Animator>();

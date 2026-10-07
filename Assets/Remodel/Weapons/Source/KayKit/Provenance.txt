@@ -1,0 +1,32 @@
+KayKit Character Animations 1.1 — melee motion source
+
+Author: Kay Lousberg
+Official source: https://kaylousberg.itch.io/kaykit-character-animations
+Downloaded: 2026-10-07, free 1.1 archive, CombatMelee.fbx
+FBX SHA-256: 018ba1c4f2ad30e9d4b051f12c46eb3fa3da01c1d4cba3603f673dca3bf899ca
+License: CC0. Commercial use and modification permitted; attribution optional.
+The original License.txt is included alongside the source.
+
+CombatMelee.fbx is imported as Humanoid. The chest and hand mappings are
+explicitly corrected for this skeleton. CombatMeleeReference.fbx contains the
+same original bytes, imported as Generic, to sample the original weapon slot
+orientation and hips rotation without Humanoid retargeting distortion.
+These source FBX files are used by the editor baker, not referenced by gameplay.
+
+Generated clips:
+  Thrust: Melee_1H_Attack_Stab
+  Greatsword1 / Riposte1: Melee_2H_Attack_Slice
+  Greatsword2 / Riposte2: Melee_2H_Attack_Stab
+  Greatsword3 / AxeChop: Melee_2H_Attack_Chop
+  GreatswordReady / AxeReady / SwordGuard: Melee_2H_Idle
+
+Adaptation: WeaponMotionRetargeter retains the source body motion, transfers
+hips rotation onto the spine for the game's upper-body mask, fits both hands
+to the weapon handles, and retimes the clips and their damage windows.
+WeaponLoadout makes a small two-arm reach correction on the visible character
+rig at runtime. Trails, hit volumes, and baked server attack tracks use this
+same weapon pose. Original character meshes and avatars are unchanged.
+
+Rebuild: Unity menu Battle PvP > Weapons > Install Weapons (Edit Mode only).
+The existing Quaternius shield guard and recoil clips remain in use; their
+license is retained with the Quaternius source under Remodel/Skills/Source.
