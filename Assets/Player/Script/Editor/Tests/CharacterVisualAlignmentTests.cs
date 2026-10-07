@@ -88,7 +88,7 @@ namespace BattlePvp.EditorTests
         }
 
         [TestCase("security-officer")] [TestCase("megumi")] [TestCase("casual-1")]
-        public void RequestedCharactersStandFivePercentShorterThanDefault(string id)
+        public void RequestedCharactersMatchTheirConfiguredStandingHeight(string id)
         {
             var player = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
             var graph = PlayableGraph.Create("Standing character height");
@@ -112,11 +112,11 @@ namespace BattlePvp.EditorTests
                 float originalHeight = StandingHeight();
                 Assert.That(skin.Apply(Catalog.Find(id), out var error), Is.True, error);
                 skin.SyncPose();
-                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(.95f).Within(.015f),
+                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(Catalog.Find(id).RelativeHeight).Within(.015f),
                     "Measure the rendered standing silhouette, including hair and shoes.");
                 player.transform.localScale = Vector3.one * 1.2f;
                 graph.Evaluate(0); skin.SyncPose();
-                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(.95f).Within(.015f),
+                Assert.That(StandingHeight() / originalHeight, Is.EqualTo(Catalog.Find(id).RelativeHeight).Within(.015f),
                     "The same relative height must survive a larger preset.");
                 skin.Restore();
                 Assert.That(StandingHeight(), Is.EqualTo(originalHeight).Within(.002f));

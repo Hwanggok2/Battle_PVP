@@ -21,13 +21,14 @@ MonoBehaviour:
   LicenseUrl: https://unity.com/legal/as-terms
   Portrait: {fileID: 21300000, guid: ffce9edd7b8eb7c45b097171f4a1ad45, type: 3}
   UseDefaultBody: 0
-  RelativeHeight: 0.95
+  RelativeHeight: 0.99749994
   CombatModifiers:
     Health: 0.88
     Defense: 0.9
     Attack: 0.95
     MoveSpeed: 1.1
     AttackSpeed: 1.1
+  SwordGripOffset: {x: 0, y: 0, z: 0}
   _visualPrefab: {fileID: 0}
   _visualResource: CharacterVisuals/security-officer
   Body: {fileID: 0}
