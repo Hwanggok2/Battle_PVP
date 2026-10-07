@@ -489,7 +489,7 @@ public partial class PlayerCombat : NetworkBehaviour
         bool alive = _healthSystem == null || !_healthSystem.IsDead;
         bool lookEnabled = alive && BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name) &&
             (_playerManager == null || !_playerManager.IsEmoteBlockingAttack) &&
-            (_bowAttackController == null || !_bowAttackController.IsBusy) && !IsSkillCastingOrAttackLocked() &&
+            (_bowAttackController == null || !_bowAttackController.IsBusy) && !IsWeaponRecoiling && !IsSkillAnimationOrActionLocked() &&
             (_expanded == null || !_expanded.Active(JobSkillKind.Fortify));
         _lookPoseWeight = Mathf.MoveTowards(_lookPoseWeight, lookEnabled ? 1f : 0f, Time.deltaTime * 12f);
         // Owners use this frame's camera pitch; observers smoothly follow the replicated pitch.
@@ -2530,7 +2530,13 @@ public partial class PlayerCombat : NetworkBehaviour
 
     private bool IsSkillCastingOrAttackLocked()
     {
-        return WeaponInputLocked || (GetComponent<ExpandedSkillController>()?.BlocksCombat ?? false) || _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
+        return WeaponInputLocked || IsSkillAnimationOrActionLocked();
+    }
+
+    // Guarding stops new attacks, but must retain the same upper-body aiming as normal weapon stance.
+    private bool IsSkillAnimationOrActionLocked()
+    {
+        return (GetComponent<ExpandedSkillController>()?.BlocksCombat ?? false) || _isCastingMonostatStrSkill || _isCastingMonostatAgiSkill || _advancedCastingSkillKey >= 0 ||
                AcceptedOwnerAction.HasAnimation(SkillTime) || _actionLocks.IsLocked(SkillTime);
     }
 
