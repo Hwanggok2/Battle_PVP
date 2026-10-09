@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-09",
+  "issue": "PicoChan 등 작은 캐릭터의 한손검 우클릭 찌르기 조준 오차",
+  "cause": "원본 리그에서 적용한 조준 보정이 체형별 HumanPose 변환 과정에서 달라져 최종 검 방향과 타격 궤적이 어긋남",
+  "changes": [
+    "캐릭터별 찌르기 보정 및 판정 궤적 생성",
+    "최종 캐릭터 포즈 변환 후 조준 보정, 장비 동기화 순서 적용",
+    "찌르기는 기존 타격 접점 시점을 유지"
+  ],
+  "validation": {
+    "mode": "Unity EditMode",
+    "job_id": "c7ddd53d8fca48ddafa94c010b460379",
+    "passed": 207,
+    "failed": 0,
+    "skipped": 0,
+    "characters": [
+      "default",
+      "brute",
+      "security-officer",
+      "casual-1",
+      "megumi",
+      "picochan"
+    ],
+    "aim_pitch_degrees": [
+      -40,
+      0,
+      40
+    ],
+    "checks": [
+      "캐릭터 조준 보정 적용 대상",
+      "타격 접점에서 검이 카메라 광선을 통과 (오차 1.5cm 미만)",
+      "화면의 검과 재구성 판정 위치 일치 (1.2cm 미만), 회전 1도 미만",
+      "기존 무기와 어깨/손 자세 회귀 검사"
+    ]
+  },
+  "before_fix": {
+    "targeted_cases": 12,
+    "failures": 5,
+    "description": "기본 캐릭터 외 5종 찌르기에서 최종 캐릭터 조준 보정 경로 누락 재현"
+  },
+  "limitations": [
+    "멀티플레이 실전 검증 및 웹 재빌드는 이번 작업에 포함하지 않음"
+  ],
+  "passives": "공식 패치노트 조사와 적용안 제안만 진행; 패시브 코드 추가 없음"
+}

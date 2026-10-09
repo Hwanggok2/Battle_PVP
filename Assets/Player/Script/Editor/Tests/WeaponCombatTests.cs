@@ -551,31 +551,49 @@ namespace BattlePvp.EditorTests
             .GetType("BattlePvp.Characters.CharacterEquipmentVisual").GetMethod("PalmCenter",BindingFlags.Static|BindingFlags.NonPublic)
             .Invoke(null,new object[]{animator,left?HumanBodyBones.LeftHand:HumanBodyBones.RightHand});
 
-        [TestCase("default")] [TestCase("brute")] [TestCase("security-officer")]
-        [TestCase("casual-1")] [TestCase("megumi")] [TestCase("picochan")]
-        public void EveryGreatswordStrikeCrossesTheCameraRayOnEveryBody(string character)
+        [TestCase("default",MeleeWeaponKind.Greatsword)]
+        [TestCase("brute",MeleeWeaponKind.Greatsword)]
+        [TestCase("security-officer",MeleeWeaponKind.Greatsword)]
+        [TestCase("casual-1",MeleeWeaponKind.Greatsword)]
+        [TestCase("megumi",MeleeWeaponKind.Greatsword)]
+        [TestCase("picochan",MeleeWeaponKind.Greatsword)]
+        [TestCase("default",MeleeWeaponKind.Sword)]
+        [TestCase("brute",MeleeWeaponKind.Sword)]
+        [TestCase("security-officer",MeleeWeaponKind.Sword)]
+        [TestCase("casual-1",MeleeWeaponKind.Sword)]
+        [TestCase("megumi",MeleeWeaponKind.Sword)]
+        [TestCase("picochan",MeleeWeaponKind.Sword)]
+        public void CalibratedStrikesCrossTheCameraRayOnEveryBody(string character,MeleeWeaponKind kind)
         {
             _defender.transform.SetPositionAndRotation(new Vector3(2,0,-3),Quaternion.Euler(0,37,0));
             _defender.transform.localScale=Vector3.one*1.15f;
-            Equip(_defender,MeleeWeaponKind.Greatsword);
-            var animator=_defender.GetComponent<Animator>(); animator.SetLayerWeight(5,1);
+            Equip(_defender,kind);
+            var animator=_defender.GetComponent<Animator>(); animator.SetLayerWeight(5,kind==MeleeWeaponKind.Greatsword ? 1 : 0);
             using var skin=new CharacterSkin(_defender.GetComponentInChildren<SkinnedMeshRenderer>());
             Assert.That(skin.Apply(CharacterCatalog.Instance.Find(character),out var error),Is.True,error);
             var visible=(Animator)typeof(CharacterPoseFollower).GetMethod("GetViewAnimator",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{animator});
             var aim=new MeleeAimPose(_defender.transform,visible);
-            var entry=WeaponCatalog.Instance.Find(MeleeWeaponKind.Greatsword);
+            var entry=WeaponCatalog.Instance.Find(kind);
             var hitbox=_defender.GetComponentInChildren<MeleeHitBox>(true);
             var blade=(Transform)typeof(MeleeHitBox).GetProperty("PoseSource",Private).GetValue(hitbox);
-            foreach(var attack in entry.Attacks.Where(a=>a!=null)) foreach(float pitch in new[]{-40f,0f,40f})
+            foreach(var attack in entry.Attacks.Where(a=>a!=null && (kind==MeleeWeaponKind.Greatsword || a.animationName=="Weapon_Thrust"))) foreach(float pitch in new[]{-40f,0f,40f})
             {
+                Set(Defender,"_meleeAnimationData",attack);
+                Call(Defender,"UpdateMeleeAimPose");
+                Call(Defender,"UpdateVisualMeleeAimPose",visible);
+                Assert.That(typeof(PlayerCombat).GetField("_meleeAimAnimator",Private).GetValue(Defender),Is.SameAs(visible),"Correct the final avatar after retargeting.");
+                Call(Defender,"RestoreMeleeAimPose");
                 float crossing=attack.CrossingPhase(visible.avatar);
                 aim.Restore(); animator.Play("Movement",0,0); animator.Play(attack.animationName,1,crossing); animator.Update(0); skin.SyncPose();
                 Vector3 look=Quaternion.AngleAxis(pitch,_defender.transform.right)*_defender.transform.forward;
                 // Eye-level camera ray, including the third-person camera's setback.
                 var ray=new Ray(visible.GetBoneTransform(HumanBodyBones.Head).position-look*.6f,look);
-                float reach=aim.ReferenceVector(aim.ReferencePoint(attack),true).magnitude;
+                float reach=aim.ReferenceVector(aim.ReferencePoint(attack),attack.aimInRootSpace).magnitude;
                 Vector3 direction=(MeleeAimPose.ReachablePoint(ray,aim.Pivot,reach)-aim.Pivot).normalized;
-                aim.ApplyCalibrated(direction,aim.SelectReference(attack,reach),crossing,1,look,attack.maxAimCalibration,true,crossing);
+                aim.ApplyCalibrated(direction,aim.SelectReference(attack,reach),crossing,1,look,attack.maxAimCalibration,attack.aimInRootSpace,crossing);
+                // Match the runtime order: native aim, equipment, then grip support.
+                var follower=_defender.GetComponentInChildren<CharacterPoseFollower>();
+                if(follower!=null) Call(typeof(CharacterPoseFollower).GetField("_equipment",Private).GetValue(follower),"Sync");
                 Call(_defender.GetComponent<WeaponLoadout>(),"SyncVisual");
                 Vector3 a=blade.TransformPoint(entry.BladeBase)-ray.origin,b=blade.TransformPoint(entry.BladeTip)-ray.origin;
                 Vector3 segment=Vector3.ProjectOnPlane(b-a,look);

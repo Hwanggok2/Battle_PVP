@@ -484,17 +484,20 @@ public partial class PlayerCombat : NetworkBehaviour
         var visual = BattlePvp.Characters.CharacterPoseFollower.GetViewAnimator(animator);
         // Retarget raw muscle curves first. Applying FK before HumanPose conversion
         // clamps the correction differently on each avatar and changes the strike.
-        if (WeaponKind == MeleeWeaponKind.Greatsword && visual != animator) return;
+        if (UsesVisualMeleeAim(visual)) return;
         EnsureMeleeAimAnimator(animator);
         ApplyMeleeAimPose();
     }
 
     internal void UpdateVisualMeleeAimPose(Animator visual)
     {
-        if (WeaponKind != MeleeWeaponKind.Greatsword || visual == animator) return;
+        if (!UsesVisualMeleeAim(visual)) return;
         EnsureMeleeAimAnimator(visual);
         ApplyMeleeAimPose();
     }
+
+    private bool UsesVisualMeleeAim(Animator visual) => visual != animator &&
+        (WeaponKind == MeleeWeaponKind.Greatsword || CurrentMeleeData?.FindVisualAim(visual.avatar) != null);
 
     private void EnsureMeleeAimAnimator(Animator rig)
     {

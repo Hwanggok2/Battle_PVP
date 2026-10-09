@@ -119,7 +119,7 @@ namespace BattlePvp.Remodel.Editor
                 var data=entry.Attacks.FirstOrDefault(a=>a!=null && a.animationName==state);
                 var aim=(MeleeAimPose)typeof(PlayerCombat).GetField("_meleeAimPose",Private).GetValue(combat);
                 var visible=(Animator)typeof(CharacterPoseFollower).GetMethod("GetViewAnimator",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{animator});
-                bool nativeAim=kind==MeleeWeaponKind.Greatsword && visible!=animator;
+                bool nativeAim=visible!=animator && (kind==MeleeWeaponKind.Greatsword || data?.FindVisualAim(visible.avatar)!=null);
                 if(nativeAim)
                 {
                     aim=new MeleeAimPose(player.transform,visible);
@@ -143,6 +143,12 @@ namespace BattlePvp.Remodel.Editor
                     if(data!=null && sourceTake==null) aim.ApplyCalibrated(direction,aim.SelectReference(data,1.4f),Mathf.Clamp01(sample.normalizedTime),1,direction,data.maxAimCalibration,data.aimInRootSpace,data.CrossingPhase(aim.Avatar));
                     else if(sourceTake==null) aim.Apply(direction);
                     if(!nativeAim) skin.SyncPose();
+                    else
+                    {
+                        var follower=player.GetComponentInChildren<CharacterPoseFollower>();
+                        var equipment=typeof(CharacterPoseFollower).GetField("_equipment",Private).GetValue(follower);
+                        equipment.GetType().GetMethod("Sync",BindingFlags.Instance|BindingFlags.Public).Invoke(equipment,null);
+                    }
                     if(sourceTake==null) typeof(WeaponLoadout).GetMethod("SyncVisual",Private).Invoke(loadout,null);
                 };
                 animator.Play("Movement", 0, 0); animator.Play(state, 1, phase); animator.Update(0);

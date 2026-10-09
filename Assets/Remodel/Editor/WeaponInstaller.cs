@@ -197,8 +197,8 @@ namespace BattlePvp.Remodel.Editor
                 foreach(var entry in catalog.Weapons) foreach(var data in entry.Attacks.Where(d=>d!=null && d.animationName.StartsWith("Weapon_")))
                 {
                     if(animationName != null && data.animationName != animationName) continue;
-                    data.aimInRootSpace=entry.Kind==MeleeWeaponKind.Greatsword;
-                    data.maxAimCalibration=data.aimInRootSpace ? 80f : entry.TwoHanded ? 0f : 180f;
+                    data.aimInRootSpace=entry.Kind==MeleeWeaponKind.Greatsword || data.animationName=="Weapon_Thrust";
+                    data.maxAimCalibration=entry.Kind==MeleeWeaponKind.Greatsword ? 80f : entry.TwoHanded ? 0f : 180f;
                     animator.SetLayerWeight(animator.GetLayerIndex("Weapon Footwork"),entry.Kind==MeleeWeaponKind.Greatsword ? 1 : 0);
                     var clip=AssetDatabase.LoadAssetAtPath<AnimationClip>(Folder+data.animationName.Substring("Weapon_".Length)+".anim");
                     var events=AnimationUtility.GetAnimationEvents(clip);
@@ -244,7 +244,8 @@ namespace BattlePvp.Remodel.Editor
                 void Sample(float phase)
                 {
                     animator.Play("Movement",0,0); animator.Play(data.animationName,1,phase); animator.Update(0);
-                    skin.SyncPose(); WeaponLoadout.FitTwoHandedGrip(visible,blade,entry,animator);
+                    skin.SyncPose();
+                    if(entry.TwoHanded) WeaponLoadout.FitTwoHandedGrip(visible,blade,entry,animator);
                 }
                 Sample(data.aimCrossingPhase);
                 var reference=new AttackData.VisualAim {avatar=visible.avatar,crossingPhase=data.aimCrossingPhase,
@@ -257,14 +258,14 @@ namespace BattlePvp.Remodel.Editor
                     Sample(i/240f);
                     float phase=i/240f;
                     float angle=Vector3.Angle(rig.transform.forward,blade.TransformPoint(Vector3.Lerp(entry.BladeBase,entry.BladeTip,.7f))-spine.position);
-                    if(phase>=open+.01f && phase<=close-.01f && angle<bestAngle)
+                    if(entry.TwoHanded && phase>=open+.01f && phase<=close-.01f && angle<bestAngle)
                     { bestAngle=angle; reference.crossingPhase=phase; }
                     reference.samples[i]=new MeleeMotionSample {position=rig.transform.InverseTransformPoint(blade.position),
                         rotation=Quaternion.Inverse(rig.transform.rotation)*blade.rotation,pivot=rig.transform.InverseTransformPoint(spine.position),
                         referenceBase=reference.bladeBase,referenceTip=reference.bladeTip};
                 }
-                // Pick the forward part of this avatar's actual swing, rather than
-                // dragging a sideways/behind-the-body pose through the crosshair.
+                // Sweeps use their forward part, not a sideways wind-up. A thrust
+                // keeps the authored contact phase, when the arm extends fully.
                 Sample(reference.crossingPhase);
                 reference.bladeBase=rig.transform.InverseTransformVector(blade.TransformPoint(entry.BladeBase)-spine.position);
                 reference.bladeTip=rig.transform.InverseTransformVector(blade.TransformPoint(entry.BladeTip)-spine.position);
