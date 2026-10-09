@@ -250,7 +250,7 @@ namespace BattlePvp.UI
 
         private bool TryLoadFromSavedStats()
         {
-            if (_profileData == null || !_profileData.HasLoadedPlayerStats)
+            if (_profileData == null || !_profileData.HasStatPresetData)
                 return false;
 
             int slotIndex = _profileData.SelectedStatPresetSlot;

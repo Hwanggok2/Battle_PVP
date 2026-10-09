@@ -91,6 +91,16 @@ namespace BattlePvp.Managers
         public int CumulativeDeaths => _cumulativeDeaths;
         public float CumulativeKillsPerDeath => _cumulativeDeaths <= 0 ? _cumulativeKills : _cumulativeKills / (float)_cumulativeDeaths;
         public bool HasLoadedPlayerStats => _hasLoadedPlayerStats;
+        public bool HasStatPresetData
+        {
+            get
+            {
+                if (_hasLoadedPlayerStats) return true;
+                if (_statPresetSlotUsed != null)
+                    foreach (bool used in _statPresetSlotUsed) if (used) return true;
+                return false;
+            }
+        }
         public bool IsPlayerStatsLoadInFlight => _isPlayerStatsLoadInFlight;
         public bool HasLoadedCombatRecord => _hasLoadedCombatRecord;
         public int ProfileSessionVersion => _profileSession;

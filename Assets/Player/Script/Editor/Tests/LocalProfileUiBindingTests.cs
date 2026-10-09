@@ -399,6 +399,38 @@ namespace BattlePvp.EditorTests
             Assert.That(nextCalls, Is.EqualTo(1));
         }
 
+        [Test]
+        public void LocalPresetSlotsReopenIndependentlyBeforeRemoteProfileIsAvailable()
+        {
+            var player = CreatePlayer("Unsynced preview player");
+            player.ApplyLocalSceneStats(Preset(30, 0, 0, 0));
+            SetLocal(player);
+            _profile.SaveStatPresetSlot(0, Preset(18, 10, 2, 0), true, false);
+            _profile.SaveStatPresetSlot(1, Preset(8, 8, 7, 7), true, false);
+            Assert.That(_profile.HasLoadedPlayerStats, Is.False);
+            var customizer = CreateCustomizer();
+            EditorTestLifecycle.SetActive(customizer, true);
+            Invoke(customizer, "SelectPresetSlot", 0);
+            Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.EqualTo(18));
+            Invoke(customizer, "SelectPresetSlot", 1);
+            Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.EqualTo(8));
+            Invoke(customizer, "SelectPresetSlot", 2);
+            Assert.That(Get<StatSlider>(customizer, "_str").Invested, Is.Zero, "An empty slot must not show the active combat build.");
+            _profile.SaveStatPresetSlot(2, Preset(0, 0, 30, 0), true, false);
+            EditorTestLifecycle.SetActive(customizer, false);
+            EditorTestLifecycle.SetActive(customizer, true);
+            Assert.That(Get<StatSlider>(customizer, "_agi").Invested, Is.EqualTo(30));
+            Assert.That(_profile.GetStatPresetSlot(0).STR.Invested, Is.EqualTo(18));
+            Assert.That(_profile.GetStatPresetSlot(1).STR.Invested, Is.EqualTo(8));
+            var snapshot = _profile.CaptureProfileSnapshot();
+            var decoded = NetworkProfileRepository.Decode(new System.Collections.Generic.Dictionary<string, PlayFab.ClientModels.UserDataRecord>
+            { { NetworkProfileRepository.ProfileKey, new PlayFab.ClientModels.UserDataRecord { Value = JsonUtility.ToJson(snapshot) } } });
+            Assert.That(decoded.Succeeded, Is.True);
+            Assert.That(decoded.Profile.Slots[0].STR.Invested, Is.EqualTo(18));
+            Assert.That(decoded.Profile.Slots[1].STR.Invested, Is.EqualTo(8));
+            Assert.That(decoded.Profile.Slots[2].AGI.Invested, Is.EqualTo(30));
+        }
+
         private void LoadProfile(StatContainer stats, bool used, StatContainer strategist = default, bool hasStrategist = false) =>
             _profile.ApplyLoadedStatPresetData(new[] { stats, default, default }, new[] { used, false, false }, 0, strategist, hasStrategist);
 
