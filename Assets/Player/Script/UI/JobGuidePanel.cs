@@ -38,11 +38,18 @@ namespace BattlePvp.UI
                 return;
             }
             if (OwnsLocalView) Instance = this;
+            // The menu buttons use separate canvases (character/weapon: 156).
+            // Only the dialog belongs above them; keep its opener in the normal menu layer.
+            var dialogCanvas = _panel.GetComponent<Canvas>();
+            if (dialogCanvas == null) dialogCanvas = _panel.AddComponent<Canvas>();
+            if (_panel.GetComponent<GraphicRaycaster>() == null) _panel.AddComponent<GraphicRaycaster>();
             _panel.SetActive(false);
             RoomUiElements.TopMenuButton(_openButton, 1);
             _openButton.onClick.AddListener(Toggle);
             _panel.transform.Find("Close").GetComponent<Button>().onClick.AddListener(Close);
             _title = _panel.transform.Find("JobName").GetComponent<TMP_Text>();
+            _title.rectTransform.sizeDelta = new Vector2(350,42);
+            _title.rectTransform.anchoredPosition = new Vector2(77.5f,287);
             _requirement = _panel.transform.Find("Requirement").GetComponent<TMP_Text>();
             _description = _panel.transform.Find("Description").GetComponent<TMP_Text>();
             _portrait = _panel.transform.Find("Portrait").GetComponent<Image>();
@@ -71,6 +78,7 @@ namespace BattlePvp.UI
             if (_loadout != null) _loadout.Changed -= OnLoadoutChanged;
             _local = null;
             BindPassives(null);
+            EndPassiveDrag();
             if (_panel != null) _panel.SetActive(false);
             GameInputController.RefreshCursorState();
         }
@@ -109,11 +117,15 @@ namespace BattlePvp.UI
             _draft = _loadout != null ? _loadout.Snapshot() : SkillLoadoutStore.Read();
             _passivePanel.SetActive(false);
             _panel.SetActive(true);
+            // Enabling a newly nested canvas can restore its parent's sort settings.
+            var dialogCanvas = _panel.GetComponent<Canvas>();
+            dialogCanvas.overrideSorting = true; dialogCanvas.sortingOrder = 250;
             Select(_local != null ? JobGuideContent.IndexOf(_local.CurrentIdentity) : 0);
             GameInputController.RefreshCursorState();
         }
         public void Close()
         {
+            EndPassiveDrag();
             _panel.SetActive(false);
             UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null);
             GameInputController.RefreshCursorState();

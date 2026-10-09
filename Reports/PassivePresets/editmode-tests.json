@@ -1,0 +1,34 @@
+{
+  "job_id": "fc20cf925bfa41d88074216bd22e0c96",
+  "status": "succeeded",
+  "mode": "EditMode",
+  "started_unix_ms": 1791553428095,
+  "finished_unix_ms": 1791553435010,
+  "last_update_unix_ms": 1791553435010,
+  "progress": {
+    "completed": 54,
+    "total": 54,
+    "current_test_full_name": null,
+    "current_test_started_unix_ms": 1791553434792,
+    "last_finished_test_full_name": "BattlePvp.EditorTests.PassivePresetUiTests.RejectedApplyNeverMarksDraftAsInUseAndAliveBattleIsReadOnly",
+    "last_finished_unix_ms": 1791553434861,
+    "stuck_suspected": false,
+    "editor_is_focused": false,
+    "blocked_reason": null,
+    "failures_so_far": [],
+    "failures_capped": false
+  },
+  "error": null,
+  "result": {
+    "mode": "EditMode",
+    "summary": {
+      "total": 54,
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 2.0745407,
+      "resultState": "Passed"
+    },
+    "results": []
+  }
+}

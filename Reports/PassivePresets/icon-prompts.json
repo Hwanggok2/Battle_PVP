@@ -1,0 +1,106 @@
+[
+  {
+    "id": "Counterattack",
+    "name": "반격",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Counterattack.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: two steel sword blades colliding with one sharp cyan arc turning back toward the attacking blade. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: cyan and warm gold. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Backstab",
+    "name": "배후 공격",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Backstab.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a single sharp dagger behind a dark shoulder silhouette, with a purple curved ambush streak. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: violet and silver. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Purification",
+    "name": "정화",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Purification.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a radiant white protective rune bursting outward and dissolving three small dark smoky tendrils. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: white and pale gold. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "HealingShield",
+    "name": "회복 방패",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/HealingShield.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a strong steel round shield with a luminous emerald healing cross in its center. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: emerald and silver. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Concussion",
+    "name": "뇌진탕",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Concussion.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a stylized armored helmet being struck with four short light marks and one bright impact star above the forehead. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: amber and steel. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Berserker",
+    "name": "광전사",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Berserker.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a roaring stylized wolf skull with glowing red eyes and fierce rising energy, no gore. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: crimson and ember orange. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Sniper",
+    "name": "저격",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Sniper.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a single arrow head centered in a precise luminous crosshair sight. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: ice blue and silver. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Victory",
+    "name": "승전보",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Victory.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a golden laurel wreath framing a bright emerald heart, victory healing. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: gold and emerald. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Scholar",
+    "name": "학자",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Scholar.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: an open arcane book with a small luminous hourglass rune floating over its pages. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: violet and cyan. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "DoubleJump",
+    "name": "이단 점프",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/DoubleJump.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a light armored boot leaping above two ascending crescent motion arcs. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: cyan and white. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Haste",
+    "name": "고속",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Haste.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a winged boot with three swift diagonal streaks. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: electric cyan and gold. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Vitality",
+    "name": "충만한 체력",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Vitality.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a strong glowing crimson heart surrounded by a subtle protective pulse. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: red and warm gold. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  },
+  {
+    "id": "Ironclad",
+    "name": "철갑",
+    "mode": "image_gen / generation",
+    "transparent_background": false,
+    "path": "Assets/Resources/PassiveIcons/Ironclad.png",
+    "prompt": "Use case: stylized-concept. Asset type: one square passive ability icon for the Battle PVP fantasy combat game's dark navy / cyan interface. Create ONLY ONE icon, not a sheet. Subject: a heavy forged steel breastplate with reinforced overlapping armor plates. A bold polished game inventory illustration with precise readable silhouette, restrained painterly metal highlights, subtle emissive light, elegant quality, legible at 64 pixels. Center the subject inside the middle 70% of a square canvas; all important detail must stay inside that area to fit an octagonal UI crop. Dark midnight navy background, corners plain dark navy. Palette: steel silver and icy blue. No text, no letters, no numerals, no outer border or frame, no circular medallion, no watermark. Minimal clutter."
+  }
+]

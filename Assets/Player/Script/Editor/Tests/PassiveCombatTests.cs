@@ -220,10 +220,13 @@ namespace BattlePvp.EditorTests
             var previous=local.GetValue(null); local.SetValue(null,_a.GetComponent<StatManager>());
             string key=(string)typeof(PassiveStore).GetProperty("Key",BindingFlags.Static|BindingFlags.NonPublic).GetValue(null);
             bool existed=PlayerPrefs.HasKey(key); string saved=PlayerPrefs.GetString(key,"");
+            string presetKey=PassivePresetStore.Key;
+            bool presetsExisted=PlayerPrefs.HasKey(presetKey); string presetsSaved=PlayerPrefs.GetString(presetKey,"");
             GameObject root=null;
             try
             {
                 PassiveStore.Save(new[]{0,0});
+                PlayerPrefs.DeleteKey(presetKey);
                 root=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/JobGuide.prefab"));
                 var panel=root.GetComponent<BattlePvp.UI.JobGuidePanel>(); Call(panel,"Awake"); Call(panel,"Bind",_a.GetComponent<StatManager>());
                 panel.Open(); Call(panel,"OpenPassives");
@@ -242,6 +245,7 @@ namespace BattlePvp.EditorTests
             {
                 if(root!=null) Object.DestroyImmediate(root); local.SetValue(null,previous);
                 if(existed) PlayerPrefs.SetString(key,saved); else PlayerPrefs.DeleteKey(key);
+                if(presetsExisted) PlayerPrefs.SetString(presetKey,presetsSaved); else PlayerPrefs.DeleteKey(presetKey);
                 PlayerPrefs.Save();
             }
         }

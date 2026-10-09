@@ -21,6 +21,7 @@ namespace BattlePvp.Combat
         private HealthSystem _health;
         private readonly Dictionary<Component, HeadWindow> _heads = new();
         public event Action Changed;
+        public event Action<bool> RequestCompleted;
         private bool Authority => isServer || (!NetworkServer.active && !NetworkClient.active);
         internal double Now => NetworkServer.active || NetworkClient.active ? NetworkTime.time : Time.timeAsDouble;
         public static bool CanEdit => LoadoutEditRules.CanEditSkills(StatManager.Local?.gameObject);
@@ -48,15 +49,15 @@ namespace BattlePvp.Combat
         {
             if (!CanEdit || !Validate(choices)) return false;
             if (NetworkClient.active) { if (!isLocalPlayer) return false; CmdSet(choices); }
-            else { Apply(choices); PassiveStore.Save(choices); }
+            else { Apply(choices); PassiveStore.Save(choices); RequestCompleted?.Invoke(true); }
             return true;
         }
         [Command] private void CmdSet(int[] choices)
         {
-            if (Now < _nextRequest) return;
+            if (Now < _nextRequest) { TargetResult(connectionToClient,false,Snapshot()); return; }
             _nextRequest = Now + .2;
-            if (!TrySetChoices(choices)) return;
-            TargetAccepted(connectionToClient, choices);
+            if (!TrySetChoices(choices)) { TargetResult(connectionToClient,false,Snapshot()); return; }
+            TargetResult(connectionToClient,true,choices);
         }
         internal bool TrySetChoices(int[] choices)
         {
@@ -64,10 +65,11 @@ namespace BattlePvp.Combat
                 (!(!_initialized && Now <= _initialDeadline) && !LoadoutEditRules.CanEditSkills(gameObject))) return false;
             _initialized = true; Apply(choices); return true;
         }
-        [TargetRpc] private void TargetAccepted(NetworkConnectionToClient target, int[] choices)
+        [TargetRpc] private void TargetResult(NetworkConnectionToClient target, bool accepted, int[] choices)
         {
             // Apply the acknowledged pair atomically, even before the SyncVar update arrives.
-            Apply(choices); PassiveStore.Save(choices);
+            if (accepted) { Apply(choices); PassiveStore.Save(choices); }
+            RequestCompleted?.Invoke(accepted);
         }
         private void Apply(int[] choices)
         {
