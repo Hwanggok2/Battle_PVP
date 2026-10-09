@@ -996,6 +996,7 @@ namespace BattlePvp.EditorTests
             var blade=(Transform)typeof(MeleeHitBox).GetProperty("PoseSource",Private).GetValue(_defender.GetComponentInChildren<MeleeHitBox>(true));
             var bones=new[]{HumanBodyBones.RightUpperArm,HumanBodyBones.RightLowerArm,HumanBodyBones.RightHand};
             Quaternion[] previous=null;
+            Vector3 startingSupport=Vector3.zero;
             for(int i=0;i<=120;i++)
             {
                 float phase=i/120f;
@@ -1003,8 +1004,19 @@ namespace BattlePvp.EditorTests
                 var rotations=bones.Select(b=>visible.GetBoneTransform(b).rotation).ToArray();
                 var positions=bones.Select(b=>visible.GetBoneTransform(b).position).ToArray();
                 var bladePose=new Pose(blade.position,blade.rotation);
+                Vector3 beforeSupport=Fist(visible,true);
                 Call(_defender.GetComponent<WeaponLoadout>(),"SyncVisual");
                 string context=character+" / "+phase;
+                Vector3 leftPosition=_defender.transform.InverseTransformPoint(Fist(visible,true));
+                if(i==0) startingSupport=leftPosition;
+                if(phase<=.45f)
+                {
+                    float chestZ=_defender.transform.InverseTransformPoint(visible.GetBoneTransform(HumanBodyBones.Chest).position).z;
+                    Assert.That(leftPosition.z,Is.GreaterThan(chestZ-.03f),context+" support hand prepares in front, not behind the torso");
+                    Assert.That(Vector3.Distance(beforeSupport,Fist(visible,true)),Is.LessThan(.001f),context+" do not pull the hand onto the retracted sword");
+                }
+                if(i==54)
+                    Assert.That(leftPosition.x-startingSupport.x,Is.GreaterThan(.05f),context+" support hand moves across toward the right");
                 var clavicle=visible.GetBoneTransform(HumanBodyBones.LeftShoulder);
                 var opposite=visible.GetBoneTransform(HumanBodyBones.RightShoulder);
                 var upperArm=visible.GetBoneTransform(HumanBodyBones.LeftUpperArm);
@@ -1032,8 +1044,9 @@ namespace BattlePvp.EditorTests
                 Vector3 targetWrist=support-(Fist(visible,true)-hand.position);
                 float reach=Mathf.Sqrt(upper*upper+lower*lower+2*upper*lower*Mathf.Cos(8f*Mathf.Deg2Rad))-.001f;
                 float unavoidableGap=Mathf.Max(0,Vector3.Distance(upperArm.position,targetWrist)-reach);
-                Assert.That(Vector3.Distance(Fist(visible,true),support),Is.LessThan(unavoidableGap+.004f),
-                    context+" support hand reaches the pommel when possible and never stretches the arm");
+                if(phase>=.62f && phase<=.82f)
+                    Assert.That(Vector3.Distance(Fist(visible,true),support),Is.LessThan(unavoidableGap+.004f),
+                        context+" support hand joins the pommel during extension without stretching the arm");
                 var current=new[]{visible.GetBoneTransform(HumanBodyBones.LeftUpperArm).localRotation,
                     visible.GetBoneTransform(HumanBodyBones.LeftLowerArm).localRotation,visible.GetBoneTransform(HumanBodyBones.LeftHand).localRotation};
                 if(previous!=null) for(int b=0;b<current.Length;b++)

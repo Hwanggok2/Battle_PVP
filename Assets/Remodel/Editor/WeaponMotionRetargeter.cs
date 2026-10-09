@@ -85,6 +85,13 @@ namespace BattlePvp.Remodel.Editor
             var curves=Enumerable.Range(0,HumanTrait.MuscleCount).Select(_=>new AnimationCurve()).ToArray();
             try
             {
+                var relaxedLeft=new HumanPose();
+                if(spec.Name=="Thrust")
+                {
+                    mixer.SetInputWeight(1,0); mixer.SetInputWeight(2,0); idle.SetTime(0);
+                    graph.Evaluate(0); handler.GetHumanPose(ref relaxedLeft);
+                    mixer.SetInputWeight(1,1);
+                }
                 for(int frame=0;frame<=120;frame++)
                 {
                     float phase=frame/120f;
@@ -112,6 +119,12 @@ namespace BattlePvp.Remodel.Editor
                     for(int j=0;j<HumanTrait.MuscleCount;j++)
                     {
                         string muscle=HumanTrait.MuscleName[j];
+                        if(spec.Name=="Thrust" && (muscle.StartsWith("Left Shoulder ") || muscle.StartsWith("Left Arm ") ||
+                            muscle.StartsWith("Left Forearm ") || muscle.StartsWith("Left Hand ")))
+                        {
+                            pose.muscles[j]=relaxedLeft.muscles[j];
+                            continue;
+                        }
                         if(!(muscle.StartsWith("Spine ") || muscle.StartsWith("Chest ") || muscle.StartsWith("UpperChest "))) continue;
                         float limit=muscle.Contains("Twist") ? .6f : muscle.Contains("Front-Back") ? .4f : .3f;
                         pose.muscles[j]=Mathf.Clamp(pose.muscles[j],-limit,limit);
@@ -139,7 +152,23 @@ namespace BattlePvp.Remodel.Editor
                         Vector3 center=WeaponLoadout.GripCenter(animator,false);
                         center.x*=.65f;
                         FitHand(animator,false,center,Quaternion.LookRotation(Vector3.forward,Vector3.left)*Quaternion.Inverse(handToBlade));
-                        WeaponLoadout.FitThrustSupportGrip(animator,animator.GetComponentInChildren<MeleeHitBox>(true).transform,1f);
+                        // Bring the relaxed support arm forward during wind-up;
+                        // never chase the sword hand while it is behind the body.
+                        float prepare=Mathf.SmoothStep(0,1,phase/.45f) *
+                            (1-Mathf.SmoothStep(0,1,Mathf.InverseLerp(.82f,1f,phase)));
+                        Vector3 waiting=shoulders+new Vector3(.10f,-.25f,.22f);
+                        if(prepare>0)
+                        {
+                            var arm=animator.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+                            var elbow=animator.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                            Quaternion armRest=arm.localRotation, elbowRest=elbow.localRotation, handRest=left.localRotation;
+                            FitHand(animator,true,waiting,left.rotation,shoulders+new Vector3(-.38f,-.40f,.15f));
+                            arm.localRotation=Quaternion.Slerp(armRest,arm.localRotation,prepare);
+                            elbow.localRotation=Quaternion.Slerp(elbowRest,elbow.localRotation,prepare);
+                            left.localRotation=Quaternion.Slerp(handRest,left.localRotation,prepare);
+                        }
+                        WeaponLoadout.FitThrustSupportGrip(animator,animator.GetComponentInChildren<MeleeHitBox>(true).transform,
+                            WeaponLoadout.ThrustGripWeight(phase));
                     }
                     handler.GetHumanPose(ref pose);
                     for(int j=0;j<curves.Length;j++)

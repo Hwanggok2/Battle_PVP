@@ -215,19 +215,27 @@ namespace BattlePvp.Combat
 
         private static float ThrustSupportWeight(Animator animator)
         {
-            static float Weight(AnimatorStateInfo state) => state.IsName("Weapon_Thrust") ? 1f : 0f;
+            static float Weight(AnimatorStateInfo state) => state.IsName("Weapon_Thrust") ? ThrustGripWeight(state.normalizedTime) : 0f;
             float weight = Weight(animator.GetCurrentAnimatorStateInfo(1));
             return animator.IsInTransition(1) ? Mathf.Lerp(weight, Weight(animator.GetNextAnimatorStateInfo(1)),
                 animator.GetAnimatorTransitionInfo(1).normalizedTime) : weight;
         }
 
+        public static float ThrustGripWeight(float phase) =>
+            Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(.48f, .62f, phase)) *
+            (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(.82f, 1f, phase)));
+
         public static void FitThrustSupportGrip(Animator rig, Transform weapon, float weight)
         {
+            if (weight <= 0f) return;
             // The existing dominant arm and sword own the thrust. Cup the pommel
             // just behind that fist; never move the blade to meet the support hand.
             var arm = rig.GetBoneTransform(HumanBodyBones.LeftUpperArm);
             var elbow = rig.GetBoneTransform(HumanBodyBones.LeftLowerArm);
             var hand = rig.GetBoneTransform(HumanBodyBones.LeftHand);
+            var clavicle = rig.GetBoneTransform(HumanBodyBones.LeftShoulder);
+            Quaternion armStart = arm.localRotation, elbowStart = elbow.localRotation, handStart = hand.localRotation;
+            Quaternion shoulderStart = clavicle != null ? clavicle.localRotation : Quaternion.identity;
             Quaternion frame = CharacterEquipmentVisual.HandFrame(rig, HumanBodyBones.LeftHand, out _);
             Vector3 right = GripCenter(rig, false);
             CharacterEquipmentVisual.HandFrame(rig, HumanBodyBones.RightHand, out float size);
@@ -235,12 +243,9 @@ namespace BattlePvp.Combat
             Vector3 fingers = Vector3.ProjectOnPlane(rig.transform.right, weapon.forward).normalized;
             if (fingers.sqrMagnitude < .01f) fingers = Vector3.ProjectOnPlane(rig.transform.up, weapon.forward).normalized;
             Quaternion rotation = Quaternion.LookRotation(fingers, weapon.forward) * Quaternion.Inverse(frame) * hand.rotation;
-            Vector3 palm = Vector3.Lerp(GripCenter(rig, true), support, weight);
-            rotation = Quaternion.Slerp(hand.rotation, rotation, weight);
             hand.rotation = rotation;
-            Vector3 wrist = palm - (GripCenter(rig, true) - hand.position);
+            Vector3 wrist = support - (GripCenter(rig, true) - hand.position);
             float reach = Vector3.Distance(arm.position, elbow.position) + Vector3.Distance(elbow.position, hand.position);
-            var clavicle = rig.GetBoneTransform(HumanBodyBones.LeftShoulder);
             if (clavicle != null)
             {
                 // Keep the clavicle pointing out of the chest. Reaching across the
@@ -251,7 +256,7 @@ namespace BattlePvp.Combat
                     Mathf.Max(.0001f, 2f * distance * length);
                 float allowed = Mathf.Acos(Mathf.Clamp(cosine, -1f, 1f)) * Mathf.Rad2Deg;
                 float turn = Mathf.Max(0f, Vector3.Angle(link, toward) - allowed);
-                Vector3 direction = Vector3.RotateTowards(link, toward, turn * Mathf.Deg2Rad * weight, 0f);
+                Vector3 direction = Vector3.RotateTowards(link, toward, turn * Mathf.Deg2Rad, 0f);
                 var opposite = rig.GetBoneTransform(HumanBodyBones.RightShoulder);
                 Vector3 lateral = opposite != null ? clavicle.position - opposite.position : -rig.transform.right;
                 direction = Vector3.RotateTowards(lateral.normalized, direction.normalized, 45f * Mathf.Deg2Rad, 0f);
@@ -260,6 +265,12 @@ namespace BattlePvp.Combat
             Vector3 hint = arm.position + (rig.transform.TransformDirection(new Vector3(-.6f, -.8f, .1f))) * reach;
             SolveArm(arm, elbow, hand, wrist, hint, 8f, 145f);
             hand.rotation = rotation;
+            // Blend the whole solved pose, including its elbow plane. A weighted
+            // wrist target alone still snaps the elbow at the first/last IK frame.
+            if (clavicle != null) clavicle.localRotation = Quaternion.Slerp(shoulderStart, clavicle.localRotation, weight);
+            arm.localRotation = Quaternion.Slerp(armStart, arm.localRotation, weight);
+            elbow.localRotation = Quaternion.Slerp(elbowStart, elbow.localRotation, weight);
+            hand.localRotation = Quaternion.Slerp(handStart, hand.localRotation, weight);
         }
 
         private static float FinisherWristWeight(Animator source)

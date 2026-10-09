@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-09",
+  "change": "Single-sword thrust: approach with the left hand in front of the torso, then support the right hand during forward extension.",
+  "animation": {
+    "preparation": "Relaxed left arm eases toward the front-right waiting point over the first 45% of the clip.",
+    "grip": "Blend into reachable support contact at phases 0.48–0.62, hold through 0.82, then release smoothly.",
+    "shoulder": "Retain the outward clavicle constraint; blend the entire solved arm pose to avoid abrupt elbow changes."
+  },
+  "preserved": [
+    "63 non-left animation curves",
+    "right-arm thrust",
+    "thrust attack damage, aim, hit window and effect track"
+  ],
+  "verification": {
+    "characters": [
+      "default",
+      "brute",
+      "security-officer",
+      "casual-1",
+      "megumi",
+      "picochan"
+    ],
+    "samplesPerCharacter": 121,
+    "checks": [
+      "support hand stays in front during preparation",
+      "hand approaches to the right",
+      "no runtime pull onto the retracted sword",
+      "shoulder width",
+      "arm continuity",
+      "reachable contact during extension",
+      "right arm and blade unchanged"
+    ]
+  },
+  "editMode": {
+    "jobId": "18e140460be04a0fa25ac21a94f1d40f",
+    "total": 145,
+    "passed": 145,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 10.7969015,
+    "resultState": "Passed"
+  },
+  "visualReview": [
+    "Reports/Weapons/Review/thrust-forward-final-0.00-0.png",
+    "Reports/Weapons/Review/thrust-forward-final-0.25-0.png",
+    "Reports/Weapons/Review/thrust-forward-final-0.45-0.png",
+    "Reports/Weapons/Review/thrust-forward-final-0.65-0.png",
+    "Reports/Weapons/Review/thrust-forward-final-0.95-0.png"
+  ],
+  "webBuild": "Not rebuilt for this change"
+}
