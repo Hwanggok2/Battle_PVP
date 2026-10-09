@@ -101,7 +101,8 @@ namespace BattlePvp.Characters
                 foreach (var t in _visual.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = _renderer.gameObject.layer;
                 // Keep the original renderer as the visibility owner. Its mesh is never replaced by a different layout.
                 _renderer.sharedMesh = null;
-                _visual.AddComponent<CharacterPoseFollower>().Initialize(animator, _renderer, _mesh, definition.SwordGripOffset);
+                _visual.AddComponent<CharacterPoseFollower>().Initialize(animator, _renderer, _mesh, definition.SwordGripOffset,
+                    definition.WristDrivenGreatswordFinisher);
                 return true;
             }
             _renderer.sharedMesh = null;

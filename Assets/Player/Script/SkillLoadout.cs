@@ -17,7 +17,7 @@ namespace BattlePvp.Combat
         private double _initialDeadline;
         private int[] _acknowledged;
         public event Action Changed;
-        public static bool CanEdit => SceneManager.GetActiveScene().name != "Battle";
+        public static bool CanEdit => LoadoutEditRules.CanEditSkills(StatManager.Local?.gameObject);
         private void Awake()
         {
             _stats = GetComponent<StatManager>();
@@ -83,11 +83,25 @@ namespace BattlePvp.Combat
         {
             if (NetworkTime.time < _nextRequest) return;
             _nextRequest = NetworkTime.time + .2;
-            if ((gameObject.scene.name == "Battle" && (_initialized || NetworkTime.time>_initialDeadline)) || !Validate(choices)) return;
-            _initialized = true; Apply(choices); TargetAccepted(connectionToClient, choices);
+            if (!TrySetChoices(choices)) return;
+            TargetAccepted(connectionToClient, choices);
+        }
+        internal bool TrySetChoices(int[] choices)
+        {
+            bool first = !_initialized && NetworkTime.time <= _initialDeadline;
+            if ((!first && !LoadoutEditRules.CanEditSkills(gameObject)) || !Validate(choices)) return false;
+            _initialized = true; Apply(choices); return true;
         }
         [TargetRpc] private void TargetAccepted(NetworkConnectionToClient target, int[] choices)
         { _acknowledged=(int[])choices.Clone(); SkillLoadoutStore.Save(choices); Changed?.Invoke(); }
+        // Server-owned actors have no client to submit their initial choices or save preferences.
+        internal bool InitializeServerChoices(int[] choices)
+        {
+            if (!isServer || connectionToClient != null || _initialized || NetworkTime.time > _initialDeadline || !Validate(choices)) return false;
+            _initialized = true;
+            Apply(choices);
+            return true;
+        }
         private void Apply(int[] choices)
         {
             if (Choices.Count == 12)

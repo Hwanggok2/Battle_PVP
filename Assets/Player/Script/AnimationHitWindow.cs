@@ -8,9 +8,9 @@ namespace BattlePvp.Combat
         public readonly float Start, End;
         public AnimationHitWindow(float start, float end) { Start = start; End = end; }
 
-        public static AnimationHitWindow Melee(Animator animator, int layer)
+        public static AnimationHitWindow Melee(Animator animator, int layer, bool incoming = false)
         {
-            foreach (var info in animator.GetCurrentAnimatorClipInfo(layer))
+            foreach (var info in incoming ? animator.GetNextAnimatorClipInfo(layer) : animator.GetCurrentAnimatorClipInfo(layer))
             {
                 float start = -1, end = 1;
                 foreach (var e in info.clip.events)

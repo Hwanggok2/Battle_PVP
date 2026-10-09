@@ -1,3 +1,5 @@
+Historical reference: superseded by the supplied Mixamo animations on 2026-10-07. WeaponMotionRetargeter now uses Source/Mixamo; the mapping below describes the previous implementation.
+
 KayKit Character Animations 1.1 — melee motion source
 
 Author: Kay Lousberg

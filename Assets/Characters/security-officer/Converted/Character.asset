@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Character
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: security-officer
+  WristDrivenGreatswordFinisher: 1
   DisplayName: Security Officer
   Description: "\uC18C\uD615 \xB7 \uBBFC\uCCA9\uD55C \uAE30\uB3D9\uACFC \uBE60\uB978
     \uACF5\uACA9"

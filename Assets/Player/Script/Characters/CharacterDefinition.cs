@@ -23,6 +23,8 @@ namespace BattlePvp.Characters
         public CharacterStatModifiers CombatModifiers = CharacterStatModifiers.Baseline;
         [Tooltip("Visual sword position adjustment in the native right hand's local coordinates. Does not move attack colliders.")]
         public Vector3 SwordGripOffset;
+        [Tooltip("Preserve the source wrist's blade sweep when retargeted fists converge during the greatsword finisher.")]
+        public bool WristDrivenGreatswordFinisher;
         [Tooltip("Visual-only Humanoid prefab with its original proportions and skeleton.")]
         [FormerlySerializedAs("VisualPrefab"), SerializeField] private GameObject _visualPrefab;
         [SerializeField] private string _visualResource;

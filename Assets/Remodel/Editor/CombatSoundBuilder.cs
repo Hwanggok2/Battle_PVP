@@ -34,6 +34,20 @@ namespace BattlePvp.Remodel.Editor
             WriteSwings();
             AssetDatabase.Refresh();
         }
+        public static void GenerateShieldBlock()
+        {
+            Directory.CreateDirectory(Folder);
+            Write("shield-block", .48f, 3, 217);
+            string path = Folder + "shield-block.wav";
+            AssetDatabase.ImportAsset(path);
+            var importer = (AudioImporter)AssetImporter.GetAtPath(path);
+            importer.forceToMono = true;
+            var settings = importer.defaultSampleSettings;
+            settings.loadType = AudioClipLoadType.DecompressOnLoad;
+            settings.compressionFormat = AudioCompressionFormat.PCM;
+            importer.defaultSampleSettings = settings;
+            importer.SaveAndReimport();
+        }
         private static void WriteSwings()
         {
             for (int i = 0; i < 3; i++) Write("sword-air-" + i, .19f + i * .015f, 0, 43 + i);
@@ -72,6 +86,16 @@ namespace BattlePvp.Remodel.Editor
                     float metal = Mathf.Sin(t * (3150 + seed) * 2 * Mathf.PI) * Mathf.Exp(-t * 40);
                     float body = Mathf.Sin(2 * Mathf.PI * (175 * t - 170 * t * t)) * Mathf.Exp(-t * 22);
                     value = ((noise - low) * .5f + band * .65f + body * .48f + metal * .08f) * cut;
+                }
+                else if (kind == 3)
+                {
+                    // A blunt shield impact with a short, inharmonic metal resonance.
+                    float ring = Mathf.Sin(2 * Mathf.PI * 287 * t) * Mathf.Exp(-t * 12) +
+                        .46f * Mathf.Sin(2 * Mathf.PI * 631 * t) * Mathf.Exp(-t * 17) +
+                        .21f * Mathf.Sin(2 * Mathf.PI * 1133 * t) * Mathf.Exp(-t * 26);
+                    float thump = Mathf.Sin(2 * Mathf.PI * (125 * t - 100 * t * t)) * Mathf.Exp(-t * 38);
+                    value = (ring * .55f + thump * .5f + (noise - low) * .7f * Mathf.Exp(-t * 120)) *
+                        Mathf.Clamp01(t / .0015f);
                 }
                 else
                 {

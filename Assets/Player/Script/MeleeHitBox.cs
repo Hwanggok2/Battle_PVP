@@ -170,6 +170,8 @@ namespace BattlePvp.Combat
             if (_sampleAnimator != null && _useSweptHitDetection && _boxCollider != null)
             {
                 var state = _sampleAnimator.GetCurrentAnimatorStateInfo(1);
+                if(_sampleAnimator.IsInTransition(1) && _sampleAnimator.GetNextAnimatorStateInfo(1).fullPathHash==_sampleState)
+                    state=_sampleAnimator.GetNextAnimatorStateInfo(1);
                 if (state.fullPathHash == _sampleState)
                 {
                     float phase = state.normalizedTime;
@@ -221,8 +223,9 @@ namespace BattlePvp.Combat
         public void BeginAnimationSampling(Animator animator)
         {
             _sampleAnimator = animator;
-            _sampleState = animator.GetCurrentAnimatorStateInfo(1).fullPathHash;
-            _animationWindow = AnimationHitWindow.Melee(animator, 1);
+            bool incoming=animator.IsInTransition(1);
+            _sampleState = (incoming ? animator.GetNextAnimatorStateInfo(1) : animator.GetCurrentAnimatorStateInfo(1)).fullPathHash;
+            _animationWindow = AnimationHitWindow.Melee(animator, 1, incoming);
             CaptureCurrentPose();
             _previousPhase = 0;
             _hasSweepPose = true;
@@ -333,7 +336,7 @@ namespace BattlePvp.Combat
 
         private void ProcessBoxOverlap(Vector3 samplePosition, Quaternion sampleRotation)
         {
-            if (_boxCollider == null)
+            if (_boxCollider == null || !_hitBoxActive)
                 return;
 
             Vector3 scale = Abs(PoseSource.lossyScale);
@@ -356,7 +359,24 @@ namespace BattlePvp.Combat
             // while retaining the chronological order of the sweep and one hit per target per attack.
             _contactComparer.Center = center;
             System.Array.Sort(_sweepQuery.Colliders, 0, count, _contactComparer);
-            for (int i = 0; i < count; i++) TryProcessHit(_sweepQuery.Colliders[i], center);
+            for (int i = 0; i < count && _hitBoxActive; i++)
+            {
+                var other = _sweepQuery.Colliders[i];
+                if (other != null && other.TryGetComponent<WeaponParrySurface>(out var surface))
+                {
+                    // The blade must arrive BEFORE the body. A simultaneous sample
+                    // conservatively resolves body contact, never retroactive parry.
+                    bool bodyContact = false;
+                    for (int j = 0; j < count && !bodyContact; j++)
+                    {
+                        if (_sweepQuery.Colliders[j] == null) continue;
+                        CombatHitTargets.Resolve(_sweepQuery.Colliders[j], out var receiver, out _, out var part);
+                        bodyContact = part != null && ReferenceEquals(receiver, surface.Health);
+                    }
+                    if (!bodyContact) TryProcessHit(other, center);
+                }
+                else TryProcessHit(other, center);
+            }
         }
 
         private void CaptureCurrentPose()
@@ -382,6 +402,13 @@ namespace BattlePvp.Combat
 
             if (_playerCombat != null && NetworkClient.active && !NetworkServer.active && !_playerCombat.isLocalPlayer)
                 return;
+
+            if (other.TryGetComponent<WeaponParrySurface>(out var parry))
+            {
+                if (parry.Health != null && !_hitTargets.Contains(parry.Health) && parry.Intercept(_playerCombat))
+                    DisableHitBox();
+                return;
+            }
 
             CombatHitTargets.Resolve(other, out IDamageReceiver defender,
                 out StatManager defenderStats, out HitBodyPart bodyPart);

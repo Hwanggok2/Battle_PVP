@@ -11,6 +11,7 @@ namespace BattlePvp.Combat
         [SerializeField] private AudioClip[] _swings;
         [SerializeField] private AudioClip[] _hits;
         [SerializeField] private AudioClip _death;
+        private AudioClip _shieldBlock;
         private AudioSource _worldSource, _feedbackSource;
         private HealthSystem _health;
         private NetworkIdentity _identity;
@@ -21,6 +22,7 @@ namespace BattlePvp.Combat
         {
             _health = GetComponent<HealthSystem>();
             _identity = GetComponent<NetworkIdentity>();
+            _shieldBlock = Resources.Load<AudioClip>("CombatAudio/shield-block");
             _worldSource = gameObject.AddComponent<AudioSource>();
             _feedbackSource = gameObject.AddComponent<AudioSource>();
             foreach (var source in new[] { _worldSource, _feedbackSource })
@@ -53,6 +55,12 @@ namespace BattlePvp.Combat
                 Time.unscaledTime - _lastHitAt < .055f) return;
             _lastHitAt = Time.unscaledTime;
             _feedbackSource.PlayOneShot(_hits[_hitIndex++ % _hits.Length], .7f * LocalGameSettings.Current.effects);
+        }
+        public void PlayShieldBlock()
+        {
+            if (!CanHear || _shieldBlock == null || _worldSource == null) return;
+            _worldSource.spatialBlend = IsLocal ? 0 : 1;
+            _worldSource.PlayOneShot(_shieldBlock, .85f * LocalGameSettings.Current.effects);
         }
         private void PlayDeath()
         {

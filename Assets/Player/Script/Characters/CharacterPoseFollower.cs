@@ -15,6 +15,7 @@ namespace BattlePvp.Characters
         private Renderer[] _renderers;
         private Animator _driver, _visualAnimator;
         private BowAimRigTarget _bowAim;
+        private PlayerCombat _combat;
         private CharacterEquipmentVisual _equipment;
         private CharacterHitboxBinding _hitboxes;
         private Transform _driverRoot;
@@ -23,6 +24,7 @@ namespace BattlePvp.Characters
         private static readonly ProfilerMarker PoseMarker = new("BattlePvp.CharacterPose");
         private static readonly Dictionary<Transform, CharacterPoseFollower> Active = new();
         private float _bodyScale = 1f;
+        private bool _wristDrivenGreatswordFinisher;
         public float ViewScale { get; private set; } = 1f;
         public static float GetViewScale(Transform player) => player != null && Active.TryGetValue(player, out var visual) && visual != null
             ? visual.ViewScale : 1f;
@@ -30,6 +32,8 @@ namespace BattlePvp.Characters
             ? visual._bodyScale : 1f;
         internal static Animator GetViewAnimator(Animator driver) => driver != null && Active.TryGetValue(driver.transform, out var visual) && visual != null
             ? visual._visualAnimator : driver;
+        internal static bool HasWristDrivenFinisher(Animator driver) => driver != null &&
+            Active.TryGetValue(driver.transform, out var visual) && visual != null && visual._wristDrivenGreatswordFinisher;
 
         internal static void SyncHitboxes(Animator driver)
         {
@@ -37,14 +41,17 @@ namespace BattlePvp.Characters
                 visual._hitboxes?.Sync();
         }
 
-        public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh, Vector3 swordGripOffset = default)
+        public void Initialize(Animator driver, SkinnedMeshRenderer original, Mesh originalMesh, Vector3 swordGripOffset = default,
+            bool wristDrivenGreatswordFinisher = false)
         {
+            _wristDrivenGreatswordFinisher = wristDrivenGreatswordFinisher;
             var animator = GetComponentInChildren<Animator>();
             _visualAnimator = animator;
             animator.runtimeAnimatorController = null;
             animator.enabled = false;
             _driver = driver;
             _bowAim = driver.GetComponent<BowAimRigTarget>();
+            _combat = driver.GetComponent<PlayerCombat>();
             _driverRoot = driver.transform;
             _identity = driver.GetComponent<Mirror.NetworkIdentity>();
             _sourceLeft = driver.GetBoneTransform(HumanBodyBones.LeftHand); _sourceRight = driver.GetBoneTransform(HumanBodyBones.RightHand);
@@ -81,6 +88,8 @@ namespace BattlePvp.Characters
             _pose.bodyPosition = _driver.transform.InverseTransformPoint(_driver.bodyPosition) / _driver.humanScale;
             _pose.bodyRotation = inverseRotation * _pose.bodyRotation;
             _target.SetHumanPose(ref _pose);
+            if (Application.isPlaying && _combat != null && _combat.isActiveAndEnabled)
+                _combat.UpdateVisualMeleeAimPose(_visualAnimator);
             if (_bowAim != null && _bowAim.IsPosing)
             {
                 // Different arm proportions slightly change the hand-to-hand aim after

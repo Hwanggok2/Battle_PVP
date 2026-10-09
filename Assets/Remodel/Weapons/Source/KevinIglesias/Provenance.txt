@@ -1,0 +1,28 @@
+Human Melee Animations FREE — Kevin Iglesias
+Downloaded with project owner approval on 2026-10-08.
+Official source: https://kevdev.itch.io/human-melee-animatons-free
+Archive: CharacterDownloads/KevinIglesias/Human Melee Animations FREE.unitypackage
+SHA-256: D07FFFAD8EF987C07C4A51C5FE1407ED23CB5EF838A96A36B8D4C5250D62C1CB
+
+The included creator documentation lists Standard Asset Store EULA / Fab Standard
+License, commercial use, no resale and no attribution requirement. These are not
+CC0 assets. Retain the included PDF and the creator's license references:
+https://www.keviniglesias.com/#license
+
+Imported HumanM_Model Avatar and HumanM@Attack2H01 only; no package scripts.
+The animation keeps the matching source Avatar from the supplied Unity metadata.
+HumanM@Attack2H01 [0,1] -> AxeChop, full original 1.6-second duration.
+This is an authored two-handed diagonal cut, approved after reviewing its source.
+Source muscle curves are preserved in the clip. The combat layer masks out the
+root/hips and legs, leaving idle and walking on the normal locomotion layer.
+The axe never enables the Greatsword footwork layer.
+The right wrist drives the axe. Only the left support grip is fitted to the haft
+within arm reach; no extra wrist flick or generated attack-arm path is added.
+Hit events use normalized phase 0.325–0.400. The weapon's local -X edge is rolled
+90 degrees for this take and follows its wrist. Axe idle/walking use the same
+one-handed skeletal pose as the sword, with the prop rolled 180 degrees around
+its +Z haft so the cutting edge faces down. Prop orientation and left-hand support
+blend in/out with the Animator attack transition.
+Server sweep samples and the visible trail are rebuilt from the new weapon pose.
+
+Rebuild: Battle PvP > Weapons > Install Weapons (Unity Edit Mode).

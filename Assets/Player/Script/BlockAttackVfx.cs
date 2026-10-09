@@ -30,7 +30,7 @@ namespace BattlePvp.Combat
         private Animator _animator;
         private PlayerCombat _combat;
         private int _animationState;
-        private bool _emitting, _finishEmission;
+        private bool _emitting;
         private float _swingDuration;
         private float _emissionEndPhase, _lastPhase, _lastSampleTime;
         private Vector3 _lastBladeBase, _lastBladeTip;
@@ -78,20 +78,19 @@ namespace BattlePvp.Combat
                 _strokeColor = BattlePvp.Stats.StatVfxColor.Resolve(_stats);
             _strokeColor.a = .3f;
             _swingDuration = Mathf.Max(.08f, swingDuration);
-            _animationState = _animator != null ? _animator.GetCurrentAnimatorStateInfo(1).fullPathHash : 0;
-            _emissionEndPhase = _animator != null ? AnimationHitWindow.Melee(_animator, 1).End : 1f;
+            bool incoming = _animator != null && _animator.IsInTransition(1);
+            _animationState = _animator != null ? (incoming ? _animator.GetNextAnimatorStateInfo(1) : _animator.GetCurrentAnimatorStateInfo(1)).fullPathHash : 0;
+            _emissionEndPhase = _animator != null ? AnimationHitWindow.Melee(_animator, 1, incoming).End : 1f;
             _hasBladeSample = false;
-            _emitting = !bow; _finishEmission = false;
+            _emitting = !bow;
             if (bow) _bladeTrail.Clear(); else _bladeTrail.BeginStroke();
             // Play runs before native retargeting. Seed the stroke from the first corrected late pose.
         }
         private static bool CanShowAttackEffects(string scene) => scene == "Lobby" || InputModeRules.UsesFpsLook(scene);
-        public void StopMelee() { if (!_bow) { _emitting = false; _finishEmission = false; } }
-        // Animation events precede LateUpdate: retain the last corrected strike pose once.
-        public void EndMeleeEmission() { if (!_bow && _emitting) _finishEmission = true; }
+        public void StopMelee() { if (!_bow) _emitting = false; }
         private void OnDisable()
         {
-            _start = -10; _emitting = _finishEmission = false; _bladeTrail.Clear();
+            _start = -10; _emitting = false; _bladeTrail.Clear();
             if (_light != null) _light.enabled = false;
         }
         private void OnDestroy()
@@ -152,12 +151,15 @@ namespace BattlePvp.Combat
             }
             if (_emitting)
             {
+                var state = _animator != null ? _animator.GetCurrentAnimatorStateInfo(1) : default;
+                if (_animator != null && _animator.IsInTransition(1) && _animator.GetNextAnimatorStateInfo(1).fullPathHash == _animationState)
+                    state = _animator.GetNextAnimatorStateInfo(1);
                 bool sameAnimation = _animator == null ? age < _swingDuration :
-                    _animator.GetCurrentAnimatorStateInfo(1).fullPathHash == _animationState;
+                    state.fullPathHash == _animationState;
                 if (!sameAnimation || blade == null || !blade.gameObject.activeInHierarchy) StopMelee();
                 else
                 {
-                    float phase = _animator != null ? _animator.GetCurrentAnimatorStateInfo(1).normalizedTime : age / _swingDuration;
+                    float phase = _animator != null ? state.normalizedTime : age / _swingDuration;
                     Vector3 bladeBase = blade.TransformPoint(_bladeBase), bladeTip = blade.TransformPoint(_bladeTip);
                     var currentPose = new Pose(blade.position, blade.rotation);
                     float end = phase > _lastPhase ? Mathf.Clamp01((_emissionEndPhase - _lastPhase) / (phase - _lastPhase)) : 1f;
@@ -187,7 +189,9 @@ namespace BattlePvp.Combat
                     _lastBladeBase = bladeBase; _lastBladeTip = bladeTip;
                     _lastBladePose = currentPose;
                     _lastPhase = phase; _lastSampleTime = now; _hasBladeSample = true;
-                    if (_finishEmission || phase >= _emissionEndPhase) StopMelee();
+                    // DisableHitBox also fires at time zero and from outgoing clips.
+                    // Only this stroke's tracked phase may finish its emission.
+                    if (phase >= _emissionEndPhase) StopMelee();
                 }
             }
             _bladeTrail.Build(now, _bladeVertices, _bladeColors, _bladeTriangles);

@@ -9,10 +9,10 @@ namespace BattlePvp.Combat
         public Quaternion rotation;
 
         public static bool TryEvaluate(AttackData attack, Transform root, float phase, Vector3 aim,
-            Vector3 lookDirection, float weight, out Pose pose)
+            Vector3 lookDirection, float weight, out Pose pose, Avatar avatar = null)
         {
             pose = default;
-            var track = attack != null ? attack.motionSamples : null;
+            var track = attack != null ? attack.FindVisualAim(avatar)?.samples ?? attack.motionSamples : null;
             if (track == null || track.Length < 2) return false;
             float index = Mathf.Clamp01(phase) * (track.Length - 1);
             int first = Mathf.Min(Mathf.FloorToInt(index), track.Length - 2);
@@ -28,11 +28,7 @@ namespace BattlePvp.Combat
                 else high = middle;
             }
             Vector3 reference = Vector3.Lerp(referenceBase, referenceTip, (low + high) * .5f);
-            float calibration = Mathf.SmoothStep(0, 1, phase / .35f) * Mathf.SmoothStep(0, 1, (1 - phase) / .16f);
-            Vector3 source = Vector3.Slerp(root.forward, reference.normalized, calibration);
-            Quaternion delta = Quaternion.FromToRotation(source, aim.normalized);
-            Quaternion look = Quaternion.FromToRotation(root.forward, lookDirection.normalized);
-            Quaternion correction = Quaternion.Slerp(look, delta, Mathf.Clamp01(weight));
+            Quaternion correction = MeleeAimPose.Correction(root.forward, reference, aim, lookDirection, phase, weight, attack.maxAimCalibration, attack.CrossingPhase(avatar));
             Vector3 pivot = root.TransformPoint(Vector3.Lerp(a.pivot, b.pivot, t));
             Vector3 position = root.TransformPoint(Vector3.Lerp(a.position, b.position, t));
             pose = new Pose(pivot + correction * (position - pivot),

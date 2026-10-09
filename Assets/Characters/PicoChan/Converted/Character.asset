@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Character
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Characters.CharacterDefinition
   Id: picochan
+  WristDrivenGreatswordFinisher: 1
   DisplayName: PicoChan
   Description: "\uC18C\uD615 \xB7 \uAC00\uC7A5 \uBE60\uB978 \uAE30\uB3D9, \uB0AE\uC740
     \uCCB4\uB825\uACFC \uBC29\uC5B4\uB825"

@@ -1,0 +1,58 @@
+Mixamo weapon animations — supplied by the project owner on 2026-10-07
+Official source: https://www.mixamo.com/
+Terms / FAQ: https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html
+These files use Adobe/Mixamo terms. They are not part of the CC0 KayKit pack.
+Download settings: FBX for Unity, Without Skin, 60 FPS, Keyframe Reduction None.
+
+Original downloads are preserved in CharacterDownloads/Motion.
+Source files under this folder are editor inputs; gameplay references baked .anim assets.
+
+Mapping (normalized source ranges):
+  Thrust Slash [0.12, 0.36] -> Thrust (0.72 seconds)
+  Great Sword Slash combo [0, 0.34] -> Greatsword1 (0.85 seconds)
+  Great Sword Slash combo [0.34, 0.66] -> Greatsword2 (0.80 seconds)
+  Great Sword Slash combo [0.66, 1] -> Greatsword3 (1.05 seconds)
+  Great Sword Slash combo [0.18, 0.34] -> Riposte1 (0.36 seconds)
+  Great Sword Slash combo [0.40, 0.60] -> Riposte2 (0.36 seconds)
+  Great Sword Slash Downward is retained as an unused previous candidate.
+  AxeChop now uses Kevin Iglesias HumanM@Attack2H01; see ../KevinIglesias/Provenance.txt.
+  Great Sword Idle opening settled pose -> GreatswordReady
+  Great Sword Idle opening settled pose -> authored horizontal SwordGuard
+  Sword And Shield Block Idle -> ShieldGuard
+  Sword And Shield Block (1) -> ShieldEnter (Idle To Block, 0.18 seconds)
+  Sword And Shield Block -> ShieldExit (Block To Idle, 0.22 seconds)
+
+Import / adaptation:
+  All nine animation-only downloads use Brute's skeleton. Their importers copy
+  the Avatar from Assets/Characters/Brute/Source/Brute.fbx, whose 71 non-root
+  bind-pose bones match the downloads. Ch10 is the gameplay retarget destination,
+  not the reference skeleton used to import these source files.
+  Greatsword attacks, ripostes and sword ready retain the imported
+  Humanoid muscle curves. All three greatsword cuts are consecutive portions
+  of the original Combo, including its whole-body turn on the third attack.
+  Planar root travel is removed; authored body rotation and vertical motion remain.
+  A synchronized full-body layer preserves attack footwork. Its duplicate clips
+  have no animation events, so damage events only fire from the combat layer.
+  Ready-to-attack transitions use an 80 ms Animator crossfade. Hit-window and
+  recovery sampling and blade trails follow the incoming attack during that transition.
+  Two-handed crosshair calibration is disabled; only the live view correction remains;
+  both visible poses and server motion reconstruction use the same calculation.
+  Greatsword guard follows live view pitch without residual attack calibration.
+  Greatsword attack arms and wrists remain completely as animated. The prop
+  follows the two authored fists; the attack does not solve either arm with IK.
+  Only the authored static guard fits both hands around their original midpoint.
+  SwordGuard is an authored static horizontal hold at the right chest, NOT a
+  downloaded sword-parry animation. Axe idle now uses the normal one-handed locomotion pose.
+  Static holds retain a standing root pose. Locomotion remains active in ready/guard.
+  Shield transitions and thrust use the supplied clips with one-handed adaptation.
+  The single-bit axe is Axe(2)_OS from the existing Medieval Melee Weapon Pack;
+  its mesh is widened 1.55x and lengthened 1.15x, with matching head hit bounds.
+  Axe grip, attack timing and provenance are documented in ../KevinIglesias/Provenance.txt.
+  Shield hand and elbow remain behind the shield's panel.
+  Gameplay hit events, trails and server attack tracks use the rebuilt poses.
+  Trails end at their tracked animation closing phase, never at a generic
+  DisableHitBox event (also sent at time zero and by outgoing clips).
+
+Rebuild in Unity Edit Mode:
+  Battle PvP > Weapons > Install Weapons
+The existing Quaternius recoil remains in use with its existing license.

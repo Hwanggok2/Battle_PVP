@@ -217,6 +217,7 @@ public partial class PlayerCombat : NetworkBehaviour
     public uint CurrentAttackPredictionId => _currentAttackSequence;
     public bool IsAttackActive => isAttacking;
     private MeleeAimPose _meleeAimPose;
+    private Animator _meleeAimAnimator;
     private Vector3 _meleeAimDirection;
     private float _meleeAimReach;
     private readonly CombatPhysicsQuery _meleeAimQuery = new CombatPhysicsQuery();
@@ -313,6 +314,7 @@ public partial class PlayerCombat : NetworkBehaviour
         if (animator == null)
             animator = GetComponentInChildren<Animator>(true);
         _meleeAimPose = new MeleeAimPose(transform, animator);
+        _meleeAimAnimator = animator;
         if (animator != null)
         {
             SkillAnimationEventRelay relay = animator.GetComponent<SkillAnimationEventRelay>();
@@ -475,9 +477,34 @@ public partial class PlayerCombat : NetworkBehaviour
     public bool TrySampleMeleeMotion(float phase, out Pose pose) => MeleeMotionSample.TryEvaluate(
         CurrentMeleeData, transform, phase, MeleeAimVector,
         Quaternion.AngleAxis(_lookPitch * _lookPoseWeight, transform.right) * transform.forward,
-        _meleeAimWeight, out pose);
+        _meleeAimWeight, out pose, _meleeAimPose?.Avatar);
 
     internal void UpdateMeleeAimPose()
+    {
+        var visual = BattlePvp.Characters.CharacterPoseFollower.GetViewAnimator(animator);
+        // Retarget raw muscle curves first. Applying FK before HumanPose conversion
+        // clamps the correction differently on each avatar and changes the strike.
+        if (WeaponKind == MeleeWeaponKind.Greatsword && visual != animator) return;
+        EnsureMeleeAimAnimator(animator);
+        ApplyMeleeAimPose();
+    }
+
+    internal void UpdateVisualMeleeAimPose(Animator visual)
+    {
+        if (WeaponKind != MeleeWeaponKind.Greatsword || visual == animator) return;
+        EnsureMeleeAimAnimator(visual);
+        ApplyMeleeAimPose();
+    }
+
+    private void EnsureMeleeAimAnimator(Animator rig)
+    {
+        if (_meleeAimAnimator == rig) return;
+        _meleeAimPose?.Restore();
+        _meleeAimAnimator = rig;
+        _meleeAimPose = new MeleeAimPose(transform, rig);
+    }
+
+    private void ApplyMeleeAimPose()
     {
         if (_bowAttackController != null && _bowAttackController.ControlsAimPose)
         {
@@ -496,13 +523,21 @@ public partial class PlayerCombat : NetworkBehaviour
         _lookPitch = ShouldHandleLocalInput ? _networkLookPitch :
             Mathf.Lerp(_lookPitch, _networkLookPitch, 1f - Mathf.Exp(-Time.deltaTime * 20f));
         Vector3 lookDirection = Quaternion.AngleAxis(_lookPitch * _lookPoseWeight, transform.right) * transform.forward;
+        if (IsWeaponGuarding && WeaponKind == MeleeWeaponKind.Greatsword)
+        {
+            // Guard follows the current view immediately, never the preceding
+            // attack's fading crosshair calibration. Spread the bend over the torso.
+            _meleeAimWeight = 0f;
+            _meleeAimPose?.Apply(lookDirection);
+            return;
+        }
         _meleeAimWeight = alive ? Mathf.MoveTowards(_meleeAimWeight, isAttacking ? 1f : 0f, Time.deltaTime * 12f) : 0f;
         if (_meleeAimWeight > 0f)
         {
             var data = CurrentMeleeData;
             if (data != null && data.aimBladePoint.sqrMagnitude > .001f && animator != null)
                 _meleeAimPose?.ApplyCalibrated(MeleeAimDirection, _meleeAimPose.SelectReference(data, _meleeAimReach),
-                    Mathf.Clamp01(animator.GetCurrentAnimatorStateInfo(1).normalizedTime), _meleeAimWeight, lookDirection);
+                    Mathf.Clamp01(AttackAnimationState.normalizedTime), _meleeAimWeight, lookDirection, data.maxAimCalibration, data.aimInRootSpace, data.CrossingPhase(_meleeAimPose.Avatar));
             else _meleeAimPose?.Apply(Vector3.Slerp(lookDirection, MeleeAimDirection, _meleeAimWeight));
         }
         else if (_lookPoseWeight > 0f) _meleeAimPose?.ApplyCalibrated(lookDirection, Vector3.forward, 0, 0, lookDirection);
@@ -873,12 +908,9 @@ public partial class PlayerCombat : NetworkBehaviour
         if (pm != null)
             pm.SetMovementLock(true);
 
-        if (_statManager != null)
-        {
-            _currentAttackSpeed = ResolveCurrentAttackSpeed();
-            if (animator != null)
-                animator.speed = _currentAttackSpeed;
-        }
+        _currentAttackSpeed = BeginWeaponAttackSpeed();
+        if (animator != null)
+            animator.speed = _currentAttackSpeed;
 
         foreach (var hb in _hitboxes)
         {
@@ -888,14 +920,15 @@ public partial class PlayerCombat : NetworkBehaviour
             }
         }
 
-        // Seeking frame zero can invoke hit events synchronously. Install data and deduplication first.
-        if (isServer && _currentAttackSequence != 0)
-            RegisterServerAcceptedAttack(_currentAttackSequence, index);
+        // Install attack data before frame-zero events. Hit queries run in LateUpdate,
+        // after the new animation has supplied its playback duration below.
         if (sendOwnerRequest && !isServer)
             CmdStartAttack(index, aimDirection, _currentAttackSequence);
         if (animator != null)
             PlayAttackAnimation(index);
         if (!isAttacking) return;
+        if (isServer && _currentAttackSequence != 0)
+            RegisterServerAcceptedAttack(_currentAttackSequence, index);
 
         if (_comboRoutine != null)
             StopCoroutine(_comboRoutine);
@@ -904,8 +937,8 @@ public partial class PlayerCombat : NetworkBehaviour
         if (sendOwnerRequest && isServer)
         {
             uint sequence = _currentAttackSequence;
-            RpcStartAttackFast(index, aimDirection, sequence);
-            RpcStartAttack(index, aimDirection, sequence);
+            RpcStartAttackFast(index, aimDirection, sequence, _currentAttackSpeed);
+            RpcStartAttack(index, aimDirection, sequence, _currentAttackSpeed);
         }
     }
 
@@ -921,7 +954,7 @@ public partial class PlayerCombat : NetworkBehaviour
             index < 0 || comboList == null || index >= comboList.Length || comboList[index] == null ||
             (_healthSystem != null && _healthSystem.IsDead))
         {
-            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            TargetResolveAttackRequest(connectionToClient, sequence, false, 1f);
             return;
         }
 
@@ -929,41 +962,41 @@ public partial class PlayerCombat : NetworkBehaviour
         if (IsSkillCastingOrAttackLocked() ||
             (_playerManager != null && (_playerManager.IsEmoteBlockingAttack || _playerManager.IsSkillAttackLocked)))
         {
-            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            TargetResolveAttackRequest(connectionToClient, sequence, false, 1f);
             return;
         }
         float comboProgress = animator != null && isAttacking
-            ? animator.GetCurrentAnimatorStateInfo(1).normalizedTime : float.NaN;
+            ? AttackAnimationState.normalizedTime : float.NaN;
         if (!WeaponAttackAllowed(index) || !CanStartWeaponSequence(index, comboProgress))
         {
-            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            TargetResolveAttackRequest(connectionToClient, sequence, false, 1f);
             return;
         }
         _currentAttackSequence = sequence;
         StartAttack(index, false, aimDirection);
         if (!isAttacking || currentComboIndex != index)
         {
-            TargetResolveAttackRequest(connectionToClient, sequence, false);
+            TargetResolveAttackRequest(connectionToClient, sequence, false, 1f);
             return;
         }
-        RpcStartAttackFast(index, aimDirection, sequence);
-        RpcStartAttack(index, aimDirection, sequence);
-        TargetResolveAttackRequest(connectionToClient, sequence, true);
+        RpcStartAttackFast(index, aimDirection, sequence, _currentAttackSpeed);
+        RpcStartAttack(index, aimDirection, sequence, _currentAttackSpeed);
+        TargetResolveAttackRequest(connectionToClient, sequence, true, _currentAttackSpeed);
     }
 
     [ClientRpc(channel = Channels.Unreliable, includeOwner = false)]
-    private void RpcStartAttackFast(int index, Vector3 aimDirection, uint sequence)
+    private void RpcStartAttackFast(int index, Vector3 aimDirection, uint sequence, float attackSpeed)
     {
-        ReceiveRemoteAttackStart(index, aimDirection, sequence);
+        ReceiveRemoteAttackStart(index, aimDirection, sequence, attackSpeed);
     }
 
     [ClientRpc(includeOwner = false)]
-    private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence)
+    private void RpcStartAttack(int index, Vector3 aimDirection, uint sequence, float attackSpeed)
     {
-        ReceiveRemoteAttackStart(index, aimDirection, sequence);
+        ReceiveRemoteAttackStart(index, aimDirection, sequence, attackSpeed);
     }
 
-    private void ReceiveRemoteAttackStart(int index, Vector3 aimDirection, uint sequence)
+    private void ReceiveRemoteAttackStart(int index, Vector3 aimDirection, uint sequence, float attackSpeed)
     {
         if (isServer)
             return;
@@ -972,17 +1005,27 @@ public partial class PlayerCombat : NetworkBehaviour
             return;
 
         _lastRemoteAttackSequence = sequence;
-        StartRemoteAttackVisual(index, aimDirection);
+        _currentAttackSequence = sequence;
+        StartRemoteAttackVisual(index, aimDirection, attackSpeed);
     }
 
     [TargetRpc]
-    private void TargetResolveAttackRequest(NetworkConnectionToClient target, uint sequence, bool accepted)
+    private void TargetResolveAttackRequest(NetworkConnectionToClient target, uint sequence, bool accepted, float attackSpeed)
     {
-        if (!accepted && sequence == _currentAttackSequence)
-            CancelCurrentAttack();
+        ResolveAttackRequest(sequence, accepted, attackSpeed);
     }
 
-    private void StartRemoteAttackVisual(int index, Vector3 aimDirection)
+    private void ResolveAttackRequest(uint sequence, bool accepted, float attackSpeed)
+    {
+        if (sequence != _currentAttackSequence) return;
+        if (!accepted) { CancelCurrentAttack(); return; }
+        if (!isAttacking) return;
+        // An earlier start acknowledgement must not undo a confirmed mid-swing hit.
+        _currentAttackSpeed = Mathf.Max(.01f, Mathf.Max(attackSpeed, _axeRecoveryAnimationSpeed));
+        if (animator != null) animator.speed = _currentAttackSpeed;
+    }
+
+    private void StartRemoteAttackVisual(int index, Vector3 aimDirection, float attackSpeed)
     {
         if (IsWeaponRecoiling || (_healthSystem != null && _healthSystem.IsDead))
             return;
@@ -997,10 +1040,9 @@ public partial class PlayerCombat : NetworkBehaviour
         SetMeleeAim(aimDirection);
         _acceptedMeleeAimRevision = 0;
 
-        if (_statManager != null)
-        {
-            _currentAttackSpeed = ResolveCurrentAttackSpeed();
-        }
+        _axeRecoveryAnimationSpeed = 0f;
+        _axeSwingAccelerated = false;
+        _currentAttackSpeed = Mathf.Max(.01f, attackSpeed);
 
         foreach (var hb in _hitboxes)
         {
@@ -1037,12 +1079,17 @@ public partial class PlayerCombat : NetworkBehaviour
         animator.speed = Mathf.Max(0.01f, _currentAttackSpeed);
         _swingSoundPlayed = false;
         ForceDisableHitBoxes();
-        animator.Play(comboList[index].animationName, 1, 0f);
+        if(WeaponKind==MeleeWeaponKind.Greatsword || WeaponKind==MeleeWeaponKind.Axe)
+        {
+            SetWeaponFootworkWeight(true);
+            animator.CrossFadeInFixedTime(comboList[index].animationName,.08f,1,0f);
+        }
+        else animator.Play(comboList[index].animationName, 1, 0f);
         animator.Update(0f);
         foreach (var hitbox in _hitboxes) if (hitbox != null) hitbox.BeginAnimationSampling(animator);
         // State duration already includes Animator/state speed. Dividing again cuts fast swings short.
         GetComponent<BattlePvp.Combat.BlockAttackVfx>()?.Play(false,
-            animator.GetCurrentAnimatorStateInfo(1).length);
+            AttackAnimationState.length);
     }
 
     [Server]
@@ -1050,7 +1097,9 @@ public partial class PlayerCombat : NetworkBehaviour
     {
         _serverReportableAttackSequence = sequence;
         _serverReportableAttackIndex = attackIndex;
-        _serverAttackReportExpiresAt = SkillTime + Mathf.Max(0.5f, _serverAttackReportGraceSeconds);
+        _serverAttackReportExpiresAt = SkillTime +
+            SkillPresentation.RemainingAnimationSeconds(comboList[attackIndex].animationName, 1) +
+            Mathf.Max(0.5f, _serverAttackReportGraceSeconds);
         _serverAttackHitTargetNetIds.Clear();
     }
 
@@ -1230,7 +1279,6 @@ public partial class PlayerCombat : NetworkBehaviour
     public void DisableHitBox()
     {
         foreach (var hb in _hitboxes) if (hb != null) hb.EndHitWindow();
-        GetComponent<BlockAttackVfx>()?.EndMeleeEmission();
     }
 
     private void ForceDisableHitBoxes()
@@ -1368,7 +1416,10 @@ public partial class PlayerCombat : NetworkBehaviour
 
     private System.Collections.IEnumerator CoComboMonitor(int index)
     {
-        double deadline = Time.timeAsDouble + SkillPresentation.RemainingAnimationSeconds(comboList[index].animationName, 1) + 0.5d;
+        // Allow an owner-predicted axe boost to be corrected back to normal speed
+        // without the watchdog cancelling its slower recovery prematurely.
+        float timingAllowance = WeaponKind == MeleeWeaponKind.Axe ? AxeHitAnimationMultiplier : 1f;
+        double deadline = Time.timeAsDouble + SkillPresentation.RemainingAnimationSeconds(comboList[index].animationName, 1) * timingAllowance + 0.5d;
         yield return null;
         yield return null;
 
@@ -1382,10 +1433,12 @@ public partial class PlayerCombat : NetworkBehaviour
                 yield break;
             }
 
-            var stateInfo = animator.GetCurrentAnimatorStateInfo(1);
+            var stateInfo = AttackAnimationState;
             if (stateInfo.IsName(comboList[index].animationName))
             {
-                if (stateInfo.normalizedTime >= 0.95f)
+                // Axe recovery is part of the accelerated motion; keep its playback
+                // rate until the complete take, rather than slowing its final 5%.
+                if (stateInfo.normalizedTime >= (WeaponKind == MeleeWeaponKind.Axe ? 1f : .95f))
                     break;
             }
             else if (!animator.IsInTransition(1))
@@ -2924,7 +2977,9 @@ public partial class PlayerCombat : NetworkBehaviour
             _serverCombo.Complete(currentComboIndex, CanContinueWeaponCombo(currentComboIndex) ? currentComboIndex + 2 : 0, SkillTime);
         else _serverCombo.Reset();
         isAttacking = false;
-        currentComboIndex = 0;
+        // The closing animation event may still have a blade sweep queued for
+        // LateUpdate. Keep its attack number for the resulting server hit report.
+        // StartAttack replaces it; cancellation/revival explicitly reset it.
         hasComboReserved = false;
         if (animator != null)
             animator.speed = 1.0f;
@@ -2954,7 +3009,7 @@ public partial class PlayerCombat : NetworkBehaviour
         int index = comboIndex >= 0 ? comboIndex : currentComboIndex;
         var data = comboList != null && index >= 0 && index < comboList.Length ? comboList[index] : null;
         float reach = data != null && data.aimBladePoint.sqrMagnitude > .001f ?
-            (_meleeAimPose != null ? _meleeAimPose.ReferenceVector(data.aimBladePoint) : transform.TransformVector(data.aimBladePoint)).magnitude : 1.4f;
+            (_meleeAimPose != null ? _meleeAimPose.ReferenceVector(_meleeAimPose.ReferencePoint(data), data.aimInRootSpace) : transform.TransformVector(data.aimBladePoint)).magnitude : 1.4f;
         if (!BattlePvp.Logic.InputModeRules.UsesFpsLook(SceneManager.GetActiveScene().name))
             return ResolveTauntAimDirection(transform.forward) * reach;
         if (_followCamera == null)
@@ -2973,7 +3028,7 @@ public partial class PlayerCombat : NetworkBehaviour
         }
         if (found && data != null && _meleeAimPose != null)
             reach = _meleeAimPose.ReferenceVector(_meleeAimPose.SelectReference(data,
-                Vector3.Distance(ray.GetPoint(distance), MeleeAimPivot))).magnitude;
+                Vector3.Distance(ray.GetPoint(distance), MeleeAimPivot)), data.aimInRootSpace).magnitude;
         Vector3 direction = MeleeAimPose.ReachablePoint(ray, MeleeAimPivot, reach) - MeleeAimPivot;
         if (Vector3.Dot(direction, ray.direction) <= .01f) direction = ray.direction;
         return ResolveTauntAimDirection(direction.normalized) * reach;
@@ -3017,9 +3072,9 @@ public partial class PlayerCombat : NetworkBehaviour
         StartAttack(0, false, direction, true);
         if (!isAttacking) return;
         _lastServerAttackSequence = sequence;
-        RpcStartAttackFast(0, direction, sequence);
-        RpcStartAttack(0, direction, sequence);
-        if (connectionToClient != null) TargetStartTauntAttack(connectionToClient, direction, sequence);
+        RpcStartAttackFast(0, direction, sequence, _currentAttackSpeed);
+        RpcStartAttack(0, direction, sequence, _currentAttackSpeed);
+        if (connectionToClient != null) TargetStartTauntAttack(connectionToClient, direction, sequence, _currentAttackSpeed);
     }
 
     private void ClearServerTauntControl()
@@ -3033,12 +3088,12 @@ public partial class PlayerCombat : NetworkBehaviour
     }
 
     [TargetRpc]
-    private void TargetStartTauntAttack(NetworkConnectionToClient target, Vector3 direction, uint sequence)
+    private void TargetStartTauntAttack(NetworkConnectionToClient target, Vector3 direction, uint sequence, float attackSpeed)
     {
         if (isServer) return;
         _currentAttackSequence = sequence;
         _nextLocalAttackSequence = CombatRequestSequences.RestoreOwner(_nextLocalAttackSequence, sequence);
-        StartRemoteAttackVisual(0, direction);
+        StartRemoteAttackVisual(0, direction, attackSpeed);
     }
 
     private void UpdateLocalTauntControl()

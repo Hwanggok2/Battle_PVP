@@ -119,7 +119,7 @@ public sealed class AttackProcessor : MonoBehaviour
         float attackPower = attackerDerived.AttackPower * attackData.damage;
         float penetrationPercent = attackerDerived.PenetrationPercent;
         if (_playerCombat != null)
-            attackPower *= _playerCombat.AttackPowerBonusMultiplier;
+            attackPower *= _playerCombat.AttackPowerBonusMultiplier * _playerCombat.WeaponMeleeDamageMultiplier;
 
         penetrationPercent = Clamp(penetrationPercent, 0f, 100f);
 
@@ -157,6 +157,7 @@ public sealed class AttackProcessor : MonoBehaviour
             _playerCombat = GetComponent<PlayerCombat>();
         DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId);
         if (!result.Accepted) return;
+        _playerCombat?.NotifyAcceptedMeleeHit(attackData);
         if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR &&
             defenderGuard != null && defenderGuard.IsGuarding)
             defenderGuard.BreakGuard();

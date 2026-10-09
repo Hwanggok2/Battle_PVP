@@ -16,6 +16,7 @@ namespace BattlePvp.Combat
             public Material[] Materials;
             public Vector3 HitCenter, HitSize, BladeBase, BladeTip;
             public AttackData[] Attacks;
+            [Min(0f)] public float MeleeDamageMultiplier = 1f;
             public string ReadyState;
             public Vector3 RightGrip, LeftGrip;
             public bool TwoHanded => Kind == MeleeWeaponKind.Greatsword || Kind == MeleeWeaponKind.Axe;
@@ -23,7 +24,8 @@ namespace BattlePvp.Combat
         public Entry[] Weapons;
         public Mesh ShieldMesh;
         public Material[] ShieldMaterials;
-        public float ShieldRecoilSeconds = .65f;
+        public float ShieldRecoilSeconds = .975f;
+        public float ParryRecoilSeconds = .65f;
         public float ParryWindowSeconds = .3f;
         public float RiposteReadySeconds = 2.5f;
         public float GuardArcDegrees = 120f;
