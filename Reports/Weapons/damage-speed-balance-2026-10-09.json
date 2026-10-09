@@ -4,20 +4,20 @@
   "damageRelativeToUnshieldedSwordFirstHit": {
     "sword": [
       1,
-      1.1,
-      1.2
+      1.05,
+      1.1
     ],
     "greatsword": [
-      1.4,
-      1.6,
-      1.8
+      1.2,
+      1.3,
+      1.4
     ],
     "axe": [
-      2.2
+      1.5
     ],
     "riposte": [
-      1.4,
-      1.6
+      1.2,
+      1.3
     ]
   },
   "comparison": "Same attacker stats, target defense and body part. Sword-only retains 10% more damage than sword with shield.",
@@ -38,12 +38,12 @@
   },
   "speed": "Existing baseline ordering verified using actual normalized animation progress at 0.5x, 1x and 2x stat-speed multipliers. Axe's confirmed-hit 2x recovery/follow-up and parry riposte remain special effects.",
   "validation": {
-    "jobId": "507a36bd04e84f748566798fe24dbce8",
+    "jobId": "b93228b3aae14c36a78a41a0b3cd6823",
     "total": 145,
     "passed": 145,
     "failed": 0,
     "skipped": 0,
-    "durationSeconds": 11.6957585,
+    "durationSeconds": 9.9260146,
     "resultState": "Passed"
   },
   "webBuild": "Not rebuilt for this change"

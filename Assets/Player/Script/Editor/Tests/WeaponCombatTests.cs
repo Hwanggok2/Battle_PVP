@@ -230,8 +230,9 @@ namespace BattlePvp.EditorTests
             foreach(var combo in new[]{sword,shield,great})
                 for(int i=1;i<combo.Length;i++) Assert.That(combo[i],Is.GreaterThan(combo[i-1]),"Each later hit is stronger.");
             Assert.That(great[0],Is.GreaterThan(sword[2]),"Even the first greatsword hit exceeds the sword finisher.");
+            Assert.That(great[0],Is.EqualTo(sword[0]*1.2f).Within(.001f));
             Assert.That(axe,Is.GreaterThan(great[2]),"The strongest combo hit must remain weaker than the axe.");
-            Assert.That(axe,Is.EqualTo(sword[0]*2.2f).Within(.001f));
+            Assert.That(axe,Is.EqualTo(sword[0]*1.5f).Within(.001f));
             float riposte1=Damage(MeleeWeaponKind.Greatsword,4), riposte2=Damage(MeleeWeaponKind.Greatsword,5);
             Assert.That(riposte1,Is.GreaterThan(sword[2]));
             Assert.That(riposte2,Is.GreaterThan(riposte1).And.LessThan(axe));

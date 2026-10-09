@@ -7278,4 +7278,4 @@ MonoBehaviour:
   animationName: Weapon_Greatsword3
   comboWindowStart: 0.3
   comboWindowEnd: 0.95
-  damage: 1.8
+  damage: 1.4
