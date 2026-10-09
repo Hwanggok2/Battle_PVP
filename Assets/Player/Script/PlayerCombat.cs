@@ -254,10 +254,11 @@ public partial class PlayerCombat : NetworkBehaviour
     private JobSkillData MonostatDefSkillData => IsSkillDataKind(_monostatDefSkillData, JobSkillKind.MonostatDefTaunt) ? _monostatDefSkillData : null;
     private float MonostatStrCastSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CastSeconds : MonostatStrSkillCastSeconds;
     private float MonostatStrDurationSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.DurationSeconds : MonostatStrSkillDurationSeconds;
-    private float MonostatStrCooldownSeconds => MonostatStrSkillData != null ? MonostatStrSkillData.CooldownSeconds : MonostatStrSkillCooldownSeconds;
+    private float PassiveCooldown => GetComponent<PassiveLoadout>()?.CooldownMultiplier ?? 1f;
+    private float MonostatStrCooldownSeconds => (MonostatStrSkillData != null ? MonostatStrSkillData.CooldownSeconds : MonostatStrSkillCooldownSeconds) * PassiveCooldown;
     private float MonostatAgiCastSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CastSeconds : MonostatAgiSkillCastSeconds;
     private float MonostatAgiDurationSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.DurationSeconds : MonostatAgiSkillDurationSeconds;
-    private float MonostatAgiCooldownSeconds => MonostatAgiSkillData != null ? MonostatAgiSkillData.CooldownSeconds : MonostatAgiSkillCooldownSeconds;
+    private float MonostatAgiCooldownSeconds => (MonostatAgiSkillData != null ? MonostatAgiSkillData.CooldownSeconds : MonostatAgiSkillCooldownSeconds) * PassiveCooldown;
     private int MonostatAgiPoisonMaxStackCount => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonMaxStacks > 0 ? MonostatAgiSkillData.PoisonMaxStacks : MonostatAgiPoisonMaxStacks;
     private float MonostatAgiPoisonDamagePerStackPerSecondValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonDamagePerStackPerSecond > 0f ? MonostatAgiSkillData.PoisonDamagePerStackPerSecond : MonostatAgiPoisonDamagePerStackPerSecond;
     private float MonostatAgiPoisonStackDurationSecondsValue => MonostatAgiSkillData != null && MonostatAgiSkillData.PoisonStackDurationSeconds > 0f ? MonostatAgiSkillData.PoisonStackDurationSeconds : MonostatAgiPoisonStackDurationSeconds;
@@ -1775,7 +1776,7 @@ public partial class PlayerCombat : NetworkBehaviour
         if(charged) cooldown=0;
         var execution = new CombatSkillExecution(_advancedCastingSkillKey >= 0, _advancedCastCompleteAt, 0d, cooldown);
         if (!AdvancedSkillPlan.TryBegin(data.SkillKind, execution, now, requestedStartTime,
-                data.CastSeconds, data.CooldownSeconds, HasSkillCastAnimation(data), out AdvancedSkillPlan plan))
+                data.CastSeconds, data.CooldownSeconds * PassiveCooldown, HasSkillCastAnimation(data), out AdvancedSkillPlan plan))
             return false;
 
         if(charged && !copied && !_expanded.SpendCharge(data.SkillKind)) return false;
@@ -2724,7 +2725,7 @@ public partial class PlayerCombat : NetworkBehaviour
             hitPosition,
             bodyPartMultiplier,
             bodyPart,
-            popupPredictionId);
+            popupPredictionId, DamageDelivery.Ranged);
     }
 
     private int ResolveAvailableSkillCount()
@@ -2815,7 +2816,7 @@ public partial class PlayerCombat : NetworkBehaviour
                 activeUntil = _advancedActiveSkillKey == key ? _advancedActiveUntil : 0d;
                 TryGetAdvancedCooldownUntil(key, out cooldownUntil);
                 castSeconds = data.CastSeconds;
-                cooldownSeconds = data.CooldownSeconds;
+                cooldownSeconds = data.CooldownSeconds * PassiveCooldown;
             }
         }
 
@@ -2897,7 +2898,7 @@ public partial class PlayerCombat : NetworkBehaviour
         if (!IsValidPoisonTarget(target))
             return;
 
-        if (!_poisonStacks.Add(target, hitPosition, SkillTime, MonostatAgiPoisonStackDurationSecondsValue,
+        if (!_poisonStacks.Add(target, hitPosition, SkillTime, PassiveLoadout.DebuffDuration(target as Component, MonostatAgiPoisonStackDurationSecondsValue),
                 MonostatAgiPoisonMaxStackCount)) return;
 
         if (target is Component component) component.GetComponent<DebuffIndicator>()?.TrackPoison(this);

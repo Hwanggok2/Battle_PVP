@@ -196,7 +196,8 @@ namespace BattlePvp.Stats
                 _derivedStatsDirty = false;
                 _derivedCalculationCount++;
             }
-            return _cachedDerivedStats;
+            var passives = GetComponent<BattlePvp.Combat.PassiveLoadout>();
+            return passives != null ? passives.ModifyStats(_cachedDerivedStats) : _cachedDerivedStats;
         }
 
         /// <summary>
@@ -206,6 +207,7 @@ namespace BattlePvp.Stats
         {
             Identity vId = Calculator.ResolveIdentity(virtualStats, out _);
             DerivedCombatStats derived = CharacterModifiers.Apply(StatBalanceCalculator.Calculate(virtualStats, vId));
+            if (TryGetComponent<BattlePvp.Combat.PassiveLoadout>(out var passives)) derived = passives.ModifyStats(derived);
             previewAtk = derived.AttackPower;
             previewDef = derived.DefenseEfficiencyPercent;
             previewMaxHp = derived.MaxHp;

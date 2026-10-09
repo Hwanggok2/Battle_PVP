@@ -203,6 +203,7 @@ public partial class PlayerCombat
         var catalog = WeaponCatalog.Instance;
         Vector3 toAttacker = Vector3.ProjectOnPlane(attacker.transform.position - transform.position, transform.up);
         if (toAttacker.sqrMagnitude < .0001f || Vector3.Angle(transform.forward, toAttacker) > (catalog?.GuardArcDegrees ?? 120f) * .5f) return false;
+        GetComponent<PassiveLoadout>()?.BlockSucceeded(true);
         attacker.ReceiveWeaponRecoil(catalog?.ShieldRecoilSeconds ?? .975f);
         if (NetworkServer.active) RpcShieldBlockSound();
         else GetComponent<CombatAudio>()?.PlayShieldBlock();
@@ -228,6 +229,7 @@ public partial class PlayerCombat
         var catalog = WeaponCatalog.Instance;
         _riposteUntil = SkillTime + (catalog?.RiposteReadySeconds ?? 2.5f);
         _weaponGuard = false;
+        GetComponent<PassiveLoadout>()?.BlockSucceeded(false);
         attacker.ReceiveWeaponRecoil(catalog?.ParryRecoilSeconds ?? .65f);
         return true;
     }

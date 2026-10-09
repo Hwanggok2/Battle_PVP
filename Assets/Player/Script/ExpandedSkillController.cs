@@ -113,12 +113,14 @@ namespace BattlePvp.Combat
         private static readonly JobSkillKind[] ChargeSkills = { JobSkillKind.Knife, JobSkillKind.Trap, JobSkillKind.StrategistRoll, JobSkillKind.PolymathRoll };
         public SkillRuntime Read(JobSkillKind kind) => States.TryGetValue((int)kind, out var state) ? state :
             new SkillRuntime { Charges = MaxCharges(kind) };
+        private float PassiveCooldown => GetComponent<PassiveLoadout>()?.CooldownMultiplier ?? 1f;
+        private float EffectiveRecharge(JobSkillKind kind) => RechargeSeconds(kind) * PassiveCooldown;
         public SkillRuntime ChargeState(JobSkillKind kind) => Recharged(kind,Read(kind),Now);
-        private static SkillRuntime Recharged(JobSkillKind kind,SkillRuntime state,double now)
+        private SkillRuntime Recharged(JobSkillKind kind,SkillRuntime state,double now)
         {
             int maximum=MaxCharges(kind);
             while(state.Charges<maximum && state.NextChargeAt>0 && now>=state.NextChargeAt)
-            { state.Charges++; state.NextChargeAt+=RechargeSeconds(kind); }
+            { state.Charges++; state.NextChargeAt+=EffectiveRecharge(kind); }
             if(state.Charges>=maximum) state.NextChargeAt=0;
             return state;
         }
@@ -126,7 +128,7 @@ namespace BattlePvp.Combat
         {
             if(!Authority || !AliveReady || !UsesCharges(kind)) return false;
             var state=ChargeState(kind); if(state.Charges<=0) return false;
-            state.Charges--; if(state.NextChargeAt<=0) state.NextChargeAt=Now+RechargeSeconds(kind);
+            state.Charges--; if(state.NextChargeAt<=0) state.NextChargeAt=Now+EffectiveRecharge(kind);
             States[(int)kind]=state; return true;
         }
         public bool Active(JobSkillKind kind) => Now < Read(kind).ActiveUntil;
@@ -259,7 +261,7 @@ namespace BattlePvp.Combat
             BreakStealth(); _cancelled = false; TrapReady = false; _trapFromCopy = false;
             if(kind != JobSkillKind.Knife) KnifeReady = false;
             if (kind != JobSkillKind.Knife && kind != JobSkillKind.Charge && kind != JobSkillKind.Berserk)
-                state.CooldownUntil = Now + Value(kind,"CooldownSeconds",kind == JobSkillKind.Bash ? 15 : 0);
+                state.CooldownUntil = Now + (Value(kind,"CooldownSeconds",kind == JobSkillKind.Bash ? 15 : 0)) * PassiveCooldown;
             if (kind == JobSkillKind.Knife) { KnifeReady = true; return true; }
             state.ActiveUntil = Now + Value(kind,"DurationSeconds",kind == JobSkillKind.Bash ? 10 : 0);
             if (kind == JobSkillKind.Berserk) { state.ActiveUntil = double.MaxValue; _nextDrain = Now + 1; }
@@ -297,7 +299,7 @@ namespace BattlePvp.Combat
             if (kind == JobSkillKind.Trap) return true;
             _maintainedCopy = kind == JobSkillKind.Berserk ? (int)kind : -1;
             CopiedKind = -1;
-            var steal = Read(JobSkillKind.Steal); steal.CooldownUntil = Now + Value(JobSkillKind.Steal,"CooldownSeconds",20); States[(int)JobSkillKind.Steal] = steal;
+            var steal = Read(JobSkillKind.Steal); steal.CooldownUntil = Now + (Value(JobSkillKind.Steal,"CooldownSeconds",20)) * PassiveCooldown; States[(int)JobSkillKind.Steal] = steal;
             return true;
         }
         public bool HandleAttackInput()
@@ -357,7 +359,7 @@ namespace BattlePvp.Combat
             if(copied)
             {
                 CopiedKind=-1;
-                var steal=Read(JobSkillKind.Steal); steal.CooldownUntil=Now+Value(JobSkillKind.Steal,"CooldownSeconds",20); States[(int)JobSkillKind.Steal]=steal;
+                var steal=Read(JobSkillKind.Steal); steal.CooldownUntil=Now+(Value(JobSkillKind.Steal,"CooldownSeconds",20)) * PassiveCooldown; States[(int)JobSkillKind.Steal]=steal;
             }
             Cue(JobSkillKind.Trap,point); StartCoroutine(PlaceTrap(point,++_trapCast)); return true;
         }
@@ -367,7 +369,7 @@ namespace BattlePvp.Combat
             if (!Authority || !AliveReady || !KnifeReady || !ValidAim(aim) || Now < _nextKnife || Now < _stunnedUntil || Now < _busyUntil) return;
             var state = Read(JobSkillKind.Knife); if (state.Charges <= 0) return;
             _nextKnife = Now + Value(JobSkillKind.Knife,"ThrowInterval",.3f);
-            state.Charges--; if (state.NextChargeAt <= 0) state.NextChargeAt = Now + Value(JobSkillKind.Knife,"RechargeSeconds",8);
+            state.Charges--; if (state.NextChargeAt <= 0) state.NextChargeAt = Now + EffectiveRecharge(JobSkillKind.Knife);
             States[(int)JobSkillKind.Knife] = state;
             KnifeReady = state.Charges > 0; NotifyAttackStarted();
             StartCoroutine(Projectile(JobSkillKind.Knife, aim.normalized)); Cue(JobSkillKind.Knife, transform.position + aim);
@@ -388,7 +390,7 @@ namespace BattlePvp.Combat
                 {
                     var receiver = hit.collider.GetComponentInParent<IDamageReceiver>();
                     var stats = hit.collider.GetComponentInParent<StatManager>();
-                    if(receiver != null && stats != null && GetComponent<AttackProcessor>().ProcessSkillHit(Value(kind,"DamageMultiplier",.5f),stats,receiver,hit.point))
+                    if(receiver != null && stats != null && GetComponent<AttackProcessor>().ProcessSkillHit(Value(kind,"DamageMultiplier",.5f),stats,receiver,hit.point, bodyPart: hit.collider.GetComponent<HitBodyPart>()?.Part ?? BodyPart.Body, delivery: DamageDelivery.Ranged))
                         _combat.AddKnifePoison(receiver, hit.point);
                     yield break;
                 }
@@ -416,9 +418,14 @@ namespace BattlePvp.Combat
                     var dummy=hit.collider.GetComponentInParent<DummyHealth>();
                     if(receiver!=null && !ReferenceEquals(receiver,_health))
                     {
-                        var damage=receiver.ApplyDamage(new DamageRequest(Value(JobSkillKind.Hook,"FixedDamage",10),
-                            DamageSource.Fixed,0,_health,hit.point,DamageSource.Physical));
-                        if(damage.Accepted) _combat.NotifyConfirmedHit(false);
+                        var damage=receiver.ApplyDamage(new DamageRequest(Value(JobSkillKind.Hook,"FixedDamage",10) * (GetComponent<PassiveLoadout>()?.DamageMultiplier(receiver as Component, DamageDelivery.Ranged) ?? 1f),
+                            DamageSource.Fixed,0,_health,hit.point,DamageSource.Physical, delivery: DamageDelivery.Ranged));
+                        if(damage.Accepted)
+                        {
+                            var part=hit.collider.GetComponent<HitBodyPart>()?.Part ?? BodyPart.Body;
+                            _combat.NotifyConfirmedHit(part == BodyPart.Head);
+                            GetComponent<PassiveLoadout>()?.HitAccepted(receiver as Component,part,DamageDelivery.Ranged,damage);
+                        }
                         // Invulnerability rejects both the damage and the displacement.
                         if(damage.Accepted && (dummy!=null || !damage.Killed) && (target!=null || dummy!=null))
                         {
@@ -509,6 +516,7 @@ namespace BattlePvp.Combat
         public void ApplyControl(float duration, bool root, bool vulnerable)
         {
             if (!Authority || !AliveReady || duration <= 0 || !float.IsFinite(duration)) return;
+            duration = PassiveLoadout.DebuffDuration(this, duration);
             if(root) { _rootUntil = Math.Max(_rootUntil,Now+duration); _rootRotation = transform.eulerAngles; }
             else _stunnedUntil = Math.Max(_stunnedUntil,Now+duration);
             if(vulnerable) _vulnerableUntil = Math.Max(_vulnerableUntil,Now+duration);
@@ -553,14 +561,14 @@ namespace BattlePvp.Combat
         private void EndBerserk()
         {
             if(!Berserking) return;
-            var state = Read(JobSkillKind.Berserk); state.ActiveUntil=0; state.CooldownUntil=Now+Value(JobSkillKind.Berserk,"CooldownSeconds",20); States[(int)JobSkillKind.Berserk]=state;
+            var state = Read(JobSkillKind.Berserk); state.ActiveUntil=0; state.CooldownUntil=Now+(Value(JobSkillKind.Berserk,"CooldownSeconds",20)) * PassiveCooldown; States[(int)JobSkillKind.Berserk]=state;
             if (_maintainedCopy == (int)JobSkillKind.Berserk) _maintainedCopy = -1;
         }
         private void EndCharge()
         {
             RestoreChargeContacts();
             if(!IsCharging && !_wasCharging) return;
-            var state=Read(JobSkillKind.Charge); state.ActiveUntil=0; state.CooldownUntil=Now+Value(JobSkillKind.Charge,"CooldownSeconds",20); States[(int)JobSkillKind.Charge]=state;
+            var state=Read(JobSkillKind.Charge); state.ActiveUntil=0; state.CooldownUntil=Now+(Value(JobSkillKind.Charge,"CooldownSeconds",20)) * PassiveCooldown; States[(int)JobSkillKind.Charge]=state;
             _wasCharging=false;
         }
         private void Update()
@@ -683,7 +691,7 @@ namespace BattlePvp.Combat
             double deadline=UsesCharges(kind) ? state.NextChargeAt : state.CooldownUntil;
             if(phase==SkillHudPhase.Ready && deadline>Now && (!UsesCharges(kind) || state.Charges==0)) phase=SkillHudPhase.Cooldown;
             float remaining=(UsesCharges(kind) || phase==SkillHudPhase.Cooldown) && deadline>Now ? (float)(deadline-Now) : 0;
-            float duration=UsesCharges(kind) ? RechargeSeconds(kind) : Value(kind,"CooldownSeconds");
+            float duration=UsesCharges(kind) ? EffectiveRecharge(kind) : Value(kind,"CooldownSeconds") * PassiveCooldown;
             if((kind==JobSkillKind.Dice || kind==JobSkillKind.Bash) && Active(kind)) { remaining=(float)(state.ActiveUntil-Now); duration=Value(kind,"DurationSeconds",kind==JobSkillKind.Bash ? 10 : 15); }
             if(kind==JobSkillKind.Trap && IsPlacingTrap) { phase=SkillHudPhase.Casting; remaining=(float)(_trapPlaceUntil-Now); duration=Value(kind,"CastSeconds",1.1f); }
             float fill=phase==SkillHudPhase.Active && kind!=JobSkillKind.Dice && !UsesCharges(kind) ? 1 : Mathf.Clamp01(remaining/Mathf.Max(.01f,duration));

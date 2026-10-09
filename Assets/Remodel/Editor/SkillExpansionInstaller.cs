@@ -73,6 +73,7 @@ namespace BattlePvp.Remodel.Editor
             try
             {
                 if(player.GetComponent<SkillLoadout>()==null) player.AddComponent<SkillLoadout>();
+                if(player.GetComponent<PassiveLoadout>()==null) player.AddComponent<PassiveLoadout>();
                 if(player.GetComponent<ExpandedSkillController>()==null) player.AddComponent<ExpandedSkillController>();
                 PrefabUtility.SaveAsPrefabAsset(player,"Assets/Prefabs/Player.prefab");
             }

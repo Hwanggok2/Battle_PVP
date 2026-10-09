@@ -186,6 +186,8 @@ public partial class PlayerManager : NetworkBehaviour
 
     public void SetMovementEffect(int sourceId, float multiplier, float durationSeconds)
     {
+        if (multiplier < 1f && sourceId != CombatEffectSources.BowCharge && sourceId != ExpandedSkillController.MoveSource)
+            durationSeconds = PassiveLoadout.DebuffDuration(this, durationSeconds);
         _movementEffects.Set(sourceId, multiplier, durationSeconds, MovementTime);
         RecordServerMovementControls();
     }
@@ -941,12 +943,22 @@ public partial class PlayerManager : NetworkBehaviour
                 _jumpRequestedUntil = now + Mathf.Max(.01f, _jumpBufferSeconds);
             }
         }
-        if (_jumpRequestedUntil < now || velocityY > 0f || !CanConsumeJumpRequest())
+        if (_jumpRequestedUntil <= 0d || _jumpRequestedUntil < now || !CanConsumeJumpRequest())
             return false;
 
         bool canUseCoyoteTime = now - _lastGroundedAt <= Mathf.Max(0f, _coyoteTimeSeconds);
-        if (!IsGroundedForJump() && !canUseCoyoteTime)
-            return false;
+        bool groundJump = velocityY <= 0f && (IsGroundedForJump() || canUseCoyoteTime);
+        if (!groundJump && !CanAirJump) return false;
+        if (!groundJump)
+        {
+            _airJumpUsed = true;
+            if (isClient && !isServer)
+            {
+                _awaitingAirJump = true; _pendingAirJumpEpoch = _movementEpoch;
+                CmdAirJump(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+            }
+        }
+        _lastJumpAt = now;
 
         _jumpRequestedUntil = 0d;
         _lastGroundedAt = double.NegativeInfinity;
@@ -1083,6 +1095,7 @@ public partial class PlayerManager : NetworkBehaviour
 
         // 3. 중력 처리
         bool groundedForJump = velocityY <= 0f && IsGroundedForJump();
+        if (groundedForJump) _airJumpUsed = false;
         if (groundedForJump)
             _lastGroundedAt = LocalInputTime;
 
@@ -1569,8 +1582,10 @@ public partial class PlayerManager : NetworkBehaviour
 
         if (!positionChanged)
             _nextRotationOnlySyncTime = Time.time + Mathf.Max(_transformSyncInterval, _rotationOnlyTransformSyncInterval);
-        RecordSentTransform(false);
-        CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+        // Until the jump command is processed, keep its following poses on the same ordered channel.
+        RecordSentTransform(_awaitingAirJump);
+        if (_awaitingAirJump) CmdSyncTransformReliable(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
+        else CmdSyncTransform(transform.position, transform.rotation, NetworkTime.time, _movementEpoch);
     }
 
     private void ForceSyncTransform()

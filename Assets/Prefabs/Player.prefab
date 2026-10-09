@@ -5657,6 +5657,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5220660109301379458}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 06971eb51a256cc40bfb279440136224, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5209211404333399756}
   m_SourcePrefab: {fileID: 100100000, guid: 06971eb51a256cc40bfb279440136224, type: 3}
 --- !u!4 &1197372836843505602 stripped
 Transform:
@@ -6344,6 +6347,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3986effbc28debe4280b799887159070, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.WeaponLoadout
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &5209211404333399756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2299886053629091809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a52a4ac03b68c6e41a9196fcf01cd11b, type: 3}
+  m_Name: ''
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.Combat.PassiveLoadout
   syncDirection: 0
   syncMode: 0
   syncInterval: 0

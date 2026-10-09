@@ -38,6 +38,8 @@ namespace BattlePvp.Combat
         void ApplyDamage(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, UnityEngine.Vector3 hitPosition);
     }
 
+    public enum DamageDelivery { Melee, Ranged, Other }
+
     public readonly struct DamageRequest
     {
         public float Amount { get; }
@@ -47,11 +49,13 @@ namespace BattlePvp.Combat
         public UnityEngine.Vector3 HitPosition { get; }
         public DamageSource PopupSource { get; }
         public uint PopupPredictionId { get; }
+        public DamageDelivery Delivery { get; }
 
         public DamageRequest(float amount, DamageSource source, float attackerAttackPower,
             IDamageReceiver attacker, UnityEngine.Vector3 hitPosition,
-            DamageSource? popupSource = null, uint popupPredictionId = 0)
+            DamageSource? popupSource = null, uint popupPredictionId = 0, DamageDelivery delivery = DamageDelivery.Melee)
         {
+            Delivery = delivery;
             Amount = amount;
             Source = source;
             AttackerAttackPower = attackerAttackPower;

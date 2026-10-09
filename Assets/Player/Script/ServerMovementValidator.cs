@@ -12,6 +12,7 @@ namespace BattlePvp.Combat
         private double _budgetTime;
         private float _credit;
         private MovementFlightState _flight;
+        private bool _airJumpUsed;
         private Vector3 _forcedDirection;
         private float _forcedRemaining;
         private double _forcedUntil;
@@ -27,6 +28,7 @@ namespace BattlePvp.Combat
             _flight = new MovementFlightState(position.y, now, true, 0f);
             _forcedRemaining = 0f;
             _verticalVelocity = 0f;
+            _airJumpUsed = false;
         }
 
         public void AuthorizeForcedMove(Vector3 direction, float distance, float duration, double now)
@@ -50,6 +52,7 @@ namespace BattlePvp.Combat
             _credit = 0.5f;
             _forcedRemaining = 0f;
             _flight = _flight.Rebase(position.y, now, grounded);
+            if (grounded) _airJumpUsed = false;
         }
 
         public bool TryAccept(Vector3 position, Quaternion rotation, double sampleTime, double now,
@@ -87,6 +90,16 @@ namespace BattlePvp.Combat
             _budgetTime = now;
             _forcedRemaining -= forcedUsed;
             _flight = flight;
+            if (grounded) _airJumpUsed = false;
+            return true;
+        }
+
+        public bool TryBeginAirJump(float height, double now)
+        {
+            if (_airJumpUsed || _flight.WasGrounded || !float.IsFinite(height) || height <= 0 ||
+                !double.IsFinite(now) || now < LastSampleTime) return false;
+            _airJumpUsed = true;
+            _flight = new MovementFlightState(Position.y, now, false, height);
             return true;
         }
 
@@ -114,6 +127,7 @@ namespace BattlePvp.Combat
             _forcedRemaining = 0f;
             _verticalVelocity = verticalVelocity;
             _flight = _flight.Rebase(position.y, now, grounded);
+            if (grounded) _airJumpUsed = false;
         }
 
         public static bool IsValidRotation(Quaternion rotation)

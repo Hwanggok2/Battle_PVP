@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace BattlePvp.UI
 {
-    public sealed class JobGuidePanel : MonoBehaviour
+    public sealed partial class JobGuidePanel : MonoBehaviour
     {
         public static JobGuidePanel Instance { get; private set; }
         public static bool IsOpen => Instance != null && Instance._panel != null && Instance._panel.activeInHierarchy;
@@ -61,6 +61,7 @@ namespace BattlePvp.UI
             }
             _save = _panel.transform.Find("Save").GetComponent<Button>(); _save.onClick.AddListener(Save);
             _status = _panel.transform.Find("Footer").GetComponent<TMP_Text>();
+            BuildPassives();
         }
         private void OnEnable() { StatManager.LocalChanged += Bind; Bind(StatManager.Local); }
         private void OnDisable()
@@ -69,6 +70,7 @@ namespace BattlePvp.UI
             if (_local != null) _local.StatsChanged -= RefreshStats;
             if (_loadout != null) _loadout.Changed -= OnLoadoutChanged;
             _local = null;
+            BindPassives(null);
             if (_panel != null) _panel.SetActive(false);
             GameInputController.RefreshCursorState();
         }
@@ -80,6 +82,7 @@ namespace BattlePvp.UI
             if (_local != null) _local.StatsChanged -= RefreshStats;
             if (_loadout != null) _loadout.Changed -= OnLoadoutChanged;
             _local = stats;
+            BindPassives(_local != null ? _local.GetComponent<PassiveLoadout>() : null);
             _loadout = _local != null ? _local.GetComponent<SkillLoadout>() : null;
             if (_loadout != null) _loadout.Changed += OnLoadoutChanged;
             if (_local != null) _local.StatsChanged += RefreshStats;
@@ -104,6 +107,7 @@ namespace BattlePvp.UI
             CharacterInfoController.CloseOpenPanel();
             LobbyUIManager.Instance?.CloseInputPanels();
             _draft = _loadout != null ? _loadout.Snapshot() : SkillLoadoutStore.Read();
+            _passivePanel.SetActive(false);
             _panel.SetActive(true);
             Select(_local != null ? JobGuideContent.IndexOf(_local.CurrentIdentity) : 0);
             GameInputController.RefreshCursorState();
@@ -152,7 +156,7 @@ namespace BattlePvp.UI
                 if (data == null) continue;
                 _cards[slot].Find("Name").GetComponent<TMP_Text>().text = data.DisplayName;
                 _cards[slot].Find("Effect").GetComponent<TMP_Text>().text = SkillDescription.Effect(data);
-                _cards[slot].Find("Timing").GetComponent<TMP_Text>().text = string.Format(SkillGameData.Text("UI_SkillTiming", "시전 {0:0.#}초 · 재사용 {1:0.#}초"), data.CastSeconds, data.CooldownSeconds);
+                _cards[slot].Find("Timing").GetComponent<TMP_Text>().text = string.Format(SkillGameData.Text("UI_SkillTiming", "시전 {0:0.#}초 · 재사용 {1:0.#}초"), data.CastSeconds, data.CooldownSeconds * (_passives?.CooldownMultiplier ?? 1f));
                 var icon = _cards[slot].Find("Icon").GetComponent<Image>();
                 icon.sprite = data.IconSprite; icon.enabled = icon.sprite != null;
                 for (int equip = 0; equip < 2; equip++)

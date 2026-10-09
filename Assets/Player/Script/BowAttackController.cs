@@ -883,7 +883,8 @@ public sealed class BowAttackController : NetworkBehaviour
         : _settings != null ? _settings.AnimationLayer : 1;
 
     private float ResolveCharacterAttackSpeed() =>
-        GetComponent<BattlePvp.Stats.StatManager>()?.CharacterModifiers.AttackSpeed ?? 1f;
+        (GetComponent<BattlePvp.Stats.StatManager>()?.CharacterModifiers.AttackSpeed ?? 1f) *
+        (GetComponent<BattlePvp.Combat.PassiveLoadout>()?.AttackSpeedMultiplier ?? 1f);
 
     private void ApplyBowPlaybackSpeed()
     {

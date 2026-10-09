@@ -121,6 +121,7 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier * _playerCombat.WeaponMeleeDamageMultiplier;
 
+        attackPower *= GetComponent<PassiveLoadout>()?.DamageMultiplier(defender as Component, DamageDelivery.Melee) ?? 1f;
         penetrationPercent = Clamp(penetrationPercent, 0f, 100f);
 
         // 2) DEF_Eff 구성 (CurrentDEF + BonusEff 승산 중첩 + 0.75 hardcap)
@@ -157,6 +158,7 @@ public sealed class AttackProcessor : MonoBehaviour
             _playerCombat = GetComponent<PlayerCombat>();
         DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId);
         if (!result.Accepted) return;
+        GetComponent<PassiveLoadout>()?.HitAccepted(defender as Component, bodyPart, DamageDelivery.Melee, result);
         _playerCombat?.NotifyAcceptedMeleeHit(attackData);
         if (attackerIdentity.Type == IdentityType.Monostat && attackerIdentity.PrimaryStat == StatKind.STR &&
             defenderGuard != null && defenderGuard.IsGuarding)
@@ -165,7 +167,7 @@ public sealed class AttackProcessor : MonoBehaviour
         _playerCombat?.NotifyPhysicalDamageDealt(result.HpDamage, defender, hitPosition);
     }
 
-    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0)
+    public bool ProcessSkillHit(float damageMultiplier, StatManager defenderStats, IDamageReceiver defender, Vector3 hitPosition, float bodyPartMultiplier = 1f, BodyPart bodyPart = BodyPart.Body, uint popupPredictionId = 0, DamageDelivery delivery = DamageDelivery.Melee)
     {
         if (_attackerStats == null || (NetworkServer.active && !_attackerStats.HasServerCombatStats))
             return false;
@@ -177,32 +179,34 @@ public sealed class AttackProcessor : MonoBehaviour
         if (_playerCombat == null)
             _playerCombat = GetComponent<PlayerCombat>();
 
-        float attackPower = _currentAtk * damageMultiplier;
+        var current = _attackerStats.GetDerivedStats();
+        float attackPower = current.AttackPower * damageMultiplier * (GetComponent<PassiveLoadout>()?.DamageMultiplier(defender as Component, delivery) ?? 1f);
         if (_playerCombat != null)
             attackPower *= _playerCombat.AttackPowerBonusMultiplier;
         DerivedCombatStats defenderDerived = defenderStats.GetDerivedStats();
         float defenderDef = defenderDerived.DefenseEfficiencyPercent / 100f;
-        float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, 0f, Mathf.Clamp(_currentPene, 0f, 100f));
+        float finalDamage = _damageCalculator.PredictFinalDamage(attackPower, defenderDef, 0f, Mathf.Clamp(current.PenetrationPercent, 0f, 100f));
         finalDamage *= defenderDerived.IncomingDamageMultiplier;
         finalDamage *= Mathf.Max(0f, bodyPartMultiplier);
         if (finalDamage <= 0f)
             return false;
 
-        DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId);
+        DamageResult result = ApplyPhysicalDamage(defender, finalDamage, attackPower, hitPosition, popupPredictionId, delivery);
         if (!result.Accepted) return false;
+        GetComponent<PassiveLoadout>()?.HitAccepted(defender as Component, bodyPart, delivery, result);
         _playerCombat?.NotifyConfirmedHit(bodyPart == BodyPart.Head);
         _playerCombat?.NotifyPhysicalDamageDealt(result.HpDamage, defender, hitPosition);
         return true;
     }
 
     private DamageResult ApplyPhysicalDamage(IDamageReceiver defender, float damage, float power,
-        Vector3 hitPosition, uint predictionId)
+        Vector3 hitPosition, uint predictionId, DamageDelivery delivery = DamageDelivery.Melee)
     {
         if (!float.IsFinite(damage) || damage <= 0f || !CombatValidation.IsFinite(hitPosition))
             return default;
         if (defender is IDamageReceiverWithResult receiver)
             return receiver.ApplyDamage(new DamageRequest(damage, DamageSource.Physical, power,
-                _attackerDamageReceiver, hitPosition, popupPredictionId: predictionId));
+                _attackerDamageReceiver, hitPosition, popupPredictionId: predictionId, delivery: delivery));
         float hpBefore = defender.CurrentHp;
         if (defender is IDamageReceiverWithContext context)
             context.ApplyDamage(damage, DamageSource.Physical, power, _attackerDamageReceiver, hitPosition);

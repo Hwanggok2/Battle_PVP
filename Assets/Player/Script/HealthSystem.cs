@@ -13,7 +13,7 @@ namespace BattlePvp.Combat
     /// 플레이어의 HP를 관리하는 런타임 시스템.
     /// - CON에 따라 MaxHP가 동적으로 변한다. (FinalTotal(CON) 기반)
     /// - ApplyDamage는 "최종 피해"를 적용한다. (계산은 AttackProcessor/DamageCalculator에서 선행)
-    /// - Monostat(DEF)일 때 Physical 피해를 받으면 Thorns를 반사한다. (재반사 방지: Thorns source는 반사 트리거 금지)
+    /// - Monostat(DEF)는 근접 Physical 피해만 반사한다. Thorns source는 재반사하지 않는다.
     /// - Strategist일 때 HP overflow(현재 HP > MaxHP)는 overflow 상태에서만 코루틴으로 틱 감소한다.
     /// </summary>
     [DisallowMultipleComponent]
@@ -314,10 +314,10 @@ namespace BattlePvp.Combat
         public DamageResult ApplyDamage(DamageRequest request)
         {
             return ApplyDamageWithPopupSource(request.Amount, request.Source, request.AttackerAttackPower,
-                request.Attacker, request.HitPosition, request.PopupSource, request.PopupPredictionId);
+                request.Attacker, request.HitPosition, request.PopupSource, request.PopupPredictionId, request.Delivery);
         }
 
-        public DamageResult ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0)
+        public DamageResult ApplyDamageWithPopupSource(float amount, DamageSource source, float attackerAttackPower, IDamageReceiver attacker, Vector3 hitPosition, DamageSource popupSource, uint popupPredictionId = 0, DamageDelivery delivery = DamageDelivery.Melee)
         {
             if (!CanChangeHealth || IsDead || isInvincible || SkillTime < _skillInvulnerableUntil ||
                 (NetworkServer.active && _statManager != null && !_statManager.HasServerCombatStats) ||
@@ -369,11 +369,11 @@ namespace BattlePvp.Combat
             RaiseHpChanged();
 
             // Thorns 처리(재반사 금지)
-            // - Monostat DEF일 때만
+            // - Monostat DEF의 기본 반사는 근접만, 별도 가시 스킬은 기존 범위를 유지
             // - Physical 피해일 때만
             // - attacker 정보가 있어야 반사 가능
             if (source == DamageSource.Physical && attacker != null && attackerAttackPower > 0f &&
-                (IsMonostatDef() || (expanded != null && expanded.Active(JobSkillKind.Thorns))))
+                ((IsMonostatDef() && delivery == DamageDelivery.Melee) || (expanded != null && expanded.Active(JobSkillKind.Thorns))))
             {
                 float thorns = _damageCalculator.PredictThornsReflectDamage(attackerAttackPower, attacker.MaxHp) * (GetComponent<ExpandedSkillController>()?.ReflectMultiplier ?? 1f);
                 if (tauntDefenseActive)
@@ -651,6 +651,9 @@ namespace BattlePvp.Combat
                 StopOverflowRoutine();
                 PublishLifeState();
                 
+                if (_lastAttacker is Component killer && killer != this)
+                    killer.GetComponent<PassiveLoadout>()?.EnemyKilled(this);
+
                 // 막타 점수 부여 로직
                 if (isServer && _lastAttacker != null)
                 {
