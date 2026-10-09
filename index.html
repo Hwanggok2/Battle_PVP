@@ -20,14 +20,21 @@
     </footer>
   </main>
   <script src="shell.js"></script>
+  <script src="split-data.js"></script>
   <script>
     const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
     const loader = document.createElement('script');
-    loader.src = 'Build/b52a6751c4f25e4eac7735382c5d05cc.loader.js';
-    loader.onload = () => createUnityInstance(document.getElementById('unity-canvas'), {
-      dataUrl: 'Build/7799ba50a0aa52947b1d36a3117d4073.data.unityweb',
-      frameworkUrl: 'Build/9d30ba7d56dce2fddcd2c4e2b7e69612.framework.js.unityweb',
-      codeUrl: 'Build/174fb67046925108c47b95b6b6b23018.wasm.unityweb',
+    loader.src = 'Build/42df156ce1f9a60d3bee71830115c1c0.loader.js';
+    loader.onload = async () => {
+      let dataUrl;
+      try {
+        dataUrl = await BattlePvpData.download([{"url": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part1", "bytes": 62914560}, {"url": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part2", "bytes": 51223700}], progress => {
+          document.getElementById('load-progress').value = progress * 0.7;
+        });
+        const instance = await createUnityInstance(document.getElementById('unity-canvas'), {
+      dataUrl,
+      frameworkUrl: 'Build/77972e65bda1176dd7fb81422d6be44d.framework.js.unityweb',
+      codeUrl: 'Build/35e897f4754b4a7fe38be50797f3e0e8.wasm.unityweb',
       streamingAssetsUrl: 'StreamingAssets',
       companyName: 'Junu', productName: 'Battle_PvP', productVersion: '0.1.0',
       // Render UI at CSS resolution instead of multiplying every pixel on high-DPI displays.
@@ -35,10 +42,14 @@
       matchWebGLToCanvasSize: true,
       webglContextAttributes: { preserveDrawingBuffer: false, powerPreference: 2 },
       showBanner: (message, type) => { if (type === 'error') shell.showMessage(message); }
-    }, progress => { document.getElementById('load-progress').value = progress; })
-      .then(instance => {
+        }, progress => { document.getElementById('load-progress').value = 0.7 + progress * 0.3; });
         shell.attach(instance);
-      }).catch(error => shell.showMessage(String(error)));
+      } catch (error) {
+        shell.showMessage(String(error));
+      } finally {
+        if (dataUrl) URL.revokeObjectURL(dataUrl);
+      }
+    };
     loader.onerror = () => shell.showMessage('게임 파일을 불러오지 못했습니다. 새로고침해 주세요.');
     document.body.appendChild(loader);
   </script>

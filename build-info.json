@@ -1,15 +1,61 @@
 {
-  "release": "2026-10-06-character-combat",
-  "sourceCommit": "a8623eb7c37e4c2c4da45934917750909b6100a6",
-  "runtimeCommit": "a8623eb7c37e4c2c4da45934917750909b6100a6",
-  "builtUtc": "2026-10-06T14:18:15.8249819Z",
+  "release": "2026-10-09-ui-vfx",
+  "sourceBaseCommit": "05e4f2c1e456405880890d5ead1a1eb799b863e1",
+  "sourceIncludesUncommittedChanges": true,
+  "builtUtc": "2026-10-09T09:22:54.2285932Z",
   "development": false,
   "buildErrors": 0,
+  "originalDataSha256": "7ac552ec59e1959f2bafe8ff5dffab819460f18a5dbc8a6be012499846fc4d56",
+  "dataChunks": [
+    {
+      "url": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part1",
+      "bytes": 62914560
+    },
+    {
+      "url": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part2",
+      "bytes": 51223700
+    }
+  ],
   "files": [
     {
+      "path": ".nojekyll",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Build/35e897f4754b4a7fe38be50797f3e0e8.wasm.unityweb",
+      "bytes": 13173279,
+      "sha256": "6bc7092703fd136f33b795076536226a696b2880b6bec1a98e176109e454fd14"
+    },
+    {
+      "path": "Build/42df156ce1f9a60d3bee71830115c1c0.loader.js",
+      "bytes": 117893,
+      "sha256": "f5ee3afd5df40290b985e95b5c1b30ad64f5db3256cd215e9f427f6dca8b76f9"
+    },
+    {
+      "path": "Build/77972e65bda1176dd7fb81422d6be44d.framework.js.unityweb",
+      "bytes": 86042,
+      "sha256": "184fc250a786981993cdc50f25bc958ee4a80d946b05675fc877f6b12f3c35f3"
+    },
+    {
+      "path": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part1",
+      "bytes": 62914560,
+      "sha256": "5ecfa64c4d16207142b16704bb2f1c1d0a588e862cbdb2e14b3d9642a802094e"
+    },
+    {
+      "path": "Build/9455702cf93a7ace188e6558cc4de35f.data.unityweb.part2",
+      "bytes": 51223700,
+      "sha256": "48b9ff862a2e03691c8a15e55679d1f905da085942dd9b97944179083f826976"
+    },
+    {
       "path": "index.html",
-      "bytes": 2665,
-      "sha256": "be8b167da86e3b49fc0f6ed50fc8f5503d555b8e6dafc6612dd9cd461d14d03b"
+      "bytes": 3188,
+      "sha256": "541bfccd608d657f008d171c707108e1c8f148c47c52b377089cdbd7cebce017"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 876,
+      "sha256": "4edfc6d28f495601064b9499a55766684e6a129f7fcb8c7c7d8c68095099f4a6"
     },
     {
       "path": "shell.css",
@@ -22,24 +68,9 @@
       "sha256": "e86e27bb61c816874abc1c9128a722e2ac3c54816304b6ee980cce6158a546db"
     },
     {
-      "path": "Build/174fb67046925108c47b95b6b6b23018.wasm.unityweb",
-      "bytes": 13055981,
-      "sha256": "8c1c771cad3dc1628d4953ee7b396dd64b0c128d73d8f61120c0e52db6b9df09"
-    },
-    {
-      "path": "Build/7799ba50a0aa52947b1d36a3117d4073.data.unityweb",
-      "bytes": 84252592,
-      "sha256": "0257d35b2268d58a3b55ea7d387b3249f2d4ea9df674d3616b89a5cd5e3c4886"
-    },
-    {
-      "path": "Build/9d30ba7d56dce2fddcd2c4e2b7e69612.framework.js.unityweb",
-      "bytes": 85991,
-      "sha256": "2f5051482bb3d88c0df7c396e8867bf5b31d2f7c78f73f98ccbaa979fc8acdca"
-    },
-    {
-      "path": "Build/b52a6751c4f25e4eac7735382c5d05cc.loader.js",
-      "bytes": 117893,
-      "sha256": "38a1c06e9d76011bf98dbe5126015c813eb46051e0e8024ec96c7077b3d025ac"
+      "path": "split-data.js",
+      "bytes": 1593,
+      "sha256": "14ed02432c1e5050208a05b12b574196a2849a1fcbac8f79f1622f3e862bb29d"
     },
     {
       "path": "StreamingAssets/CharacterNotices.txt",
