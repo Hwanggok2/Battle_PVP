@@ -99,6 +99,7 @@ namespace BattlePvp.UI
         private void RefreshStats(StatContainer _) { if (IsOpen) Select(_selected); }
         private void Update()
         {
+            FlushPassiveSelection();
             // Lobby can display the guide without the FPS input manager.
             if (IsOpen && GameInputController.Instance == null && UnityEngine.InputSystem.Keyboard.current != null &&
                 UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)

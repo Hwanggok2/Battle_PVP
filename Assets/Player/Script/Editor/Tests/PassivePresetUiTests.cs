@@ -59,6 +59,7 @@ namespace BattlePvp.EditorTests
         private PassivePresetBook Book=>Get<PassivePresetBook>(_panel,"_presetBook");
         private Transform Selection=>_root.transform.Find("Panel/PassiveSelection");
         private string Selected=>Get<string>(_panel,"_selectedPreset");
+        private void ClickPreset(string id)=>Selection.Find("Presets/Content/Preset-"+id).GetComponent<Button>().onClick.Invoke();
 
         [Test] public void LegacyPairMigratesOnceAndEveryPresetOwnsIndependentSlots()
         {
@@ -132,18 +133,17 @@ namespace BattlePvp.EditorTests
             Assert.That(book.SetSlot(id,0,14),Is.False); Assert.That(book.Find("concept-stats").Choices,Is.EqualTo(new[]{12,13}));
             book.SetSlot(id,0,0); Assert.That(book.Find(id).Choices,Is.EqualTo(new[]{0,11}));
         }
-        [Test] public void CustomPresetRenamesPersistsAndIsOnlyEquippedAfterApply()
+        [Test] public void CustomPresetRenamesPersistsAndSlotEditsEquipImmediately()
         {
             Open(); string original=Book.ActiveId;
             Call(_panel,"AddPassivePreset"); string custom=Selected;
+            Assert.That(Book.ActiveId,Is.EqualTo(original),"Creating an empty recipe preserves the current loadout.");
             Call(_panel,"RenamePassivePreset",custom,"돌격 조합");
             _panel.DropPassive(custom,0,11); _panel.DropPassive(custom,1,12);
             Assert.That(Book.Entries.Count,Is.EqualTo(9));
             Assert.That(Selection.Find("Presets/Content").childCount,Is.EqualTo(9));
-            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{0,0}));
-            Assert.That(Book.ActiveId,Is.EqualTo(original));
-            Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("선택 중"));
-            Call(_panel,"SavePassives");
+            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{11,12}));
+            Assert.That(Book.ActiveId,Is.EqualTo(custom));
             Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,12}));
             Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("사용 중"));
             _panel.Close(); _panel.Open(); Call(_panel,"OpenPassives");
@@ -167,40 +167,48 @@ namespace BattlePvp.EditorTests
             Assert.That(Book.Find("concept-counter").Choices,Is.EqualTo(new[]{7,11}));
             _panel.ClickPassiveSlot("concept-counter",0,true);
             Assert.That(Book.Find("concept-counter").Choices,Is.EqualTo(new[]{0,11}));
+            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{0,11}));
             _panel.BeginPassiveDrag(1,e); _panel.Close();
             Assert.That(Get<GameObject>(_panel,"_dragGhost"),Is.Null);
         }
         [Test] public void RejectedApplyNeverMarksDraftAsInUseAndAliveBattleIsReadOnly()
         {
             Open(); string active=Book.ActiveId;
-            Call(_panel,"AddPassivePreset"); string custom=Selected; _panel.DropPassive(custom,0,11);
+            Call(_panel,"AddPassivePreset"); string custom=Selected;
+            Book.SetSlot(custom,0,11); PassivePresetStore.Save(Book);
             Set(_panel,"_pendingPreset",custom); Set(_panel,"_pendingChoices",new[]{11,0});
             Call(_panel,"PassiveRequestCompleted",false);
             Assert.That(Book.ActiveId,Is.EqualTo(active)); Assert.That(Get<string>(_panel,"_pendingPreset"),Is.Null);
-            _scene.name="Battle"; _panel.DropPassive(custom,1,12); Call(_panel,"SavePassives"); Call(_panel,"AddPassivePreset");
+            _scene.name="Battle"; _panel.DropPassive(custom,1,12); ClickPreset(custom); Call(_panel,"AddPassivePreset");
             Assert.That(Book.Find(custom).Choices,Is.EqualTo(new[]{11,0}));
             Assert.That(Book.Entries.Count,Is.EqualTo(9)); Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{0,0}));
         }
-        [Test] public void StatsAndPresetSelectionNeverEquipWithoutApply()
+        [Test] public void EveryPresetClickEquipsAndStatChangesNeverSelectAnotherPreset()
         {
             var stats=_player.GetComponent<StatManager>();
             stats.ApplyLocalSceneStats(new StatContainer {STR=new StatSlot {Invested=30}});
             Open();
             Assert.That(Book.ActiveId,Is.Null);
             Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("선택 중"));
-            _panel.DropPassive("concept-berserker",0,11); _panel.DropPassive("concept-berserker",1,12);
-            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{0,0}));
-            Call(_panel,"SavePassives");
-            _panel.DropPassive("concept-sniper",0,7);
+            Assert.That(Selection.Find("Save"),Is.Null,"No separate apply button remains in the passive panel.");
+            foreach(var entry in Book.Entries)
+            {
+                ClickPreset(entry.Id);
+                Assert.That(Book.ActiveId,Is.EqualTo(entry.Id));
+                Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(entry.Choices));
+                Assert.That(PassiveStore.Read(),Is.EqualTo(entry.Choices));
+                Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("사용 중"));
+            }
+            ClickPreset("concept-sniper");
             Assert.That(Selected,Is.EqualTo("concept-sniper"));
             stats.ApplyLocalSceneStats(new StatContainer {CON=new StatSlot {Invested=30}});
             Assert.That(JobGuideContent.IndexOf(stats.CurrentIdentity),Is.EqualTo(1));
             Assert.That(Selected,Is.EqualTo("concept-sniper"));
-            Assert.That(Book.ActiveId,Is.EqualTo("concept-berserker"));
-            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,12}));
+            Assert.That(Book.ActiveId,Is.EqualTo("concept-sniper"));
+            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{7,9}));
             _panel.Close(); _panel.Open(); Call(_panel,"OpenPassives");
-            Assert.That(Selected,Is.EqualTo("concept-berserker"));
-            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{11,12}));
+            Assert.That(Selected,Is.EqualTo("concept-sniper"));
+            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{7,9}));
         }
 
         [Test] public void EveryDefaultNameCanBeEditedAndOnlySelectedRowShowsDelete()
@@ -224,21 +232,22 @@ namespace BattlePvp.EditorTests
                 Assert.That(remove.anchoredPosition.y,Is.GreaterThan(0));
                 Assert.That(remove.anchoredPosition.x-remove.rect.width/2,Is.GreaterThan(badge.anchoredPosition.x+badge.rect.width/2));
             }
-            Assert.That(Book.ActiveId,Is.Null);
-            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{0,0}));
+            Assert.That(Book.ActiveId,Is.EqualTo(Book.Entries[Book.Entries.Count-1].Id));
+            Assert.That(PassiveStore.Read(),Is.EqualTo(Book.Entries[Book.Entries.Count-1].Choices));
         }
 
         [Test] public void DeletingDefaultAndEquippedPresetsPersistsWithoutChangingAppliedSlots()
         {
             Open();
-            _panel.DropPassive("concept-berserker",0,11); _panel.DropPassive("concept-berserker",1,12); Call(_panel,"SavePassives");
-            Call(_panel,"SelectPassivePreset","concept-sniper");
+            _panel.DropPassive("concept-berserker",0,11); _panel.DropPassive("concept-berserker",1,12);
+            ClickPreset("concept-sniper");
             Selection.Find("Presets/Content/Preset-concept-sniper/DeletePreset").GetComponent<Button>().onClick.Invoke();
             Assert.That(Book.Find("concept-sniper"),Is.Null);
-            Assert.That(Book.ActiveId,Is.EqualTo("concept-berserker"));
+            Assert.That(Book.ActiveId,Is.Null);
+            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{7,9}),"Deleting the selected recipe preserves its equipped pair.");
             Assert.That(PassivePresetStore.Read().Entries.Count,Is.EqualTo(7));
             Assert.That(PassivePresetStore.Read().Find("concept-sniper"),Is.Null,"Deleted defaults must never regenerate.");
-            Call(_panel,"SelectPassivePreset","concept-berserker");
+            ClickPreset("concept-berserker");
             Selection.Find("Presets/Content/Preset-concept-berserker/DeletePreset").GetComponent<Button>().onClick.Invoke();
             Assert.That(Book.ActiveId,Is.Null);
             Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,12}));
@@ -248,33 +257,76 @@ namespace BattlePvp.EditorTests
             Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("선택 중"));
         }
 
-        [Test] public void EmptyPresetListSurvivesReopenAndNewPresetRequiresApply()
+        [Test] public void EmptyPresetListSurvivesReopenAndNewPresetSlotsEquipImmediately()
         {
             Open();
-            _panel.DropPassive("concept-counter",0,11); _panel.DropPassive("concept-counter",1,0); Call(_panel,"SavePassives");
+            _panel.DropPassive("concept-counter",0,11); _panel.DropPassive("concept-counter",1,0);
             while(Book.Entries.Count>0) Call(_panel,"DeletePassivePreset",Selected);
             _panel.Close(); _panel.Open(); Call(_panel,"OpenPassives");
             Assert.That(Book.Entries,Is.Empty);
-            Assert.That(Selection.Find("Save").GetComponent<Button>().interactable,Is.False);
-            Assert.DoesNotThrow(()=>Call(_panel,"SavePassives"));
+            Assert.That(Selection.Find("Save"),Is.Null);
             Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,0}));
             Call(_panel,"AddPassivePreset"); string id=Selected;
-            _panel.DropPassive(id,0,7);
             Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,0}));
-            Call(_panel,"SavePassives");
+            _panel.DropPassive(id,0,7);
             Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{7,0}));
             Assert.That(PassivePresetStore.Read().ActiveId,Is.EqualTo(id));
         }
 
-        [Test] public void PendingApplyAndAliveBattleCannotDeleteOrRename()
+        [Test] public void PendingApplyAllowsRenamingButPreventsDeletionAndAliveBattleCannotEdit()
         {
             Open(); string id=Selected, name=Book.Find(id).Name;
             Set(_panel,"_pendingPreset",id); Set(_panel,"_pendingChoices",new[]{11,0});
             Call(_panel,"DeletePassivePreset",id); Call(_panel,"RenamePassivePreset",id,"변경");
-            Assert.That(Book.Entries.Count,Is.EqualTo(8)); Assert.That(Book.Find(id).Name,Is.EqualTo(name));
+            Assert.That(Book.Entries.Count,Is.EqualTo(8)); Assert.That(Book.Find(id).Name,Is.EqualTo("변경"));
             Call(_panel,"PassiveRequestCompleted",false); _scene.name="Battle";
-            Call(_panel,"DeletePassivePreset",id); Call(_panel,"RenamePassivePreset",id,"변경");
-            Assert.That(Book.Entries.Count,Is.EqualTo(8)); Assert.That(Book.Find(id).Name,Is.EqualTo(name));
+            Call(_panel,"DeletePassivePreset",id); Call(_panel,"RenamePassivePreset",id,name);
+            Assert.That(Book.Entries.Count,Is.EqualTo(8)); Assert.That(Book.Find(id).Name,Is.EqualTo("변경"));
+        }
+
+        [TestCase(true)] [TestCase(false)]
+        public void RapidSelectionsAndSlotEditsKeepTheLatestChoiceWhileWaitingForServer(bool accepted)
+        {
+            Open(); ClickPreset("concept-counter");
+            var loadout=_player.GetComponent<PassiveLoadout>();
+            // A sniper request is in flight; later clicks must not overwrite its acknowledgment.
+            Set(_panel,"_pendingPreset","concept-sniper"); Set(_panel,"_pendingChoices",new[]{7,9});
+            ClickPreset("concept-berserker"); ClickPreset("concept-stats");
+            _panel.DropPassive("concept-stats",0,11);
+            Assert.That(Get<string>(_panel,"_queuedPreset"),Is.EqualTo("concept-stats"));
+            Assert.That(Get<string>(_panel,"_pendingPreset"),Is.EqualTo("concept-sniper"));
+            Assert.That(Book.ActiveId,Is.EqualTo("concept-counter"));
+            Assert.That(loadout.Snapshot(),Is.EqualTo(new[]{1,4}));
+            var name=Selection.Find("Presets/Content/Preset-concept-stats/Name").GetComponent<TMP_InputField>();
+            Assert.That(name.interactable,Is.True,"Network acknowledgment must not interrupt name editing.");
+            name.onEndEdit.Invoke("빠른 수비");
+            if(accepted) { Call(loadout,"Apply",new object[]{new[]{7,9}}); PassiveStore.Save(new[]{7,9}); }
+            Call(_panel,"PassiveRequestCompleted",accepted);
+            Assert.That(Book.ActiveId,Is.EqualTo(accepted?"concept-sniper":"concept-counter"));
+            Assert.That(Selection.Find("ActiveBadge").GetComponent<TMP_Text>().text,Is.EqualTo("선택 중"));
+            _panel.Close(); Call(_panel,"FlushPassiveSelection");
+            Assert.That(loadout.Snapshot(),Is.EqualTo(new[]{11,13}));
+            Assert.That(Book.ActiveId,Is.EqualTo("concept-stats"));
+            Assert.That(PassivePresetStore.Read().ActiveId,Is.EqualTo("concept-stats"));
+            Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{11,13}));
+            Assert.That(Get<string>(_panel,"_queuedPreset"),Is.Null);
+            _panel.Open(); Call(_panel,"OpenPassives");
+            Assert.That(Selected,Is.EqualTo("concept-stats"));
+            Assert.That(Book.Find(Selected).Name,Is.EqualTo("빠른 수비"));
+        }
+
+        [Test] public void QueuedSelectionIsCancelledOnRespawnAndDeadPlayersCanSelectAgain()
+        {
+            Open(); ClickPreset("concept-counter");
+            Set(_panel,"_pendingPreset","concept-sniper"); Set(_panel,"_pendingChoices",new[]{7,9});
+            ClickPreset("concept-stats"); Call(_panel,"PassiveRequestCompleted",false);
+            _scene.name="Battle"; Call(_panel,"FlushPassiveSelection");
+            Assert.That(Get<string>(_panel,"_queuedPreset"),Is.Null);
+            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{1,4}));
+            Set(_player.GetComponent<HealthSystem>(),"_isDead",true);
+            ClickPreset("concept-sniper");
+            Assert.That(_player.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{7,9}));
+            Assert.That(Book.ActiveId,Is.EqualTo("concept-sniper"));
         }
 
         [Test] public void ModalSortingCoversMenuAndEntryAlignsBelowCloseWithJobTitle()

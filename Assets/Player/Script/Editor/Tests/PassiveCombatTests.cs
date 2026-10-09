@@ -347,12 +347,12 @@ namespace BattlePvp.EditorTests
                 Assert.That(root.transform.Find("Panel/PassiveSelection/List").GetComponent<UnityEngine.UI.ScrollRect>().verticalNormalizedPosition,Is.EqualTo(1).Within(.001f));
                 Assert.That(root.transform.Find("Panel/PassiveSelection/List/Content").childCount,Is.EqualTo(13));
                 Call(panel,"EquipPassive",(int)PassiveKind.Haste,0); Call(panel,"EquipPassive",(int)PassiveKind.Vitality,1);
-                Call(panel,"SavePassives"); panel.Close(); panel.Open(); Call(panel,"OpenPassives");
+                panel.Close(); panel.Open(); Call(panel,"OpenPassives");
                 Assert.That(_a.GetComponent<PassiveLoadout>().Snapshot(),Is.EqualTo(new[]{11,12}));
                 Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{11,12}));
                 var draft=(int[])typeof(BattlePvp.UI.JobGuidePanel).GetField("_passiveDraft",Private).GetValue(panel);
                 Assert.That(draft,Is.EqualTo(new[]{11,12}));
-                Call(panel,"EquipPassive",(int)PassiveKind.Haste,1); Call(panel,"SavePassives");
+                Call(panel,"EquipPassive",(int)PassiveKind.Haste,1);
                 Assert.That(PassiveStore.Read(),Is.EqualTo(new[]{12,11}),"Moving an equipped passive swaps slots instead of duplicating it.");
             }
             finally
