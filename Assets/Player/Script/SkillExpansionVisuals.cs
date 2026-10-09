@@ -328,19 +328,32 @@ namespace BattlePvp.Combat
             { _pendingStates.Remove(layer); _animator.Play("Empty",layer,0); _animator.SetLayerWeight(layer,0); }
         }
         public void Dispose() => Dispose(false);
-        public void ResetOwnerEffects() => Dispose(true);
+        public void ResetOwnerEffects(bool preserveBuffs = false)
+        {
+            if (preserveBuffs) ResetActions(preserveBuffs: true);
+            else Dispose(true);
+        }
         private void Dispose(bool preserveTraps)
         {
             if(!preserveTraps) { foreach(var pair in _traps) DestroyVisual(pair.Value); _traps.Clear(); }
-            if(_disposed) return; _disposed=true; _pendingStates.Clear(); _stealth.Dispose(); _trapPreview.Dispose(); _defense.Dispose(); _buffAura.Dispose(); HideHeldWeapons(false);
-            SetAnimationCulling(false);
-            if(_animator!=null && _animator.GetCurrentAnimatorStateInfo(0).IsName("Skill_DEF_Fortify")) _animator.Play("Movement",0,0);
+            if(_disposed) return; _disposed=true;
+            ResetActions(); _defense.Dispose(); _buffAura.Dispose();
+            DestroyVisual(_diceAura); DestroyVisual(_diceCanvas); _diceAura=null; _diceCanvas=null; _pips.Clear();
+        }
+        private void ResetActions(bool preserveBuffs = false)
+        {
+            // Changing the preset interrupts held actions, not the independent
+            // dice display or the retained buffs' existing renderers/materials.
+            _pendingStates.Clear(); _stealth.Dispose(); _trapPreview.Dispose(); HideHeldWeapons(false);
+            bool fortify = preserveBuffs && _owner.Active(JobSkillKind.Fortify);
+            SetAnimationCulling(fortify);
+            if(!fortify && _animator!=null && _animator.GetCurrentAnimatorStateInfo(0).IsName("Skill_DEF_Fortify")) _animator.Play("Movement",0,0);
             if(_animator!=null) foreach(string name in new[]{"ExpandedSkills","ExpandedUpperBody"})
             { int layer=_animator.GetLayerIndex(name); if(layer>=0) { _animator.Play("Empty",layer,0); _animator.SetLayerWeight(layer,0); } }
             _localHookHeldUntil=_localKnifeHeldUntil=0;
             if(_hookProjectile!=null && _hookProjectile.IsOwnedBy(_owner)) _hookProjectile.Release();
             _hookProjectile=null;
-            DestroyVisual(_diceAura); DestroyVisual(_diceCanvas); DestroyVisual(_readyKnife); DestroyVisual(_heldHook); DestroyVisual(_audio); _pips.Clear();
+            DestroyVisual(_readyKnife); DestroyVisual(_heldHook); DestroyVisual(_audio);
         }
         private static void DestroyVisual(UnityEngine.Object value)
         { if(value==null) return; if(Application.isPlaying) UnityEngine.Object.Destroy(value); else UnityEngine.Object.DestroyImmediate(value); }

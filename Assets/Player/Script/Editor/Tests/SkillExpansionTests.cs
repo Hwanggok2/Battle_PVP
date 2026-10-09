@@ -1081,6 +1081,96 @@ namespace BattlePvp.EditorTests
             _skills.CancelForLoadout(); Assert.That(GameObject.Find("Skill Dice Result"),Is.Null);
             Active(JobSkillKind.Dice); Call(_skills,"Update"); Assert.That(GameObject.Find("Skill Dice Result"),Is.Not.Null);
         }
+
+        [TestCase(StatKind.STR,1,true)] [TestCase(StatKind.STR,6,true)]
+        [TestCase(StatKind.AGI,1,true)] [TestCase(StatKind.AGI,6,true)]
+        [TestCase(StatKind.STR,6,false)] [TestCase(StatKind.AGI,6,false)]
+        public void DiceAndPresetBonusesCoexistInEitherOrderAndExpireIndependently(StatKind primary,int face,bool diceFirst)
+        {
+            var combat=_player.GetComponent<PlayerCombat>();
+            var target=CombatPresetPlan.DefaultTarget(default);
+            if(primary==StatKind.AGI) { target.STR.Invested=3; target.AGI.Invested=18; }
+            var initial=target;
+            initial.STR.Invested=target.AGI.Invested; initial.AGI.Invested=target.STR.Invested;
+            _stats.ApplyLocalSceneStats(initial,true);
+            Call(_skills,"OnEnable"); // Exercise the real IdentityChanged subscription.
+            Set(combat,"_runtimeStrategistTargetPreset",target);
+            Set(combat,"_hasRuntimeStrategistTargetPreset",true);
+            var preset=AssetDatabase.LoadAssetAtPath<JobSkillData>("Assets/Player/skill/Strategist/PresetChange_Stragetist.asset");
+            double until=_skills.Now+15, cooldown=_skills.Now+20;
+            void Dice()
+            {
+                _skills.States[(int)JobSkillKind.Dice]=new SkillRuntime { ActiveUntil=until,CooldownUntil=cooldown };
+                Set(_skills,"_diceFace",face); Call(_skills,"Update");
+            }
+            if(diceFirst) Dice();
+            var diceDisplay=GameObject.Find("Skill Dice Result");
+            Call(combat,"ExecutePresetChange",preset);
+            if(!diceFirst) Dice();
+            Assert.That(_stats.CurrentIdentity.PrimaryStat,Is.EqualTo(primary));
+            Assert.That(_skills.Active(JobSkillKind.Dice),Is.True,"Preset identity changes must not erase an existing dice effect.");
+            Assert.That(_skills.Read(JobSkillKind.Dice).ActiveUntil,Is.EqualTo(until));
+            Assert.That(_skills.Read(JobSkillKind.Dice).CooldownUntil,Is.EqualTo(cooldown));
+            Assert.That(_skills.DiceFace,Is.EqualTo(face));
+            if(diceFirst) Assert.That(GameObject.Find("Skill Dice Result"),Is.SameAs(diceDisplay),"Retaining a buff must not destroy/recreate its UI during a preset swap.");
+            float factor=1+ExpandedSkillController.Value(JobSkillKind.Dice,"Face"+face);
+            Assert.That(_stats.GetFinalTotal(StatKind.STR),Is.EqualTo(StatMath.FinalTotal(StatKind.STR,target)*factor).Within(.001f),"Dice must remain applied during the preset transaction, not only on the next Update.");
+            Assert.That(primary==StatKind.STR ? combat.HasAttackPowerSkillBonus : combat.HasAttackSpeedSkillBonus,Is.True);
+            if(primary==StatKind.STR)
+                Assert.That(combat.AttackPowerBonusMultiplier,Is.EqualTo(preset.StrategistStrNextAttackMultiplier).Within(.001f));
+            else
+                Assert.That((float)Call(combat,"ResolveCurrentAttackSpeed"),Is.EqualTo(_stats.GetDerivedStats().AttackSpeed*preset.StrategistAgiAttackSpeedMultiplier).Within(.001f));
+            Call(_skills,"Update");
+            Assert.That(GameObject.Find("Skill Dice Result"),Is.Not.Null);
+
+            if(diceFirst)
+            {
+                var state=_skills.Read(JobSkillKind.Dice); state.ActiveUntil=_skills.Now-1; _skills.States[(int)JobSkillKind.Dice]=state;
+                Call(_skills,"Update");
+                Assert.That(_skills.Active(JobSkillKind.Dice),Is.False);
+                Assert.That(_stats.GetFinalTotal(StatKind.STR),Is.EqualTo(StatMath.FinalTotal(StatKind.STR,target)).Within(.001f));
+                Assert.That(primary==StatKind.STR ? combat.HasAttackPowerSkillBonus : combat.HasAttackSpeedSkillBonus,Is.True,"Expiring dice must keep the preset bonus.");
+            }
+            else
+            {
+                Set(combat,primary==StatKind.STR ? "_attackPowerBonusUntil" : "_attackSpeedBonusUntil",_skills.Now-1);
+                Call(_skills,"Update");
+                Assert.That(primary==StatKind.STR ? combat.HasAttackPowerSkillBonus : combat.HasAttackSpeedSkillBonus,Is.False);
+                Assert.That(_skills.Active(JobSkillKind.Dice),Is.True,"Expiring a preset bonus must keep dice.");
+                Assert.That(_stats.GetFinalTotal(StatKind.STR),Is.EqualTo(StatMath.FinalTotal(StatKind.STR,target)*factor).Within(.001f));
+            }
+        }
+        [TestCase(false)] [TestCase(true)]
+        public void IdentityChangesKeepAllTimedBuffsUntilTheirOwnExpiryButDeathAndLoadoutStillClearThem(bool loadoutChange)
+        {
+            var buffs=new[]{JobSkillKind.Dice,JobSkillKind.Recovery,JobSkillKind.WarCry,JobSkillKind.Thorns,JobSkillKind.Fortify,JobSkillKind.Bash};
+            var deadlines=buffs.Select((_,i)=>_skills.Now+10+i).ToArray();
+            for(int i=0;i<buffs.Length;i++) _skills.States[(int)buffs[i]]=new SkillRuntime { ActiveUntil=deadlines[i],CooldownUntil=deadlines[i]+20 };
+            Set(_skills,"_diceFace",6);
+            Active(JobSkillKind.Charge); Active(JobSkillKind.Stealth); Active(JobSkillKind.Berserk);
+            _skills.KnifeReady=true;
+            var animator=_player.GetComponent<Animator>();
+            animator.Play("Skill_DEF_Fortify",0,.5f); animator.Update(0);
+            Call(_skills,"IdentityChanged",new Identity(IdentityType.Strategist,StatKind.AGI));
+            animator.Update(0);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Skill_DEF_Fortify"),Is.True,"A retained Fortify buff keeps its posture.");
+            for(int i=0;i<buffs.Length;i++)
+            {
+                Assert.That(_skills.Read(buffs[i]).ActiveUntil,Is.EqualTo(deadlines[i]),buffs[i].ToString());
+                Assert.That(_skills.Read(buffs[i]).CooldownUntil,Is.EqualTo(deadlines[i]+20));
+            }
+            Assert.That(_skills.IsCharging || _skills.IsStealthed || _skills.Berserking || _skills.KnifeReady,Is.False,"Held actions still end on identity change.");
+            var movement=(MovementEffects)typeof(PlayerManager).GetField("_movementEffects",Private).GetValue(_player.GetComponent<PlayerManager>());
+            Assert.That(movement.Evaluate(_skills.Now),Is.EqualTo(ExpandedSkillController.Value(JobSkillKind.WarCry,"MoveMultiplier",1.2f)).Within(.001f));
+            var fortify=_skills.Read(JobSkillKind.Fortify); fortify.ActiveUntil=_skills.Now-1; _skills.States[(int)JobSkillKind.Fortify]=fortify;
+            Call(_skills,"Update");
+            foreach(var buff in buffs.Where(b=>b!=JobSkillKind.Fortify)) Assert.That(_skills.Active(buff),Is.True,buff.ToString());
+            if(loadoutChange) _skills.CancelForLoadout();
+            else { Set(_health,"_isDead",true); Call(_skills,"Update"); }
+            foreach(var buff in buffs) Assert.That(_skills.Active(buff),Is.False,buff.ToString());
+            Assert.That(movement.Evaluate(_skills.Now),Is.EqualTo(1f));
+        }
+
         [TestCase(false)] [TestCase(true)] public void KnifeAddsOnePoisonStackEvenWithCoating(bool coating)
         {
             var combat=_player.GetComponent<PlayerCombat>();

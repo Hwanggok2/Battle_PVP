@@ -163,25 +163,35 @@ namespace BattlePvp.Combat
             _visuals?.Dispose();
         }
         private void OnDestroy() { _visuals?.Dispose(); }
-        private void IdentityChanged(Identity _) { Cancel(); _cancelled = false; }
+        private void IdentityChanged(Identity _) { CancelEffects(preserveTimedBuffs: true); _cancelled = false; }
         public void CancelForLoadout() { Cancel(); _cancelled = false; }
-        private void Cancel()
+        private void Cancel() => CancelEffects(preserveTimedBuffs: false);
+        private static bool IsTimedBuff(JobSkillKind kind) => kind is JobSkillKind.Dice or JobSkillKind.Recovery or
+            JobSkillKind.WarCry or JobSkillKind.Thorns or JobSkillKind.Fortify or JobSkillKind.Bash;
+        private void CancelEffects(bool preserveTimedBuffs)
         {
             if (Authority && !_cancelled)
             {
                 EndCharge(); EndBerserk(); BreakStealth();
                 var keys = new List<int>(States.Keys);
-                foreach (int key in keys) { var state = States[key]; state.ActiveUntil = 0; States[key] = state; }
+                foreach (int key in keys)
+                {
+                    // Preset swaps change identity, but do not dispel independent
+                    // timed buffs or refresh their original expiry/cooldown.
+                    if (preserveTimedBuffs && IsTimedBuff((JobSkillKind)key)) continue;
+                    var state = States[key]; state.ActiveUntil = 0; States[key] = state;
+                }
                 KnifeReady = TrapReady = false; _trapFromCopy = false; _trapPlaceUntil = _hookUntil = _hookRetrieveUntil = _hookReleaseAt = 0; _trapCast++; _hookCast++;
                 CopiedKind = _borrowedKind = -1; _borrowedUntil = 0;
                 _busyUntil = _stunnedUntil = _rootUntil = _vulnerableUntil = _ambushUntil = 0;
                 _hookedUntil=0; _hookCaster=null; _offlineHookCaster=null;
-                _stats?.SetCombatMultipliers(1,1);
+                UpdateCombatMultipliers();
                 // Placed traps own their lifetime; changing skills only cancels the current cast.
                 StopAllCoroutines(); _cancelled = true;
             }
-            _movement?.RemoveMovementEffect(MoveSource); _lastMoveMultiplier = -1;
-            _visuals?.ResetOwnerEffects();
+            if (preserveTimedBuffs) UpdateMovementMultiplier();
+            else { _movement?.RemoveMovementEffect(MoveSource); _lastMoveMultiplier = -1; }
+            _visuals?.ResetOwnerEffects(preserveTimedBuffs);
         }
         private bool AliveReady => _health != null && !_health.IsDead && _stats != null && (!NetworkServer.active || _stats.HasServerCombatStats);
         public Vector3 ProjectileOrigin => transform.position + Vector3.up * (1.35f * Mathf.Abs(transform.lossyScale.y) - (_movement != null ? _movement.CrouchCameraDrop : 0));
@@ -583,12 +593,20 @@ namespace BattlePvp.Combat
                 }
                 if(Active(JobSkillKind.Recovery)) _health.Heal(_health.MaxHp * Value(JobSkillKind.Recovery,"HealRatio",.2f) / Value(JobSkillKind.Recovery,"DurationSeconds",10) * Time.deltaTime);
                 if(IsCharging) TickCharge();
-                float all=Active(JobSkillKind.Dice) ? 1+Value(JobSkillKind.Dice,"Face"+_diceFace) : 1;
-                _stats.SetCombatMultipliers(all,Active(JobSkillKind.Fortify) ? Value(JobSkillKind.Fortify,"DefenseMultiplier",2) : 1);
+                UpdateCombatMultipliers();
             }
-            float move=(Active(JobSkillKind.WarCry) ? Value(JobSkillKind.WarCry,"MoveMultiplier",1.2f) : 1)*(Berserking ? Value(JobSkillKind.Berserk,"MoveMultiplier",1.2f) : 1)*(_combat!=null ? _combat.MonostatStrMoveMultiplier : 1);
-            if(move != _lastMoveMultiplier) { _movement.SetMovementEffect(MoveSource,move,86400f); _lastMoveMultiplier=move; }
+            UpdateMovementMultiplier();
             _visuals?.Tick();
+        }
+        private void UpdateCombatMultipliers()
+        {
+            float all=Active(JobSkillKind.Dice) ? 1+Value(JobSkillKind.Dice,"Face"+_diceFace) : 1;
+            _stats?.SetCombatMultipliers(all,Active(JobSkillKind.Fortify) ? Value(JobSkillKind.Fortify,"DefenseMultiplier",2) : 1);
+        }
+        private void UpdateMovementMultiplier()
+        {
+            float move=(Active(JobSkillKind.WarCry) ? Value(JobSkillKind.WarCry,"MoveMultiplier",1.2f) : 1)*(Berserking ? Value(JobSkillKind.Berserk,"MoveMultiplier",1.2f) : 1)*(_combat!=null ? _combat.MonostatStrMoveMultiplier : 1);
+            if(move != _lastMoveMultiplier) { _movement?.SetMovementEffect(MoveSource,move,86400f); _lastMoveMultiplier=move; }
         }
         private void Recharge(double now)
         {
