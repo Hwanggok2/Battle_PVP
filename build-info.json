@@ -1,7 +1,7 @@
 {
   "release": "2026-10-09-ui-vfx",
   "sourceBaseCommit": "05e4f2c1e456405880890d5ead1a1eb799b863e1",
-  "sourceIncludesUncommittedChanges": true,
+  "sourceIncludesUncommittedChanges": false,
   "builtUtc": "2026-10-09T09:22:54.2285932Z",
   "development": false,
   "buildErrors": 0,
@@ -82,5 +82,7 @@
       "bytes": 2425,
       "sha256": "c0bc73a30a3d7cd560134d5b4e8c33e1c8ef998b021054d452a0d4d51bae4d5e"
     }
-  ]
+  ],
+  "sourceCommit": "e7b4d6b2ae2d4b7deb8f1485667b4bdd4d9bba3a",
+  "runtimeCommit": "e7b4d6b2ae2d4b7deb8f1485667b4bdd4d9bba3a"
 }
