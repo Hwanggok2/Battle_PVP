@@ -15,14 +15,14 @@ namespace BattlePvp.EditorTests
         private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
         [TestCase(30)] [TestCase(60)] [TestCase(144)]
-        public void ConfiguredJumpKeepsItsHeightWithShorterAirtime(int fps)
+        public void ConfiguredJumpClearsHelixCoverWithoutFrameRateDependentHeight(int fps)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
             var fields = new SerializedObject(prefab.GetComponent<PlayerManager>());
             float height = fields.FindProperty("jumpHeight").floatValue, gravity = fields.FindProperty("gravity").floatValue;
             float v = Mathf.Sqrt(2 * gravity * height), apex = v / gravity, y = 0, t = 0;
-            Assert.That(height, Is.EqualTo(.8f));
-            Assert.That(apex * 2, Is.InRange(.5f, .6f));
+            Assert.That(height, Is.EqualTo(1.6f));
+            Assert.That(apex * 2, Is.InRange(.7f, .8f));
             while (t < apex - .000001f)
             {
                 float dt = Mathf.Min(1f / fps, apex - t); y += JumpPhysics.Integrate(ref v, gravity, dt); t += dt;
@@ -30,6 +30,26 @@ namespace BattlePvp.EditorTests
             Assert.That(y, Is.EqualTo(height).Within(.0001f));
             y += JumpPhysics.Integrate(ref v, gravity, apex);
             Assert.That(y, Is.Zero.Within(.0001f));
+        }
+
+        [TestCase(30)] [TestCase(60)] [TestCase(144)]
+        public void ServerAcceptsConfiguredJumpButStillRejectsExcessHeightAndHovering(int fps)
+        {
+            var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab");
+            var fields=new SerializedObject(prefab.GetComponent<PlayerManager>());
+            float height=fields.FindProperty("jumpHeight").floatValue, gravity=fields.FindProperty("gravity").floatValue;
+            float v=Mathf.Sqrt(2*height*gravity), flightTime=2*v/gravity, y=0, time=0;
+            var verifier=new ServerMovementValidator(); verifier.Reset(Vector3.zero,0);
+            while(time<flightTime-.000001f)
+            {
+                float step=Mathf.Min(1f/fps,flightTime-time);
+                y+=JumpPhysics.Integrate(ref v,gravity,step); time+=step;
+                Assert.That(verifier.TryAccept(Vector3.up*y,Quaternion.identity,time,time,5,height,gravity,false,45),
+                    Is.True,"Configured jump rejected at "+time);
+            }
+            Assert.That(verifier.TryAccept(Vector3.up*height,Quaternion.identity,2,2,5,height,gravity,false,45),Is.False);
+            verifier.Reset(Vector3.zero,0);
+            Assert.That(verifier.TryAccept(Vector3.up*(height+.5f),Quaternion.identity,.2,.2,5,height,gravity,false,45),Is.False);
         }
 
         [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)] [TestCase(4)] [TestCase(5)]

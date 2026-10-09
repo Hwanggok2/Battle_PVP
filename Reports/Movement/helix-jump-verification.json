@@ -1,0 +1,133 @@
+{
+  "날짜": "2026-10-09",
+  "변경": "기본 점프 높이 0.8m → 1.6m",
+  "설정": {
+    "프리팹": "Assets/Prefabs/Player.prefab",
+    "코드기본값": "Assets/Player/Script/PlayerManager.cs",
+    "중력": 22,
+    "예상평지체공시간": 0.763,
+    "동기화": "클라이언트 점프·서버 직접 이동·서버 이동 검증·이단 점프가 공통 jumpHeight 필드를 사용"
+  },
+  "측정": {
+    "마당엄폐물높이": 1.3,
+    "옥상발전기바닥대비높이": 1.4,
+    "방법": "실제 spire.prefab의 충돌체와 Player.prefab의 CharacterController, PlayerManager.MoveBallistic을 사용. 수평 속도 5m/s, 프레임별 1초 이동 후 구조물 위 접지 여부 확인.",
+    "결과": [
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 0.8,
+        "fps": 30,
+        "landed": false,
+        "foot": 0.07999998,
+        "top": 1.3,
+        "z": -16.7980061
+      },
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 0.8,
+        "fps": 60,
+        "landed": false,
+        "foot": 0.07999998,
+        "top": 1.3,
+        "z": -16.7980061
+      },
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 0.8,
+        "fps": 144,
+        "landed": false,
+        "foot": 0.07999992,
+        "top": 1.3,
+        "z": -16.7992249
+      },
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 1.6,
+        "fps": 30,
+        "landed": true,
+        "foot": 1.37999988,
+        "top": 1.3,
+        "z": -18.0742016
+      },
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 1.6,
+        "fps": 60,
+        "landed": true,
+        "foot": 1.37999988,
+        "top": 1.3,
+        "z": -18.0742016
+      },
+      {
+        "obstacle": "Courtyard cover",
+        "jump": 1.6,
+        "fps": 144,
+        "landed": true,
+        "foot": 1.37999988,
+        "top": 1.3,
+        "z": -18.0141678
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 0.8,
+        "fps": 30,
+        "landed": false,
+        "foot": 4.27999973,
+        "top": 5.6,
+        "z": 2.08
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 0.8,
+        "fps": 60,
+        "landed": false,
+        "foot": 4.27999973,
+        "top": 5.6,
+        "z": 2.08
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 0.8,
+        "fps": 144,
+        "landed": false,
+        "foot": 4.27999973,
+        "top": 5.6,
+        "z": 2.08
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 1.6,
+        "fps": 30,
+        "landed": true,
+        "foot": 5.68,
+        "top": 5.6,
+        "z": 0.841009736
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 1.6,
+        "fps": 60,
+        "landed": true,
+        "foot": 5.68,
+        "top": 5.6,
+        "z": 0.92434305
+      },
+      {
+        "obstacle": "Rooftop generator",
+        "jump": 1.6,
+        "fps": 144,
+        "landed": true,
+        "foot": 5.68,
+        "top": 5.6,
+        "z": 0.9695118
+      }
+    ]
+  },
+  "검증": {
+    "테스트통과": 38,
+    "테스트실패": 0,
+    "job": "d074aac9af6d4f4192f85ceeb2574b29",
+    "범위": "30/60/144 FPS 점프 높이·체공 시간·서버 허용 궤적·과도한 상승/공중 정지 거부·이동 제어 및 이단 점프 회귀",
+    "미실행": "웹 빌드·배포, 별도 기기 네트워크 플레이"
+  }
+}

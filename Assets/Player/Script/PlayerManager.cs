@@ -16,8 +16,8 @@ public partial class PlayerManager : NetworkBehaviour
     [Header("Movement Settings")]
     [SerializeField] private StatManager _statManager;
     [SerializeField] private float moveSpeed = 5.0f; // 기본 이동 속도
-    [SerializeField] private float gravity = 22f; // 일정한 가속도, 0.8m 점프의 체공 시간 약 0.54초
-    [SerializeField] private float jumpHeight = 0.8f;
+    [SerializeField] private float gravity = 22f; // 1.6m 점프의 체공 시간 약 0.76초
+    [SerializeField] private float jumpHeight = 1.6f; // 헬릭스 타워의 1.3~1.4m 엄폐물에 올라갈 여유 확보
     [SerializeField] private float rotationSpeed = 10.0f; // 회전 속도
     [SerializeField] private float _transformSyncInterval = 0.033f;
     [SerializeField] private float _rotationOnlyTransformSyncInterval = 0.1f;

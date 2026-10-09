@@ -5739,7 +5739,7 @@ MonoBehaviour:
   _statManager: {fileID: 4931861078861440238}
   moveSpeed: 5
   gravity: 22
-  jumpHeight: 0.8
+  jumpHeight: 1.6
   rotationSpeed: 720
   _transformSyncInterval: 0.033
   _rotationOnlyTransformSyncInterval: 0.1
