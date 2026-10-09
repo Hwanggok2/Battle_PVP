@@ -106,11 +106,11 @@ namespace BattlePvp.Combat
                 Mathf.Min(value.DefenseEfficiencyPercent * (Has(PassiveKind.Ironclad) ? 1.1f : 1), StatBalanceCalculator.Config.DefenseEfficiencyHardCap * 100),
                 value.DefenseBonusNormalized, value.MoveSpeed * (1 + haste), value.AttackSpeed * AttackSpeedMultiplier, value.IncomingDamageMultiplier);
         }
-        public void BlockSucceeded(bool shield)
+        public void BlockSucceeded()
         {
             if (!Authority || _health == null || _health.IsDead) return;
             if (Has(PassiveKind.Counterattack) && Now >= _counterReadyAt) { _counterUntil = Now + 2; _counterReadyAt = Now + 5; }
-            if (shield && Has(PassiveKind.HealingShield) && Now >= _healReadyAt)
+            if (Has(PassiveKind.HealingShield) && Now >= _healReadyAt)
             { _healReadyAt = Now + 6; HealCapped(.02f); }
         }
         private bool CanBackstab(Component target, out Transform victim)

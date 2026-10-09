@@ -69,19 +69,51 @@ namespace BattlePvp.EditorTests
             Assert.That(actual.AttackSpeed,Is.EqualTo(basis.AttackSpeed*(1.1f+bonus)).Within(.001f));
             Hp(_a,1000); Assert.That(_a.GetComponent<StatManager>().GetDerivedStats().AttackPower,Is.EqualTo(basis.AttackPower));
         }
-        [Test] public void BlockPassivesHealOnlyForShieldsAndConsumeCounterOnOneHit()
+        [Test] public void SuccessfulDefenseHealsAndConsumesCounterOnOneHit()
         {
             var p=Equip(_a,PassiveKind.Counterattack,PassiveKind.HealingShield); Hp(_a,500);
-            p.BlockSucceeded(false); Assert.That(_a.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(500));
+            p.BlockSucceeded(); Assert.That(_a.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(520));
             Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
-            p.BlockSucceeded(true); p.BlockSucceeded(true); Assert.That(_a.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(520));
+            p.BlockSucceeded(); p.BlockSucceeded(); Assert.That(_a.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(520));
             p.HitAccepted(_b.transform,BodyPart.Body,DamageDelivery.Melee,new DamageResult(true,10,0));
             Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1f));
-            p.BlockSucceeded(true); Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1f));
+            p.BlockSucceeded(); Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1f));
+        }
+        [TestCase(MeleeWeaponKind.SwordShield)] [TestCase(MeleeWeaponKind.Greatsword)]
+        public void ShieldAndParryHealOnlyOnSuccessfulInterceptionAndShareCooldown(MeleeWeaponKind weapon)
+        {
+            var passive=Equip(_b,PassiveKind.HealingShield); Hp(_b,500);
+            var defender=_b.GetComponent<PlayerCombat>(); var attacker=_a.GetComponent<PlayerCombat>();
+            _a.transform.position=Vector3.forward;
+            Call(_b.GetComponent<WeaponLoadout>(),"Apply",weapon);
+            string intercept=weapon==MeleeWeaponKind.SwordShield?"TryBlockMelee":"TryParryBlade";
+            Assert.That(Call(defender,intercept,attacker),Is.False);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(500));
+            Assert.That(Call(defender,"SetWeaponGuard",true),Is.True);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(500),"Holding guard alone cannot heal.");
+            Assert.That(Call(defender,intercept,attacker),Is.True);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(520));
+
+            // Switching from shield to sword (or vice versa) cannot bypass the same passive cooldown.
+            var other=weapon==MeleeWeaponKind.SwordShield?MeleeWeaponKind.Greatsword:MeleeWeaponKind.SwordShield;
+            Call(_b.GetComponent<WeaponLoadout>(),"Apply",other);
+            intercept=other==MeleeWeaponKind.SwordShield?"TryBlockMelee":"TryParryBlade";
+            Assert.That(Call(defender,"SetWeaponGuard",true),Is.True);
+            Assert.That(Call(defender,intercept,attacker),Is.True);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(520));
+            Set(passive,"_healReadyAt",Time.timeAsDouble-.01); Hp(_b,995);
+            Assert.That(Call(defender,"SetWeaponGuard",true),Is.True);
+            Assert.That(Call(defender,intercept,attacker),Is.True);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(1000),"Healing is capped at maximum HP.");
+
+            Equip(_b,PassiveKind.None); Hp(_b,500);
+            Assert.That(Call(defender,"SetWeaponGuard",true),Is.True);
+            Assert.That(Call(defender,intercept,attacker),Is.True);
+            Assert.That(_b.GetComponent<HealthSystem>().CurrentHp,Is.EqualTo(500));
         }
         [Test] public void BackstabChecksRearArcAndAddsRatherThanMultipliesCounter()
         {
-            var p=Equip(_a,PassiveKind.Backstab,PassiveKind.Counterattack); p.BlockSucceeded(false);
+            var p=Equip(_a,PassiveKind.Backstab,PassiveKind.Counterattack); p.BlockSucceeded();
             Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.2f).Within(.001f));
             _a.transform.position=Vector3.right; Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
             _a.transform.position=Vector3.forward; Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
@@ -211,7 +243,7 @@ namespace BattlePvp.EditorTests
         }
         [Test] public void AbsorptionShieldStillConsumesCounterAndCountsHeadHits()
         {
-            var p=Equip(_a,PassiveKind.Counterattack,PassiveKind.Concussion); p.BlockSucceeded(false);
+            var p=Equip(_a,PassiveKind.Counterattack,PassiveKind.Concussion); p.BlockSucceeded();
             var absorbed=new DamageResult(true,0,10);
             p.HitAccepted(_b.transform,BodyPart.Head,DamageDelivery.Melee,absorbed);
             Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1));
