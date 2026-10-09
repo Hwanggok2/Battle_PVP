@@ -26,9 +26,15 @@ namespace BattlePvp.EditorTests
         private object _inputManager;
         private PropertyInfo _runPlayerUpdates;
         private bool _previousPlayerUpdates;
+        private readonly System.Collections.Generic.Dictionary<FieldInfo, object> _inputState = new();
 
         [SetUp] public void Setup()
         {
+            foreach (string name in new[] { "_paused", "_webPointerMissing", "_textInputActive", "_textInputConsumedFrame", "<CurrentMode>k__BackingField" })
+            {
+                var field=typeof(GameInputController).GetField(name,BindingFlags.Static|BindingFlags.NonPublic);
+                _inputState[field]=field.GetValue(null);
+            }
             Assert.That(NetworkServer.active || NetworkClient.active, Is.False);
             _scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             _scene.name = "Battle";
@@ -49,6 +55,9 @@ namespace BattlePvp.EditorTests
             foreach (GameObject root in _scene.GetRootGameObjects()) Object.DestroyImmediate(root);
             typeof(NetworkManager).GetProperty(nameof(NetworkManager.singleton)).SetValue(null, _previousManager);
             _runPlayerUpdates?.SetValue(_inputManager, _previousPlayerUpdates);
+            // Result/cursor tests must not leave later combat tests globally paused.
+            foreach (var saved in _inputState) saved.Key.SetValue(null,saved.Value);
+            _inputState.Clear();
         }
 
         [TestCase(Key.J, true)]
