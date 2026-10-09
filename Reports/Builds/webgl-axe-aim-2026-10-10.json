@@ -1,0 +1,68 @@
+{
+  "sourceCommit": "b379672ffe9341e81caf9d03ec9e134be230e995",
+  "build": {
+    "job_id": "build-06a94538c6",
+    "result": "succeeded",
+    "platform": "WebGL",
+    "output_path": "Builds/WebGL-2026-10-10-AxeAim",
+    "started_at": "2026-10-09T15:13:40.6025878Z",
+    "duration_seconds": 801.3259654,
+    "completed_at": "2026-10-09T15:27:01.9285532Z",
+    "total_size_mb": 121.92,
+    "errors": 0,
+    "warnings": 6
+  },
+  "changes": [
+    "캐릭터별 도끼 중앙 조준 보정 활성화",
+    "기본 캐릭터 및 외형 5종의 도끼 모션과 서버 궤적 데이터 재생성"
+  ],
+  "validation": {
+    "regressionBeforeFix": "6종 도끼 조준 검사 실패; 기본 캐릭터 조준선 이탈 0.34665 유닛",
+    "unityEditModeTestsPassed": 195,
+    "tests": [
+      "WeaponCombatTests",
+      "MeleeAimPoseTests",
+      "ServerPoseConsistencyTests"
+    ],
+    "characters": [
+      "default",
+      "brute",
+      "security-officer",
+      "casual-1",
+      "megumi",
+      "picochan"
+    ],
+    "aimPitches": [
+      -40,
+      0,
+      40
+    ],
+    "maxAllowedBladeRayError": 0.015,
+    "maxAllowedServerBladePositionError": 0.012,
+    "browserLoadingVerified": true,
+    "multiplayerVerified": false,
+    "browser": {
+      "url": "http://127.0.0.1:8780/",
+      "titleScreenLoaded": true,
+      "loginScreenLoaded": true,
+      "errors": 0,
+      "warnings": [
+        "Unity persistentDataPath 수동 동기화 API 폐기 예정 경고"
+      ],
+      "accountLoginTested": false
+    }
+  },
+  "publicDeploymentPerformed": false,
+  "package": {
+    "path": "Builds/Pages-2026-10-10-AxeAim",
+    "originalDataSha256": "1dec174f0f5e0dfab103bb59082efe8df27823087d2702a166dadc300a0bc3d6",
+    "chunks": 2,
+    "reassembledHashMatches": true
+  },
+  "publication": {
+    "pushPerformed": false,
+    "reason": "사용자가 직접 푸시하기로 요청함",
+    "pagesBranch": "gh-pages",
+    "pagesCommit": "7e0a81a5cde098566343b41f4fc38763e66eaa6d"
+  }
+}
