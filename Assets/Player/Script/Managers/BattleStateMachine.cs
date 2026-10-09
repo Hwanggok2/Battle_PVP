@@ -242,7 +242,7 @@ namespace BattlePvp.Networking
             CurrentState = BattleState.InBattle;
             _clock.Start(NetworkTime.time, float.IsFinite(MatchDuration) ? Mathf.Max(0f, MatchDuration) : 180f);
             RemainingTime = (float)System.Math.Ceiling(_clock.Remaining(NetworkTime.time));
-            while (!_clock.TryFinish(NetworkTime.time))
+            while (CurrentState == BattleState.InBattle && !_clock.TryFinish(NetworkTime.time))
             {
                 RemainingTime = (float)System.Math.Ceiling(_clock.Remaining(NetworkTime.time));
                 yield return null;
@@ -262,7 +262,7 @@ namespace BattlePvp.Networking
         private bool RegisterMatchParticipant(ScoreSystem score)
         {
             if (_matchLedger == null || !_matchLedger.IsRecording || score == null ||
-                score.GetComponent("PlayerManager") == null) return false;
+                score.gameObject.scene != gameObject.scene || score.GetComponent("PlayerManager") == null) return false;
             if (score.AttachToMatch(_matchLedger, _matchRoomId)) return true;
             Debug.LogWarning("[BattleStateMachine] Refusing an unverified or duplicate match participant.");
             score.connectionToClient?.Disconnect();
@@ -286,13 +286,27 @@ namespace BattlePvp.Networking
             base.OnStopServer();
         }
 
+        public bool IsActiveParticipant(uint netId) => _matchLedger != null && _matchLedger.IsActiveParticipant(netId);
+
+        [Server]
+        public void CheckLastParticipant()
+        {
+            if (CurrentState != BattleState.InBattle || _matchLedger == null ||
+                (NetworkManager.singleton is BattleNetworkManager manager && manager.IsPractice) ||
+                !_matchLedger.TryGetLastParticipant(out _)) return;
+            EndMatchOnServer();
+        }
+
         [Server]
         private void EndMatchOnServer()
         {
             if (CurrentState != BattleState.InBattle || _matchLedger == null) return;
             CurrentState = BattleState.MatchEnded;
             RemainingTime = 0f;
-            LastCompletedMatch = _matchLedger.Finish();
+            uint lastParticipant = 0;
+            if (!(NetworkManager.singleton is BattleNetworkManager practice && practice.IsPractice))
+                _matchLedger.TryGetLastParticipant(out lastParticipant);
+            LastCompletedMatch = _matchLedger.Finish(lastParticipant);
             if (NetworkManager.singleton is BattleNetworkManager manager)
                 manager.RememberCompletedMatch(LastCompletedMatch);
 
@@ -308,7 +322,7 @@ namespace BattlePvp.Networking
             var allHealthSystems = FindObjectsByType<HealthSystem>(FindObjectsSortMode.None);
             foreach (var hs in allHealthSystems)
             {
-                if (hs == null) continue;
+                if (hs == null || hs.gameObject.scene != gameObject.scene) continue;
                 hs.isInvincible = true;
                 hs.Revive(1f);
             }
@@ -344,6 +358,8 @@ namespace BattlePvp.Networking
         private void RpcHandleMatchEnded(uint[] winnerNetIds)
         {
             var localPlayer = NetworkClient.localPlayer;
+            if (localPlayer == null || localPlayer.gameObject.scene != gameObject.scene ||
+                (NetworkManager.singleton is BattleNetworkManager manager && manager.IsReturningFromBattle)) return;
             bool isWinner = localPlayer != null && IsWinnerNetId(localPlayer.netId, winnerNetIds);
             Transform spectateTarget = ResolveWinnerSpectateTarget(winnerNetIds);
             // Departed winners remain winners in the result, while the camera needs a live target.
@@ -459,6 +475,9 @@ namespace BattlePvp.Networking
             HideResultPanel();
 
             yield return new WaitForSecondsRealtime(Mathf.Max(0f, ResultDelaySeconds));
+
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene() != gameObject.scene ||
+                (NetworkManager.singleton is BattleNetworkManager manager && manager.IsReturningFromBattle)) yield break;
 
             ShowResultPanel(
                 playerName,

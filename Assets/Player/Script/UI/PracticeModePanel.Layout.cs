@@ -10,16 +10,6 @@ namespace BattlePvp.UI
     {
         private void BuildLayout()
         {
-            if (gameObject.scene.name == "Battle")
-            {
-                var manager = (BattleNetworkManager)NetworkManager.singleton;
-                var exit = Button("Exit practice", transform, "연습 종료", new Vector2(160, 44), Vector2.zero);
-                Anchor(exit.transform, new Vector2(112, -104), new Vector2(0, 1));
-                exit.onClick.AddListener(manager.StopPractice);
-                var label = Text("Practice label", transform, $"연습모드 · AI {manager.PracticeBotCount}명", new Vector2(300, 34), Vector2.zero, 20);
-                Anchor(label.transform, new Vector2(196, -152), new Vector2(0, 1));
-                return;
-            }
             var open = Button("Practice", transform, "AI 연습모드", new Vector2(240, 64), Vector2.zero);
             Anchor(open.transform, new Vector2(176, 240), Vector2.zero);
             var outline = open.gameObject.AddComponent<Outline>();

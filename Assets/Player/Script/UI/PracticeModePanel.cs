@@ -43,8 +43,7 @@ namespace BattlePvp.UI
         }
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            bool practice = NetworkManager.singleton is BattleNetworkManager manager && manager.IsPractice;
-            if (scene.name != "Lobby" && !(scene.name == "Battle" && practice)) return;
+            if (scene.name != "Lobby") return;
             var go = new GameObject("Practice UI", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             SceneManager.MoveGameObjectToScene(go, scene);
             go.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;

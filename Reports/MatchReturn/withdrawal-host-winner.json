@@ -1,0 +1,14 @@
+{
+    "passed": true,
+    "checks": [
+        "Leaving three participants down to two does not end the match.",
+        "The final departure immediately ends the match.",
+        "The remaining participant wins regardless of the departed leader's points.",
+        "The winner is revived for the result presentation.",
+        "Returning does not stop the host or disconnect room participants.",
+        "The remaining local player sees the real result panel.",
+        "The winning player retains movement.",
+        "A new match cannot start until remaining participants return."
+    ],
+    "error": ""
+}

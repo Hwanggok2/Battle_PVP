@@ -53,7 +53,7 @@ namespace BattlePvp.UI
             for (int i = 0; i < ScoreSystem.ActiveScores.Count; i++)
             {
                 ScoreSystem score = ScoreSystem.ActiveScores[i];
-                if (score == null || score.netId == 0)
+                if (score == null || score.netId == 0 || score.HasLeftMatch)
                     continue;
 
                 if (_seenNetIds.Add(score.netId))

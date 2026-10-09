@@ -89,6 +89,7 @@ namespace BattlePvp.Combat
             public string Name;
             public uint NetId;
             public bool Connected;
+            public bool Withdrawn;
             public int Points;
             public int Deaths;
             public float Dealt;
@@ -129,7 +130,7 @@ namespace BattlePvp.Combat
             }
             if (_participants.TryGetValue(id, out Entry entry))
             {
-                if (entry.Connected || _connections.ContainsKey(entry.NetId)) return false;
+                if (entry.Withdrawn || entry.Connected || _connections.ContainsKey(entry.NetId)) return false;
             }
             else
             {
@@ -150,6 +151,30 @@ namespace BattlePvp.Combat
             entry.Connected = false;
             _connections.Remove(netId);
             return true;
+        }
+
+        public bool IsActiveParticipant(uint netId) => IsRecording &&
+            _connections.TryGetValue(netId, out Entry entry) && entry.Connected;
+
+        public bool Withdraw(uint netId)
+        {
+            if (!IsRecording || !_connections.TryGetValue(netId, out Entry entry)) return false;
+            entry.Withdrawn = true;
+            return Detach(netId);
+        }
+
+        public bool TryGetLastParticipant(out uint netId)
+        {
+            netId = 0;
+            // A solo test room must not immediately finish when its match starts.
+            if (!IsRecording || ParticipantCount < 2) return false;
+            foreach (var entry in _connections.Values)
+            {
+                if (!entry.Connected) continue;
+                if (netId != 0) { netId = 0; return false; }
+                netId = entry.NetId;
+            }
+            return netId != 0;
         }
 
         // A disconnected body remains a valid damage/kill target and keeps its death sequence.
@@ -198,10 +223,11 @@ namespace BattlePvp.Combat
             return true;
         }
 
-        public MatchResultSnapshot Finish()
+        public MatchResultSnapshot Finish(uint lastParticipant = 0)
         {
             if (_result != null) return _result;
             if (!IsRecording) return null;
+            if (!TryGetLastParticipant(out uint remaining) || lastParticipant != remaining) lastParticipant = 0;
             IsRecording = false;
             var entries = new List<Entry>(_participants.Values);
             entries.Sort((left, right) =>
@@ -216,7 +242,17 @@ namespace BattlePvp.Combat
             for (int i = 0; i < entries.Count; i++)
             {
                 Entry entry = entries[i];
-                int rank = CompetitionRanking.GetRank(entry.Points, entries, value => value.Points);
+                int rank = 1;
+                foreach (var other in entries)
+                {
+                    if (other == entry) continue;
+                    if (lastParticipant != 0)
+                    {
+                        if (entry.NetId != lastParticipant && (other.NetId == lastParticipant || other.Points > entry.Points)) rank++;
+                    }
+                    else if ((!other.Withdrawn && entry.Withdrawn) ||
+                        (other.Withdrawn == entry.Withdrawn && other.Points > entry.Points)) rank++;
+                }
                 result[i] = new MatchParticipantResult(entry.Id, entry.Name, entry.NetId, entry.Connected,
                     entry.Totals, rank, rewards.CalculateXp(rank, entry.Points), entry.Kills, entry.KilledBy);
             }

@@ -1,0 +1,18 @@
+{
+    "passed": true,
+    "checks": [
+        "Host can request a personal return during combat.",
+        "Host sees the same room waiting area.",
+        "Only the host avatar moved.",
+        "A dead participant is revived on entering the waiting room.",
+        "Two remote participants remain in combat after the host returns.",
+        "The final departure immediately ends the match.",
+        "The remaining participant wins regardless of the departed leader's points.",
+        "The winner is revived for the result presentation.",
+        "Returning does not stop the host or disconnect room participants.",
+        "Later match results do not capture the returned host's screen or movement.",
+        "Host remains in the waiting room after the remote winner is decided.",
+        "A new match cannot start until remaining participants return."
+    ],
+    "error": ""
+}

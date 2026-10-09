@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using BattlePvp.Combat;
 using BattlePvp.Logic;
 using BattlePvp.UI;
 using Mirror;
@@ -25,6 +26,7 @@ namespace BattlePvp.Networking
         public bool IsPreparingReturnWaiting { get; private set; }
         public bool HasSplitResultRoom => _returnWaitingScene.IsValid() && _returnWaitingScene.isLoaded;
         public bool CanStartNextRound => !HasSplitResultRoom && !_normalizingWaiting;
+        public bool IsReturningFromBattle => _returningFromMatch;
 
         private void RegisterReturnServerHandlers()
         {
@@ -44,14 +46,25 @@ namespace BattlePvp.Networking
         public void ReturnToLobbyAfterMatch()
         {
             if (IsPractice) { StopPractice(); return; }
+            if (BattleStateMachine.Instance?.CurrentState == BattleState.MatchEnded) RequestLeaveBattle();
+        }
+        public bool RequestLeaveBattle()
+        {
+            if (IsPractice) { StopPractice(); return true; }
             if (_returningFromMatch || !NetworkClient.isConnected || BattleStateMachine.Instance == null ||
-                BattleStateMachine.Instance.CurrentState != BattleState.MatchEnded) return;
+                (BattleStateMachine.Instance.CurrentState != BattleState.InBattle &&
+                 BattleStateMachine.Instance.CurrentState != BattleState.MatchEnded) || NetworkClient.localPlayer == null ||
+                NetworkClient.localPlayer.gameObject.scene != BattleStateMachine.Instance.gameObject.scene) return false;
             _returningFromMatch = true;
             NetworkClient.Send(new RequestWaitingReturn());
+            return true;
         }
         internal bool CanReturnToWaiting(NetworkConnectionToClient connection) => NetworkServer.active &&
             connection != null && connection.isAuthenticated && connection.identity != null &&
-            BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.MatchEnded &&
+            BattleStateMachine.Instance != null &&
+            (BattleStateMachine.Instance.CurrentState == BattleState.MatchEnded ||
+             (BattleStateMachine.Instance.CurrentState == BattleState.InBattle &&
+              BattleStateMachine.Instance.IsActiveParticipant(connection.identity.netId))) &&
             connection.identity.gameObject.scene == BattleStateMachine.Instance.gameObject.scene &&
             !_pendingReturns.Contains(connection.connectionId);
         internal void ServerRequestWaitingReturn(NetworkConnectionToClient connection)
@@ -101,10 +114,12 @@ namespace BattlePvp.Networking
             movement?.LeaveMatchEndMode();
             movement?.ServerTeleport(spawn.position, spawn.rotation);
             var health = player.GetComponent<BattlePvp.Combat.HealthSystem>();
-            if (health != null) { health.isInvincible = false; health.RefillHealth(); }
+            if (health != null) { health.isInvincible = false; health.Revive(1f); }
             _movedReturns.Add(connection.connectionId);
+            player.GetComponent<ScoreSystem>()?.ServerLeaveMatch();
             connection.Send(new EnterReturnWaiting());
             foreach (var identity in NetworkServer.spawned.Values) NetworkServer.RebuildObservers(identity, false);
+            BattleStateMachine.Instance?.CheckLastParticipant();
         }
         private IEnumerator PresentWaitingForLocalPlayer()
         {
@@ -158,7 +173,7 @@ namespace BattlePvp.Networking
         private IEnumerator FinishWaitingReturn()
         {
             yield return null;
-            // Every participant has accepted their result. Keep the same room/host,
+            // Every participant has left the battlefield. Keep the same room/host,
             // then restore the ordinary waiting scene for the next match.
             if (NetworkServer.active) ServerChangeScene(WaitingScene);
         }

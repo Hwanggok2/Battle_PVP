@@ -24,6 +24,8 @@ namespace BattlePvp.Combat
         [SyncVar] public float MatchDamageTaken;
         [SyncVar(hook = nameof(OnConnectionChanged))] private bool _isConnected = true;
         public bool IsConnected => _isConnected;
+        [SyncVar(hook = nameof(OnMatchLeftChanged))] private bool _hasLeftMatch;
+        public bool HasLeftMatch => _hasLeftMatch;
 
         public static event System.Action<ScoreSystem> OnScoreUpdated;
 
@@ -68,8 +70,18 @@ namespace BattlePvp.Combat
                 !ledger.TryAttach(netId, participantId, PlayerName, out MatchTotals totals))
                 return false;
             _matchLedger = ledger;
+            _hasLeftMatch = false;
             ApplyMatchTotals(totals);
             return true;
+        }
+
+        [Server]
+        public void ServerLeaveMatch()
+        {
+            _matchLedger?.Withdraw(netId);
+            _matchLedger = null;
+            _hasLeftMatch = true;
+            if (isClient) OnScoreUpdated?.Invoke(this);
         }
 
         [Server]
@@ -81,6 +93,7 @@ namespace BattlePvp.Combat
         }
 
         private void OnConnectionChanged(bool previous, bool current) => RefreshConnectedRoster();
+        private void OnMatchLeftChanged(bool previous, bool current) => OnScoreUpdated?.Invoke(this);
 
         private void RefreshConnectedRoster()
         {

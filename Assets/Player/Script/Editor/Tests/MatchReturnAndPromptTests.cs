@@ -161,7 +161,16 @@ namespace BattlePvp.EditorTests
                 connection.isAuthenticated=true;
                 Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.True);
                 state.CurrentState=BattleState.InBattle;
-                Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.False);
+                Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.False,"An unregistered player cannot leave an active match.");
+                var ledger = new MatchLedger();
+                RoomIdentity.TryCreate("a", System.Guid.NewGuid(), out string roomId);
+                ledger.Begin("return-test", roomId);
+                typeof(NetworkIdentity).GetProperty(nameof(NetworkIdentity.netId)).SetValue(player, 1u);
+                ledger.TryAttach(1, "a", "Player", out _);
+                Set(state, "_matchLedger", ledger);
+                Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.True,"Registered participants may return during combat.");
+                ledger.Withdraw(1);
+                Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.False,"A withdrawn participant cannot request another transfer.");
                 state.CurrentState=BattleState.MatchEnded;
                 ((System.Collections.Generic.HashSet<int>)Get(manager,"_pendingReturns")).Add(101);
                 Assert.That(canReturn.Invoke(manager,new object[]{connection}),Is.False,"A repeated request cannot teleport twice.");

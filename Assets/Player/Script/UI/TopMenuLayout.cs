@@ -56,7 +56,7 @@ namespace BattlePvp.UI
                 if (entry.Button == null) { _entries.RemoveAt(i--); continue; }
                 bool owns = entry.Owner == null || (!NetworkClient.active && !NetworkServer.active) || entry.Owner.isLocalPlayer;
                 bool show = owns && IsVisible(entry.Column, battle, dead, polymath,
-                    JobGuidePanel.IsOpen || GameSettingsPanel.IsOpen);
+                    JobGuidePanel.IsOpen || GameSettingsPanel.IsOpen || BattleExitPanel.IsOpen);
                 if (entry.Button.gameObject.activeSelf != show) entry.Button.gameObject.SetActive(show);
                 if (!show || !entry.Button.gameObject.activeInHierarchy) continue;
                 var canvas = entry.Button.GetComponentInParent<Canvas>();

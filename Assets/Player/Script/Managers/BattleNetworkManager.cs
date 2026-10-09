@@ -157,6 +157,7 @@ namespace BattlePvp.Networking
                 conn != NetworkServer.localConnection && player != null && account != null &&
                 player.TryGetComponent(out BattlePvp.Stats.StatManager stats) && stats.HasServerStats &&
                 BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.InBattle &&
+                player.gameObject.scene == BattleStateMachine.Instance.gameObject.scene &&
                 PlayFabBattleManager.Instance != null && account.RoomId == PlayFabBattleManager.Instance.CurrentRoomId)
             {
                 player.GetComponent<ScoreSystem>()?.ServerSetConnected(false);
@@ -167,6 +168,7 @@ namespace BattlePvp.Networking
             }
             base.OnServerDisconnect(conn);
             _pendingReturns.Remove(conn.connectionId); _movedReturns.Remove(conn.connectionId); _presentedReturns.Remove(conn.connectionId);
+            if (!_serverStopping && !_changingServerScene) BattleStateMachine.Instance?.CheckLastParticipant();
             TryFinishWaitingReturn();
         }
 
