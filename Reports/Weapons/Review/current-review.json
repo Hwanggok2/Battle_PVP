@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-08",
+  "changes": [
+    "양손검 3타를 원본 Combo 마지막 구간으로 복원, 전체 골반/다리 모션 유지",
+    "양손검 공격 양팔 IK 및 조준점 비틀림 제거",
+    "도끼 손 간격 슬라이드, 손목 후속 회전 28도, 손목 기준 무기 회전",
+    "시작/이전 애니메이션 DisableHitBox 이벤트가 새 공격 이펙트를 끄는 문제 수정"
+  ],
+  "validation": {
+    "weapon_tests": "86/86 passed; MCP job 326c8110a5634bc79a2c37307032a481",
+    "other_regression_tests": "99/99 passed in preceding suite run 36752a741a324743adaa6513ee26a732",
+    "runtime": "runtime-events-result.txt; real Play Mode animation events and LateUpdate, native Brute avatar, four attacks; input/network initialization isolated",
+    "captures": [
+      "runtime-Axe-0.gif",
+      "runtime-Greatsword-2.gif"
+    ],
+    "capture_speed": 0.5
+  },
+  "reference": "https://www.fs.usda.gov/t-d/pubs/pdfpubs/pdf18232812P/Part11a_UsingAnAx.pdf"
+}

@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-08",
+  "issues": [
+    "양손검 3타 몸통 뒤틀림과 이펙트 누락",
+    "도끼 손잡이 위치 및 날 방향",
+    "양손검 막기의 조준 반영"
+  ],
+  "findings": {
+    "oldFinisherAimCorrectionDegrees": "130도 초과",
+    "trail": "Crossfade 진입 시 이전 애니메이션 상태를 기록해 다음 상태에서 방출 중단",
+    "axe": "검과 같은 롤 기준을 적용해 외날의 진행 방향이 맞지 않음"
+  },
+  "changes": [
+    "3타를 Downward 클립으로 교체",
+    "양손 무기의 추가 조준 보정은 45도로 제한; 서버 궤적과 같은 계산 사용",
+    "공격 이펙트가 전환 중 진입 애니메이션을 추적",
+    "도끼 그립을 손잡이 끝 부근으로 이동; 외날을 내려찍기 평면에 정렬",
+    "준비 자세는 날이 바깥을 향하며 짧은 캐릭터의 바닥 관통을 피하도록 각도 조정",
+    "내려찍기 타격 시간은 실제 하강 구간 0.49~0.57로 제한",
+    "검 막기는 현재 조준을 사용하고 이전 공격 보정을 즉시 해제"
+  ],
+  "tests": {
+    "job": "ca1463afc3bb4f37bd528d8a4447e82b",
+    "mode": "EditMode",
+    "total": 185,
+    "passed": 185,
+    "failed": 0
+  },
+  "previews": [
+    "revised-third-aimed.gif",
+    "revised-axe-aimed.gif",
+    "r3-contact.jpg"
+  ],
+  "previewMethod": "Unity Animator + actual aim calibration + native skin + weapon fitting + blade trail mesh",
+  "validationScope": "에디터 렌더링과 자동 검사. 신규 WebGL/Windows 빌드 및 멀티플레이 실기 검증은 수행하지 않음."
+}

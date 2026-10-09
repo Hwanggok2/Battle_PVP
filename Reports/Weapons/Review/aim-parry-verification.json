@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-08",
+  "changes": [
+    "Greatsword aim calibration uses a stable player-space reference and each visible avatar's real forward strike phase.",
+    "Greatsword native aim is applied after Humanoid retargeting, with matching authoritative sweep tracks.",
+    "Third combo damage window moved from 0.64-0.84 to the actual downswing at 0.84-0.94.",
+    "Horizontal guard holds the handle on the left and crosses the aim line, including crouch camera height.",
+    "Authoritative sword-surface contact grants parry and riposte. Body-first and simultaneous contacts deal damage."
+  ],
+  "editMode": {
+    "job": "c22383185a3c44ad8e7c477bddbbb0c3",
+    "passed": 124,
+    "failed": 0,
+    "coverage": "Six characters, pitch changes, crouching, scaled/rotated roots, visible blade versus sweep alignment, contact ordering, authored arm curves, trails and weapon state rules."
+  },
+  "playMode": {
+    "result": "Four real-event attacks emitted and stopped trails correctly.",
+    "character": "brute",
+    "speed": 0.5,
+    "isolation": "Input and networking polling disabled. Production aim methods driven after native retargeting; ordinary Animator events, equipment and VFX ordering retained.",
+    "capture": "aim-Greatsword-2.gif"
+  },
+  "visualGuardPose": "left-parry-final-0.png",
+  "limitations": [
+    "No live two-client network test or web build performed.",
+    "Axe source motion replacement awaits the user's requested download confirmation. Existing axe motion retained."
+  ],
+  "axeCandidate": {
+    "url": "https://kevdev.itch.io/human-melee-animatons-free",
+    "filesToInspect": ["HumanM@Attack2H01", "HumanM@CombatIdle2H01", "HumanM@WeaponHold2H01"],
+    "status": "Not downloaded; overhead direction must be verified from the actual source before installation.",
+    "rejected": "Mixamo Standing Melee Attack Downward: inspected official preview, one-handed motion."
+  }
+}

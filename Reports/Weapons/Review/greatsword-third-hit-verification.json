@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-09",
+  "project": "Battle_PVP",
+  "unity": "6000.3.15f1",
+  "mcp_instance": "Battle_PVP@88856f5f0dd5cd5f",
+  "fixes": [
+    "Start the server hit-report grace period after the actual remaining attack animation, including its playback speed.",
+    "Keep the completed attack index until the deferred closing-frame sweep can submit its hit; reset it on the next attack, cancellation or revival."
+  ],
+  "before_fix": {
+    "report_window_seconds": 2,
+    "slow_finisher_speed": 0.4,
+    "slow_finisher_clip_seconds": 2.625,
+    "report_deadline_regressions_failed": 2
+  },
+  "after_fix": {
+    "edit_mode": {
+      "job": "8f1c86a5d8c54af7818cd24c1e221451",
+      "passed": 151,
+      "failed": 0,
+      "suites": ["WeaponCombatTests", "MeleeBladeCollisionTests", "CombatPresentationTests"]
+    },
+    "actual_playback": {
+      "test": "GreatswordDamageTests.FullComboDamagesTheTargetOnEachBodyAtLowFrameRate",
+      "passed": 1,
+      "failed": 0,
+      "simulation_frame_seconds": 0.1,
+      "target": "training-dummy prefab at 1.2 metres, aimed through a camera ray",
+      "characters": ["default", "brute", "security-officer", "casual-1", "megumi", "picochan"],
+      "assertion": "Every character reaches combo strike 3 and reduces target HP on each of the three strikes.",
+      "xml": "greatsword-third-hit-runtime-tests.xml"
+    }
+  },
+  "limitations": ["No separate-client online session or WebGL build/deployment was performed in this change."]
+}

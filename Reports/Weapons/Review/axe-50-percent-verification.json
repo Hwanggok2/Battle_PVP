@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-09",
+  "animationMultiplier": 1.5,
+  "activation": "서버가 도끼 적중을 확인한 즉시 현재 애니메이션 프레임부터 적용. 남은 휘두르기와 회수, 다음 공격 1회를 가속. 중첩 없음.",
+  "damageMultiplier": 1.6,
+  "updated": [
+    "게임 코드의 적중/다음 공격 배율",
+    "무기 설치 코드 및 현재 선택창 에셋 설명",
+    "기존 도끼 애니메이션 회귀 검사 기대값 1.5배",
+    "가속 예측이 취소되었을 때 느려진 회수 동작을 조기 종료하지 않도록 시간 여유 조정"
+  ],
+  "unityTests": {
+    "status": "실행 불가",
+    "reason": "Unity Licensing Client 연결 거절 및 초기화 시간 초과. 이번 변경의 Unity 검사는 실행되지 않음.",
+    "log": "axe-50-percent-tests.log"
+  },
+  "previousTests": "1.2배속 버전은 EditMode 130개 통과. 이 결과를 1.5배속 버전의 테스트 결과로 사용하지 않음.",
+  "compilation": {
+    "status": "통과",
+    "target": "Assembly-CSharp-Editor.csproj 및 런타임 종속 프로젝트",
+    "errors": 0,
+    "warnings": 12
+  }
+}

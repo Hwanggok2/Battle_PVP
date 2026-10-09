@@ -1,0 +1,50 @@
+{
+  "build": {
+    "job_id": "build-28d2e1b9e9",
+    "result": "succeeded",
+    "platform": "WebGL",
+    "output_path": "Builds/WebGL-2026-10-09-UiVfx",
+    "started_at": "2026-10-09T09:09:25.6106217Z",
+    "duration_seconds": 808.6179715,
+    "completed_at": "2026-10-09T09:22:54.2285932Z",
+    "total_size_mb": 121.62,
+    "errors": 0,
+    "warnings": 6
+  },
+  "changes": [
+    "Remove explanatory subtitle from battle result UI.",
+    "Show trap notice as white text without a background image."
+  ],
+  "validation": {
+    "unityCompileErrors": 0,
+    "relevantTestsPassed": 37,
+    "tests": "35 passed in the initial selected run; two outdated result UI tests were updated and passed in a targeted rerun.",
+    "resultSubtitleAbsent": true,
+    "trapNoticeText": "덫에 걸림!",
+    "trapNoticeBackgroundImages": 0,
+    "trapNoticeOffset": {
+      "x": 0,
+      "y": 110
+    },
+    "browser": {
+      "url": "http://127.0.0.1:8779/",
+      "titleScreenLoaded": true,
+      "loginScreenLoaded": true,
+      "errors": 0,
+      "accountLoginTested": false,
+      "multiplayerTested": false
+    }
+  },
+  "package": {
+    "path": "C:/Github/Battle_PVP/Builds/Battle_PvP-WebGL-2026-10-09-UiVfx.zip",
+    "bytes": 127090940,
+    "files": 9,
+    "sha256": "c8e74667ab6a1bfb9a018741ea4f042fdbb1db80aea0896e27228b818b7bf885",
+    "contentsVerified": true
+  },
+  "preview": {
+    "url": "http://127.0.0.1:8779/",
+    "processId": 26200
+  },
+  "publicDeploymentPerformed": false
+}

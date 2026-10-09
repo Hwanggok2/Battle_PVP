@@ -1,0 +1,30 @@
+{
+  "applied": true,
+  "source": "Kevin Iglesias Human Melee Animations FREE / HumanM@Attack2H01",
+  "duration_seconds": 1.6,
+  "normalized_hit_window": [
+    0.325,
+    0.4
+  ],
+  "description": "Approved two-handed diagonal cut. Preserves source muscle curves and dominant wrist; support hand fitted to reachable haft positions.",
+  "validation": {
+    "weapon_tests": {
+      "passed": 96,
+      "job": "fd561dd9a76b4270942ce72d51111cc8"
+    },
+    "dense_grip_tests": {
+      "passed": 6,
+      "characters": 6,
+      "samples_per_character": 121,
+      "job": "f29ab6e77f184d7c9b69e719680c1400"
+    },
+    "real_play_mode": "PASS: Greatsword 1/2/3 and Axe use real animation events, visible trail, emission end, and return to ready. Isolated from input/network.",
+    "runtime_axe_frames": 59,
+    "runtime_capture_speed": 0.5,
+    "console_errors": 0
+  },
+  "limitations": [
+    "No web build or deployment in this change.",
+    "No live two-client multiplayer test."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-08",
+  "scope": "양손검·도끼 모션 및 무기 부착 수정",
+  "unity": "6000.3.15f1",
+  "jobId": "3322b8f7c6a34d0190dad6cd89700d49",
+  "tests": { "total": 85, "passed": 85, "failed": 0, "skipped": 0 },
+  "visualChecks": [
+    "바바리안: 양손검 3연격 전 구간, 가로 막기, 도끼 대기/내려찍기",
+    "Officer: 가로 막기",
+    "PicoChan: 도끼 들어올리기"
+  ],
+  "validatedCharacters": [
+    "default",
+    "brute",
+    "security-officer",
+    "megumi",
+    "casual-1",
+    "picochan"
+  ],
+  "coverage": [
+    "무기 손잡이 접촉",
+    "241 지점의 상완·전완·손목 회전 연속성",
+    "손목 과굴곡 제한",
+    "대기에서 가로 막기 진입/유지/해제",
+    "조준 변화와 공격 판정 궤적 일치",
+    "외날 도끼 크기·대기 방향"
+  ],
+  "build": "Unity 프로젝트 반영, 이번 요청에서 웹/Windows 빌드와 배포는 실행하지 않음"
+}

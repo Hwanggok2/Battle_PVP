@@ -1,0 +1,18 @@
+{
+  "change": "도끼는 한손검과 동일한 대기/이동 자세를 사용하고 공격은 상체 레이어만 적용",
+  "axe_ready_state": "New State (locomotion)",
+  "axe_full_body_layer_weight": 0,
+  "grip": "한손 대기에서 양손 공격으로 Animator 전환 비율에 맞춰 보간",
+  "validation": {
+    "edit_mode_passed": 107,
+    "job": "40539fbacf3c49358b1af863bbecc05a",
+    "idle_walk_pose_comparison": "6 characters x idle, forward, backward, left, right; all body bones match sword pose",
+    "lower_body_during_attack": "Hips and both legs match locomotion throughout 21 attack phases in 5 movement directions",
+    "play_mode": "PASS: real animation events, axe walking animation, VFX emission/end, return to one-handed locomotion",
+    "capture": "axe-upper-body-walk.gif",
+    "capture_attack_speed": 0.5
+  },
+  "limitations": [
+    "실시간 두 클라이언트 네트워크 검증 및 웹 빌드/배포는 이번 변경에 포함되지 않음"
+  ]
+}

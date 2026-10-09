@@ -1,0 +1,13 @@
+{
+  "source": "https://kevdev.itch.io/human-melee-animatons-free",
+  "archive": "CharacterDownloads\\KevinIglesias\\Human Melee Animations FREE.unitypackage",
+  "bytes": 13156362,
+  "sha256": "d07fffad8ef987c07c4a51c5fe1407ed23cb5ef838a96a36b8d4c5250d62c1cb",
+  "clip": "HumanM@Attack2H01",
+  "duration_seconds": 1.6,
+  "unity_humanoid_import": true,
+  "review": "Original clip sampled at 18 points on the Brute avatar with no weapon IK or attack corrections. Winds up behind shoulder and swings diagonally across the body; not an overhead vertical chop.",
+  "applied_to_gameplay": false,
+  "sources_stored": "CharacterDownloads/KevinIglesias/InspectedSources",
+  "next_requirement": "Find an authored two-handed overhead chop before replacing AxeChop."
+}

@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-10-09T13:04:37.7260982+09:00",
+  "issue": "Greatsword third strike contact timing and downward guard arm pose",
+  "thirdStrike": {
+    "oldContactWindow": [
+      0.84,
+      0.94
+    ],
+    "correctedContactWindow": [
+      0.2,
+      0.42
+    ],
+    "nativeAvatarAimAndSweepTracksRebaked": true,
+    "sourceMuscleCurvesPreserved": true
+  },
+  "guard": {
+    "target": "Authored fist midpoint carried by aimed torso",
+    "elbowFlexionDegrees": [
+      10,
+      145
+    ],
+    "maximumAdditionalWristRotationDegrees": 40,
+    "testedPitchDegrees": [
+      -70,
+      -45,
+      0,
+      45,
+      70,
+      85
+    ],
+    "crouchTested": true
+  },
+  "validation": {
+    "editModeTests": 154,
+    "editModePassed": 154,
+    "runtimeTestPassed": true,
+    "runtimeFps": 10,
+    "runtimeCharacters": [
+      "default",
+      "brute",
+      "security-officer",
+      "casual-1",
+      "megumi",
+      "picochan"
+    ],
+    "distancesMetres": {
+      "brute": [
+        1.2,
+        1.8
+      ],
+      "others": [
+        1.2,
+        1.35
+      ]
+    },
+    "strikesPerCombo": 3,
+    "compileErrors": 0
+  },
+  "limitations": [
+    "Different avatar arm lengths retain different physical reach.",
+    "No two-client network session or browser build was run for this change.",
+    "Guard constraints bound procedural corrections; they are not a full anatomical simulation."
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-08",
+  "scope": "무기 애니메이션 리타기팅 및 양손 그립 수정",
+  "sourceAvatar": "Assets/Characters/Brute/Source/Brute.fbx",
+  "sourceSkeletonCheck": {
+    "matchingNonRootBones": 71,
+    "maxBindPositionDifferenceMeters": 1e-06
+  },
+  "changes": [
+    "9개 Mixamo FBX의 실제 원본 Avatar 재사용",
+    "양손검 3타를 같은 Combo 원본의 연속 구간으로 구성",
+    "양손검과 도끼 공격의 원본 근육 곡선·골반·발 디딤 보존",
+    "오른팔·손목을 유지하고 왼손 도달 거리만 보정",
+    "가슴 높이 가로 막기와 도끼 날을 내린 준비 자세",
+    "80ms 공격 전환과 진입 중 타격 시간 추적",
+    "중복 타격 이벤트가 없는 전신 보조 레이어"
+  ],
+  "tests": {
+    "job": "138f73bcf9c94cdd8969d7d51b258b6c",
+    "total": 184,
+    "passed": 184,
+    "failed": 0,
+    "mode": "EditMode"
+  },
+  "visualReview": {
+    "characters": [
+      "brute",
+      "security-officer"
+    ],
+    "files": [
+      "verified-greatsword.gif",
+      "verified-axe.gif",
+      "verified-contact-sheet.jpg"
+    ],
+    "method": "Unity Animator + native CharacterSkin + runtime grip fitting, per-frame BakeMesh preview render",
+    "limitations": "편집기 렌더링 및 자동 검사. 웹/Windows 플레이어 빌드와 멀티플레이 실기 검증은 이번 작업에서 수행하지 않음."
+  },
+  "guardMotion": "정적 가로 막기 자세를 직접 구성한 것이며 내려받은 패링 전용 클립이 아님"
+}

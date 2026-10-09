@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-07",
+  "status": "Mixamo replacement applied and verified in Unity editor",
+  "editModeTests": {
+    "classes": [
+      "WeaponCombatTests",
+      "CharacterCombatAlignmentTests"
+    ],
+    "passed": 77,
+    "failed": 0,
+    "jobId": "6dbc5a78fe1a4d3aae29cd4e53db126f"
+  },
+  "verified": [
+    "Six avatars retain both weapon grips through attack and ready poses.",
+    "Shield hand and forearm stay behind the panel and follow aim.",
+    "Greatsword guard remains horizontal at chest height.",
+    "Shield raise, held guard, release and early-release transitions work.",
+    "Thrust retracts the elbow, turns the torso and extends forward.",
+    "Axe raises above the head and descends with both hands.",
+    "Upper-body clips do not transfer full-body spins or deep bends onto the waist.",
+    "Melee hit tracks and effects use the rebaked weapon poses."
+  ],
+  "motionSourcesCurrentlyApplied": [
+    "Nine owner-supplied Mixamo FBX files",
+    "Authored horizontal guard and axe clearance corrections",
+    "Existing Quaternius recoil"
+  ],
+  "sources": [
+    {
+      "name": "Great Sword Idle.fbx",
+      "sha256": "1481f75ca91e72a2eec662729b35d27b6722d35cb54e5fca7572b7b2ea54ed2b"
+    },
+    {
+      "name": "Great Sword Slash combo.fbx",
+      "sha256": "a48bebb3b4d20e2301d4547081412bdba060e77219d883dcef61654dee6149e6"
+    },
+    {
+      "name": "Great Sword Slash Downward.fbx",
+      "sha256": "ea26290fc5f9649ecffb9c90ef6649d226bd74b9b8c5f1fb1b4206ced51d2b4d"
+    },
+    {
+      "name": "Great Sword Slash Low.fbx",
+      "sha256": "11076ce2ee8c74b6c93392c35550e55506de996d749c62a1cc8626b12d2d1beb"
+    },
+    {
+      "name": "Great Sword Slash Power.fbx",
+      "sha256": "911db220fa74846775a5b8670575a12b6066cbbfb743e9c31e6adda79f45d9e3"
+    },
+    {
+      "name": "Sword And Shield Block (1).fbx",
+      "sha256": "c0342c8dc3738e3dc1ceac644aa266bfd6f2427e3d49dfeaad1b7749e664d467"
+    },
+    {
+      "name": "Sword And Shield Block Idle.fbx",
+      "sha256": "bd9fcb628583fbaf8c4108e98a79fa834c55a329772210ca41a4ffff0ad5eba0"
+    },
+    {
+      "name": "Sword And Shield Block.fbx",
+      "sha256": "59b10517f30107fd45a0b5413e3ccd9b6bf119bf5627ba1e78fb74ce99e702ec"
+    },
+    {
+      "name": "Thrust Slash.fbx",
+      "sha256": "17fc9c478b83b70a8d0279ef9b099cb56b7349d15ceaef73d153501fbf965254"
+    }
+  ],
+  "validationScope": "EditMode gameplay regression checks and rendered pose inspection. No new WebGL/Windows build or deployment."
+}
