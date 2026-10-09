@@ -24,6 +24,15 @@ namespace BattlePvp.Combat
             var entry=new PassivePreset {Id=Guid.NewGuid().ToString("N"),Name="프리셋 "+number};
             Entries.Add(entry); return entry;
         }
+        public bool Remove(string id)
+        {
+            var entry=Find(id);
+            if(entry==null) return false;
+            Entries.Remove(entry);
+            // Deleting a saved recipe does not equip another one or clear the applied slots.
+            if(ActiveId==id) ActiveId=null;
+            return true;
+        }
         public bool SetSlot(string id,int slot,int kind)
         {
             var entry=Find(id);
@@ -40,30 +49,39 @@ namespace BattlePvp.Combat
     public static class PassivePresetStore
     {
         public static string Key => "BattlePvp.PassivePresets.v1."+(PlayFab.PlayFabSettings.staticPlayer.PlayFabId ?? "offline");
-        private static readonly string[] JobNames={"힘 특화 · STR","체력 특화 · CON","민첩 특화 · AGI","방어 특화 · DEF","전략가","팔방미인"};
-        public static PassivePresetBook Read(int currentJob=5)
+        private static readonly string[] DefaultNames={"힘 특화 · STR","체력 특화 · CON","민첩 특화 · AGI","방어 특화 · DEF","전략가","팔방미인"};
+        public static PassivePresetBook Read()
         {
             PassivePresetBook book=null;
             try { book=JsonUtility.FromJson<PassivePresetBook>(PlayerPrefs.GetString(Key,"")); }
             catch(ArgumentException) { }
-            if(book?.Entries!=null && book.Entries.Count>=6)
+            if(book?.Entries!=null)
             {
                 var ids=new HashSet<string>();
                 bool valid=true;
                 foreach(var entry in book.Entries)
                     if(entry==null || string.IsNullOrWhiteSpace(entry.Id) || !ids.Add(entry.Id) || !PassiveLoadout.Validate(entry.Choices)) {valid=false;break;}
-                if(valid && book.Find(book.ActiveId)!=null) return book;
+                if(valid)
+                {
+                    if(book.Find(book.ActiveId)==null) book.ActiveId=null;
+                    return book;
+                }
             }
-            // Migrate the previous two slots once. Never use the same array for two presets.
-            book=new PassivePresetBook(); currentJob=Mathf.Clamp(currentJob,0,5);
-            for(int i=0;i<6;i++) book.Entries.Add(new PassivePreset {Id="job-"+i,Name=JobNames[i]});
-            book.ActiveId=book.Entries[currentJob].Id;
-            book.Find(book.ActiveId).Choices=(int[])PassiveStore.Read().Clone();
+            // The legacy IDs remain stable, but names and presets have no connection to stats/jobs.
+            book=new PassivePresetBook();
+            for(int i=0;i<DefaultNames.Length;i++) book.Entries.Add(new PassivePreset {Id="job-"+i,Name=DefaultNames[i]});
+            var applied=PassiveStore.Read();
+            if(applied[0]!=0 || applied[1]!=0)
+            {
+                book.ActiveId=book.Entries[0].Id;
+                book.Entries[0].Choices=(int[])applied.Clone();
+            }
+            Save(book);
             return book;
         }
         public static void Save(PassivePresetBook book)
         {
-            if(book?.Entries==null || book.Find(book.ActiveId)==null) return;
+            if(book?.Entries==null || (!string.IsNullOrEmpty(book.ActiveId) && book.Find(book.ActiveId)==null)) return;
             foreach(var entry in book.Entries) if(!PassiveLoadout.Validate(entry.Choices)) return;
             PlayerPrefs.SetString(Key,JsonUtility.ToJson(book)); PlayerPrefs.Save();
         }

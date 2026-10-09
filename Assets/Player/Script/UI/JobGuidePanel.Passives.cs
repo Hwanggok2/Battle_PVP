@@ -27,6 +27,7 @@ namespace BattlePvp.UI
             public Image Background;
             public TMP_Text Badge;
             public TMP_InputField Name;
+            public Button Delete;
             public readonly Image[] Icons = new Image[2];
             public readonly TMP_Text[] Labels = new TMP_Text[2];
             public readonly Button[] Clear = new Button[2];
@@ -132,18 +133,15 @@ namespace BattlePvp.UI
                 var button=root.gameObject.AddComponent<Button>(); button.targetGraphic=row.Background;
                 button.navigation=new Navigation {mode=Navigation.Mode.None};
                 button.onClick.AddListener(()=>SelectPassivePreset(id));
-                if(id.StartsWith("job-"))
-                    PassiveText("Name",root,entry.Name,new Vector2(185,24),new Vector2(-32,32),18).fontStyle=FontStyles.Bold;
-                else
-                {
-                    row.Name=RoomUiElements.Input("Name",root,BattleResultTheme.SharedFont,"프리셋 이름",new Vector2(185,24),new Vector2(-32,32));
-                    row.Name.characterLimit=18; row.Name.textComponent.fontSize=18;
-                    row.Name.SetTextWithoutNotify(entry.Name);
-                    row.Name.onSelect.AddListener(_=>SelectPassivePreset(id));
-                    row.Name.onEndEdit.AddListener(value=>RenamePassivePreset(id,value));
-                }
-                row.Badge=PassiveText("ActiveBadge",root,"",new Vector2(72,24),new Vector2(95,32),13);
+                row.Name=RoomUiElements.Input("Name",root,BattleResultTheme.SharedFont,"프리셋 이름",new Vector2(178,24),new Vector2(-38,32));
+                row.Name.characterLimit=18; row.Name.textComponent.fontSize=18;
+                row.Name.SetTextWithoutNotify(entry.Name);
+                row.Name.onSelect.AddListener(_=>SelectPassivePreset(id));
+                row.Name.onEndEdit.AddListener(value=>RenamePassivePreset(id,value));
+                row.Badge=PassiveText("ActiveBadge",root,"",new Vector2(52,24),new Vector2(81,32),13);
                 row.Badge.alignment=TextAlignmentOptions.Right; row.Badge.color=new Color(.36f,.94f,.74f);
+                row.Delete=PassiveButton("DeletePreset",root,"×",new Vector2(22,22),new Vector2(123,32),17);
+                row.Delete.onClick.AddListener(()=>DeletePassivePreset(id));
                 for(int slot=0;slot<2;slot++)
                 {
                     int at=slot; float x=slot==0?-66:66;
@@ -169,9 +167,9 @@ namespace BattlePvp.UI
         {
             if(_pendingPreset==null)
             {
-                _presetBook=PassivePresetStore.Read(_local!=null?JobGuideContent.IndexOf(_local.CurrentIdentity):5);
-                _selectedPreset=_presetBook.ActiveId;
-                _chosenPassive=0; _passiveDraft=(int[])_presetBook.Find(_selectedPreset).Choices.Clone();
+                _presetBook=PassivePresetStore.Read();
+                _selectedPreset=_presetBook.ActiveId ?? (_presetBook.Entries.Count>0 ? _presetBook.Entries[0].Id : null);
+                _chosenPassive=0; _passiveDraft=(int[]) (_presetBook.Find(_selectedPreset)?.Choices ?? new int[2]).Clone();
                 BuildPresetRows();
             }
             _passivePanel.SetActive(true); RefreshPassives();
@@ -180,20 +178,22 @@ namespace BattlePvp.UI
             { scroll.StopMovement(); scroll.verticalNormalizedPosition=1; }
         }
         private int[] CurrentPassives() => _passives!=null ? _passives.Snapshot() : PassiveStore.Read();
-        private bool IsActivePreset(PassivePreset entry) => entry.Id==_presetBook.ActiveId && PassivePresetBook.Same(entry.Choices,CurrentPassives());
+        private bool IsActivePreset(PassivePreset entry) => entry!=null && entry.Id==_presetBook.ActiveId && PassivePresetBook.Same(entry.Choices,CurrentPassives());
         private void RefreshPassives()
         {
             if(_presetBook==null) return;
             bool editable=PassiveLoadout.CanEdit && _pendingPreset==null;
             var selected=_presetBook.Find(_selectedPreset);
-            _presetTitle.text=selected.Name;
-            _activeBadge.text=IsActivePreset(selected) ? "사용 중" : "선택 중";
+            _presetTitle.text=selected!=null ? selected.Name : "프리셋을 추가하세요";
+            _activeBadge.text=selected==null ? "" : IsActivePreset(selected) ? "사용 중" : "선택 중";
             foreach(var row in _presetRows)
             {
                 var entry=_presetBook.Find(row.Id);
                 row.Background.color=row.Id==_selectedPreset ? new Color(.08f,.25f,.30f) : new Color(.045f,.095f,.135f);
                 row.Badge.text=IsActivePreset(entry) ? "사용 중" : "";
                 if(row.Name!=null) row.Name.interactable=editable;
+                row.Delete.gameObject.SetActive(row.Id==_selectedPreset);
+                row.Delete.interactable=editable;
                 for(int slot=0;slot<2;slot++)
                 {
                     int kind=entry.Choices[slot];
@@ -204,9 +204,10 @@ namespace BattlePvp.UI
             }
             for(int i=0;i<_passiveCards.Count;i++)
                 _passiveCards[i].color=_chosenPassive==i+1 ? new Color(.1f,.31f,.37f) : new Color(.055f,.12f,.17f,1);
-            _passiveSave.interactable=editable; _addPreset.interactable=editable;
+            _passiveSave.interactable=editable && selected!=null; _addPreset.interactable=editable;
             _passiveStatus.text=!PassiveLoadout.CanEdit ? "대기실 또는 사망 중 패시브를 변경할 수 있습니다." :
                 _pendingPreset!=null ? "서버에서 적용을 확인하고 있습니다." :
+                selected==null ? "+ 프리셋 추가로 새 구성을 만드세요. 현재 장착한 패시브는 유지됩니다." :
                 _chosenPassive>0 ? PassiveNames[_chosenPassive]+" · 왼쪽 장착 칸을 선택하세요." :
                 "패시브를 왼쪽 칸으로 끌어 놓거나, 이미지와 칸을 차례로 클릭하세요. 적용하면 전투에 사용됩니다.";
         }
@@ -224,11 +225,22 @@ namespace BattlePvp.UI
         }
         private void RenamePassivePreset(string id,string value)
         {
-            if(!PassiveLoadout.CanEdit || _pendingPreset!=null || id.StartsWith("job-")) return;
+            if(!PassiveLoadout.CanEdit || _pendingPreset!=null) return;
             var entry=_presetBook.Find(id); if(entry==null) return;
             if(!string.IsNullOrWhiteSpace(value)) entry.Name=value.Trim();
             var row=_presetRows.Find(p=>p.Id==id); row?.Name?.SetTextWithoutNotify(entry.Name);
             PassivePresetStore.Save(_presetBook); RefreshPassives();
+        }
+        private void DeletePassivePreset(string id)
+        {
+            if(!PassiveLoadout.CanEdit || _pendingPreset!=null || id!=_selectedPreset) return;
+            int index=_presetBook.Entries.FindIndex(entry=>entry.Id==id);
+            if(!_presetBook.Remove(id)) return;
+            EndPassiveDrag(); _chosenPassive=0;
+            _selectedPreset=_presetBook.Entries.Count>0 ? _presetBook.Entries[Mathf.Min(index,_presetBook.Entries.Count-1)].Id : null;
+            _passiveDraft=(int[])(_presetBook.Find(_selectedPreset)?.Choices ?? new int[2]).Clone();
+            PassivePresetStore.Save(_presetBook); BuildPresetRows(); RefreshPassives();
+            _passiveStatus.text="프리셋을 삭제했습니다. 현재 장착한 패시브는 유지됩니다.";
         }
         public void ChoosePassive(int kind)
         {
@@ -250,7 +262,7 @@ namespace BattlePvp.UI
             => DropPassive(_selectedPreset,slot,_passiveDraft[slot]==kind?0:kind);
         private void SavePassives()
         {
-            if(!PassiveLoadout.CanEdit || _pendingPreset!=null || !PassiveLoadout.Validate(_passiveDraft)) return;
+            if(!PassiveLoadout.CanEdit || _pendingPreset!=null || _presetBook.Find(_selectedPreset)==null || !PassiveLoadout.Validate(_passiveDraft)) return;
             _pendingPreset=_selectedPreset; _pendingChoices=(int[])_passiveDraft.Clone(); RefreshPassives();
             if(_passives!=null) { if(!_passives.Request(_pendingChoices)) PassiveRequestCompleted(false); }
             else { PassiveStore.Save(_pendingChoices); PassiveRequestCompleted(true); }
