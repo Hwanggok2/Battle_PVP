@@ -24,6 +24,16 @@ __pycache__/
 /Reports/**/editor-final-state.txt
 /Reports/**/*.pid
 /Reports/CommitPreparation/
+# Generated motion captures and raw local test output; keep source tests and summaries.
+/Reports/Weapons/Review/*.png
+/Reports/Weapons/Review/*.jpg
+/Reports/Weapons/Review/*.gif
+/Reports/Weapons/Review/*.xml
+/Reports/Practice/*.png
+/Reports/Practice/*.xml
+/Reports/Practice/profile-before-fix.json
+/Reports/UI/*.png
+/Reports/NetworkDiagnostics/latest-room-exit.json
 # Raw per-frame latency captures stay local; commit JSON analysis and result summaries.
 /Reports/PingDiagnosis/**/*.csv
 *.xlsx.inspect.ndjson
