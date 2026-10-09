@@ -197,8 +197,10 @@ namespace BattlePvp.Remodel.Editor
                 foreach(var entry in catalog.Weapons) foreach(var data in entry.Attacks.Where(d=>d!=null && d.animationName.StartsWith("Weapon_")))
                 {
                     if(animationName != null && data.animationName != animationName) continue;
-                    data.aimInRootSpace=entry.Kind==MeleeWeaponKind.Greatsword || data.animationName=="Weapon_Thrust";
-                    data.maxAimCalibration=entry.Kind==MeleeWeaponKind.Greatsword ? 80f : entry.TwoHanded ? 0f : 180f;
+                    // Calibrate on each final avatar, after Humanoid retargeting and grip fitting.
+                    // Axes also need this: arm proportions move the cutting head off the camera ray.
+                    data.aimInRootSpace=entry.TwoHanded || data.animationName=="Weapon_Thrust";
+                    data.maxAimCalibration=entry.TwoHanded ? 80f : 180f;
                     animator.SetLayerWeight(animator.GetLayerIndex("Weapon Footwork"),entry.Kind==MeleeWeaponKind.Greatsword ? 1 : 0);
                     var clip=AssetDatabase.LoadAssetAtPath<AnimationClip>(Folder+data.animationName.Substring("Weapon_".Length)+".anim");
                     var events=AnimationUtility.GetAnimationEvents(clip);

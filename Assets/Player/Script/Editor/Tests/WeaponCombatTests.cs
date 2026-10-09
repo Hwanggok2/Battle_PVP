@@ -563,6 +563,12 @@ namespace BattlePvp.EditorTests
         [TestCase("casual-1",MeleeWeaponKind.Sword)]
         [TestCase("megumi",MeleeWeaponKind.Sword)]
         [TestCase("picochan",MeleeWeaponKind.Sword)]
+        [TestCase("default",MeleeWeaponKind.Axe)]
+        [TestCase("brute",MeleeWeaponKind.Axe)]
+        [TestCase("security-officer",MeleeWeaponKind.Axe)]
+        [TestCase("casual-1",MeleeWeaponKind.Axe)]
+        [TestCase("megumi",MeleeWeaponKind.Axe)]
+        [TestCase("picochan",MeleeWeaponKind.Axe)]
         public void CalibratedStrikesCrossTheCameraRayOnEveryBody(string character,MeleeWeaponKind kind)
         {
             _defender.transform.SetPositionAndRotation(new Vector3(2,0,-3),Quaternion.Euler(0,37,0));
@@ -576,7 +582,7 @@ namespace BattlePvp.EditorTests
             var entry=WeaponCatalog.Instance.Find(kind);
             var hitbox=_defender.GetComponentInChildren<MeleeHitBox>(true);
             var blade=(Transform)typeof(MeleeHitBox).GetProperty("PoseSource",Private).GetValue(hitbox);
-            foreach(var attack in entry.Attacks.Where(a=>a!=null && (kind==MeleeWeaponKind.Greatsword || a.animationName=="Weapon_Thrust"))) foreach(float pitch in new[]{-40f,0f,40f})
+            foreach(var attack in entry.Attacks.Where(a=>a!=null && (entry.TwoHanded || a.animationName=="Weapon_Thrust"))) foreach(float pitch in new[]{-40f,0f,40f})
             {
                 Set(Defender,"_meleeAnimationData",attack);
                 Call(Defender,"UpdateMeleeAimPose");
