@@ -114,6 +114,8 @@ namespace BattlePvp.Combat
             if (_animator == null || _animator.layerCount <= 0 || string.IsNullOrWhiteSpace(stateName)) return 0d;
             int layer = Mathf.Clamp(animationLayer, 0, _animator.layerCount - 1);
             AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(layer);
+            if(_animator.IsInTransition(layer) && _animator.GetNextAnimatorStateInfo(layer).IsName(stateName))
+                state=_animator.GetNextAnimatorStateInfo(layer);
             if (!state.IsName(stateName) || !float.IsFinite(state.length)) return 0d;
             // Unity's state length already includes Animator/state playback speed.
             return state.length * Mathf.Clamp01(1f - state.normalizedTime);
@@ -121,6 +123,7 @@ namespace BattlePvp.Combat
 
         public void SetSwordMaterial(GameObject sword, Material swordMaterial)
         {
+            if (LocalGameSettings.Current.hideVfx) swordMaterial = null;
             if (_sword != sword)
             {
                 RestoreSwordMaterials();

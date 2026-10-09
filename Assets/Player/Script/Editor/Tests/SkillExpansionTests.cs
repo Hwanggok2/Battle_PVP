@@ -615,6 +615,55 @@ namespace BattlePvp.EditorTests
             Assert.That(_skills.BlocksCombat,Is.False); Assert.That(_skills.LookLocked,Is.True);
             Assert.That(Quaternion.Angle(_skills.RestrictRotation(Quaternion.Euler(0,180,0)),_player.transform.rotation),Is.LessThan(.01f));
         }
+        [Test] public void TrapNoticeSurvivesHiddenVfxAndClearsOnExpiryDeathAndDisposal()
+        {
+            bool hidden=UI.LocalGameSettings.Current.hideVfx;
+            using var visuals=new SkillExpansionVisuals(_skills);
+            try
+            {
+                UI.LocalGameSettings.Current.hideVfx=true;
+                _skills.ApplyControl(3,false,false); Call(visuals,"TickTrapNotice");
+                Assert.That(typeof(SkillExpansionVisuals).GetField("_trapNotice",Private).GetValue(visuals),Is.Null,"Stuns are not traps.");
+                _skills.CancelForLoadout(); _skills.ApplyControl(5,true,false); Call(visuals,"TickTrapNotice");
+                var notice=(GameObject)typeof(SkillExpansionVisuals).GetField("_trapNotice",Private).GetValue(visuals);
+                Assert.That(notice.activeSelf,Is.True);
+                var text=notice.GetComponentInChildren<TMPro.TMP_Text>();
+                Assert.That(text.text,Is.EqualTo("덫에 걸림!"));
+                Assert.That(((RectTransform)text.transform.parent).anchoredPosition.y,Is.GreaterThan(0));
+                Assert.That(text.raycastTarget,Is.False);
+                Set(_skills,"_rootUntil",_skills.Now-1); Call(visuals,"TickTrapNotice"); Assert.That(notice.activeSelf,Is.False);
+                _skills.ApplyControl(5,true,false); Call(visuals,"TickTrapNotice"); Assert.That(notice.activeSelf,Is.True);
+                Set(_health,"_isDead",true); Call(visuals,"TickTrapNotice"); Assert.That(notice.activeSelf,Is.False);
+                visuals.Dispose(); Assert.That(notice==null,Is.True);
+            }
+            finally { UI.LocalGameSettings.Current.hideVfx=hidden; }
+        }
+
+        [Test] public void HiddenVfxKeepsBuffsAndShieldGameplayAndRestoresExistingVisuals()
+        {
+            bool hidden=UI.LocalGameSettings.Current.hideVfx;
+            using var aura=new SkillBuffAura(); using var defense=new DefenseSkillVfx();
+            try
+            {
+                UI.LocalGameSettings.Current.hideVfx=false;
+                Active(JobSkillKind.Berserk); Set(_health,"_currentShield",30f);
+                aura.Tick(_skills,false); defense.Tick(_skills,false);
+                var glow=_player.GetComponentsInChildren<SkinnedMeshRenderer>(true).Single(r=>r.name=="Skill buff body glow");
+                var shield=_player.transform.Find("Preset yellow shield").gameObject;
+                Assert.That(glow.enabled && shield.activeSelf,Is.True);
+                UI.LocalGameSettings.Current.hideVfx=true;
+                aura.Tick(_skills,false); defense.Tick(_skills,false);
+                Assert.That(glow.enabled || shield.activeSelf,Is.False);
+                Assert.That(_health.CurrentShield,Is.EqualTo(30)); Assert.That(_skills.Berserking,Is.True);
+                Assert.That(_skills.AttackMultiplier,Is.EqualTo(2));
+                UI.LocalGameSettings.Current.hideVfx=false;
+                aura.Tick(_skills,false); defense.Tick(_skills,false);
+                Assert.That(glow.enabled && shield.activeSelf,Is.True);
+                Assert.That(_player.GetComponentsInChildren<SkinnedMeshRenderer>(true).Count(r=>r.name=="Skill buff body glow"),Is.EqualTo(1));
+            }
+            finally { UI.LocalGameSettings.Current.hideVfx=hidden; }
+        }
+
         [Test] public void FortifyChangesDefenseWithoutChangingJobOrInvestment()
         {
             var raw=new StatContainer{DEF=new StatSlot{Invested=30}}; _stats.ApplyLocalSceneStats(raw);

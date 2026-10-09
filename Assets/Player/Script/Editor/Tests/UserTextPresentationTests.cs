@@ -93,7 +93,7 @@ namespace BattlePvp.EditorTests
         }
 
         [Test]
-        public void BoundResultSummaryAndFieldsEscapeOnceAndPreserveAllWinners()
+        public void ResultDesignFieldsEscapeOnceAndPreserveAllWinners()
         {
             const string name = @"</noparse><b>X</b>\u000A";
             string winners = string.Join(", ", new string[8]
@@ -110,37 +110,54 @@ namespace BattlePvp.EditorTests
             };
             var view = new BattleResultView(bindings, Labels());
             view.Show(result);
-            Assert.That(Render(bindings.Nickname), Is.EqualTo("Name: " + name));
-            Assert.That(Render(bindings.Winner), Is.EqualTo("Winners: " + winners));
-            Assert.That(Render(bindings.MostKilledBy), Is.EqualTo("By: <br>Enemy (2)"));
-            Assert.That(Render(bindings.MostKilled), Is.EqualTo("Against: Victim Next (3)"));
-            string summary = Render(bindings.Summary);
-            Assert.That(summary, Does.StartWith("Name: " + name + "\nRank: 1\nTaken: 12.5\nDealt: 50"));
-            Assert.That(summary, Does.Contain("Winners: " + winners));
-            Assert.That(summary, Does.EndWith("Against: Victim Next (3)\n\nRestart"));
-            Assert.That(Render(bindings.RestartPrompt), Is.EqualTo("Restart"));
-            Assert.That(result.PlayerName, Is.EqualTo(name));
-            Assert.That(result.MostKilled, Is.EqualTo("Victim\nNext"), "Display normalization must not mutate result data.");
-
-            view.Hide();
-            view.Show(result);
-            Assert.That(Render(bindings.Nickname), Is.EqualTo("Name: " + name), "Repeated show must not escape an already escaped copy.");
+            var canvas = ResultCanvas(view);
+            try
+            {
+                Assert.That(Render(ResultField(view,"_name")), Is.EqualTo(name));
+                Assert.That(Render(ResultField(view,"_winner")), Is.EqualTo("이번 전투의 승자  " + winners));
+                Assert.That(Render(ResultField(view,"_nemesis")), Is.EqualTo("<br>Enemy  2회"));
+                Assert.That(Render(ResultField(view,"_rival")), Is.EqualTo("Victim\nNext  3회"));
+                Assert.That(canvas.transform.Find("Result composition/Subtitle"), Is.Null);
+                Assert.That(result.PlayerName, Is.EqualTo(name));
+                Assert.That(result.MostKilled, Is.EqualTo("Victim\nNext"), "Display formatting must not mutate result data.");
+                view.Hide();
+                view.Show(result);
+                Assert.That(Render(ResultField(view,"_name")), Is.EqualTo(name), "Repeated show must not escape an already escaped copy.");
+            }
+            finally { view.Hide(); }
         }
 
         [Test]
-        public void RuntimeResultFallbackUsesTheSameLiteralDisplayBoundary()
+        public void DefeatResultUsesLiteralTextWithoutAnExplanatorySubtitle()
         {
             var view = new BattleResultView(new BattleResultBindings(), Labels());
             view.Show(new PersonalBattleResult("<br>Player", 2, @"Winner\u000A", 1, 2, null, 0, null, 0));
-            const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
-            _extraObjects.Add((GameObject)typeof(BattleResultView).GetField("_runtimePanel", flags).GetValue(view));
-            _extraObjects.Add((GameObject)typeof(BattleResultView).GetField("_ownedCanvas", flags).GetValue(view));
-            var text = (TMP_Text)typeof(BattleResultView).GetField("_runtimeText", flags).GetValue(view);
+            var canvas = ResultCanvas(view);
+            try
+            {
+                Assert.That(Render(ResultField(view,"_headline")), Is.EqualTo("DEFEATED"));
+                Assert.That(Render(ResultField(view,"_name")), Is.EqualTo("<br>Player"));
+                Assert.That(Render(ResultField(view,"_winner")), Is.EqualTo(@"이번 전투의 승자  Winner\u000A"));
+                Assert.That(Render(ResultField(view,"_rank")), Is.EqualTo("# 02"));
+                Assert.That(Render(ResultField(view,"_nemesis")), Is.EqualTo("기록 없음"));
+                Assert.That(Render(ResultField(view,"_rival")), Is.EqualTo("기록 없음"));
+                Assert.That(canvas.transform.Find("Result composition/Subtitle"), Is.Null);
+            }
+            finally { view.Hide(); }
+        }
+
+        private GameObject ResultCanvas(BattleResultView view)
+        {
+            var canvas = (GameObject)typeof(BattleResultView).GetField("_canvas", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(view);
+            _extraObjects.Add(canvas);
+            return canvas;
+        }
+
+        private TMP_Text ResultField(BattleResultView view, string field)
+        {
+            var text = (TMP_Text)typeof(BattleResultView).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(view);
             Configure(text);
-            string rendered = Render(text);
-            Assert.That(rendered, Does.StartWith("Name: <br>Player\nRank: 2"));
-            Assert.That(rendered, Does.Contain(@"Winners: Winner\u000A"));
-            Assert.That(rendered, Does.EndWith("By: None (0)\nAgainst: None (0)\n\nRestart"));
+            return text;
         }
 
         private TextMeshProUGUI CreateText(string name)

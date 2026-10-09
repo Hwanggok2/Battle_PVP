@@ -19,7 +19,7 @@ namespace BattlePvp.UI
         private readonly BattleResultBindings _bindings;
         private GameObject _canvas;
         private RectTransform _content, _rows;
-        private TMP_Text _headline, _subtitle, _rank, _name, _character, _winner, _dealt, _taken, _rival, _nemesis, _kills, _count, _duration;
+        private TMP_Text _headline, _rank, _name, _character, _winner, _dealt, _taken, _rival, _nemesis, _kills, _count, _duration;
         private BattleResultRow[] _standings = Array.Empty<BattleResultRow>();
         private uint _localNetId;
         private readonly List<Canvas> _suppressed = new();
@@ -59,7 +59,6 @@ namespace BattlePvp.UI
             bool victory = result.Rank == 1;
             _headline.text = victory ? "VICTORY" : "DEFEATED";
             _headline.color = victory ? Gold : new Color(.95f, .49f, .69f);
-            _subtitle.text = victory ? "마지막까지 살아남았습니다." : "전투는 끝났지만, 다음 기회가 있습니다.";
             _rank.text = "# " + result.Rank.ToString("00");
             Plain(_name, result.PlayerName);
             Plain(_winner, "이번 전투의 승자  " + result.WinnerName);
@@ -80,7 +79,7 @@ namespace BattlePvp.UI
                     _kills.text = "전체 " + row.Kills + "회 처치";
                 }
                 var panel = Box(_rows, "Rank " + row.Rank, 0, i * 55, 520, 49,
-                    self ? new Color(.13f, .22f, .28f, .98f) : new Color(.035f, .075f, .12f, .8f));
+                    self ? new Color(.13f, .22f, .28f, .55f) : new Color(.035f, .075f, .12f, .35f));
                 if (self) Box(panel, "Self accent", 0, 0, 3, 49, Cyan);
                 Text(panel, "Rank", row.Rank.ToString("00"), 10, 9, 42, 30, 19, self ? Cyan : Muted);
                 Plain(Text(panel, "Player", "", 60, 4, 245, 26, 20, Color.white, true), row.PlayerName + (self ? "   YOU" : ""));
@@ -97,7 +96,7 @@ namespace BattlePvp.UI
             var canvas = _canvas.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 1000;
             var scaler = _canvas.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080); scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
-            var background = Box(_canvas.transform, "Arena shade", 0, 0, 1920, 1080, new Color(.02f, .04f, .07f, .82f));
+            var background = Box(_canvas.transform, "Arena shade", 0, 0, 1920, 1080, new Color(.02f, .04f, .07f, .4f));
             background.anchorMin = Vector2.zero; background.anchorMax = Vector2.one; background.offsetMin = background.offsetMax = Vector2.zero;
             _content = new GameObject("Result composition", typeof(RectTransform)).GetComponent<RectTransform>();
             _content.SetParent(_canvas.transform, false); _content.anchorMin = _content.anchorMax = _content.pivot = new Vector2(.5f, .5f); _content.sizeDelta = new Vector2(1920,1080);
@@ -106,14 +105,13 @@ namespace BattlePvp.UI
             _duration=Text(_content,"Match time","MATCH COMPLETE",1270,60,540,35,18,Muted,false,TextAlignmentOptions.Right);
             Text(_content,"Eyebrow","—   BATTLE COMPLETE",100,192,600,30,19,Gold,true);
             _headline=Text(_content,"Headline","VICTORY",92,237,810,140,108,Gold,true); _headline.fontStyle |= FontStyles.Italic;
-            _subtitle=Text(_content,"Subtitle","",100,375,810,50,29,Color.white);
             _rank=Text(_content,"Personal rank","# 01",100,450,230,130,102,Color.white,true);
             Box(_content,"Rank divider",347,464,2,114,new Color(.3f,.34f,.39f));
             Text(_content,"Result label","YOUR RESULT",380,465,360,25,17,Muted);
             _name=Text(_content,"Player name","",380,500,300,47,32,Color.white,true);
             _character=Text(_content,"Character","",380,554,300,36,20,Muted);
             _winner=Text(_content,"Winner","",100,640,750,40,21,Muted);
-            var board=Box(_content,"Final standings",1240,170,580,600,new Color(.055f,.09f,.15f,.94f));
+            var board=Box(_content,"Final standings",1240,170,580,600,new Color(.055f,.09f,.15f,.55f));
             Box(board,"Cyan rule",0,0,580,3,Cyan);
             Text(board,"Title","최종 순위",30,27,260,36,28,Color.white,true);
             _count=Text(board,"Count","",340,35,207,25,16,Muted,false,TextAlignmentOptions.Right);
@@ -129,11 +127,10 @@ namespace BattlePvp.UI
             _rival=Stat(910,"가장 많이 처치한 상대",Color.white,out _kills);
             _nemesis=Stat(1380,"나를 가장 많이 처치한 상대",Color.white,out _);
             _rival.fontSize=_nemesis.fontSize=30;
-            var action=Box(_content,"Return prompt",690,626,540,88,new Color(0,0,0,.8f));
+            var action=Box(_content,"Return prompt",690,626,540,88,new Color(0,0,0,.4f));
             var button=action.gameObject.AddComponent<Button>(); action.GetComponent<Image>().raycastTarget=true;
             button.navigation=new Navigation{mode=Navigation.Mode.None};button.onClick.AddListener(()=>BattleStateMachine.Instance?.RequestRestartFromInput());
             Text(action,"Return action",BattleActionPrompt.ReturnToLobby,15,20,510,48,30,Color.white,true,TextAlignmentOptions.Center);
-            Text(_content,"Return detail","같은 방 대기실로 나만 돌아갑니다",690,728,540,30,18,Muted,false,TextAlignmentOptions.Center);
             _canvas.SetActive(false);
         }
         private TMP_Text Stat(float x,string label,Color color,out TMP_Text detail)

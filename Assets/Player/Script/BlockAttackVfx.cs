@@ -65,7 +65,7 @@ namespace BattlePvp.Combat
         public void Play(bool bow = false, float swingDuration = .5f)
         {
             string scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
-            if (!CanShowAttackEffects(scene) ||
+            if (LocalGameSettings.Current.hideVfx || !CanShowAttackEffects(scene) ||
                 _cube == null || _material == null || (_health != null && _health.IsDead)) return;
             _local = !NetworkClient.active || (_identity != null && _identity.isLocalPlayer);
             if (NetworkServer.active && !NetworkClient.active) return;
@@ -102,7 +102,7 @@ namespace BattlePvp.Combat
         {
             float age = Time.time - _start;
             if (_start < 0) return;
-            if (age < 0 || (_bow && age >= .34f) ||
+            if (LocalGameSettings.Current.hideVfx || age < 0 || (_bow && age >= .34f) ||
                 !CanShowAttackEffects(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name) ||
                 (_health != null && _health.IsDead) || (_local && (GameInputController.IsPaused || GameInputController.IsTextInputActive)))
             { OnDisable(); return; }

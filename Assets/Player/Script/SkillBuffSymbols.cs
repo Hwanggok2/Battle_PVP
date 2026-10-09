@@ -34,6 +34,7 @@ namespace BattlePvp.Combat
 
         private void UpdateGroup(Transform owner, double now, int kind, bool active, Color color, float alpha)
         {
+            active &= !BattlePvp.UI.LocalGameSettings.Current.hideVfx;
             if (active && _groups[kind] == null) Create(owner, kind);
             var group = _groups[kind];
             if (group == null) return;

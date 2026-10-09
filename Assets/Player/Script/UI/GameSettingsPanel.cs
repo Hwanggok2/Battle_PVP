@@ -43,6 +43,7 @@ namespace BattlePvp.UI
             BindSlider("Sensitivity", v => _draft.sensitivity = v);
             Bind("Quality", () => _draft.quality = (_draft.quality + 1) % 3);
             Bind("Fps", () => _draft.fps = _draft.fps == 60 ? 30 : 60);
+            Bind("Vfx", () => _draft.hideVfx = !_draft.hideVfx);
             Bind("Mute", () => _draft.muted = !_draft.muted);
             Bind("BackgroundMute", () => _draft.muteInBackground = !_draft.muteInBackground);
             Bind("InvertY", () => _draft.invertY = !_draft.invertY);
@@ -109,6 +110,7 @@ namespace BattlePvp.UI
             SetValue("Brightness", _draft.brightness); SetValue("HudScale", _draft.hudScale); SetValue("HudOpacity", _draft.hudOpacity);
             SetValue("Master", _draft.master); SetValue("Music", _draft.music); SetValue("Effects", _draft.effects); SetValue("Ui", _draft.ui); SetValue("Sensitivity", _draft.sensitivity);
             Label("Quality", (LocalGameSettings.IsWebPlayer ? "자동 · 최대 " : "") + new[] { "낮음", "보통", "높음" }[_draft.quality]); Label("Fps", _draft.fps + " FPS");
+            Label("Vfx", _draft.hideVfx ? "숨김" : "표시");
             Label("Mute", _draft.muted ? "켜짐" : "꺼짐"); Label("BackgroundMute", _draft.muteInBackground ? "켜짐" : "꺼짐"); Label("InvertY", _draft.invertY ? "켜짐" : "꺼짐");
             Label("Key1", _draft.skill1.ToUpperInvariant()); Label("Key2", _draft.skill2.ToUpperInvariant());
             _refreshing = false;

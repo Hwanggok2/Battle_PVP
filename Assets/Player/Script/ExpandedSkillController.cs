@@ -78,6 +78,7 @@ namespace BattlePvp.Combat
             ? _animator.GetBoneTransform(HumanBodyBones.RightHand).position : ProjectileOrigin;
         public bool IsBeingHooked => Now < _hookedUntil;
         public bool IsStunned => Now < _stunnedUntil;
+        public bool IsTrapped => Now < _rootUntil;
         public bool LookLocked => Now < _rootUntil || IsBeingHooked;
         public bool BlocksCombat => Now < _stunnedUntil || Now < _busyUntil || IsBeingHooked;
         public bool BlocksVoluntaryDisplacement => BlocksCombat || LookLocked || Active(JobSkillKind.Fortify);

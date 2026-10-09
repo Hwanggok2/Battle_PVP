@@ -89,6 +89,8 @@ namespace BattlePvp.UI
 
         private void OnEnable()
         {
+            LocalGameSettings.Changed += ApplyVfxVisibility;
+            ApplyVfxVisibility();
             StatManager.LocalChanged += OnLocalPlayerChanged;
             if (_targetGraphic != null)
             {
@@ -111,6 +113,7 @@ namespace BattlePvp.UI
 
         private void OnDisable()
         {
+            LocalGameSettings.Changed -= ApplyVfxVisibility;
             StatManager.LocalChanged -= OnLocalPlayerChanged;
             if (_resolveSourcesRoutine != null)
             {
@@ -119,6 +122,11 @@ namespace BattlePvp.UI
             }
 
             UnsubscribeSources();
+        }
+
+        private void ApplyVfxVisibility()
+        {
+            if (_targetGraphic != null) _targetGraphic.enabled = !LocalGameSettings.Current.hideVfx;
         }
 
         private void OnLocalPlayerChanged(StatManager local)

@@ -10,6 +10,7 @@ namespace BattlePvp.Combat
     public sealed class SkillExpansionVisuals : IDisposable
     {
         private readonly ExpandedSkillController _owner;
+        private readonly HealthSystem _health;
         private Animator _animator;
         private AudioSource _audio;
         private readonly SkillStealthPresentation _stealth;
@@ -21,7 +22,7 @@ namespace BattlePvp.Combat
         private readonly Dictionary<Renderer,bool> _heldWeapons = new();
         private Renderer[][] _auraRenderers;
         private readonly MaterialPropertyBlock _auraColor = new();
-        private GameObject _diceAura, _diceCanvas, _readyKnife, _heldHook;
+        private GameObject _diceAura, _diceCanvas, _readyKnife, _heldHook, _trapNotice;
         private SkillProjectileVisual _hookProjectile;
         private double _localHookHeldUntil, _localKnifeHeldUntil;
         private TMP_Text _diceText;
@@ -60,7 +61,7 @@ namespace BattlePvp.Combat
             { _pendingStates.Remove(layer); return false; }
             return true;
         }
-        public SkillExpansionVisuals(ExpandedSkillController owner) { _owner=owner; _stealth=new SkillStealthPresentation(owner.transform); }
+        public SkillExpansionVisuals(ExpandedSkillController owner) { _owner=owner; _health=owner.GetComponent<HealthSystem>(); _stealth=new SkillStealthPresentation(owner.transform); }
         public void Resume() => _disposed=false;
         public void Play(JobSkillKind kind,Vector3 point)
         {
@@ -150,6 +151,7 @@ namespace BattlePvp.Combat
         public void Tick()
         {
             if(_disposed || _owner==null) return;
+            TickTrapNotice();
             if(_animator==null) _animator=_owner.GetComponentInChildren<Animator>();
             if(_animator!=null)
             {
@@ -234,7 +236,7 @@ namespace BattlePvp.Combat
             _buffAura.Tick(_owner,hide);
             _trapPreview.Tick(_owner);
             bool dice=_owner.Active(JobSkillKind.Dice);
-            if(dice && _diceAura==null)
+            if(dice && !LocalGameSettings.Current.hideVfx && _diceAura==null)
             {
                 var prefab=SkillPresentationCatalog.Instance?.Find((int)JobSkillKind.Dice)?.Prefab;
                 if(prefab!=null)
@@ -247,7 +249,7 @@ namespace BattlePvp.Combat
             if(_diceAura!=null)
             {
                 // Negative rolls use the common debuff arrows, avoiding a second overlapping group.
-                _diceAura.SetActive(dice && _owner.DiceFace >= 4 && !hide);
+                _diceAura.SetActive(dice && _owner.DiceFace >= 4 && !hide && !LocalGameSettings.Current.hideVfx);
                 Color color=_owner.DiceFace<=3 ? new Color(.7f,.2f,1) : new Color(1,.12f,.08f);
                 float sign=_owner.DiceFace<=3 ? -1 : 1;
                 for(int i=0;i<_diceAura.transform.childCount;i++)
@@ -281,13 +283,31 @@ namespace BattlePvp.Combat
             }
             else if(_diceCanvas!=null) _diceCanvas.SetActive(false);
         }
+        private void TickTrapNotice()
+        {
+            bool visible=_owner.Owner && _owner.IsTrapped && _health!=null && !_health.IsDead;
+            if(visible && _trapNotice==null)
+            {
+                _trapNotice=new GameObject("Trap Notice",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler));
+                var canvas=_trapNotice.GetComponent<Canvas>(); canvas.renderMode=RenderMode.ScreenSpaceOverlay; canvas.sortingOrder=170;
+                var scaler=_trapNotice.GetComponent<UnityEngine.UI.CanvasScaler>();
+                scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution=new Vector2(1600,900); scaler.matchWidthOrHeight=.5f;
+                var panel=RoomUiElements.Rect("Notice",_trapNotice.transform,new Vector2(280,64),new Vector2(0,110));
+                var text=RoomUiElements.Text("Message",panel,SkillPresentationCatalog.Instance?.Font,
+                    "덫에 걸림!",new Vector2(260,54),Vector2.zero,32);
+                text.color=Color.white; text.fontStyle=FontStyles.Bold; text.alignment=TextAlignmentOptions.Center;
+                text.raycastTarget=false;
+            }
+            if(_trapNotice!=null) _trapNotice.SetActive(visible);
+        }
         private void CreateDiceOverlay()
         {
             _diceCanvas=new GameObject("Skill Dice Result",typeof(Canvas),typeof(UnityEngine.UI.CanvasScaler));
             var canvas=_diceCanvas.GetComponent<Canvas>(); canvas.renderMode=RenderMode.ScreenSpaceOverlay; canvas.sortingOrder=170;
             var scaler=_diceCanvas.GetComponent<UnityEngine.UI.CanvasScaler>(); scaler.uiScaleMode=UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize; scaler.referenceResolution=new Vector2(1600,900);
             var die=new GameObject("Die",typeof(RectTransform),typeof(UnityEngine.UI.Image)); die.transform.SetParent(_diceCanvas.transform,false);
-            _die=die.GetComponent<RectTransform>(); _die.anchorMin=_die.anchorMax=new Vector2(.5f,1); _die.anchoredPosition=new Vector2(0,-72); _die.sizeDelta=new Vector2(58,58);
+            _die=die.GetComponent<RectTransform>(); _die.anchorMin=_die.anchorMax=new Vector2(.5f,1); _die.anchoredPosition=new Vector2(0,-222); _die.sizeDelta=new Vector2(58,58);
             var background=die.GetComponent<UnityEngine.UI.Image>(); background.color=new Color(.03f,.04f,.07f,.95f); background.raycastTarget=false;
             var positions=new[]{new Vector2(-17,17),new Vector2(-17,0),new Vector2(17,17),Vector2.zero,new Vector2(-17,-17),new Vector2(17,0),new Vector2(17,-17)};
             for(int i=0;i<positions.Length;i++)
@@ -298,7 +318,7 @@ namespace BattlePvp.Combat
             }
             var label=new GameObject("Result",typeof(RectTransform),typeof(TextMeshProUGUI)); label.transform.SetParent(_diceCanvas.transform,false);
             _diceText=label.GetComponent<TextMeshProUGUI>(); _diceText.font=SkillPresentationCatalog.Instance?.Font; _diceText.fontSize=26; _diceText.alignment=TextAlignmentOptions.Center; _diceText.raycastTarget=false;
-            var rect=_diceText.rectTransform; rect.anchorMin=rect.anchorMax=new Vector2(.5f,1); rect.anchoredPosition=new Vector2(0,-118); rect.sizeDelta=new Vector2(620,50);
+            var rect=_diceText.rectTransform; rect.anchorMin=rect.anchorMax=new Vector2(.5f,1); rect.anchoredPosition=new Vector2(0,-140); rect.sizeDelta=new Vector2(620,50);
         }
         internal static void FitKnifeGrip(Transform knife,Animator animator)
         {
@@ -339,6 +359,7 @@ namespace BattlePvp.Combat
             if(_disposed) return; _disposed=true;
             ResetActions(); _defense.Dispose(); _buffAura.Dispose();
             DestroyVisual(_diceAura); DestroyVisual(_diceCanvas); _diceAura=null; _diceCanvas=null; _pips.Clear();
+            DestroyVisual(_trapNotice); _trapNotice=null;
         }
         private void ResetActions(bool preserveBuffs = false)
         {

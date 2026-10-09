@@ -24,6 +24,7 @@ namespace BattlePvp.Combat
         private readonly List<(MeshRenderer source, MeshRenderer glow)> _weapons = new();
         public void Tick(ExpandedSkillController owner,bool concealed)
         {
+            concealed |= BattlePvp.UI.LocalGameSettings.Current.hideVfx;
             if (_health == null)
             {
                 _health = owner.GetComponent<HealthSystem>();

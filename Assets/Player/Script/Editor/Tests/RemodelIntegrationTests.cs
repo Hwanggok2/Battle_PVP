@@ -18,6 +18,17 @@ namespace BattlePvp.EditorTests
     public sealed class RemodelIntegrationTests
     {
         [Test]
+        public void VfxPreferenceRoundTripsWithoutDisablingEffectsForExistingSettings()
+        {
+            var existing=JsonUtility.FromJson<LocalGameSettingsData>("{\"quality\":1,\"fps\":60}");
+            Assert.That(existing.hideVfx,Is.False);
+            var draft=existing.Copy(); draft.hideVfx=true; draft.Sanitize();
+            Assert.That(existing.hideVfx,Is.False,"Changing a draft must not mutate saved preferences.");
+            Assert.That(JsonUtility.FromJson<LocalGameSettingsData>(JsonUtility.ToJson(draft)).hideVfx,Is.True);
+            Assert.That(new LocalGameSettingsData().hideVfx,Is.False);
+        }
+
+        [Test]
         public void DamagedPreferencesCannotProduceInvalidRenderingOrDuplicateReservedKeys()
         {
             var settings = new LocalGameSettingsData

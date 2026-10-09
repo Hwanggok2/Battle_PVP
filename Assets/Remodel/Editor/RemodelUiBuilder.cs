@@ -135,10 +135,11 @@ namespace BattlePvp.Remodel.Editor
             string[] tabs={"System","Sound","Controls"}, labels={"시스템","사운드","조작"};
             for(int i=0;i<3;i++) Button(tabs[i]+"Tab",panel,labels[i],new Vector2(208,42),new Vector2(-230+i*230,202));
             var system=Rect("System",panel,new Vector2(700,390),new Vector2(0,-10));
-            RowButton("Quality",system,"그래픽 품질",156,"보통"); RowButton("Fps",system,"최대 프레임",104,"60 FPS");
-            Slider("Brightness",system,"밝기",52,.6f,1.4f); Slider("HudScale",system,"HUD 크기",0,.8f,1.25f); Slider("HudOpacity",system,"HUD 불투명도",-52,.35f,1f);
-            RowButton("Fullscreen",system,"전체화면",-104,"전환");
-            RowButton("Quit",system,"게임 종료",-163,"종료");
+            RowButton("Quality",system,"그래픽 품질",154,"보통"); RowButton("Fps",system,"최대 프레임",110,"60 FPS");
+            RowButton("Vfx",system,"VFX 효과",66,"표시");
+            Slider("Brightness",system,"밝기",22,.6f,1.4f); Slider("HudScale",system,"HUD 크기",-22,.8f,1.25f); Slider("HudOpacity",system,"HUD 불투명도",-66,.35f,1f);
+            RowButton("Fullscreen",system,"전체화면",-110,"전환");
+            RowButton("Quit",system,"게임 종료",-154,"종료");
             var sound=Rect("Sound",panel,new Vector2(700,390),new Vector2(0,-10));
             Slider("Master",sound,"전체 음량",150,0,1); Slider("Music",sound,"배경 음악",96,0,1); Slider("Effects",sound,"효과음",42,0,1); Slider("Ui",sound,"UI 효과음",-12,0,1);
             RowButton("Mute",sound,"음소거",-66,"꺼짐"); RowButton("BackgroundMute",sound,"백그라운드 음소거",-120,"켜짐");
@@ -816,7 +817,7 @@ namespace BattlePvp.Remodel.Editor
                         foreach(string labelName in new[]{"Timer","State"})
                         {
                             var label=start.Find(labelName);if(label==null)continue;
-                            Place(label,new Vector2(230,labelName=="Timer"?40:26),new Vector2(0,labelName=="Timer"?12:-24));
+                            Place(label,new Vector2(230,labelName=="Timer"?40:26),new Vector2(0,labelName=="Timer"?0:-24));
                             var text=label.GetComponent<TMP_Text>();text.fontSize=labelName=="Timer"?32:17;text.enableAutoSizing=false;text.alignment=TextAlignmentOptions.Center;
                             text.text=labelName=="Timer"?"00:00":string.Empty;
                         }

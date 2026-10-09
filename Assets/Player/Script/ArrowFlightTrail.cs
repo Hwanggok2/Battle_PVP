@@ -31,6 +31,7 @@ namespace BattlePvp.Combat
             _finishedAt = -1f;
             _properties ??= new MaterialPropertyBlock();
             if (_line == null) _line = gameObject.AddComponent<LineRenderer>();
+            _line.enabled = !BattlePvp.UI.LocalGameSettings.Current.hideVfx;
             _line.sharedMaterial = material;
             _line.useWorldSpace = true;
             _line.startWidth = _line.endWidth = .035f;
@@ -80,6 +81,7 @@ namespace BattlePvp.Combat
 
         private void Update()
         {
+            if (_line != null) _line.enabled = !BattlePvp.UI.LocalGameSettings.Current.hideVfx;
             if (!IsFinished) return;
             float opacity = OpacityAfter(Time.time - _finishedAt);
             ApplyOpacity(opacity);

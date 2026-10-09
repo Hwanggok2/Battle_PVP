@@ -12,7 +12,7 @@ namespace BattlePvp.UI
         public int quality = 1, fps = 60;
         public float brightness = 1f, hudScale = 1f, hudOpacity = 1f, sensitivity = 1f;
         public float master = .65f, music = .45f, effects = .7f, ui = .45f;
-        public bool muted, muteInBackground = true, invertY;
+        public bool muted, muteInBackground = true, invertY, hideVfx;
         public string skill1 = "q", skill2 = "e";
         public LocalGameSettingsData Copy() => (LocalGameSettingsData)MemberwiseClone();
         public void Sanitize()

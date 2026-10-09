@@ -24,7 +24,7 @@ namespace BattlePvp.Combat
             if (_combat == null) _combat = owner.GetComponent<PlayerCombat>();
             if (_health == null) _health = owner.GetComponent<HealthSystem>();
             if (_appearance == null) _appearance = owner.GetComponent<BattlePvp.Characters.PlayerAppearance>();
-            bool visible = !concealed && (_health == null || !_health.IsDead);
+            bool visible = !concealed && !BattlePvp.UI.LocalGameSettings.Current.hideVfx && (_health == null || !_health.IsDead);
             _symbols.Tick(owner, _combat, visible);
             bool active = TryColor(owner, out Color color) && visible;
             if (active && _material == null) Create(owner.transform);

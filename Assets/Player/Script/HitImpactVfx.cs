@@ -19,7 +19,7 @@ namespace BattlePvp.Combat
 
         public static void PlayFor(Transform victim, Vector3 position, DamageSource source)
         {
-            if (!Application.isPlaying || source != DamageSource.Physical || victim == null ||
+            if (LocalGameSettings.Current.hideVfx || !Application.isPlaying || source != DamageSource.Physical || victim == null ||
                 (NetworkServer.active && !NetworkClient.active)) return;
             var effect = victim.GetComponent<HitImpactVfx>();
             if (effect != null) effect.Play(position);
@@ -41,7 +41,7 @@ namespace BattlePvp.Combat
         private void LateUpdate()
         {
             float t = (Time.unscaledTime - _born) / Duration;
-            if (t < 0 || t >= 1 || _square == null || _material == null)
+            if (LocalGameSettings.Current.hideVfx || t < 0 || t >= 1 || _square == null || _material == null)
             { if (_light != null) _light.enabled = false; return; }
             var camera = Camera.main;
             if (camera == null) return;
