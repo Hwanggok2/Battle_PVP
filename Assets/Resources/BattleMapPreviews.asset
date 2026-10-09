@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 940fe61ecb29174499d669c255113e55, type: 3}
+  m_Name: BattleMapPreviews
+  m_EditorClassIdentifier: Assembly-CSharp::BattlePvp.UI.BattleMapPreviews
+  Images:
+  - {fileID: 2800000, guid: cb07028b8456af344942dae6fed996f4, type: 3}
+  - {fileID: 2800000, guid: a4a921cd140771f49b0407b522537ab1, type: 3}
+  - {fileID: 2800000, guid: 9ca69007b42b4d342a2d071e9d0894fd, type: 3}

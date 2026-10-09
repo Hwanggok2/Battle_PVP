@@ -77,6 +77,7 @@ namespace BattlePvp.Networking
         /// </summary>
         public override void OnServerAddPlayer(NetworkConnectionToClient conn)
         {
+            if (IsPractice) { AddPracticePlayer(conn); return; }
             // A frozen result has no late-join initialization. Rejoin after the host starts the next round.
             if (BattleStateMachine.Instance != null && BattleStateMachine.Instance.CurrentState == BattleState.MatchEnded)
             {
@@ -132,20 +133,17 @@ namespace BattlePvp.Networking
                 return;
             }
 
-            // 1. 시작 지점 선택 (NetworkStartPosition 배치된 곳 중 하나)
-            Transform startPos = GetStartPosition();
-            
-            // 2. 위치/회전값 적용하여 생성
-            GameObject player = startPos != null
-                ? Instantiate(playerPrefab, startPos.position, startPos.rotation)
-                : Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
+            var points = BattleSpawnPoints.ForScene(SceneManager.GetActiveScene());
+            if (points == null || !points.TryTake(null, null, out var spawn))
+            { Debug.LogError("[BattleNetworkManager] No unoccupied spawn is available."); conn.Disconnect(); return; }
+            GameObject player = Instantiate(playerPrefab, spawn.position, spawn.rotation);
             
             player.name = $"Player [ConnId={conn.connectionId}]";
 
             // 3. 네트워크 상에 플레이어 오브젝트 등록
             NetworkServer.AddPlayerForConnection(conn, player);
 
-            Debug.Log($"[BattleNetworkManager] Player spawned at {(startPos != null ? startPos.position.ToString() : "Origin")} for Connection ID: {conn.connectionId}");
+            Debug.Log($"[BattleNetworkManager] Player spawned at {spawn.position} for Connection ID: {conn.connectionId}");
         }
 
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
@@ -209,7 +207,7 @@ namespace BattlePvp.Networking
         {
             base.OnClientConnect();
             RoomConnectionDiagnostics.Record("mirror_connected");
-            PlayFabBattleManager.Instance?.NotifyRoomNetworkConnected();
+            if (!IsPractice) PlayFabBattleManager.Instance?.NotifyRoomNetworkConnected();
             Debug.Log("[BattleNetworkManager] Client connected to server.");
         }
 
@@ -221,6 +219,7 @@ namespace BattlePvp.Networking
 
         public override void OnClientDisconnect()
         {
+            if (IsPractice) { base.OnClientDisconnect(); return; }
             bool preserveMembership = authenticator is RoomNetworkAuthenticator roomAuthenticator &&
                 roomAuthenticator.PreserveRoomMembershipOnDisconnect;
             bool authenticationFailed = NetworkClient.connection == null || !NetworkClient.connection.isAuthenticated;

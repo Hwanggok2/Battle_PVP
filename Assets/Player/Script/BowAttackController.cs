@@ -83,6 +83,13 @@ public sealed class BowAttackController : NetworkBehaviour
     public void ServerTickTauntAttack(Vector3 direction)
     {
         if (_playerCombat == null || !_playerCombat.IsServerTaunted) return;
+        ServerTickAutomatedAttack(direction);
+    }
+
+    [Server]
+    internal void ServerTickAutomatedAttack(Vector3 direction)
+    {
+        if (_playerCombat == null || !_playerCombat.CanServerUseBow) { CancelCharge(); return; }
         JobSkillData data = _playerCombat.ServerBowData;
         if (data == null) return;
         if (!IsBusy) HandleAttackInput(true, data, direction);

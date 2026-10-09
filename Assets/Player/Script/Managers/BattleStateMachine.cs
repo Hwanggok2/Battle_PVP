@@ -149,6 +149,16 @@ namespace BattlePvp.Networking
             var startingPlayers = new List<NetworkConnectionToClient>(NetworkServer.connections.Values);
             double readyDeadline = Time.realtimeSinceStartupAsDouble + 15d;
             yield return null;
+            // A fresh local host creates its connection after scene objects start.
+            var practice = NetworkManager.singleton as BattleNetworkManager;
+            while (practice != null && practice.IsPractice && NetworkServer.active &&
+                (NetworkServer.localConnection?.identity == null ||
+                 !NetworkServer.localConnection.identity.GetComponent<BattlePvp.Stats.StatManager>().HasServerCombatStats))
+            {
+                if (Time.realtimeSinceStartupAsDouble >= readyDeadline)
+                { practice.StopPractice(); yield break; }
+                yield return null;
+            }
             while (startingPlayers.Count > 0)
             {
                 for (int i = startingPlayers.Count - 1; i >= 0; i--)
@@ -172,11 +182,19 @@ namespace BattlePvp.Networking
                 if (startingPlayers.Count > 0) yield return null;
             }
             if (!NetworkServer.active) { _activeMatchRoutine = null; yield break; }
+            if (practice != null && practice.IsPractice && !practice.PreparePracticeBots())
+            { Debug.LogError("[Practice] Not enough safe spawn points."); practice.StopPractice(); yield break; }
 
             // 2. 스폰 포인트 배치
             try
             {
-                _spawnPlacement.PlacePlayers();
+                if (!_spawnPlacement.PlacePlayers())
+                {
+                    Debug.LogError("[BattleSpawnPlacement] Not enough safe points to place every player.");
+                    if (practice != null && practice.IsPractice) practice.StopPractice();
+                    _activeMatchRoutine = null;
+                    yield break;
+                }
 
             // 3. 모든 플레이어 체력 최대치로 강제 설정 (서버 권한)
             // 약간의 프레임 대기 후 갱신
@@ -197,7 +215,7 @@ namespace BattlePvp.Networking
             }
 
             // 3. In-Battle
-            _matchRoomId = PlayFabBattleManager.Instance?.CurrentRoomId;
+            _matchRoomId = practice != null && practice.IsPractice ? practice.PracticeRoomId : PlayFabBattleManager.Instance?.CurrentRoomId;
             if (!RoomIdentity.IsValid(_matchRoomId))
             {
                 Debug.LogError("[BattleStateMachine] A verified room is required to start a recorded match.");
@@ -346,6 +364,11 @@ namespace BattlePvp.Networking
                 !NetworkServer.spawned.TryGetValue(participant.LastNetId, out NetworkIdentity identity) ||
                 identity == null) return false;
             var account = identity.connectionToClient?.authenticationData as AuthenticatedRoomPlayer;
+            if (NetworkManager.singleton is BattleNetworkManager practice && practice.TryGetPracticeParticipant(identity, out string practiceId))
+            {
+                score = identity.GetComponent<ScoreSystem>();
+                return score != null && practiceId == participant.PlayFabId;
+            }
             if (account == null || account.RoomId != _matchRoomId ||
                 !string.Equals(account.PlayFabId, participant.PlayFabId, System.StringComparison.OrdinalIgnoreCase))
                 return false;
@@ -358,10 +381,11 @@ namespace BattlePvp.Networking
         {
             foreach (MatchParticipantResult participant in result.Participants)
             {
-                if (!TryGetConnectedScore(participant, out ScoreSystem score)) continue;
+                if (!TryGetConnectedScore(participant, out ScoreSystem score) || score.connectionToClient == null) continue;
                 result.GetTopOpponent(participant.DeathsByOpponent, out string mostKilledBy, out int mostKilledByCount);
                 result.GetTopOpponent(participant.KillsByOpponent, out string mostKilled, out int mostKilledCount);
-                score.PresentMatchReward(participant.ProvisionalXp, participant.Totals.Points);
+                bool practice = NetworkManager.singleton is BattleNetworkManager manager && manager.IsPractice;
+                score.PresentMatchReward(practice ? 0 : participant.ProvisionalXp, participant.Totals.Points);
                 TargetShowPersonalResult(score.connectionToClient, participant.PlayerName, participant.Rank,
                     winnerName, participant.Totals.DamageTaken, participant.Totals.DamageDealt,
                     mostKilledBy, mostKilledByCount, mostKilled, mostKilledCount);

@@ -29,7 +29,16 @@ namespace BattlePvp.UI
 
         private void Awake()
         {
-            Instance = this; _panel.SetActive(false);
+            // Older scenes contain repeated copies of this standalone canvas.
+            if (Instance != null && Instance != this && Instance.gameObject.scene == gameObject.scene &&
+                Instance.OwnsLocalView && OwnsLocalView)
+            {
+                gameObject.SetActive(false);
+                Destroy(gameObject);
+                return;
+            }
+            if (OwnsLocalView) Instance = this;
+            _panel.SetActive(false);
             RoomUiElements.TopMenuButton(_openButton, 1);
             _openButton.onClick.AddListener(Toggle);
             _panel.transform.Find("Close").GetComponent<Button>().onClick.AddListener(Close);
@@ -66,6 +75,8 @@ namespace BattlePvp.UI
         private void OnDestroy() { if (Instance == this) Instance = null; }
         private void Bind(StatManager stats)
         {
+            if (OwnsLocalView) Instance = this;
+            else if (Instance == this) Instance = null;
             if (_local != null) _local.StatsChanged -= RefreshStats;
             if (_loadout != null) _loadout.Changed -= OnLoadoutChanged;
             _local = stats;
@@ -85,6 +96,8 @@ namespace BattlePvp.UI
         public void Toggle() { if (IsOpen) Close(); else Open(); }
         public void Open()
         {
+            if (!OwnsLocalView || !SkillLoadout.CanEdit) return;
+            Instance = this;
             CharacterSelectionPanel.CloseIfOpen(); WeaponSelectionPanel.CloseIfOpen();
             if (GameSettingsPanel.IsOpen) GameSettingsPanel.Instance.Cancel();
             if (WaitingRoomTerminal.IsOpen) WaitingRoomTerminal.Instance.Close();
@@ -102,6 +115,14 @@ namespace BattlePvp.UI
             GameInputController.RefreshCursorState();
         }
         public static void CloseIfOpen() { if (IsOpen) Instance.Close(); }
+        private bool OwnsLocalView
+        {
+            get
+            {
+                var owner = GetComponentInParent<Mirror.NetworkIdentity>();
+                return owner == null || (!Mirror.NetworkClient.active && !Mirror.NetworkServer.active) || owner.isLocalPlayer;
+            }
+        }
         public void Select(int index)
         {
             if (_draft == null) _draft = _loadout != null ? _loadout.Snapshot() : SkillLoadoutStore.Read();
@@ -145,7 +166,7 @@ namespace BattlePvp.UI
                 }
             }
             _save.interactable = SkillLoadout.CanEdit;
-            _status.text = SkillGameData.Text(SkillLoadout.CanEdit ? "UI_Skill_Footer" : "UI_Skill_BattleLocked");
+            _status.text = SkillLoadout.CanEdit ? "스킬 두 개를 선택한 뒤 저장하세요. 사망 중 변경한 스킬은 부활 후 사용합니다." : "생존 중에는 스킬을 변경할 수 없습니다.";
         }
         private System.Collections.Generic.List<JobSkillKind> Candidates()
         {

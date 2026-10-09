@@ -46,6 +46,7 @@ namespace BattlePvp.UI
         public void Toggle() { if (IsOpen) Close(); else Open(); }
         public void Open()
         {
+            if (!PlayerAppearance.CanEdit) return;
             WeaponSelectionPanel.CloseIfOpen();
             JobGuidePanel.CloseIfOpen();
             if (GameSettingsPanel.IsOpen) GameSettingsPanel.Instance.Cancel();

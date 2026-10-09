@@ -29,7 +29,7 @@ namespace BattlePvp.Logic
             private set => _textInputActive = value;
         }
         private static bool HasModalInput => BattlePvp.UI.WeaponSelectionPanel.IsOpen || BattlePvp.UI.RoomStartNotice.IsOpen || BattlePvp.UI.CharacterSelectionPanel.IsOpen || BattlePvp.UI.JobGuidePanel.IsOpen || BattlePvp.UI.RoomPasswordPrompt.IsOpen || BattlePvp.UI.WaitingRoomTerminal.IsOpen || BattlePvp.UI.GameSettingsPanel.IsOpen ||
-            BattlePvp.UI.CharacterInfoController.HasOpenPanel ||
+            BattlePvp.UI.PracticeModePanel.IsOpen || BattlePvp.UI.CharacterInfoController.HasOpenPanel ||
             (BattlePvp.UI.LobbyUIManager.Instance != null && BattlePvp.UI.LobbyUIManager.Instance.HasOpenInputPanel);
         private static bool HasFocusedTextInput
         {
@@ -168,6 +168,7 @@ namespace BattlePvp.Logic
         {
             Instance?.SyncBrowserUnlock();
             if (!InputGate.TryConsumeEscape(Time.frameCount)) return;
+            if (BattlePvp.UI.PracticeModePanel.IsOpen) { BattlePvp.UI.PracticeModePanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
             if (BattlePvp.UI.RoomStartNotice.IsOpen) { BattlePvp.UI.RoomStartNotice.Instance.Close(); return; }
             if (BattlePvp.UI.WeaponSelectionPanel.IsOpen) { BattlePvp.UI.WeaponSelectionPanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }
             if (BattlePvp.UI.CharacterSelectionPanel.IsOpen) { BattlePvp.UI.CharacterSelectionPanel.Instance.Close(); Instance?.ResetToPlayMode(); return; }

@@ -43,6 +43,7 @@ namespace BattlePvp.Networking
         }
         public void ReturnToLobbyAfterMatch()
         {
+            if (IsPractice) { StopPractice(); return; }
             if (_returningFromMatch || !NetworkClient.isConnected || BattleStateMachine.Instance == null ||
                 BattleStateMachine.Instance.CurrentState != BattleState.MatchEnded) return;
             _returningFromMatch = true;
@@ -91,15 +92,14 @@ namespace BattlePvp.Networking
         {
             if (!IsCurrentConnection(connection) || !_pendingReturns.Contains(connection.connectionId) ||
                 _movedReturns.Contains(connection.connectionId) || !HasSplitResultRoom || connection.identity == null) return;
-            Transform spawn = null;
-            foreach (var candidate in startPositions)
-                if (candidate != null && candidate.gameObject.scene == _returnWaitingScene) { spawn = candidate; break; }
-            if (spawn == null) { Debug.LogError("[MatchReturn] Waiting room has no spawn."); return; }
             var player = connection.identity;
+            var points = BattleSpawnPoints.ForScene(_returnWaitingScene);
+            if (points == null || !points.TryTake(player.GetComponent<PlayerManager>(), null, out var spawn))
+            { Debug.LogError("[MatchReturn] Waiting room has no free spawn."); return; }
             SceneManager.MoveGameObjectToScene(player.gameObject, _returnWaitingScene);
             var movement = player.GetComponent<PlayerManager>();
             movement?.LeaveMatchEndMode();
-            movement?.ServerTeleport(spawn.position + Vector3.right * (_movedReturns.Count % 4) * 1.5f, spawn.rotation);
+            movement?.ServerTeleport(spawn.position, spawn.rotation);
             var health = player.GetComponent<BattlePvp.Combat.HealthSystem>();
             if (health != null) { health.isInvincible = false; health.RefillHealth(); }
             _movedReturns.Add(connection.connectionId);

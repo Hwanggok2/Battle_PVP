@@ -61,8 +61,11 @@ namespace BattlePvp.Combat
         public bool AttachToMatch(MatchLedger ledger, string roomId)
         {
             var identity = connectionToClient?.authenticationData as AuthenticatedRoomPlayer;
-            if (identity == null || identity.RoomId != roomId || ledger == null ||
-                !ledger.TryAttach(netId, identity.PlayFabId, PlayerName, out MatchTotals totals))
+            string participantId = identity != null && identity.RoomId == roomId ? identity.PlayFabId : null;
+            if (NetworkManager.singleton is BattleNetworkManager practice && practice.IsPractice && roomId == practice.PracticeRoomId)
+                practice.TryGetPracticeParticipant(netIdentity, out participantId);
+            if (participantId == null || ledger == null ||
+                !ledger.TryAttach(netId, participantId, PlayerName, out MatchTotals totals))
                 return false;
             _matchLedger = ledger;
             ApplyMatchTotals(totals);
@@ -128,6 +131,8 @@ namespace BattlePvp.Combat
 
             RefreshMatchTotals();
             victim.RefreshMatchTotals();
+
+            if (NetworkManager.singleton is BattleNetworkManager practice && practice.IsPractice) return;
 
             if (connectionToClient != null)
                 TargetAddCumulativeKill(connectionToClient);

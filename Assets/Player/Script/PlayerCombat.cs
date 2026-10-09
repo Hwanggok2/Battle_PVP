@@ -2992,6 +2992,8 @@ public partial class PlayerCombat : NetworkBehaviour
 
     private Vector3 GetCurrentAimDirection()
     {
+        if (isServer && !isLocalPlayer && _practiceAimDirection.sqrMagnitude > .001f)
+            return ResolveTauntAimDirection(_practiceAimDirection);
         Vector3 fallback;
         if (_followCamera == null && ShouldHandleLocalInput)
             _followCamera = FindFirstObjectByType<BattlePvp.CameraLogic.FollowCamera>();

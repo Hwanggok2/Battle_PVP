@@ -42,6 +42,7 @@ namespace BattlePvp.UI
         private void Toggle()
         {
             if(IsOpen) { Close(); return; }
+            if (!WeaponLoadout.CanEdit) return;
             CharacterSelectionPanel.CloseIfOpen(); JobGuidePanel.CloseIfOpen(); CharacterInfoController.CloseOpenPanel();
             LobbyUIManager.Instance?.CloseInputPanels();
             if(GameSettingsPanel.IsOpen) GameSettingsPanel.Instance.Cancel();
@@ -57,8 +58,8 @@ namespace BattlePvp.UI
                 _choices[i].interactable=loadout!=null && WeaponLoadout.CanEdit;
                 _choices[i].GetComponent<Image>().color=loadout!=null && (int)loadout.Selected==i ? new Color(.08f,.36f,.4f) : new Color(.04f,.12f,.17f);
             }
-            _status.text=!WeaponLoadout.CanEdit ? "무기는 로비와 방 대기실에서 변경할 수 있습니다." : loadout==null ? "플레이어를 기다리고 있습니다." :
-                "사용 중 · "+WeaponCatalog.Instance.Find(loadout.Selected).Name+"   |   선택하면 장착됩니다.";
+            _status.text=!WeaponLoadout.CanEdit ? "전투 중에는 팔방미인이거나 사망한 상태에서 무기를 변경할 수 있습니다." : loadout==null ? "플레이어를 기다리고 있습니다." :
+                "사용 중 · "+WeaponCatalog.Instance.Find(loadout.Selected).Name+"   |   공격·막기를 마친 뒤 장착할 수 있습니다.";
         }
         private void Select(MeleeWeaponKind kind) { StatManager.Local?.GetComponent<WeaponLoadout>()?.Request(kind); Refresh(); }
         public void Close() { if(_panel==null) return; _panel.SetActive(false); UnityEngine.EventSystems.EventSystem.current?.SetSelectedGameObject(null); GameInputController.RefreshCursorState(); }

@@ -309,6 +309,28 @@ namespace BattlePvp.Combat
             _visuals?.InterruptCharge();
             return true;
         }
+        // Continue prepared skills without owner input; all spending/hit checks stay in the normal server paths.
+        [Server]
+        internal bool TickPracticeAction(Vector3 aim, bool hasTarget)
+        {
+            if (!(NetworkManager.singleton is BattlePvp.Networking.BattleNetworkManager manager) || !manager.IsPractice ||
+                GetComponent<BattlePvp.Networking.PracticeBot>() == null || !AliveReady || _combat.IsServerTaunted ||
+                !ValidAim(aim)) return false;
+            if (IsCharging) { if (hasTarget) Steer(aim); else EndCharge(); return true; }
+            if (TrapReady)
+            {
+                if (hasTarget && TryGetTrapPlacement(out var point)) ConfirmTrap(point);
+                else { TrapReady = false; _trapFromCopy = false; }
+                return true;
+            }
+            if (KnifeReady)
+            {
+                if (hasTarget) ThrowKnife(aim);
+                else KnifeReady = false;
+                return true;
+            }
+            return false;
+        }
         [Command] private void CmdEndCharge() { if (AliveReady) EndCharge(); }
         [Command] private void CmdPlaceTrap(Vector3 point) => ConfirmTrap(point);
         public bool ConfirmTrap(Vector3 requestedPoint)

@@ -11,7 +11,7 @@ using BattlePvp.Logic; // 추가
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(Animator))]
-public class PlayerManager : NetworkBehaviour
+public partial class PlayerManager : NetworkBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private StatManager _statManager;
@@ -795,6 +795,11 @@ public class PlayerManager : NetworkBehaviour
         {
             UpdateDisconnectedMovement();
             UpdateRemoteLocomotionAnimation();
+            return;
+        }
+        if (isServer && _practiceSteering)
+        {
+            UpdatePracticeMovement();
             return;
         }
         if (!ShouldHandleLocalInput)
@@ -1730,10 +1735,8 @@ public class PlayerManager : NetworkBehaviour
     [Server]
     public bool ServerTeleportToSpawn()
     {
-        var starts = NetworkManager.startPositions;
-        if (starts == null || starts.Count == 0) return false;
-        Transform start = starts[UnityEngine.Random.Range(0, starts.Count)];
-        return start != null && ServerTeleport(start.position, start.rotation);
+        var points = BattlePvp.Networking.BattleSpawnPoints.ForScene(gameObject.scene);
+        return points != null && points.TryTake(this, null, out var pose) && ServerTeleport(pose.position, pose.rotation);
     }
 
     [Server]

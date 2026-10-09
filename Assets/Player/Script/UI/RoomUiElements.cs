@@ -16,6 +16,7 @@ namespace BattlePvp.UI
             rect.localScale = Vector3.one;
             rect.sizeDelta = new Vector2(116f, 44f);
             rect.anchoredPosition = new Vector2(-82f - (4 - column) * 128f, -42f);
+            TopMenuLayout.Register(button, column);
             var label = button.GetComponentInChildren<TMP_Text>(true);
             if (label == null) return;
             label.font = BattleResultTheme.SharedFont;
