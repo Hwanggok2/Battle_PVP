@@ -211,22 +211,60 @@ namespace BattlePvp.EditorTests
             Assert.That(animator.speed,Is.EqualTo(1f),"A late accepted hit must leave idle/walking at their regular speed.");
         }
 
-        [Test] public void AxeDealsTwentyPercentMoreThanTheBasicSwordHitAtEqualStats()
+        [Test] public void MeleeDamageBuildsThroughCombosAndAxeExceedsEvenTheGreatswordFinisher()
         {
             var processor=_attacker.GetComponent<AttackProcessor>(); Call(processor,"Awake");
             var stats=_defender.GetComponent<BattlePvp.Stats.StatManager>();
-            float Damage(MeleeWeaponKind kind)
+            float Damage(MeleeWeaponKind kind,int index)
             {
                 Equip(_attacker,kind);
                 var receiver=new AxeDamageReceiver(new DamageResult(true,1,0));
-                processor.ProcessHit(WeaponCatalog.Instance.Find(kind).Attacks[0],stats,receiver,Vector3.up);
+                processor.ProcessHit(WeaponCatalog.Instance.Find(kind).Attacks[index],stats,receiver,Vector3.up);
                 return receiver.RequestedDamage;
             }
-            float swordDamage=Damage(MeleeWeaponKind.Sword), axeDamage=Damage(MeleeWeaponKind.Axe);
-            Assert.That(swordDamage,Is.GreaterThan(0));
-            Assert.That(WeaponCatalog.Instance.Find(MeleeWeaponKind.Axe).Attacks[0].damage,
-                Is.EqualTo(WeaponCatalog.Instance.Find(MeleeWeaponKind.Sword).Attacks[0].damage*1.2f).Within(.0001f));
-            Assert.That(axeDamage,Is.EqualTo(swordDamage*1.2f).Within(.001f));
+            var sword=Enumerable.Range(0,3).Select(i=>Damage(MeleeWeaponKind.Sword,i)).ToArray();
+            var shield=Enumerable.Range(0,3).Select(i=>Damage(MeleeWeaponKind.SwordShield,i)).ToArray();
+            var great=Enumerable.Range(0,3).Select(i=>Damage(MeleeWeaponKind.Greatsword,i)).ToArray();
+            float axe=Damage(MeleeWeaponKind.Axe,0);
+            Assert.That(sword[0],Is.GreaterThan(0));
+            foreach(var combo in new[]{sword,shield,great})
+                for(int i=1;i<combo.Length;i++) Assert.That(combo[i],Is.GreaterThan(combo[i-1]),"Each later hit is stronger.");
+            Assert.That(great[0],Is.GreaterThan(sword[2]),"Even the first greatsword hit exceeds the sword finisher.");
+            Assert.That(axe,Is.GreaterThan(great[2]),"The strongest combo hit must remain weaker than the axe.");
+            Assert.That(axe,Is.EqualTo(sword[0]*2.2f).Within(.001f));
+            float riposte1=Damage(MeleeWeaponKind.Greatsword,4), riposte2=Damage(MeleeWeaponKind.Greatsword,5);
+            Assert.That(riposte1,Is.GreaterThan(sword[2]));
+            Assert.That(riposte2,Is.GreaterThan(riposte1).And.LessThan(axe));
+        }
+
+        [TestCase(.5f)] [TestCase(1f)] [TestCase(2f)]
+        public void BasicAttackPlaybackIsFastestWithSwordThenGreatswordThenAxe(float statSpeedMultiplier)
+        {
+            Set(Attacker,"_attackSpeedBonusMultiplier",statSpeedMultiplier);
+            Set(Attacker,"_attackSpeedBonusUntil",double.MaxValue);
+            var animator=_attacker.GetComponent<Animator>();
+            float Duration(MeleeWeaponKind kind,int index)
+            {
+                Equip(_attacker,kind);
+                Call(Attacker,"StartAttack",index,false,Vector3.forward,false);
+                Assert.That(Attacker.IsAttackActive,Is.True);
+                // Sample normalized progress after the entry blend so both the
+                // controller's state speed and accepted stat speed are exercised.
+                animator.Play(WeaponCatalog.Instance.Find(kind).Attacks[index].animationName,1,0);
+                animator.Update(0); animator.Update(.05f);
+                float duration=.05f/animator.GetCurrentAnimatorStateInfo(1).normalizedTime;
+                Call(Attacker,"CancelCurrentAttack");
+                return duration;
+            }
+            var sword=Enumerable.Range(0,3).Select(i=>Duration(MeleeWeaponKind.Sword,i)).ToArray();
+            var shield=Enumerable.Range(0,3).Select(i=>Duration(MeleeWeaponKind.SwordShield,i)).ToArray();
+            var great=Enumerable.Range(0,3).Select(i=>Duration(MeleeWeaponKind.Greatsword,i)).ToArray();
+            float axe=Duration(MeleeWeaponKind.Axe,0);
+            Assert.That(sword.Min(),Is.GreaterThan(0));
+            Assert.That(sword.Max(),Is.LessThan(great.Min()));
+            Assert.That(shield.Max(),Is.LessThan(great.Min()));
+            Assert.That(great.Max(),Is.LessThan(axe));
+            Assert.That(Duration(MeleeWeaponKind.Sword,3),Is.LessThan(great.Min()),"The one-handed thrust is also faster.");
         }
 
         [TestCase(0)] [TestCase(1)] [TestCase(2)] [TestCase(3)]

@@ -94,14 +94,20 @@ namespace BattlePvp.Remodel.Editor
                 if (addedLoadout) player.AddComponent<WeaponLoadout>();
                 var blade = player.GetComponentInChildren<MeleeHitBox>(true); var box = blade.GetComponent<BoxCollider>();
                 var old = Enumerable.Range(1,3).Select(i => AssetDatabase.LoadAssetAtPath<AttackData>("Assets/Player/AttackData/Atk_"+i+".asset")).ToArray();
+                for (int i=0;i<old.Length;i++)
+                {
+                    old[i].damage = 1f + .1f*i;
+                    EditorUtility.SetDirty(old[i]);
+                }
                 var sword = new WeaponCatalog.Entry { Kind=MeleeWeaponKind.Sword, MeleeDamageMultiplier=1.1f, Name="한손검", Description="좌클릭 · 기본 3연격 / 방패 장착 시보다 근접 피해 +10%\n우클릭 · 양손으로 받쳐 찌르기", Mesh=blade.GetComponent<MeshFilter>().sharedMesh, Materials=blade.GetComponent<MeshRenderer>().sharedMaterials,
                     HitCenter=box.center, HitSize=box.size, BladeBase=new Vector3(0,0,.13612f), BladeTip=new Vector3(0,0,1.0816832f), Attacks=old.Concat(new[]{Attack(thrust,1f)}).ToArray() };
                 var shield = new WeaponCatalog.Entry { Kind=MeleeWeaponKind.SwordShield, Name="한손검 + 방패", Description="좌클릭 · 기본 3연격\n우클릭 유지 · 정면 막기 / 성공 시 상대 0.65초 경직", Mesh=sword.Mesh, Materials=sword.Materials, HitCenter=sword.HitCenter, HitSize=sword.HitSize, BladeBase=sword.BladeBase, BladeTip=sword.BladeTip, Attacks=old };
                 var great = Weapon("Assets/Medieval Melee Weapon Pack/prefabs/Sword(1)_DH.prefab", MeleeWeaponKind.Greatsword, "양손검", "좌클릭 · 3콤보 / 패링 후 빠른 2연격\n우클릭 · 검 막기 / 몸보다 검에 먼저 닿으면 패링", 0);
-                great.Attacks = new[]{Attack(motions.First(c=>c.name=="Weapon_Greatsword1"),1),Attack(motions.First(c=>c.name=="Weapon_Greatsword2"),1),Attack(motions.First(c=>c.name=="Weapon_Greatsword3"),1),null,Attack(motions.First(c=>c.name=="Weapon_Riposte1"),1),Attack(motions.First(c=>c.name=="Weapon_Riposte2"),1)};
+                great.Attacks = new[]{Attack(motions.First(c=>c.name=="Weapon_Greatsword1"),1.4f),Attack(motions.First(c=>c.name=="Weapon_Greatsword2"),1.6f),Attack(motions.First(c=>c.name=="Weapon_Greatsword3"),1.8f),null,Attack(motions.First(c=>c.name=="Weapon_Riposte1"),1.4f),Attack(motions.First(c=>c.name=="Weapon_Riposte2"),1.6f)};
+                great.MeleeDamageMultiplier = sword.MeleeDamageMultiplier;
                 great.ReadyState = "Weapon_GreatswordReady"; great.RightGrip = new Vector3(0,0,.02f); great.LeftGrip = new Vector3(0,0,-.14f);
-                var axe = Weapon("Assets/Medieval Melee Weapon Pack/prefabs/Axe(2)_OS.prefab", MeleeWeaponKind.Axe,"도끼","좌클릭 · 내려찍기 (한손검 기본 공격의 1.2배) / 우클릭 · 없음\n적중 즉시 회수~다음 공격 동작 2배속 (중첩 없음)", .48f);
-                axe.Attacks = new[]{Attack(chop,sword.Attacks[0].damage*1.2f)};
+                var axe = Weapon("Assets/Medieval Melee Weapon Pack/prefabs/Axe(2)_OS.prefab", MeleeWeaponKind.Axe,"도끼","좌클릭 · 내려찍기 (한손검 1타의 2.2배) / 우클릭 · 없음\n기본 공격은 가장 느림 / 적중 즉시 회수~다음 공격 2배속", .48f);
+                axe.Attacks = new[]{Attack(chop,sword.Attacks[0].damage*2.2f)};
                 axe.MeleeDamageMultiplier = sword.MeleeDamageMultiplier;
                 axe.ReadyState = ""; axe.RightGrip = new Vector3(0,0,-.10f); axe.LeftGrip = new Vector3(0,0,-.34f);
                 var catalog = AssetDatabase.LoadAssetAtPath<WeaponCatalog>("Assets/Resources/WeaponCatalog.asset");

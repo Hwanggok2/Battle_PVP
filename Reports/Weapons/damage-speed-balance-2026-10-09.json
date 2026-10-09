@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-09",
+  "scope": "Weapon damage ordering and rising combo damage",
+  "damageRelativeToUnshieldedSwordFirstHit": {
+    "sword": [
+      1,
+      1.1,
+      1.2
+    ],
+    "greatsword": [
+      1.4,
+      1.6,
+      1.8
+    ],
+    "axe": [
+      2.2
+    ],
+    "riposte": [
+      1.4,
+      1.6
+    ]
+  },
+  "comparison": "Same attacker stats, target defense and body part. Sword-only retains 10% more damage than sword with shield.",
+  "baseAnimationSecondsAtUnitStatSpeed": {
+    "sword": [
+      0.75,
+      0.75,
+      0.75
+    ],
+    "greatsword": [
+      0.85,
+      0.8,
+      1.05
+    ],
+    "axe": [
+      1.6
+    ]
+  },
+  "speed": "Existing baseline ordering verified using actual normalized animation progress at 0.5x, 1x and 2x stat-speed multipliers. Axe's confirmed-hit 2x recovery/follow-up and parry riposte remain special effects.",
+  "validation": {
+    "jobId": "507a36bd04e84f748566798fe24dbce8",
+    "total": 145,
+    "passed": 145,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 11.6957585,
+    "resultState": "Passed"
+  },
+  "webBuild": "Not rebuilt for this change"
+}

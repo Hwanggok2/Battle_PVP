@@ -7278,4 +7278,4 @@ MonoBehaviour:
   animationName: Weapon_Riposte1
   comboWindowStart: 0.3
   comboWindowEnd: 0.95
-  damage: 1
+  damage: 1.4
