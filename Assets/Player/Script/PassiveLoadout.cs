@@ -17,9 +17,10 @@ namespace BattlePvp.Combat
     {
         [SyncVar(hook = nameof(OnSelectionChanged))] private int _selection;
         private bool _initialized;
-        private double _initialDeadline, _nextRequest, _counterUntil, _counterReadyAt, _healReadyAt, _backstabReadyAt;
+        private double _initialDeadline, _nextRequest, _counterUntil, _counterReadyAt, _healReadyAt;
         private HealthSystem _health;
         private readonly Dictionary<Component, HeadWindow> _heads = new();
+        private readonly Dictionary<Transform, double> _backstabReadyAt = new();
         public event Action Changed;
         public event Action<bool> RequestCompleted;
         private bool Authority => isServer || (!NetworkServer.active && !NetworkClient.active);
@@ -86,8 +87,9 @@ namespace BattlePvp.Combat
         }
         private void ResetLife()
         {
-            _counterUntil = _counterReadyAt = _healReadyAt = _backstabReadyAt = 0;
+            _counterUntil = _counterReadyAt = _healReadyAt = 0;
             _heads.Clear();
+            _backstabReadyAt.Clear();
         }
         public float CooldownMultiplier => Has(PassiveKind.Scholar) ? .88f : 1f;
         public float DebuffMultiplier => Has(PassiveKind.Purification) ? .85f : 1f;
@@ -111,8 +113,17 @@ namespace BattlePvp.Combat
             if (shield && Has(PassiveKind.HealingShield) && Now >= _healReadyAt)
             { _healReadyAt = Now + 6; HealCapped(.02f); }
         }
-        private bool CanBackstab(Component target) => Has(PassiveKind.Backstab) && target != null && Now >= _backstabReadyAt &&
-            IsBehind(target.transform, transform.position);
+        private bool CanBackstab(Component target, out Transform victim)
+        {
+            victim = null;
+            if (!Has(PassiveKind.Backstab) || target == null) return false;
+            // Different colliders/components on one actor must share the same cooldown.
+            var health = target.GetComponentInParent<HealthSystem>();
+            var dummy = health == null ? target.GetComponentInParent<DummyHealth>() : null;
+            victim = health != null ? health.transform : dummy != null ? dummy.transform : target.transform;
+            return (!_backstabReadyAt.TryGetValue(victim, out var readyAt) || Now >= readyAt) &&
+                IsBehind(victim, transform.position);
+        }
         internal static bool IsBehind(Transform victim, Vector3 attackerPosition)
         {
             Vector3 offset = Vector3.ProjectOnPlane(attackerPosition - victim.position, Vector3.up);
@@ -124,7 +135,7 @@ namespace BattlePvp.Combat
             if (delivery == DamageDelivery.Melee)
             {
                 if (Has(PassiveKind.Counterattack) && Now < _counterUntil) bonus += .1f;
-                if (CanBackstab(target)) bonus += .1f;
+                if (CanBackstab(target, out _)) bonus += .1f;
             }
             return 1 + bonus;
         }
@@ -134,7 +145,15 @@ namespace BattlePvp.Combat
             if (delivery == DamageDelivery.Melee)
             {
                 _counterUntil = 0;
-                if (CanBackstab(target)) _backstabReadyAt = Now + 4;
+                if (CanBackstab(target, out var victim))
+                {
+                    _backstabReadyAt[victim] = Now + 8;
+                    if (!result.Killed)
+                    {
+                        victim.GetComponent<ExpandedSkillController>()?.ApplyControl(1, false, false);
+                        victim.GetComponent<DummyHealth>()?.ApplyStun(1, false);
+                    }
+                }
             }
             if (part != BodyPart.Head || !Has(PassiveKind.Concussion) || result.Killed) return;
             uint life = target.GetComponent<HealthSystem>()?.DeathSequence ?? 0;

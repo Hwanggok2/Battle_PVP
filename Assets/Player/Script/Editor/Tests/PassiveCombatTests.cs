@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Reflection;
 using BattlePvp.Combat;
 using BattlePvp.Stats;
@@ -87,6 +88,87 @@ namespace BattlePvp.EditorTests
             _a.transform.position=Vector3.back;
             p.HitAccepted(_b.transform,BodyPart.Head,DamageDelivery.Melee,new DamageResult(true,10,0));
             Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1f));
+        }
+        [Test] public void BackstabStunsOnRealMeleeHitAndSharesEightSecondCooldownAcrossVictimComponents()
+        {
+            var processor=_a.GetComponent<AttackProcessor>(); var health=_b.GetComponent<HealthSystem>();
+            processor.ProcessSkillHit(1,_b.GetComponent<StatManager>(),health,Vector3.zero);
+            float baseline=1000-health.CurrentHp; Hp(_b,1000);
+            var p=Equip(_a,PassiveKind.Backstab); var control=_b.GetComponent<ExpandedSkillController>();
+            processor.ProcessSkillHit(1,_b.GetComponent<StatManager>(),health,Vector3.zero);
+            Assert.That(1000-health.CurrentHp,Is.EqualTo(baseline*1.1f).Within(.002f));
+            Assert.That((double)typeof(ExpandedSkillController).GetField("_stunnedUntil",Private).GetValue(control)-control.Now,
+                Is.EqualTo(1).Within(.03));
+            Assert.That(control.BlocksCombat,Is.True);
+            var cooldowns=(Dictionary<Transform,double>)typeof(PassiveLoadout).GetField("_backstabReadyAt",Private).GetValue(p);
+            Assert.That(cooldowns[_b.transform]-Time.timeAsDouble,Is.EqualTo(8).Within(.03));
+            var hitbox=new GameObject("Second body part"); hitbox.transform.SetParent(_b.transform,false);
+            Assert.That(p.DamageMultiplier(hitbox.transform,DamageDelivery.Melee),Is.EqualTo(1));
+            Set(control,"_stunnedUntil",0d); Hp(_b,1000);
+            processor.ProcessSkillHit(1,_b.GetComponent<StatManager>(),health,Vector3.zero);
+            Assert.That(1000-health.CurrentHp,Is.EqualTo(baseline).Within(.002f));
+            Assert.That(control.IsStunned,Is.False);
+            cooldowns[_b.transform]=Time.timeAsDouble-.01;
+            processor.ProcessSkillHit(1,_b.GetComponent<StatManager>(),health,Vector3.zero);
+            Assert.That(control.IsStunned,Is.True);
+        }
+        [Test] public void BackstabCooldownIsIndependentForEachVictimAndResetsWithAttackerLife()
+        {
+            var third=Player();
+            try
+            {
+                third.transform.SetPositionAndRotation(Vector3.zero,Quaternion.identity);
+                var p=Equip(_a,PassiveKind.Backstab); var hit=new DamageResult(true,10,0);
+                p.HitAccepted(_b.transform,BodyPart.Body,DamageDelivery.Melee,hit);
+                Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1));
+                Assert.That(p.DamageMultiplier(third.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
+                p.HitAccepted(third.transform,BodyPart.Body,DamageDelivery.Melee,hit);
+                Assert.That(_b.GetComponent<ExpandedSkillController>().IsStunned,Is.True);
+                Assert.That(third.GetComponent<ExpandedSkillController>().IsStunned,Is.True);
+                Assert.That(p.DamageMultiplier(third.transform,DamageDelivery.Melee),Is.EqualTo(1));
+                Call(p,"ResetLife");
+                Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
+                Assert.That(p.DamageMultiplier(third.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
+            }
+            finally { Object.DestroyImmediate(third); }
+        }
+        [TestCase(DamageDelivery.Ranged,true,10,true)]
+        [TestCase(DamageDelivery.Other,true,10,true)]
+        [TestCase(DamageDelivery.Melee,false,10,true)]
+        [TestCase(DamageDelivery.Melee,true,0,true)]
+        [TestCase(DamageDelivery.Melee,true,10,false)]
+        public void BackstabDoesNotStunOrSpendCooldownOnIneligibleHits(DamageDelivery delivery,bool accepted,float damage,bool behind)
+        {
+            var p=Equip(_a,PassiveKind.Backstab);
+            if(!behind) _a.transform.position=Vector3.forward;
+            p.HitAccepted(_b.transform,BodyPart.Body,delivery,new DamageResult(accepted,damage,0));
+            Assert.That(_b.GetComponent<ExpandedSkillController>().IsStunned,Is.False);
+            _a.transform.position=Vector3.back;
+            Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1.1f));
+        }
+        [Test] public void BackstabWorksAgainstAbsorptionShieldsAndRespectsPurification()
+        {
+            var p=Equip(_a,PassiveKind.Backstab); Equip(_b,PassiveKind.Purification);
+            p.HitAccepted(_b.transform,BodyPart.Body,DamageDelivery.Melee,new DamageResult(true,0,10));
+            var control=_b.GetComponent<ExpandedSkillController>();
+            Assert.That((double)typeof(ExpandedSkillController).GetField("_stunnedUntil",Private).GetValue(control)-control.Now,
+                Is.EqualTo(.85).Within(.03));
+            Assert.That(p.DamageMultiplier(_b.transform,DamageDelivery.Melee),Is.EqualTo(1));
+        }
+        [Test] public void BackstabStunsTrainingDummyAndDoesNotApplyStunToKilledTarget()
+        {
+            var target=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Dummy.prefab"));
+            try
+            {
+                EditorTestLifecycle.BindNetwork(target); target.transform.SetPositionAndRotation(Vector3.zero,Quaternion.identity);
+                var p=Equip(_a,PassiveKind.Backstab); var dummy=target.GetComponent<DummyHealth>();
+                p.HitAccepted(dummy,BodyPart.Body,DamageDelivery.Melee,new DamageResult(true,10,0));
+                Assert.That(dummy.IsStunned,Is.True);
+                Assert.That(p.DamageMultiplier(target.transform,DamageDelivery.Melee),Is.EqualTo(1));
+                p.HitAccepted(_b.transform,BodyPart.Body,DamageDelivery.Melee,new DamageResult(true,10,0,true));
+                Assert.That(_b.GetComponent<ExpandedSkillController>().IsStunned,Is.False);
+            }
+            finally { Object.DestroyImmediate(target); }
         }
         [TestCase(DamageDelivery.Melee,1f)] [TestCase(DamageDelivery.Ranged,1.12f)]
         public void SniperChangesActualDamageOnlyForRangedHits(DamageDelivery delivery,float multiplier)
