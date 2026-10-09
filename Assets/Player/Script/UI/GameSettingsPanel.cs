@@ -26,7 +26,10 @@ namespace BattlePvp.UI
 
         private void Awake()
         {
-            Instance = this; _panel.SetActive(false);
+            Instance = this;
+            if (_panel.GetComponent<Canvas>() == null) _panel.AddComponent<Canvas>();
+            if (_panel.GetComponent<GraphicRaycaster>() == null) _panel.AddComponent<GraphicRaycaster>();
+            _panel.SetActive(false);
             RoomUiElements.TopMenuButton(_openButton, 4);
             _openButton.onClick.AddListener(Toggle);
             foreach (var slider in _panel.GetComponentsInChildren<Slider>(true)) _sliders[slider.name] = slider;
@@ -86,6 +89,9 @@ namespace BattlePvp.UI
             if (LobbyUIManager.Instance != null) LobbyUIManager.Instance.CloseInputPanels();
             _saved = LocalGameSettings.Current.Copy(); _draft = _saved.Copy(); _listening = 0;
             _panel.SetActive(true); _notice.text = string.Empty; ShowTab("System"); Refresh();
+            var dialogCanvas = _panel.GetComponent<Canvas>();
+            dialogCanvas.overrideSorting = true;
+            dialogCanvas.sortingOrder = 250;
             GameInputController.RefreshCursorState();
         }
         public void Cancel() { if (_quitting) return; if (_saved != null) LocalGameSettings.Apply(_saved, false); Close(); }

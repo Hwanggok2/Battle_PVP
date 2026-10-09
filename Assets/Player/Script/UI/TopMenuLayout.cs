@@ -29,9 +29,9 @@ namespace BattlePvp.UI
             _instance._entries.Sort((a, b) => b.Column.CompareTo(a.Column));
         }
 
-        public static bool IsVisible(int column, bool battle, bool dead, bool polymath, bool jobGuideOpen = false)
+        public static bool IsVisible(int column, bool battle, bool dead, bool polymath, bool modalOpen = false)
         {
-            if (jobGuideOpen) return false;
+            if (modalOpen) return false;
             if (!battle) return true;
             switch (column)
             {
@@ -55,7 +55,8 @@ namespace BattlePvp.UI
                 var entry = _entries[i];
                 if (entry.Button == null) { _entries.RemoveAt(i--); continue; }
                 bool owns = entry.Owner == null || (!NetworkClient.active && !NetworkServer.active) || entry.Owner.isLocalPlayer;
-                bool show = owns && IsVisible(entry.Column, battle, dead, polymath, JobGuidePanel.IsOpen);
+                bool show = owns && IsVisible(entry.Column, battle, dead, polymath,
+                    JobGuidePanel.IsOpen || GameSettingsPanel.IsOpen);
                 if (entry.Button.gameObject.activeSelf != show) entry.Button.gameObject.SetActive(show);
                 if (!show || !entry.Button.gameObject.activeInHierarchy) continue;
                 var canvas = entry.Button.GetComponentInParent<Canvas>();
