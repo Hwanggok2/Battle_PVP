@@ -947,7 +947,7 @@ namespace BattlePvp.EditorTests
 
         [TestCase("default")] [TestCase("brute")] [TestCase("security-officer")]
         [TestCase("casual-1")] [TestCase("megumi")] [TestCase("picochan")]
-        public void ThrustSupportHandReachesThePommelWithoutMovingTheRightArmOrBlade(string character)
+        public void ThrustSupportUsesReachableArmWithoutCollapsingTheShoulderOrMovingTheBlade(string character)
         {
             var animator=_defender.GetComponent<Animator>();
             using var skin=new CharacterSkin(_defender.GetComponentInChildren<SkinnedMeshRenderer>());
@@ -966,6 +966,12 @@ namespace BattlePvp.EditorTests
                 var bladePose=new Pose(blade.position,blade.rotation);
                 Call(_defender.GetComponent<WeaponLoadout>(),"SyncVisual");
                 string context=character+" / "+phase;
+                var clavicle=visible.GetBoneTransform(HumanBodyBones.LeftShoulder);
+                var opposite=visible.GetBoneTransform(HumanBodyBones.RightShoulder);
+                var upperArm=visible.GetBoneTransform(HumanBodyBones.LeftUpperArm);
+                Vector3 outward=(clavicle.position-opposite.position).normalized;
+                Assert.That(Vector3.Dot((upperArm.position-clavicle.position).normalized,outward),Is.GreaterThanOrEqualTo(.70f),
+                    context+" shoulder must retain its width instead of collapsing into the chest");
                 for(int b=0;b<bones.Length;b++)
                 {
                     Assert.That(Quaternion.Angle(rotations[b],visible.GetBoneTransform(bones[b]).rotation),Is.LessThan(.03f),context+" dominant arm");
@@ -973,8 +979,22 @@ namespace BattlePvp.EditorTests
                 }
                 Assert.That(Vector3.Distance(bladePose.position,blade.position),Is.LessThan(.001f),context+" blade");
                 Assert.That(Quaternion.Angle(bladePose.rotation,blade.rotation),Is.LessThan(.03f),context+" blade");
-                if(phase<=.83f)
-                    Assert.That(Vector3.Distance(Fist(visible,true),Fist(visible,false)),Is.LessThan(.11f),context+" support fist at handle");
+                // Contact is possible only within the avatar's real arm reach.
+                // The previous unconditional grip-distance assertion accepted an
+                // inward-folded clavicle as a way to reach an impossible target.
+                var elbow=visible.GetBoneTransform(HumanBodyBones.LeftLowerArm);
+                var hand=visible.GetBoneTransform(HumanBodyBones.LeftHand);
+                float upper=Vector3.Distance(upperArm.position,elbow.position), lower=Vector3.Distance(elbow.position,hand.position);
+                var frameArgs=new object[]{visible,HumanBodyBones.RightHand,0f};
+                typeof(CharacterSkin).Assembly.GetType("BattlePvp.Characters.CharacterEquipmentVisual")
+                    .GetMethod("HandFrame",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,frameArgs);
+                float handSize=(float)frameArgs[2];
+                Vector3 support=Fist(visible,false)-blade.forward*Mathf.Clamp(handSize*.7f,.035f,.07f);
+                Vector3 targetWrist=support-(Fist(visible,true)-hand.position);
+                float reach=Mathf.Sqrt(upper*upper+lower*lower+2*upper*lower*Mathf.Cos(8f*Mathf.Deg2Rad))-.001f;
+                float unavoidableGap=Mathf.Max(0,Vector3.Distance(upperArm.position,targetWrist)-reach);
+                Assert.That(Vector3.Distance(Fist(visible,true),support),Is.LessThan(unavoidableGap+.004f),
+                    context+" support hand reaches the pommel when possible and never stretches the arm");
                 var current=new[]{visible.GetBoneTransform(HumanBodyBones.LeftUpperArm).localRotation,
                     visible.GetBoneTransform(HumanBodyBones.LeftLowerArm).localRotation,visible.GetBoneTransform(HumanBodyBones.LeftHand).localRotation};
                 if(previous!=null) for(int b=0;b<current.Length;b++)

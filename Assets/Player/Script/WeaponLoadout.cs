@@ -243,8 +243,8 @@ namespace BattlePvp.Combat
             var clavicle = rig.GetBoneTransform(HumanBodyBones.LeftShoulder);
             if (clavicle != null)
             {
-                // Protract only as much as needed, within the chest-relative shoulder
-                // range. This adds reach without stretching either arm segment.
+                // Keep the clavicle pointing out of the chest. Reaching across the
+                // body must not fold the shoulder socket inward to force palm contact.
                 Vector3 toward = wrist - clavicle.position, link = arm.position - clavicle.position;
                 float distance = toward.magnitude, length = link.magnitude;
                 float cosine = (distance * distance + length * length - (reach - .008f) * (reach - .008f)) /
@@ -254,7 +254,7 @@ namespace BattlePvp.Combat
                 Vector3 direction = Vector3.RotateTowards(link, toward, turn * Mathf.Deg2Rad * weight, 0f);
                 var opposite = rig.GetBoneTransform(HumanBodyBones.RightShoulder);
                 Vector3 lateral = opposite != null ? clavicle.position - opposite.position : -rig.transform.right;
-                direction = Vector3.RotateTowards(lateral.normalized, direction.normalized, 110f * Mathf.Deg2Rad, 0f);
+                direction = Vector3.RotateTowards(lateral.normalized, direction.normalized, 45f * Mathf.Deg2Rad, 0f);
                 clavicle.rotation = Quaternion.FromToRotation(link, direction) * clavicle.rotation;
             }
             Vector3 hint = arm.position + (rig.transform.TransformDirection(new Vector3(-.6f, -.8f, .1f))) * reach;

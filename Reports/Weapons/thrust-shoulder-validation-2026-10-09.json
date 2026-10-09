@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-09",
+  "issue": "Single-sword thrust collapses the left shoulder",
+  "fix": "Keep the support-arm clavicle within 45 degrees of the outward chest-relative direction, and regenerate only the left-arm thrust curves.",
+  "regression": {
+    "before": "All six character cases failed the shoulder-width assertion.",
+    "after": {
+      "characters": [
+        "default",
+        "brute",
+        "security-officer",
+        "casual-1",
+        "megumi",
+        "picochan"
+      ],
+      "samplesPerCharacter": 121,
+      "checks": [
+        "shoulder width",
+        "reachable support grip",
+        "support-arm continuity",
+        "dominant arm unchanged",
+        "blade unchanged"
+      ]
+    }
+  },
+  "editMode": {
+    "jobId": "3f1813676b8d41c9aa65e8bba8c57315",
+    "total": 142,
+    "passed": 142,
+    "failed": 0,
+    "skipped": 0,
+    "durationSeconds": 11.5799313,
+    "resultState": "Passed"
+  },
+  "preserved": {
+    "nonLeftFloatCurves": "Identical to the previous committed animation",
+    "attackData": "Identical to the previous committed Weapon_Thrust.asset"
+  },
+  "visualReview": [
+    "Reports/Weapons/Review/thrust-shoulder-final-brute-0.png",
+    "Reports/Weapons/Review/thrust-shoulder-final-brute-2.png",
+    "Reports/Weapons/Review/thrust-shoulder-final-officer-down-0.png"
+  ],
+  "webBuild": "Not rebuilt for this change"
+}
