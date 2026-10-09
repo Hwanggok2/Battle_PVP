@@ -14,6 +14,7 @@ namespace BattlePvp.Combat
     [Serializable]
     public sealed class PassivePresetBook
     {
+        public int ConceptDefaultsVersion;
         public string ActiveId;
         public List<PassivePreset> Entries = new();
         public PassivePreset Find(string id) => Entries.Find(p => p.Id == id);
@@ -49,7 +50,43 @@ namespace BattlePvp.Combat
     public static class PassivePresetStore
     {
         public static string Key => "BattlePvp.PassivePresets.v1."+(PlayFab.PlayFabSettings.staticPlayer.PlayFabId ?? "offline");
-        private static readonly string[] DefaultNames={"힘 특화 · STR","체력 특화 · CON","민첩 특화 · AGI","방어 특화 · DEF","전략가","팔방미인"};
+        private const int ConceptDefaultsVersion=1;
+        private static readonly string[] LegacyNames={"힘 특화 · STR","체력 특화 · CON","민첩 특화 · AGI","방어 특화 · DEF","전략가","팔방미인"};
+        private static void AddConcepts(PassivePresetBook book)
+        {
+            Add("counter","반격",PassiveKind.Counterattack,PassiveKind.HealingShield);
+            Add("stats","스탯 강화",PassiveKind.Vitality,PassiveKind.Ironclad);
+            Add("mobility","기동전",PassiveKind.DoubleJump,PassiveKind.Haste);
+            Add("assassin","암살",PassiveKind.Backstab,PassiveKind.Haste);
+            Add("sniper","저격",PassiveKind.Sniper,PassiveKind.Scholar);
+            Add("berserker","광전사",PassiveKind.Berserker,PassiveKind.Victory);
+            Add("control","제압",PassiveKind.Concussion,PassiveKind.Haste);
+            Add("survival","생존",PassiveKind.Purification,PassiveKind.Vitality);
+
+            void Add(string id,string name,PassiveKind first,PassiveKind second)
+            {
+                id="concept-"+id;
+                if(book.Find(id)==null)
+                    book.Entries.Add(new PassivePreset {Id=id,Name=name,Choices=new[]{(int)first,(int)second}});
+            }
+        }
+        private static void MigrateConcepts(PassivePresetBook book)
+        {
+            if(book.ConceptDefaultsVersion>=ConceptDefaultsVersion) return;
+            // Respect an intentionally emptied list. Replace only untouched, unequipped legacy placeholders.
+            if(book.Entries.Count>0)
+            {
+                for(int i=0;i<LegacyNames.Length;i++)
+                {
+                    var entry=book.Find("job-"+i);
+                    if(entry!=null && entry.Id!=book.ActiveId && entry.Name==LegacyNames[i] &&
+                       entry.Choices[0]==0 && entry.Choices[1]==0) book.Entries.Remove(entry);
+                }
+                AddConcepts(book);
+            }
+            book.ConceptDefaultsVersion=ConceptDefaultsVersion;
+            Save(book);
+        }
         public static PassivePresetBook Read()
         {
             PassivePresetBook book=null;
@@ -64,17 +101,17 @@ namespace BattlePvp.Combat
                 if(valid)
                 {
                     if(book.Find(book.ActiveId)==null) book.ActiveId=null;
+                    MigrateConcepts(book);
                     return book;
                 }
             }
-            // The legacy IDs remain stable, but names and presets have no connection to stats/jobs.
-            book=new PassivePresetBook();
-            for(int i=0;i<DefaultNames.Length;i++) book.Entries.Add(new PassivePreset {Id="job-"+i,Name=DefaultNames[i]});
+            book=new PassivePresetBook {ConceptDefaultsVersion=ConceptDefaultsVersion};
+            AddConcepts(book);
             var applied=PassiveStore.Read();
             if(applied[0]!=0 || applied[1]!=0)
             {
-                book.ActiveId=book.Entries[0].Id;
-                book.Entries[0].Choices=(int[])applied.Clone();
+                book.ActiveId="legacy-equipped";
+                book.Entries.Add(new PassivePreset {Id=book.ActiveId,Name="기존 장착",Choices=(int[])applied.Clone()});
             }
             Save(book);
             return book;
