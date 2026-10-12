@@ -2,9 +2,14 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#06101b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Battle PvP">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Battle_PvP</title>
   <link rel="stylesheet" href="shell.css">
+  <link rel="manifest" href="manifest.webmanifest">
 </head>
 <body>
   <main id="unity-container">
@@ -12,6 +17,10 @@
       <canvas id="unity-canvas" width="960" height="600" tabindex="0" aria-label="Battle PvP 게임"></canvas>
       <div id="loading"><strong>BATTLE <em>PVP</em></strong><span id="load-label">게임을 불러오는 중</span><progress id="load-progress" max="1" value="0"></progress></div>
       <div id="game-message" role="status" hidden></div>
+      <section id="mobile-display-help" hidden aria-label="전체화면 안내">
+        <p id="mobile-display-instructions"></p>
+        <button id="close-display-help" type="button">이대로 플레이</button>
+      </section>
     </div>
     <footer>
       <span id="display-hint">Esc 커서 전환</span>
@@ -24,17 +33,17 @@
   <script>
     const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
     const loader = document.createElement('script');
-    loader.src = 'Build/279ca79c0ed702dbc3049acc75d5b90e.loader.js';
+    loader.src = 'Build/96ed92d07f2f23ddb8bd41940285242f.loader.js';
     loader.onload = async () => {
       let dataUrl;
       try {
-        dataUrl = await BattlePvpData.download([{"url": "Build/2356163b98200a02ac05bab9f7aa034e.data.unityweb.part1", "bytes": 62914560}, {"url": "Build/2356163b98200a02ac05bab9f7aa034e.data.unityweb.part2", "bytes": 51519112}], progress => {
+        dataUrl = await BattlePvpData.download([{"url": "Build/7e11401947f47685aed523c5ce75d877.data.unityweb.part1", "bytes": 62914560}, {"url": "Build/7e11401947f47685aed523c5ce75d877.data.unityweb.part2", "bytes": 51517655}], progress => {
           document.getElementById('load-progress').value = progress * 0.7;
         });
         const instance = await createUnityInstance(document.getElementById('unity-canvas'), {
       dataUrl,
       frameworkUrl: 'Build/d9bf3e51f9ddd88212643176d9117ba9.framework.js.unityweb',
-      codeUrl: 'Build/d8c8913d34eed4c3788af98157b4ea95.wasm.unityweb',
+      codeUrl: 'Build/69115aaa2a56ac2b4ca9f30318313249.wasm.unityweb',
       streamingAssetsUrl: 'StreamingAssets',
       companyName: 'Junu', productName: 'Battle_PvP', productVersion: '0.1.0',
       // Render UI at CSS resolution instead of multiplying every pixel on high-DPI displays.

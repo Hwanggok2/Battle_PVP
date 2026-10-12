@@ -18,4 +18,13 @@ button:hover, button:focus-visible { background: #245067; outline: 2px solid #56
 progress { width: min(340px, 70%); accent-color: #55e5e9; }
 #game-message { position: absolute; left: 5%; right: 5%; top: 20%; padding: 18px; background: #09131ff5; border: 1px solid #dfaf59; line-height: 1.6; }
 [hidden] { display: none !important; }
+#mobile-display-help { position: absolute; z-index: 2; top: 20%; left: 50%; transform: translateX(-50%); width: min(460px, 90%); padding: 18px; background: #09131ff5; border: 1px solid #56d8e4; border-radius: 8px; line-height: 1.6; }
+#mobile-display-help p { margin: 0 0 14px; }
+/* Mobile always uses the available viewport. Browser chrome requires native
+   fullscreen or launching the installed home-screen web app. */
+#unity-container.mobile { position: fixed; inset: 0; width: 100%; height: 100dvh; border: 0; grid-template-rows: minmax(0, 1fr); padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+#unity-container.mobile #game-stage { aspect-ratio: auto; }
+#unity-container.mobile footer { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); bottom: auto; min-height: 0; padding: 0; background: transparent; }
+#unity-container.mobile #display-hint, #unity-container.mobile #performance-button { display: none; }
+#unity-container.mobile:fullscreen footer, #unity-container.mobile.standalone footer, #unity-container.mobile.display-dismissed footer { display: none; }
 @media (max-width: 600px) { #unity-container { height: 100dvh; border: 0; } #game-stage { aspect-ratio: auto; } #display-hint { font-size: 11px; } footer { padding: 5px 8px; gap: 5px; } }

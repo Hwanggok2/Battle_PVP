@@ -1,0 +1,11 @@
+{
+  "id": "./",
+  "name": "Battle PvP",
+  "short_name": "Battle PvP",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#06101b",
+  "theme_color": "#06101b"
+}
