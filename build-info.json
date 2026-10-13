@@ -1,19 +1,19 @@
 {
-  "release": "2026-10-13-mobile-fixes",
-  "sourceCommit": "0817db8c888a38a00f205b9c46203da98b229391",
+  "release": "2026-10-13-mobile-layout",
+  "sourceCommit": "b257a2f31c3ecb0931fca67a84f475d906dda65c",
   "sourceIncludesUncommittedChanges": true,
-  "builtUtc": "2026-10-13T01:42:03.6979568Z",
+  "builtUtc": "2026-10-13T03:52:39.6044047Z",
   "development": false,
   "buildErrors": 0,
-  "originalDataSha256": "78ce2630806dadca31d4312da7aca36a7df59969612ac9948b00e1f6a254e97d",
+  "originalDataSha256": "a44eabb2e1ac723d496f7bd56d7bfe927d0ba27f50e7045475982b10e60e3b27",
   "dataChunks": [
     {
-      "url": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part1",
+      "url": "Build/f1146147b32ccd7cd7edbb0b5e60ee80.data.unityweb.part1",
       "bytes": 62914560
     },
     {
-      "url": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part2",
-      "bytes": 51523970
+      "url": "Build/f1146147b32ccd7cd7edbb0b5e60ee80.data.unityweb.part2",
+      "bytes": 51518042
     }
   ],
   "files": [
@@ -23,34 +23,34 @@
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "Build/5a9985e6a06143614781cc13cacfe4e7.framework.js.unityweb",
-      "bytes": 86376,
-      "sha256": "0c7031c626b48e954f3367436aa1a5dfd2f44103ff6d0c277c17b0e1af86b00a"
+      "path": "Build/030fd243fcce27ce2597b0086b791fbc.wasm.unityweb",
+      "bytes": 13187414,
+      "sha256": "44f9252b8b1a829cc82b1f1906056569a16f88603ab1f9a89ecd025abbfc34c9"
     },
     {
-      "path": "Build/8f1742439132b0fbe5e80721099e8463.wasm.unityweb",
-      "bytes": 13172954,
-      "sha256": "8cda7b3dc1b7f903a800fc0872d73c381188ae36f8be34312a9a9abd88a3c643"
+      "path": "Build/35d8f475a49de609893989cc28dffe6b.framework.js.unityweb",
+      "bytes": 86394,
+      "sha256": "defd8be63bab2cd08ca5b2d835b57f21dbc26274072b806a6989a8275e12ec0f"
     },
     {
-      "path": "Build/aaf218a4109d5b145c361641666ef71e.loader.js",
+      "path": "Build/b19b426978241d4955db3977bbfad14d.loader.js",
       "bytes": 117893,
-      "sha256": "f91fbca4a87e385cc4bc374a757bec89562da2e3b6ca65e40d3e2f591ebd4ef5"
+      "sha256": "7e82acc129ee5602680d4cda9e6ae21035e99f9e9be2be2d0d789bbd4aa2cb32"
     },
     {
-      "path": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part1",
+      "path": "Build/f1146147b32ccd7cd7edbb0b5e60ee80.data.unityweb.part1",
       "bytes": 62914560,
-      "sha256": "5c7a8fb5e2f98b7516552da040d712d9dd26553a9212a3d77514f1e85577b91f"
+      "sha256": "9164de12cb5d2a0d35796d3784b1f4ae3c5a4e89ddd8123c9b8199113fdcb0e1"
     },
     {
-      "path": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part2",
-      "bytes": 51523970,
-      "sha256": "d09bbbdf2e44f2884c66ce2c00e3ad7fafecc148c3a806501f4aeb7c6c8627ac"
+      "path": "Build/f1146147b32ccd7cd7edbb0b5e60ee80.data.unityweb.part2",
+      "bytes": 51518042,
+      "sha256": "c7049a0ebafe05e43ef81a84d16daed04b7fa880ebff57569d93b10c7bb6353a"
     },
     {
       "path": "index.html",
       "bytes": 3684,
-      "sha256": "9529eb5b17d1e9d80259b4a794a33a78a7bf3d2a889688eacf0cac51e601de26"
+      "sha256": "cbea76226d5d16cd3bf201bf61ead8478d82ae06a8725acaee94c7302e83d88c"
     },
     {
       "path": "manifest.webmanifest",
@@ -59,8 +59,8 @@
     },
     {
       "path": "README.txt",
-      "bytes": 2137,
-      "sha256": "bebabd3fda8ca29e137af75310b22e08d193714e14364117f2c466430a32f2ad"
+      "bytes": 1438,
+      "sha256": "71233d106bea2454186f64da2d660bc79da7793d2729434595c5aa9cef294013"
     },
     {
       "path": "shell.css",
