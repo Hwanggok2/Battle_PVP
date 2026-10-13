@@ -33,17 +33,17 @@
   <script>
     const shell = window.__battlePvpWebShell = BattlePvpWebShell.create(document, window, navigator);
     const loader = document.createElement('script');
-    loader.src = 'Build/96ed92d07f2f23ddb8bd41940285242f.loader.js';
+    loader.src = 'Build/aaf218a4109d5b145c361641666ef71e.loader.js';
     loader.onload = async () => {
       let dataUrl;
       try {
-        dataUrl = await BattlePvpData.download([{"url": "Build/7e11401947f47685aed523c5ce75d877.data.unityweb.part1", "bytes": 62914560}, {"url": "Build/7e11401947f47685aed523c5ce75d877.data.unityweb.part2", "bytes": 51517655}], progress => {
+        dataUrl = await BattlePvpData.download([{"url": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part1", "bytes": 62914560}, {"url": "Build/efe9eeac2fd2f2a209d86e964710d8fe.data.unityweb.part2", "bytes": 51523970}], progress => {
           document.getElementById('load-progress').value = progress * 0.7;
         });
         const instance = await createUnityInstance(document.getElementById('unity-canvas'), {
       dataUrl,
-      frameworkUrl: 'Build/d9bf3e51f9ddd88212643176d9117ba9.framework.js.unityweb',
-      codeUrl: 'Build/69115aaa2a56ac2b4ca9f30318313249.wasm.unityweb',
+      frameworkUrl: 'Build/5a9985e6a06143614781cc13cacfe4e7.framework.js.unityweb',
+      codeUrl: 'Build/8f1742439132b0fbe5e80721099e8463.wasm.unityweb',
       streamingAssetsUrl: 'StreamingAssets',
       companyName: 'Junu', productName: 'Battle_PvP', productVersion: '0.1.0',
       // Render UI at CSS resolution instead of multiplying every pixel on high-DPI displays.
